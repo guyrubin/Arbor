@@ -5,7 +5,7 @@ import {
   pointInPolygon, polylineLength, poseAt, posePoint, rotate, samplePolyline, seamCovered, seamNear, slotAt, tapPose, tipPose, traceSeam, validBowl,
   type BowlPattern, type Point,
 } from './mendBowlRules';
-import { BOWL_PATTERNS, OUTLINE_AREA, OUTLINE_POINTS, STAGE } from './mendBowlPatterns';
+import { BOWL_CENTRE, BOWL_PATTERNS, BOWL_R, LINEN_R, OUTLINE_AREA, OUTLINE_POINTS, STAGE, outlineAt } from './mendBowlPatterns';
 
 const area = (poly: readonly Point[]) => Math.abs(poly.reduce((s, p, i) => { const q = poly[(i + 1) % poly.length]; return s + p.x * q.y - q.x * p.y; }, 0) / 2);
 const near = (a: Point, b: Point, eps = 1e-6) => Math.hypot(a.x - b.x, a.y - b.y) <= eps;
@@ -64,6 +64,8 @@ describe('mend-bowl: the authored break patterns', () => {
         expect(p.x).toBeGreaterThan(4); expect(p.x).toBeLessThan(STAGE.w - 4);
         expect(p.y).toBeGreaterThan(4); expect(p.y).toBeLessThan(STAGE.h - 4);
       }
+      // …and on the table's linen top, which is all the smallest stage is sure to show.
+      for (const v of piece.polygon) { const p = posePoint(piece, piece.start, v); expect(Math.hypot(p.x - BOWL_CENTRE.x, p.y - BOWL_CENTRE.y)).toBeLessThan(LINEN_R); }
       expect(fits(piece, piece.start)).toBe(false);
       expect(Math.abs(piece.start.r) % ROTATE_STEP).toBe(0);
       expect(Math.abs(piece.start.r)).toBeGreaterThan(SNAP_DEG);
@@ -76,6 +78,14 @@ describe('mend-bowl: the authored break patterns', () => {
       const mids = pat.seams.map(s => { const pts = samplePolyline(s.points); return pts[Math.floor(pts.length / 2)]; });
       mids.forEach((a, i) => mids.forEach((b, j) => { if (i < j) expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(30); }));
     }
+  });
+  it('the outline is the round rim, seen from above, centred on the table', () => {
+    for (const t of [0, 0.37, 1, 2.5, 3.99]) expect(Math.hypot(outlineAt(t).x - BOWL_CENTRE.x, outlineAt(t).y - BOWL_CENTRE.y)).toBeCloseTo(BOWL_R, 6);
+    expect(near(outlineAt(0), { x: BOWL_CENTRE.x - BOWL_R, y: BOWL_CENTRE.y })).toBe(true);
+    expect(near(outlineAt(1), { x: BOWL_CENTRE.x, y: BOWL_CENTRE.y - BOWL_R })).toBe(true);
+    expect(OUTLINE_AREA / (Math.PI * BOWL_R * BOWL_R)).toBeGreaterThan(0.998);
+    expect(BOWL_CENTRE).toEqual({ x: STAGE.w / 2, y: STAGE.h / 2 });
+    for (const pat of BOWL_PATTERNS) for (const seam of pat.seams) for (const p of seam.points) expect(Math.hypot(p.x - BOWL_CENTRE.x, p.y - BOWL_CENTRE.y)).toBeLessThan(BOWL_R + 1e-6);
   });
   it('the outline is closed and the same every time', () => {
     expect(OUTLINE_POINTS.length).toBeGreaterThan(100);
@@ -145,8 +155,8 @@ describe('mend-bowl: tracing gold', () => {
     expect(seamCovered(seam, along(0, 1), 1)).toBe(true);
     expect(seamCovered(seam, along(0, 0.9), 2)).toBe(true);
     expect(seamCovered(seam, along(0, 0.6), 2)).toBe(false);
-    // A path drawn 20 units off the line still counts at 28; not at 10.
-    const shifted = along(0, 1).map(p => ({ x: p.x, y: p.y + 20 }));
+    // A path drawn 20 units to the side of the line (this crack runs up the bowl) still counts at 28; not at 10.
+    const shifted = along(0, 1).map(p => ({ x: p.x + 20, y: p.y }));
     expect(seamCovered(seam, shifted, 28)).toBe(true);
     expect(seamCovered(seam, shifted, 10)).toBe(false);
     expect(SEAM_COVER).toBe(0.8);

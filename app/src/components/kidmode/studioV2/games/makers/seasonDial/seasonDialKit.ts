@@ -31,6 +31,22 @@ export const SEASON_VIEWS: readonly SeasonView[] = [
 /** What the dial is mounted on: the kit's round pale-wood table with the teal ring, seen from above. */
 export const DIAL_PLINTH: KitPicture = shipped('scene-table', 1024, 1024, true);
 
+/** A figure from the Studio's shared kit library (cut once for every maker from the kit boards; never a private copy). */
+const library = (stem: string, width: number, height: number, board: string): KitPicture => ({ src: `${MADE}${stem}.webp`, src480: `${MADE}${stem}-480.webp`, width, height, source: `kit/v30/${board}`, edit: 'shared library cut-out' });
+/** The crew, dressed for the weather they come out in. These three are the
+ * shared library's own files; the two that show a child carry the child's
+ * name in their stem, as the likeness register requires. */
+export const CREW_PICTURES = {
+  /** Aya in spring, her LeafLab on its sling. */
+  ayaLeafLab: library('kit-aya-mission-front', 398, 768, '05-aya.png'),
+  /** GobGob in the yellow hooded jacket, out in the spring rain. */
+  gobgobRain: library('kit-gobgob-mission-front', 325, 768, '02-gobgob-identity-wardrobes.png'),
+  /** Bebe in the navy hooded jacket, beside the snow friend. */
+  bebeSnow: library('kit-bebe-front', 285, 768, '01-bebe-identity-wardrobes.png'),
+} as const;
+/** The files of this activity in which a child of the kit is visible (for the likeness register). */
+export const SEASON_DIAL_CHILD_FILES: readonly string[] = [CREW_PICTURES.gobgobRain.src, CREW_PICTURES.bebeSnow.src];
+
 /** The companions on the terrace (the kit's own renders, as shipped). */
 export const FRIEND_PICTURES = {
   ayaIdle: shipped('aya-idle', 440, 440, false), ayaHappy: shipped('aya-happy', 440, 440, false),
@@ -42,4 +58,4 @@ export const WATERING_CAN = shipped('item-can', 278, 205, false);
 export const FELT_FLOWER = shipped('flower-open', 293, 440, false);
 
 /** Every picture this activity shows, for the art manifest. */
-export const SEASON_DIAL_ART: readonly KitPicture[] = [...SEASON_VIEWS.map(v => v.picture), DIAL_PLINTH, ...Object.values(FRIEND_PICTURES), WATERING_CAN, FELT_FLOWER];
+export const SEASON_DIAL_ART: readonly KitPicture[] = [...SEASON_VIEWS.map(v => v.picture), DIAL_PLINTH, ...Object.values(FRIEND_PICTURES), ...Object.values(CREW_PICTURES), WATERING_CAN, FELT_FLOWER];

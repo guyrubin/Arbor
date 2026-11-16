@@ -125,7 +125,7 @@ export function captionAt(reel: ReelId, t: number): Caption {
 /* ── the child's hands and tonight's show: bounded choices the films read ── */
 
 /** Where the rocket's porthole can be pressed in (rocket-local x): near the nose, in the middle, low. */
-export const PORTHOLE_SLOTS: readonly number[] = [38, 8, -24];
+export const PORTHOLE_SLOTS: readonly number[] = [40, 3, -34];
 /** A thumbprint the child left in the clay, in the body's own coordinates, so it travels with the clay. */
 export interface ClayPrint { x: number; y: number; rot: number }
 export const MAX_PRINTS = 3;
@@ -334,7 +334,7 @@ export function surfaceAt(x: number, t: number): number {
 /** A clay Aya hops into the Sky Gardens, presses one seed into the planter,
  * waits while a small cloud waters it, and the flower comes up in the
  * child's own clay. Every part is a closed-form function of `t`. */
-export const AYA_HOPS = 3, AYA_X0 = 34, AYA_X1 = 168, PLANTER_X = 252, SOIL_Y = 214, AYA_GROUND = 236;
+export const AYA_HOPS = 3, AYA_X0 = 44, AYA_X1 = 192, PLANTER_X = 252, SOIL_Y = 214, AYA_GROUND = 236;
 const AYA_HOP_AT = 0.25, AYA_HOP_EVERY = 0.6, AYA_HOP_AIR = 0.36;
 export const SEED_T = 2.6, RAIN_FROM = 3.6, SPROUT_T = 4.4, BLOOM_T = 6.2, BLOOMED_T = 7.25;
 export interface RainDrop { id: number; x: number; y: number }
@@ -370,7 +370,7 @@ export function ayaFilm(t: number): AyaFrame {
   }
   const arm = span(t, 2.05, SEED_T) * (1 - span(t, SEED_T + 0.05, 2.95));
   const seedK = span(t, 2.05, SEED_T, easeIn);
-  const seed = { x: lerp(AYA_X1 + 26, PLANTER_X - 2, seedK), y: lerp(AYA_GROUND - 44, SOIL_Y - 1, seedK) - 18 * Math.sin(Math.PI * seedK), o: t < 2.05 ? 0 : 1 - span(t, SEED_T, SEED_T + 0.25) };
+  const seed = { x: lerp(AYA_X1 + 25, PLANTER_X - 2, seedK), y: lerp(AYA_GROUND - 28, SOIL_Y - 1, seedK) - 16 * Math.sin(Math.PI * seedK), o: t < 1.95 ? 0 : 1 - span(t, SEED_T, SEED_T + 0.25) };
   const cloud = { x: lerp(420, PLANTER_X, span(t, 2.9, 3.55, easeOut)) - 260 * span(t, 4.5, 5.4, easeIn), o: t < 2.9 || t >= 5.4 ? 0 : 1 };
   const drops: RainDrop[] = [];
   for (const d of RAIN) {

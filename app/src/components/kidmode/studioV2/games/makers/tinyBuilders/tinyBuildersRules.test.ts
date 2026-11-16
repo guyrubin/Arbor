@@ -3,12 +3,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  ALL_SHOWN, BUILD_MODES, LABELS, LAND_KEYFRAMES, LAND_KEYFRAME_MS, PIECES, SNAP_RADIUS, SOCKETS,
-  canName, complete, convertPlaced, fibreView, fits, fitsAt, homeFor, landFrame, landKeyframe, modeForChallenge,
-  placeOn, placementCount, shownParts, tinyLine, turnBy, unvisited, validMode, visit, type BuildMode, type Placed,
+  ALL_SHOWN, BUILD_MODES, LABELS, LAND_KEYFRAMES, LAND_KEYFRAME_MS, LAND_TILT, LOCK_RADIUS, PAINTS, PIECES, PULL_RADIUS, SNAP_RADIUS, SOCKETS, SPIN_FRICTION, SPIN_MAX,
+  canName, coast, complete, convertPlaced, dropAt, fibreView, fits, fitsAt, homeFor, landFrame, landKeyframe, modeForChallenge, nextPaint, paintForRound, pieceHome,
+  placeOn, placementCount, pulled, pushFor, shownParts, tinyLine, trayOrder, turnBy, unvisited, validMode, visit, type BuildMode, type Placed,
 } from './tinyBuildersRules';
-import { FIBRE, FIBRE_L1, FIBRE_L2, HEAD_FACES, SHEATH_MIN, dnaCoil, headFacets, hull, kneeFor, normDeg } from './phageGeometry';
+import { FIBRE, FIBRE_L1, FIBRE_L2, HEAD_FACES, PIECE_BOX, SHEATH_MIN, VIEW_TILT, dnaCoil, headFacets, hull, kneeFor, normDeg } from './phageGeometry';
 import { TINY_BUILDERS_COPY } from './tinyBuildersCopy';
+import { LAST_STOP, REAL_MICROMETRES, SCALE_STOPS, clampStop, timesLonger, zoomFactor, zoomMs } from './tinyScale';
+import { MONITOR_SCREEN, TINY_KIT_ART } from './tinyKitArt';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 function fillAll(mode: BuildMode): Placed {
@@ -198,10 +200,152 @@ describe('Tiny Structures: landing', () => {
   });
 });
 
+describe('Tiny Structures: a piece in the hand (the magnet)', () => {
+  it.each(BUILD_MODES)('%s: every piece let go on its own place snaps there, held fast', (mode) => {
+    for (const piece of PIECES[mode]) {
+      const drop = dropAt(mode, piece, pieceHome(piece.kind), {});
+      expect(drop, piece.id).not.toBeNull();
+      expect(fits(piece, SOCKETS[mode].find(s => s.id === drop!.socket)!)).toBe(true);
+      expect(drop!.pull).toBe(1);
+      expect(pulled(pieceHome(piece.kind), drop)).toEqual(pieceHome(piece.kind));
+    }
+  });
+  it('the pull grows as the piece nears: nothing far away, all of it inside the lock', () => {
+    const head = PIECES.full[0], home = pieceHome('head');
+    let last = -1;
+    for (let d = PULL_RADIUS + 20; d >= 0; d -= 2) {
+      const drop = dropAt('assisted', PIECES.assisted[0], { x: home.x + d, y: home.y }, {});
+      const pull = drop ? drop.pull : 0;
+      expect(pull).toBeGreaterThanOrEqual(last); expect(pull).toBeGreaterThanOrEqual(0); expect(pull).toBeLessThanOrEqual(1);
+      last = pull;
+    }
+    expect(dropAt('assisted', PIECES.assisted[0], { x: home.x + PULL_RADIUS + 4, y: home.y }, {})!.pull).toBe(0);
+    expect(dropAt('full', head, { x: home.x + LOCK_RADIUS - 1, y: home.y }, {})!.pull).toBe(1);
+    // A piece part-way is drawn part-way towards its place, never past it.
+    const mid = dropAt('full', head, { x: home.x + 50, y: home.y }, {})!;
+    expect(pulled({ x: home.x + 50, y: home.y }, mid).x).toBeGreaterThan(home.x); expect(pulled({ x: home.x + 50, y: home.y }, mid).x).toBeLessThan(home.x + 50);
+  });
+  it('full mode: a head let go on the tail drifts back; assisted mode takes it home from anywhere over the model', () => {
+    const head = PIECES.full[0];
+    expect(dropAt('full', head, pieceHome('tail'), {})).toBeNull();
+    expect(dropAt('full', PIECES.full.find(p => p.kind === 'baseplate')!, pieceHome('head'), {})).toBeNull();
+    expect(dropAt('assisted', PIECES.assisted[0], pieceHome('fibres'), {})!.socket).toBe('head');
+    expect(dropAt('assisted', PIECES.assisted[0], { x: -400, y: -400 }, {})).toBeNull();
+    expect(SNAP_RADIUS.assisted).toBeGreaterThan(SNAP_RADIUS.full * 2);
+  });
+  it('a placed piece cannot be dropped again, and fibre pairs fill the free places in turn', () => {
+    expect(dropAt('full', PIECES.full[0], pieceHome('head'), { head: 'head' })).toBeNull();
+    const pair = PIECES.full.find(p => p.id === 'pair-2')!;
+    expect(dropAt('full', pair, pieceHome('fibrePair'), {})!.socket).toBe('fibres-0');
+    expect(dropAt('full', pair, pieceHome('fibrePair'), { 'fibres-0': 'pair-0' })!.socket).toBe('fibres-1');
+  });
+  it('every piece has a box of its own, and its home is the middle of it', () => {
+    for (const mode of BUILD_MODES) for (const piece of PIECES[mode]) {
+      const [x, y, w, h] = PIECE_BOX[piece.kind];
+      expect(pieceHome(piece.kind)).toEqual({ x: x + w / 2, y: y + h / 2 });
+    }
+  });
+});
+
+describe('Tiny Structures: the turntable has weight', () => {
+  it('let go, it coasts, slows and comes to rest; it never speeds up or turns back', () => {
+    let v = 300, turned = 0, steps = 0;
+    while (v !== 0 && steps < 2000) { const next = coast(v, 1 / 60); expect(Math.abs(next.velocity)).toBeLessThan(Math.abs(v)); expect(next.turn).toBeGreaterThan(0); turned += next.turn; v = next.velocity; steps++; }
+    expect(v).toBe(0);
+    expect(turned).toBeGreaterThan(300 / SPIN_FRICTION * 0.95); expect(turned).toBeLessThanOrEqual(300 / SPIN_FRICTION + 0.01);
+  });
+  it('a push for 360 degrees coasts about one whole turn, either way', () => {
+    for (const sign of [1, -1]) {
+      let v = sign * pushFor(360), turned = 0;
+      for (let i = 0; i < 4000 && v !== 0; i++) { const next = coast(v, 1 / 60); turned += next.turn; v = next.velocity; }
+      expect(Math.abs(turned)).toBeGreaterThan(350); expect(Math.abs(turned)).toBeLessThanOrEqual(360.01); expect(Math.sign(turned)).toBe(sign);
+    }
+  });
+  it('speed is capped and bad numbers stop the table', () => {
+    expect(Math.abs(coast(1e6, 0.016).velocity)).toBeLessThanOrEqual(SPIN_MAX);
+    expect(coast(Number.NaN, 0.016)).toEqual({ velocity: 0, turn: 0 }); expect(coast(100, 0)).toEqual({ velocity: 0, turn: 0 });
+  });
+});
+
+describe('Tiny Structures: play again is not the same again', () => {
+  it('each round starts in the next colours; the first is the cover’s', () => {
+    expect(paintForRound(0)).toBe('lagoon');
+    expect(new Set(PAINTS.map((_, i) => paintForRound(i))).size).toBe(PAINTS.length);
+    expect(paintForRound(PAINTS.length)).toBe('lagoon'); expect(paintForRound(Number.NaN)).toBe('lagoon');
+    let paint: (typeof PAINTS)[number] = PAINTS[0]; const seen = new Set<string>([paint]);
+    for (let i = 1; i < PAINTS.length; i++) { paint = nextPaint(paint); seen.add(paint); }
+    expect(seen.size).toBe(PAINTS.length); expect(nextPaint(paint)).toBe(PAINTS[0]);
+  });
+  it.each(BUILD_MODES)('%s: the tray is laid out afresh each round, always with every piece once', (mode) => {
+    expect(trayOrder(mode, 0)).toEqual(PIECES[mode]);
+    const orders = new Set<string>();
+    for (let round = 0; round < 6; round++) {
+      const order = trayOrder(mode, round);
+      expect([...order].map(p => p.id).sort()).toEqual(PIECES[mode].map(p => p.id).sort());
+      orders.add(order.map(p => p.id).join());
+    }
+    expect(orders.size).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('Tiny Structures: the zoom is honest about size', () => {
+  it('four stops, from a drop of pond water down to a phage', () => {
+    expect(SCALE_STOPS.map(s => s.id)).toEqual(['leaf', 'swimmer', 'cell', 'phage']);
+    expect(LAST_STOP).toBe(3); expect(clampStop(9)).toBe(3); expect(clampStop(-2)).toBe(0); expect(clampStop(Number.NaN)).toBe(0);
+    for (let i = 0; i < LAST_STOP; i++) expect(SCALE_STOPS[i].ring, SCALE_STOPS[i].id).not.toBeNull();
+    for (let i = 1; i <= LAST_STOP; i++) if (SCALE_STOPS[i - 1].small) expect(SCALE_STOPS[i].big).toBe(SCALE_STOPS[i - 1].small);
+  });
+  it('the words agree with the round figures: about fifteen, about a hundred, about ten', () => {
+    expect(timesLonger('drop', 'swimmer')).toBeCloseTo(15); expect(timesLonger('swimmer', 'cell')).toBeCloseTo(100); expect(timesLonger('cell', 'phage')).toBeCloseTo(10);
+    const en = TINY_BUILDERS_COPY.en.stopText;
+    expect(en.swimmer).toMatch(/About fifteen/); expect(en.cell).toMatch(/About a hundred/); expect(en.phage).toMatch(/About ten/);
+    const he = TINY_BUILDERS_COPY.he.stopText;
+    expect(he.swimmer).toContain('בערך חמש־עשרה'); expect(he.cell).toContain('בערך מאה'); expect(he.phage).toContain('בערך עשרה');
+    // Every size sentence says "about", and the pictures past the camera say they are drawn.
+    expect(TINY_BUILDERS_COPY.en.approx).toMatch(/drawn/); expect(TINY_BUILDERS_COPY.en.beyond).toMatch(/electron microscopes/);
+    expect(REAL_MICROMETRES.phage).toBeLessThan(REAL_MICROMETRES.cell); expect(REAL_MICROMETRES.cell).toBeLessThan(REAL_MICROMETRES.swimmer); expect(REAL_MICROMETRES.swimmer).toBeLessThan(REAL_MICROMETRES.drop);
+  });
+  it('each picture draws its two things in the true proportion (within a fifth)', () => {
+    for (const stop of SCALE_STOPS) {
+      if (!stop.small) continue;
+      const drawn = stop.bigUnits / stop.smallUnits, real = timesLonger(stop.big, stop.small);
+      expect(drawn / real, stop.id).toBeGreaterThan(0.8); expect(drawn / real, stop.id).toBeLessThan(1.2);
+    }
+  });
+  it('each dive magnifies, and a deeper dive takes longer but never drags', () => {
+    for (let i = 0; i < LAST_STOP; i++) { expect(zoomFactor(i), String(i)).toBeGreaterThan(5); expect(zoomMs(i)).toBeGreaterThanOrEqual(900); expect(zoomMs(i)).toBeLessThanOrEqual(2100); }
+    expect(zoomFactor(LAST_STOP)).toBe(1);
+    expect(zoomMs(1)).toBeGreaterThan(zoomMs(2));
+  });
+  it('the landing view never goes flat', () => {
+    expect(LAND_TILT).toBeGreaterThan(0.05); expect(LAND_TILT).toBeLessThan(VIEW_TILT);
+    expect(landFrame(0).tilt).toBeCloseTo(VIEW_TILT); expect(landFrame(1).tilt).toBeCloseTo(LAND_TILT);
+  });
+});
+
+describe('Tiny Structures: the kit pictures', () => {
+  it('every picture is a kit file with a recorded source, and none of this activity’s own shows a child', () => {
+    for (const art of TINY_KIT_ART) {
+      expect(art.src).toMatch(/^\/visuals\/studio-v2\/(bop|makers|v30)\/[a-z0-9-]+\.webp$/); expect(art.src480).toBe(art.src.replace('.webp', '-480.webp'));
+      expect(art.width).toBeGreaterThan(0); expect(art.height).toBeGreaterThan(0); expect(art.source.length).toBeGreaterThan(8);
+      // The likeness register goes by file name: a picture of this activity that showed a child would need to say so.
+      // No file of this activity's own shows a child; the children come from the shared library, whose names say so.
+      if (art.src.includes('/tiny-builders-')) expect(art.src).not.toMatch(/bebe|gobgob|crew/);
+      else if (art.src.includes('/makers/')) expect(art.src).toMatch(/\/kit-(bebe|aya|prop|tool)-[a-z-]+\.webp$/);
+    }
+    expect(MONITOR_SCREEN).toHaveLength(4);
+    for (const [x, y] of MONITOR_SCREEN) { expect(x).toBeGreaterThan(0); expect(x).toBeLessThan(1); expect(y).toBeGreaterThan(0); expect(y).toBeLessThan(1); }
+  });
+  it('the cues are eight words at most', () => {
+    const en = TINY_BUILDERS_COPY.en, he = TINY_BUILDERS_COPY.he;
+    for (const words of [en, he]) for (const cue of [words.build, words.whole, words.journey, words.landing, words.landed, words.cheer]) expect(cue.trim().split(/\s+/).length, cue).toBeLessThanOrEqual(8);
+  });
+});
+
 describe('Tiny Structures: the simplifications are written down', () => {
   it('the rules file carries the SIMPLIFICATIONS note', () => {
     const src = readFileSync(path.join(here, 'tinyBuildersRules.ts'), 'utf8');
     expect(src).toMatch(/SIMPLIFICATIONS/);
-    for (const point of ['three pairs', 'invented', 'not a simulation', 'squeeze']) expect(src).toContain(point);
+    for (const point of ['three pairs', 'invented', 'not a simulation', 'squeeze', 'paramecium', 'electron']) expect(src).toContain(point);
   });
 });

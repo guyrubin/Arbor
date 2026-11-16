@@ -24,8 +24,8 @@ export const LANES: readonly Lane[] = [0, 1, 2];
 export const PAGE_W = 250;
 export const PAGE_D = 290;
 export const SPREAD_W = PAGE_W * 2;
-/** The book lies on the table seen from the front, about 44° above it. */
-export const BOOK_TILT = 46;
+/** The book lies on the table seen from the front, about 42° above it. */
+export const BOOK_TILT = 48;
 export const BOOK_PERSPECTIVE = 1800;
 /** Depth of the three channels on the pages (far → near). */
 export const LANE_Y: readonly number[] = [128, 176, 224];
@@ -162,16 +162,16 @@ export function unprojectBookPoint(sx: number, sy: number, mirror = false, tilt 
   return { x: mirror ? SPREAD_W - X : X, y: Y + PAGE_D / 2 };
 }
 /** The tallest piece that stands on a page, and how far back the tall ones are hinged. */
-export const POP_TALLEST = 176;
+export const POP_TALLEST = 190;
 /** A phone has room above the book, not beside it: there the book is seen from
  * a little higher, so its pages are deeper. Never lower than this. */
-export const BOOK_TILT_MIN = 38;
+export const BOOK_TILT_MIN = 42;
 /** The room the book needs at a tilt (unscaled px): its pages, its board, the
  * pieces standing up off the far edge and the shadow under the near one. */
 export interface StageBox { w: number; h: number; cx: number; cy: number }
 export function stageBox(tilt = BOOK_TILT): StageBox {
   const front = projectBookPoint(SPREAD_W + 10, PAGE_D + 12, false, 0, tilt);
-  const top = Math.min(projectBookPoint(SPREAD_W / 2, 64, false, POP_TALLEST, tilt).y, projectBookPoint(SPREAD_W, 104, false, POP_TALLEST, tilt).y, projectBookPoint(0, -10, false, 0, tilt).y);
+  const top = Math.min(projectBookPoint(SPREAD_W / 2, 30, false, 180, tilt).y, projectBookPoint(SPREAD_W, 72, false, POP_TALLEST, tilt).y, projectBookPoint(0, -10, false, 0, tilt).y);
   const half = front.x + 6;
   return { w: half * 2, h: front.y + 24 - top + 8, cx: half, cy: 8 - top };
 }
@@ -225,7 +225,7 @@ export function settleRise(seconds: number, order: number): { p: number; lean: n
   if (u >= 2.4) return { p: 1, lean: 0 };
   return { p: Math.min(1, ARRIVE + (1 - ARRIVE) * u * 3), lean: 9 * Math.exp(-3 * u) * Math.sin(u * 9) };
 }
-export const settleSeconds = (pieces: number) => 0.05 + Math.max(0, pieces) * SETTLE_STAGGER + SETTLE_SPAN * 2.4;
+export const settleSeconds = (pieces: number) => 0.07 + Math.max(0, pieces) * SETTLE_STAGGER + SETTLE_SPAN * 2.4;
 
 /* ── things that answer a poke ────────────────────────────────────────────── */
 /** A decaying wobble, `seconds` after a poke (degrees or px). */
@@ -329,8 +329,8 @@ const steps = (dt: number) => Math.min(0.1, Math.max(0, finite(dt)));
 
 /* ── spread 1: the stream ─────────────────────────────────────────────────── */
 /** Where the boat waits on the bank and where it floats once launched (spread x, page y). */
-export const BOAT_BANK: Readonly<{ x: number; y: number }> = { x: 150, y: 272 };
-export const BOAT_STREAM: Readonly<{ x: number; y: number }> = { x: 206, y: 233 };
+export const BOAT_BANK: Readonly<{ x: number; y: number }> = { x: 122, y: 268 };
+export const BOAT_STREAM: Readonly<{ x: number; y: number }> = { x: 296, y: 262 };
 /** A drag of the boat at least this far towards the water launches it; a
  * shorter one lets it drift back to the bank. A tap launches it too. */
 export const LAUNCH_DRAG = 26;
@@ -425,7 +425,9 @@ export function riverStep(river: RiverState, dt: number, target: Lane): { river:
   for (const item of items) {
     if (item.kind !== 'rock' || !(item.at > d && item.at <= next)) continue;
     if (Math.round(pos) !== item.lane) continue;
-    bumpLane = item.lane === 1 ? (pos >= 1 ? 2 : 0) : 1;
+    // A stone always sends the boat on towards the next arch.
+    const toward = gate ? Math.sign(gate.lane - item.lane) : 0;
+    bumpLane = (toward !== 0 ? item.lane + toward : item.lane === 1 ? (pos >= 1 ? 2 : 0) : 1) as Lane;
     bumpUntil = item.at + 60; nudges += 1;
     pos += (bumpLane - pos) * 0.3;
     events.push('bump');

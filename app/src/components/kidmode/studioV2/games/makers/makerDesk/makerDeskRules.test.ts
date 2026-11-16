@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { MAKER_DESK_COPY } from './makerDeskCopy';
 import {
-  BALL, BALL_SPEED, FIELD_H, FIELD_W, FLOAT_S, LANTERN_COUNT, LAYOUTS, MAX_ANGLE, PADDLE_W, PADDLE_Y, PROGRAMS, QUICK_COMMANDS, ROOM, STEP_S, THING_FILES, THING_KINDS,
-  advance, allStickers, appendScreen, backTarget, bounceStep, chimeStep, complete, fromHebrewKeys, layoutLanterns, litCount, movePaddle, newBounce, normalizeInput,
-  noteCommand, noteLanterns, noteThings, NO_DISCOVERY, openProgram, paddleBounce, run, shelfPlaces, skyPicture, stepBack, stepsToRoom, stickerLit, suggest,
-  switchOn, thingKinds, vocabulary, type BounceState, type Level, type TerminalContext, type TermLine,
+  BALL, BALL_SPEED, CREW, FIELD_H, FIELD_W, FILES, FLOAT_S, HIDDEN_FILE, LANTERN_COLS, LANTERN_COUNT, LAYOUTS, MAGIC_WORD, MAX_ANGLE, PADDLE_W, PADDLE_Y, PLANT_FULL, PROGRAMS, QUICK_COMMANDS, ROOM, STEP_S, TERM_SHOWS, THING_FILES, THING_KINDS, TOOLS,
+  advance, allStickers, appendScreen, backTarget, bounceStep, chimeStep, complete, crewAround, fromHebrewKeys, growPlant, lanternRow, layoutLanterns, litCount, movePaddle, newBounce, nextTool, normalizeInput,
+  noteCommand, noteLanterns, noteThings, NO_DISCOVERY, openProgram, paddleBounce, pickLayout, rowLit, run, shelfNews, shelfPlaces, skyPicture, stepBack, stepsToRoom, stickerLit, suggest,
+  switchOn, thingKinds, toolAt, vocabulary, type BounceState, type Level, type TerminalContext, type TermLine,
 } from './makerDeskRules';
 
 /** A seeded random source, so every layout and run repeats exactly. */
@@ -14,11 +14,15 @@ const en = MAKER_DESK_COPY.en, he = MAKER_DESK_COPY.he;
 
 /** Every piece of text a result could show, flattened. */
 function texts(lines: readonly TermLine[]): string[] {
-  return lines.flatMap(line => line.kind === 'listing' ? [...line.names] : line.kind === 'hello' ? [line.before, line.name ?? '', line.after] : line.kind === 'cmd' ? [line.text] : [line.text, line.code ?? '']);
+  return lines.flatMap(line => {
+    // A picture carries no words at all: it names one of the authored shows.
+    if (line.kind === 'show') { expect(TERM_SHOWS).toContain(line.show); expect(Object.keys(line).sort()).toEqual(['kind', 'show']); return []; }
+    return line.kind === 'listing' ? [...line.names] : line.kind === 'hello' ? [line.before, line.name ?? '', line.after] : line.kind === 'cmd' ? [line.text] : [line.text, line.code ?? ''];
+  });
 }
 /** Every answer the toy could ever give, for any child, in both languages. */
 function fixedTexts(): Set<string> {
-  const out = new Set<string>(['about.txt', 'secret.txt', 'things/', ...Object.values(THING_FILES), ...vocabulary([...THING_KINDS])]);
+  const out = new Set<string>([...FILES, HIDDEN_FILE, MAGIC_WORD, ...Object.values(THING_FILES), ...vocabulary([...THING_KINDS])]);
   const walk = (value: unknown) => { if (typeof value === 'string') out.add(value); else if (value && typeof value === 'object') Object.values(value).forEach(walk); };
   walk(MAKER_DESK_COPY);
   return out;
@@ -48,6 +52,35 @@ describe('levels: room → desktop → program, one step back at a time', () => 
   });
 });
 
+describe('the room toys', () => {
+  it('the flower grows with each watering and opens on the third, then stays open', () => {
+    expect(PLANT_FULL).toBe(3);
+    expect([0, 1, 2, 3, 9].map(growPlant)).toEqual([1, 2, 3, 3, 3]); expect(growPlant(Number.NaN)).toBe(1); expect(growPlant(-4)).toBe(1);
+  });
+  it('a tap on the trays takes the tool under the finger; a keyboard press takes the next along', () => {
+    expect(TOOLS).toEqual(['proofLens', 'viewCheck', 'pulsePod', 'leafLab', 'clearPatch']);
+    expect([0, 0.19, 0.2, 0.5, 0.79, 0.8, 1, 7, -3, Number.NaN].map(toolAt)).toEqual(['proofLens', 'proofLens', 'viewCheck', 'pulsePod', 'leafLab', 'clearPatch', 'clearPatch', 'clearPatch', 'proofLens', 'proofLens']);
+    let tool = nextTool(null); const seen = [tool];
+    for (let i = 0; i < 5; i++) { tool = nextTool(tool); seen.push(tool); }
+    expect(seen).toEqual([...TOOLS, 'proofLens']);
+  });
+  it('CrewLink: Chock is always at the desk, Aya while she visits, and one friend drops by each sitting', () => {
+    for (let guest = 0; guest < 6; guest++) for (const aya of [true, false]) {
+      const around = crewAround(guest, aya);
+      expect(Object.keys(around)).toEqual([...CREW]); expect(around.chock).toBe(true); expect(around.aya).toBe(aya);
+      expect([around.bebe, around.gobgob, around.pep].filter(Boolean)).toHaveLength(1);
+    }
+    expect(new Set([0, 1, 2].map(guest => JSON.stringify(crewAround(guest, false)))).size).toBe(3);
+    expect(crewAround(Number.NaN, false).chock).toBe(true);
+  });
+  it('notices what is new on the show steps since last time, and nothing on a first visit', () => {
+    expect(shelfNews(null, { bowl: 'a', dance: 'b' })).toEqual([]);
+    expect(shelfNews({ bowl: 'a' }, { bowl: 'a' })).toEqual([]);
+    expect(shelfNews({ bowl: 'a' }, { bowl: 'a2', dance: 'b' })).toEqual(['bowl', 'dance']);
+    expect(shelfNews({ bowl: 'a', dance: 'b' }, { dance: 'b' })).toEqual([]);
+  });
+});
+
 describe('the shelf and the clock', () => {
   it('fills six places with the kinds the child has, once each, in shelf order', () => {
     expect(shelfPlaces([])).toEqual([null, null, null, null, null, null]);
@@ -63,11 +96,40 @@ describe('the shelf and the clock', () => {
 describe('the pretend terminal is a closed toy', () => {
   it('answers each known word from the fixed table', () => {
     expect(run('help', ctx()).lines[0]).toEqual({ kind: 'out', text: en.helpTitle, tone: 'title' });
-    expect(run('ls', ctx()).lines).toEqual([{ kind: 'listing', names: ['about.txt', 'secret.txt', 'things/'] }]);
+    expect(run('ls', ctx()).lines).toEqual([{ kind: 'listing', names: ['about.txt', 'secret.txt', 'valley.txt', 'things/'] }]);
     expect(texts(run('cat about.txt', ctx()).lines)).toEqual(expect.arrayContaining([...en.about]));
     expect(texts(run('cat secret.txt', ctx({ riddle: 1 })).lines)).toEqual(expect.arrayContaining([...en.riddles[1]]));
     expect(run('beep', ctx()).sound).toBe('beep');
     expect(run('clear', ctx())).toMatchObject({ clear: true, lines: [], command: 'clear' });
+  });
+  it('knows the kit: the crew, the tools in the trays and the six places, as fixed lines', () => {
+    const crew = run('crew', ctx());
+    expect(crew.command).toBe('crew'); expect(texts(crew.lines).filter(Boolean)).toEqual([en.crewTitle, ...CREW.map(id => en.crewLines[id])]);
+    const tools = run('tools', ctx({ lang: 'he' }));
+    expect(tools.lines.slice(1)).toEqual(TOOLS.map(id => ({ kind: 'out', code: he.toolNames[id], text: he.toolLines[id] })));
+    expect(Object.keys(en.toolDo).length).toBeGreaterThanOrEqual(TOOLS.length);
+    expect(run('valley', ctx()).command).toBe('cat valley.txt'); expect(texts(run('cat valley.txt', ctx()).lines)).toEqual(expect.arrayContaining([...en.valley]));
+    for (const place of ['Wonderworks', 'Glass Grove', 'Mirror Quarter', 'Sky Gardens', 'Reflection Basin', 'Horizon Dome']) expect(en.valley.join(' ')).toContain(place);
+  });
+  it('the delightful words are fixed too: a wiggle, a song, a rainbow, and the lamp as the one effect outside the screen', () => {
+    expect(run('dance', ctx()).lines).toEqual([{ kind: 'out', text: en.dance }, { kind: 'show', show: 'wiggle' }]);
+    expect(run('sing', ctx())).toMatchObject({ sound: 'singSong', effect: null, command: 'sing' });
+    expect(run('rainbow', ctx()).lines[0]).toEqual({ kind: 'show', show: 'rainbow' });
+    expect(run('lamp', ctx())).toMatchObject({ effect: 'lamp', command: 'lamp' });
+    expect(run('whoami', ctx()).lines).toEqual([{ kind: 'out', text: en.whoami, tone: 'title' }]);
+    // Nothing else has an effect: not unknown words, and not words that only look like the lamp.
+    for (const input of ['lamp on', 'lamps', 'cat lamp', 'help', 'ls', 'nope', '']) expect(run(input, ctx()).effect, input).toBeNull();
+  });
+  it('hides one trail for a curious child: a riddle, a dot file, a magic word', () => {
+    expect(en.riddles.at(-1)![1]).toContain('ls -a'); expect(he.riddles.at(-1)![1]).toContain('ls -a');
+    expect(texts(run('cat secret.txt', ctx({ riddle: en.riddles.length - 1 })).lines)).toContain(en.riddles.at(-1)![1]);
+    expect(run('ls', ctx()).lines).not.toEqual(run('ls -a', ctx()).lines);
+    expect(run('ls -a', ctx()).lines).toEqual([{ kind: 'listing', names: [HIDDEN_FILE, ...FILES] }]);
+    expect(run(`cat ${HIDDEN_FILE}`, ctx()).lines).toEqual([{ kind: 'out', text: en.magicFile, code: MAGIC_WORD, codeLast: true, tone: 'joke' }]);
+    expect(run(MAGIC_WORD, ctx())).toMatchObject({ sound: 'magicChime', command: MAGIC_WORD, lines: [{ kind: 'show', show: 'starfall' }, { kind: 'out', text: en.magic }] });
+    // The hidden words are answered but never offered.
+    expect(vocabulary([...THING_KINDS]).some(word => word.includes(HIDDEN_FILE) || word === MAGIC_WORD || word === 'ls -a')).toBe(false);
+    expect(suggest('ab', [])).toEqual([]); expect(suggest('ls ', [])).toEqual(['ls things']); expect(complete('abra', [])).toBe('abra');
   });
   it('lists one file per saved kind and describes it in plain words', () => {
     expect(texts(run('ls things', ctx()).lines)).toEqual([en.thingsEmptyTerm, '']);
@@ -139,7 +201,7 @@ describe('the pretend terminal is a closed toy', () => {
     expect(run('cat things', ctx())).toMatchObject({ command: null, lines: [{ text: en.isFolder }] });
   });
   it('autocompletes only from the command table and the child’s file names', () => {
-    expect(suggest('c', [])).toEqual(['cat about.txt', 'cat secret.txt', 'clear']);
+    expect(suggest('c', [])).toEqual(['cat about.txt', 'cat secret.txt', 'cat valley.txt', 'clear']);
     expect(suggest('cat t', ['bowl', 'textile'])).toEqual(['cat things/bowl', 'cat things/cloth']);
     expect(suggest('', [])).toEqual([]); expect(suggest('zz', [])).toEqual([]);
     expect(complete('he', [])).toBe('hel'); expect(complete('hell', [])).toBe('hello');
@@ -174,6 +236,25 @@ describe('Bounce: gentle, skilful and impossible to lose', () => {
   it('re-seeding gives a new arrangement', () => {
     const seen = new Set(Array.from({ length: 12 }, (_, seed) => JSON.stringify(newBounce(seeded(seed)).lanterns)));
     expect(seen.size).toBeGreaterThan(3);
+  });
+  it('a new round is never the arrangement just played, and all six come up', () => {
+    expect(LAYOUTS).toHaveLength(6);
+    const random = seeded(21); let last = pickLayout(random); const seen = new Set([last]);
+    for (let i = 0; i < 80; i++) { const next = pickLayout(random, last); expect(next).not.toBe(last); expect(LAYOUTS).toContain(next); seen.add(next); last = next; }
+    expect(seen.size).toBe(LAYOUTS.length);
+    expect(new Set(LAYOUTS.map(layout => JSON.stringify(layoutLanterns(seeded(1), layout).map(l => [l.x, l.y])))).size).toBe(LAYOUTS.length);
+  });
+  it('the lantern that completes its row says so, once, right after its own event', () => {
+    const base = newBounce(seeded(3), 'grid'); const l = base.lanterns[7];
+    expect(lanternRow(7)).toBe(1); expect(lanternRow(14)).toBe(2);
+    const lit = base.lit.map((_, i) => lanternRow(i) === 1 && i !== 7);
+    expect(rowLit(lit, 1)).toBe(false); expect(rowLit(lit, 0)).toBe(false); expect(rowLit(lit, 9)).toBe(false);
+    const out = bounceStep({ ...base, lit, floating: 0, ball: { x: l.x + l.w / 2, y: l.y + l.h + BALL / 2 + 0.1, vx: 0, vy: -BALL_SPEED } }, still);
+    expect(out.events).toEqual([{ type: 'lantern', index: 7 }, { type: 'row', row: 1 }]);
+    expect(rowLit(out.state.lit, 1)).toBe(true); expect(LANTERN_COLS).toBe(5);
+    // A lantern that does not finish its row rings alone.
+    const alone = bounceStep({ ...base, floating: 0, ball: { x: l.x + l.w / 2, y: l.y + l.h + BALL / 2 + 0.1, vx: 0, vy: -BALL_SPEED } }, still);
+    expect(alone.events).toEqual([{ type: 'lantern', index: 7 }]);
   });
   it('starts on the cloud and floats up, then launches at a steady speed', () => {
     const start = newBounce(seeded(1));

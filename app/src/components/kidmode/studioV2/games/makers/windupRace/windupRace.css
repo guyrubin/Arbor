@@ -1,88 +1,140 @@
-/* Wind-up Racer: a cream play panel, the tabletop stage, two big controls.
-   The stage is one SVG drawn by the component frame by frame (camera,
-   parallax, the car); this sheet only lays it out, rings the controls and
-   adds the small decorative motions (flag, chalk, hint ring, track swap).
-   The track always runs left to right: the stage and map are dir="ltr";
-   only the chrome around them follows the reading direction. Nothing here
-   moves the game on: the component's clock does. All colour is palette. */
+/* Wind-up Racer: a pearl play panel, the pavilion stage, two big controls.
+   The stage is two kit pictures (the wall and the floor) that the component
+   slides and scales, under one SVG it draws frame by frame (the trail, Rover,
+   Pep, the toys). This sheet lays that out, wears the v30 register on every
+   piece of interface (pearl and white surfaces, graphite type, teal for done,
+   signal for the next cue; Studio tokens only) and adds the small idle motions.
+   The trail always runs left to right: the stage is dir="ltr"; only the chrome
+   around it follows the reading direction. Nothing here moves the game on:
+   the component's clock does. The one palette colour here is the daylight
+   wash inside the scene window. */
 
-.adventure.wr { display: flex; flex-direction: column; gap: 8px; max-inline-size: 1040px; margin-inline: auto; padding: 16px 22px 18px; border-radius: 24px; background: linear-gradient(170deg, var(--mk-white), var(--mk-paper)); border-color: color-mix(in srgb, var(--mk-paper-shade) 80%, transparent); color: var(--studio-deep-ink); }
+.adventure.wr { display: flex; flex-direction: column; gap: 8px; max-inline-size: 1040px; margin-inline: auto; padding: 16px 22px 18px; border-radius: var(--studio-radius-panel); background: var(--studio-surface); border-color: var(--studio-line); box-shadow: var(--studio-lift); color: var(--studio-graphite); }
 
-/* Track flags (no numerals) and the track's name. */
-.wr-top { display: flex; align-items: center; gap: 12px; min-block-size: 52px; }
-.wr-flags { display: flex; gap: 4px; margin: 0; padding: 6px 10px; list-style: none; border-radius: 999px; background: color-mix(in srgb, var(--mk-paper-shade) 55%, transparent); }
-.wr-flags__pip { inline-size: 22px; block-size: 26px; }
-.wr-flags__pip svg { display: block; inline-size: 100%; block-size: 100%; }
-.wr-flags__pole { fill: var(--mk-wood); }
-.wr-flags__cloth { fill: color-mix(in srgb, var(--mk-ink-soft) 28%, transparent); transition: fill .3s var(--studio-ease-soft); }
-.wr-flags__pip[data-now=true] .wr-flags__cloth { fill: color-mix(in srgb, var(--mk-poppy) 45%, var(--mk-paper)); }
-.wr-flags__pip[data-done=true] .wr-flags__cloth { fill: var(--mk-poppy); }
-.wr-top__track { display: flex; flex-direction: column; gap: 1px; margin: 0; min-inline-size: 0; font-family: var(--studio-font); line-height: 1.25; }
-.wr-top__track strong { font-size: 17px; font-weight: 900; color: var(--studio-deep-ink); }
-.wr-top__track span { font-size: 14px; font-weight: 700; color: var(--studio-ink-soft); }
+/* Trail pips (little flowers, no numerals) and the trail's name. Done is a
+   filled teal flower; the one being played wears a signal ring; the rest are outlines. */
+.wr-top { display: flex; align-items: center; gap: 12px; min-block-size: 44px; }
+.wr-flags { display: flex; gap: 6px; margin: 0; padding: 6px 10px; list-style: none; border-radius: 999px; background: var(--studio-pearl); border: 1px solid var(--studio-line); }
+.wr-flags__pip { position: relative; inline-size: 24px; block-size: 24px; border-radius: 50%; }
+.wr-flags__pip svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.wr-flags__petal { fill: var(--studio-surface); stroke: var(--studio-graphite-soft); stroke-width: 1.3; transition: fill .3s var(--studio-ease-soft), stroke .3s var(--studio-ease-soft); }
+.wr-flags__heart { fill: var(--studio-surface); stroke: var(--studio-graphite-soft); stroke-width: 1.3; }
+.wr-flags__pip[data-done=true] .wr-flags__petal { fill: var(--studio-done); stroke: var(--studio-done); }
+.wr-flags__pip[data-done=true] .wr-flags__heart { fill: var(--studio-done-ink); stroke: var(--studio-done); }
+.wr-flags__pip[data-done=true] svg { animation: wr-pip .5s var(--studio-ease-spring) both; }
+.wr-flags__pip[data-now=true]::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--studio-signal); pointer-events: none; }
+.wr-top__track { margin: 0; min-inline-size: 0; font-family: var(--studio-font); line-height: 1.25; }
+.wr-top__track strong { font-size: 17px; font-weight: 900; color: var(--studio-graphite); }
 
 /* The next small step, in the toy voice. It keeps two lines of room so the stage never jumps. */
-.arbor-play .wr .wr-cue, .wr .wr-cue { margin: 0; min-block-size: 2.5em; display: flex; align-items: center; font: 900 20px/1.25 var(--studio-font); color: var(--studio-deep-ink); }
+.arbor-play .wr .wr-cue, .wr .wr-cue { margin: 0; min-block-size: 2.5em; display: flex; align-items: center; font: 900 20px/1.25 var(--studio-font); color: var(--studio-graphite); }
 
 /* The stage. */
-.wr-stage { position: relative; block-size: clamp(300px, calc(100svh - 360px), 560px); border-radius: 22px; overflow: hidden; background: var(--mk-paper); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-umber) 12%, transparent), 0 10px 28px color-mix(in srgb, var(--mk-shadow) 16%, transparent); isolation: isolate; }
-.wr-scene { position: absolute; inset: 0; }
+.wr-stage { position: relative; block-size: clamp(300px, calc(100svh - 318px), 600px); border-radius: var(--studio-radius-card); overflow: hidden; background: var(--studio-surface); border: 1px solid var(--studio-line); box-shadow: 0 10px 28px var(--studio-shade); isolation: isolate; }
+.wr-scene { position: absolute; inset: 0; overflow: hidden; }
 .wr-svg { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; }
 .wr-stage[data-swap=true] .wr-scene { animation: wr-swap .95s var(--studio-ease-soft) both; }
+/* The two kit pictures. The component places them with a transform from the stage's top left. */
+.wr-wall { -webkit-mask-image: linear-gradient(transparent, black 16%); mask-image: linear-gradient(transparent, black 16%); }
+.wr-wall, .wr-floor { position: absolute; inset-block-start: 0; inset-inline-start: 0; transform-origin: 0 0; overflow: hidden; pointer-events: none; will-change: transform; }
+.wr .wr-wall > img, .wr .wr-floor > img { position: absolute; inset-block-start: 0; display: block; max-inline-size: none; user-select: none; -webkit-user-drag: none; }
+.wr-wall > img[data-flip=true], .wr-floor > img[data-flip=true] { transform: scaleX(-1); }
+/* Where the wall meets the floor: the wall's own soft shade on the floor. */
+.wr-floor::before { content: ''; position: absolute; z-index: 1; inset-inline: 0; inset-block-start: 0; block-size: 26px; background: linear-gradient(color-mix(in srgb, var(--studio-graphite) 13%, transparent), transparent); }
+/* Window light on the floor comes and goes like cloud over the valley. */
+.wr-floor::after { content: ''; position: absolute; z-index: 1; inset: 0; background: linear-gradient(color-mix(in srgb, var(--studio-surface) 36%, transparent), transparent 55%); animation: wr-cloud 9s ease-in-out infinite alternate; }
+/* The light of the day, from play to play: afternoon is the kit's own light. */
+.wr-daylight { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+.wr-stage[data-light=morning] .wr-daylight { opacity: 1; background: linear-gradient(200deg, color-mix(in srgb, var(--mk-sky) 26%, transparent), color-mix(in srgb, var(--mk-sky-pale) 10%, transparent) 60%, transparent); mix-blend-mode: multiply; }
+.wr-stage[data-light=sundown] .wr-daylight { opacity: 1; background: linear-gradient(160deg, color-mix(in srgb, var(--mk-amber) 30%, transparent), color-mix(in srgb, var(--mk-rose) 16%, transparent) 55%, color-mix(in srgb, var(--mk-butter) 12%, transparent)); mix-blend-mode: multiply; }
 
-/* The little paper map of the whole track. It is part of the scene, so it reads left to right. */
-.wr-map { position: absolute; z-index: 2; inset-block-start: 10px; inset-inline: 0; margin-inline: auto; inline-size: min(300px, 64%); block-size: auto; padding: 6px 10px; box-sizing: border-box; border-radius: 10px; background: color-mix(in srgb, var(--mk-white) 88%, transparent); box-shadow: 0 3px 10px color-mix(in srgb, var(--mk-shadow) 16%, transparent); pointer-events: none; overflow: visible; }
-.wr-map__line { fill: none; stroke: var(--mk-wood-dark); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.wr-map__flag { fill: none; stroke: var(--mk-poppy); stroke-width: 2.2; stroke-linejoin: round; }
-.wr-map__chalk { fill: color-mix(in srgb, var(--mk-ink-soft) 40%, transparent); }
-.wr-map__chalk[data-fresh=true] { fill: var(--mk-ink-soft); }
-.wr-map__car { fill: var(--mk-red); }
+/* The little map of the whole trail: frosted, in the scene's own left-to-right. */
+.wr-map { position: absolute; z-index: 2; inset-block-start: 10px; inset-inline: 0; margin-inline: auto; inline-size: min(280px, 60%); block-size: auto; padding: 6px 12px; box-sizing: border-box; border-radius: var(--studio-radius-window); background: var(--studio-frost); border: 1px solid var(--studio-line); box-shadow: 0 3px 10px var(--studio-shade); pointer-events: none; overflow: visible; }
+.wr-map__line { fill: none; stroke: var(--studio-graphite-soft); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.wr-map__flower path { fill: none; stroke: var(--studio-teal-ink); stroke-width: 2; }
+.wr-map__flower ellipse { fill: var(--studio-teal); }
+.wr-map__chalk { fill: color-mix(in srgb, var(--studio-graphite-soft) 45%, transparent); }
+.wr-map__chalk[data-fresh=true] { fill: var(--studio-teal-ink); }
+.wr-map__car { fill: var(--studio-graphite); stroke: var(--studio-surface); stroke-width: 8; }
+.wr-map__pep { fill: var(--studio-surface); stroke: var(--studio-graphite); stroke-width: 8; }
 
-/* The key's touch target: a ring over the brass key, placed by the component
-   (a transform from the stage's top left; the stage is dir=ltr). */
+/* The dial round the key (the ring of lights that fills as the spring winds). */
+.wr-dial { opacity: 0; transition: opacity .3s var(--studio-ease-soft); pointer-events: none; }
+.wr[data-phase=wind] .wr-dial, .wr[data-phase=crouch] .wr-dial { opacity: 1; }
+.wr-dial__path { fill: none; stroke: var(--studio-frost); stroke-width: 9; opacity: .8; }
+.wr-dial__mark { fill: var(--studio-surface); stroke: var(--studio-graphite-soft); stroke-width: .9; transition: fill .15s var(--studio-ease-soft); }
+.wr-dial__mark[data-on=true] { fill: var(--studio-teal); stroke: var(--studio-teal-ink); }
+.wr-dial__mark[data-next=true] { stroke: var(--studio-signal); stroke-width: 1.8; }
+
+/* The key's touch target, placed by the component (a transform from the stage's top left). */
 .wr-key { position: absolute; z-index: 3; inset-block-start: 0; inset-inline-start: 0; display: block; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; cursor: grab; touch-action: none; -webkit-tap-highlight-color: transparent; }
 .wr-key[hidden] { display: none; }
 .wr-key:active { cursor: grabbing; }
-.wr-key::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; border: 3px dashed color-mix(in srgb, var(--mk-gold) 75%, transparent); opacity: 0; transition: opacity .3s var(--studio-ease-soft); pointer-events: none; }
-.wr[data-phase=wind] .wr-key::before { opacity: .9; animation: wr-hint 6s linear infinite; }
-.wr-key:focus-visible { outline: 4px solid var(--studio-action-gold); outline-offset: 2px; }
+.wr-key::before { content: ''; position: absolute; inset: 2px; border-radius: 50%; border: 3px dashed var(--studio-signal); opacity: 0; transition: opacity .3s var(--studio-ease-soft), inset .12s var(--studio-ease-soft); pointer-events: none; }
+.wr[data-phase=wind][data-wound=false] .wr-key::before { opacity: .95; animation: wr-hint 7s linear infinite; }
+.wr-key:active::before { opacity: .95; inset: 6px; border-style: solid; }
+.adventure.wr .wr-key:focus-visible { outline: 4px solid var(--studio-teal-ink); outline-offset: 2px; }
 
-/* Decorative motion in the scene. */
-.wr-flag__paper { transform-box: fill-box; transform-origin: 0% 50%; }
-.wr-flag[data-flying=true] .wr-flag__paper { animation: wr-flutter .42s ease-in-out infinite alternate; }
+/* The hand that shows the gesture. It never takes a touch. */
+.wr-hand { position: absolute; z-index: 4; inset-block-start: 0; inset-inline-start: 0; inline-size: 0; block-size: 0; opacity: 0; pointer-events: none; }
+.wr .wr-hand > svg { position: absolute; inset-block-start: -6px; inset-inline-start: -17px; inline-size: 48px; block-size: 56px; max-inline-size: none; overflow: visible; filter: drop-shadow(0 3px 4px var(--studio-shade)); }
+.wr-hand__skin { fill: var(--studio-surface); stroke: var(--studio-graphite); stroke-width: 2.2; stroke-linejoin: round; }
+.wr-hand__line { fill: none; stroke: var(--studio-graphite-soft); stroke-width: 1.6; stroke-linecap: round; }
+.wr-hand--go { inset-block-start: 50%; inset-inline-start: 50%; opacity: 1; animation: wr-press 1.3s var(--studio-ease-soft) 2 both; }
+
+/* GobGob pops up from the stage's lower corner to cheer the last flower (the scene is left to right, so the corner is fixed). */
+.wr .wr-cheer { position: absolute; z-index: 3; inset-block-end: 0; right: 4%; inline-size: clamp(96px, 26%, 168px); block-size: auto; max-inline-size: none; transform: translateY(104%); transition: transform .5s var(--studio-ease-spring); pointer-events: none; user-select: none; -webkit-user-drag: none; filter: drop-shadow(0 -2px 8px var(--studio-shade)); }
+.wr .wr-cheer[data-on=true] { transform: translateY(6%); animation: wr-cheer 1s ease-in-out .5s 2 both; }
+
+/* Things in the scene that answer a finger. */
+.wr-toy { cursor: pointer; }
+.wr-nod, .wr-breathe { transform-box: fill-box; transform-origin: 50% 100%; }
+.wr-nod { animation: wr-nod 4.6s ease-in-out infinite alternate; }
+.wr-breathe { animation: wr-breathe 3.4s ease-in-out infinite; }
 .wr-chalk[data-fresh=true] { animation: wr-chalk .5s var(--studio-ease-soft) both; transform-box: fill-box; transform-origin: 50% 100%; }
 
-/* Controls: Wind and Go while winding; Back to start during a run. */
+/* Controls: Wind and Go while winding; the horn and Back to start during a run. */
 .wr-controls { display: flex; justify-content: center; align-items: center; gap: 14px; min-block-size: 68px; }
-.wr-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-block-size: 64px; min-inline-size: 132px; padding: 12px 26px; border: 2px solid color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)); border-radius: 20px; background: var(--mk-white); box-shadow: 0 4px 0 color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)), 0 8px 18px color-mix(in srgb, var(--mk-shadow) 12%, transparent); color: var(--studio-deep-ink); font: 900 19px/1.2 var(--studio-font); cursor: pointer; touch-action: manipulation; transition: transform .12s ease, box-shadow .12s ease, opacity .2s ease; }
-.wr-button:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--mk-paper-shade) 90%, var(--mk-wood)); }
-.wr-button:focus-visible { outline: 4px solid var(--mk-water); outline-offset: 3px; }
-.wr-button:disabled { opacity: .45; cursor: default; }
-.wr-button--wind svg { color: var(--mk-gold-deep); }
-.wr-button--wind[data-full=true] { border-color: var(--mk-gold); }
-.wr-button--go { border-color: var(--mk-gold); background: var(--studio-action-fill); box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 22px color-mix(in srgb, var(--mk-amber) 35%, transparent); color: var(--studio-action-ink); }
-.wr-button--go:active:not(:disabled) { box-shadow: 0 1px 0 var(--mk-gold-deep); }
-.wr-button--go[data-ready=true] { animation: wr-ready 1.6s ease-in-out infinite; }
+.adventure.wr .wr-button { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-block-size: 64px; min-inline-size: 132px; padding: 12px 26px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-control); background: var(--studio-surface); box-shadow: 0 3px 0 var(--studio-mist), 0 8px 18px var(--studio-shade); color: var(--studio-graphite); font: 900 19px/1.2 var(--studio-font); cursor: pointer; touch-action: manipulation; transition: transform .12s var(--studio-ease-soft), box-shadow .12s var(--studio-ease-soft), opacity .2s ease; }
+.adventure.wr .wr-button:active:not(:disabled) { transform: translateY(3px) scale(.98); box-shadow: 0 0 0 var(--studio-mist); }
+.adventure.wr .wr-button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
+.adventure.wr .wr-button:disabled { opacity: .45; cursor: default; }
+.wr-button--wind[data-full=true]::after { content: ''; position: absolute; inset-inline: 22px; inset-block-end: 8px; block-size: 3px; border-radius: 2px; background: var(--studio-done); }
+.adventure.wr .wr-button--go { background: var(--studio-mist); color: var(--studio-graphite-soft); }
+.adventure.wr .wr-button--go[data-ready=true] { background: var(--studio-action); border-color: var(--studio-action); color: var(--studio-action-ink); box-shadow: 0 3px 0 var(--studio-graphite-soft), var(--studio-lift); }
+.wr-button--go[data-ready=true]::before { content: ''; position: absolute; inset: -6px; border-radius: 16px; border: 3px solid var(--studio-signal); animation: wr-ready 1.5s ease-in-out infinite; pointer-events: none; }
+.adventure.wr .wr-button--horn { background: var(--studio-action); border-color: var(--studio-action); color: var(--studio-action-ink); box-shadow: 0 3px 0 var(--studio-graphite-soft), var(--studio-lift); }
+.adventure.wr .wr-button[data-wr-control=reset] { font-size: 16px; padding-inline: 14px; }
+.wr-glyph { fill: currentColor; }
+.wr-glyph__open { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .wr-quiet { margin: 0; text-align: center; }
 .wr-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
 
 @keyframes wr-swap { 0% { transform: none; opacity: 1; } 46% { transform: translateX(-18%); opacity: 0; } 54% { transform: translateX(18%); opacity: 0; } 100% { transform: none; opacity: 1; } }
-@keyframes wr-flutter { from { transform: skewY(-5deg) scaleX(.94); } to { transform: skewY(4deg) scaleX(1.02); } }
 @keyframes wr-chalk { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes wr-hint { to { rotate: 360deg; } }
-@keyframes wr-ready { 0%, 100% { box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 22px color-mix(in srgb, var(--mk-amber) 35%, transparent); } 50% { box-shadow: 0 4px 0 var(--mk-gold-deep), 0 8px 30px color-mix(in srgb, var(--mk-amber) 70%, transparent); } }
+@keyframes wr-ready { 0%, 100% { opacity: .35; transform: scale(1); } 50% { opacity: 1; transform: scale(1.03); } }
+@keyframes wr-press { 0%, 100% { transform: translate(6px, 8px); opacity: 0; } 20%, 80% { opacity: 1; } 45%, 60% { transform: translate(0, 0) scale(.92); } }
+@keyframes wr-nod { from { transform: rotate(-1.6deg); } to { transform: rotate(1.8deg); } }
+@keyframes wr-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, .986); } }
+@keyframes wr-cloud { from { opacity: .25; } to { opacity: 1; } }
+@keyframes wr-cheer { 0%, 100% { transform: translateY(6%); } 50% { transform: translateY(1%) rotate(-2deg); } }
+@keyframes wr-pip { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: none; } }
 
+@media (min-width: 700px) and (min-height: 900px) {
+  .wr-stage { block-size: clamp(420px, calc(100svh - 420px), 680px); }
+}
 @media (max-width: 560px) {
   .adventure.wr { gap: 6px; padding: 10px 10px 12px; }
   .wr-top { gap: 8px; }
-  .wr-top__track span { font-size: 13px; }
   .arbor-play .wr .wr-cue, .wr .wr-cue { font-size: 18px; }
-  .wr-stage { block-size: clamp(280px, calc(100svh - 340px), 520px); border-radius: 18px; }
+  .wr-stage { block-size: clamp(300px, calc(100svh - 296px), 560px); }
   .wr-controls { gap: 10px; }
-  .wr-button { min-inline-size: 0; flex: 1 1 0; padding-inline: 14px; font-size: 18px; }
+  .adventure.wr .wr-button { min-inline-size: 0; flex: 1 1 0; padding-inline: 12px; font-size: 18px; }
 }
 
 /* Reduced motion: the run still plays (it is the content); every decorative motion here stops. */
 @media (prefers-reduced-motion: reduce) {
-  .wr *, .wr *::before { animation: none !important; transition: none !important; }
+  .wr *, .wr *::before, .wr *::after { animation: none !important; transition: none !important; }
+  .wr-hand--go { opacity: 1; }
 }

@@ -1,4 +1,6 @@
-/** Fox Trail rules. Pure: no React, no DOM, no timers, no randomness. The
+/** Pep's Trail rules (activity id `fox-trail`; the runner is Pep, the valley's
+ * Boston terrier scout, and the state keeps its first name, `FoxState`). Pure:
+ * no React, no DOM, no timers, no randomness. The
  * component runs `step` on a fixed timestep and draws whatever it returns.
  *
  * Units are world units. x runs left → right along the trail (in both
@@ -27,7 +29,7 @@ export const GRAVITY = 1900;
 export const FALL_GRAVITY = 2500;
 export const APEX_BAND = 110;
 export const APEX_HANG = 0.55;
-export const JUMP_V = 640;
+export const JUMP_V = 585;
 export const HOP_V = 500;
 /** Forgiveness: a jump still works this long after running off an edge … */
 export const COYOTE_T = 0.12;
@@ -54,21 +56,20 @@ export type WorldPhase = 'dusk' | 'waking' | 'night';
 export type SeedId = 'tallGrass' | 'stone' | 'hollow';
 export type SeedStatus = 'hidden' | 'popping' | 'resting' | 'carried';
 export const SEED_IDS: readonly SeedId[] = ['tallGrass', 'stone', 'hollow'];
-export type FoxEvent = 'hop' | 'jump' | 'land' | 'splash' | 'roll' | 'rollEnd' | 'skid' | 'bounce' | 'dry' | 'seed' | 'shake' | 'hum' | 'wake' | 'night' | 'blocked' | 'moth';
+export type FoxEvent = 'hop' | 'jump' | 'land' | 'splash' | 'roll' | 'rollEnd' | 'skid' | 'bounce' | 'shakeDry' | 'seed' | 'shake' | 'hum' | 'wake' | 'night' | 'blocked' | 'fallenStar';
 
 /* ── the trail ───────────────────────────────────────────────────────────── */
 
 /** Ground elevation control points (x, elevation), cosine-interpolated. */
-const GROUND: readonly (readonly [number, number])[] = [
-  [0, 108], [420, 118], [820, 104], [1200, 112], [1600, 130], [2000, 116], [2330, 108], [2920, 108],
-  [3300, 124], [3620, 112], [4040, 112], [4420, 130], [4820, 120], [5200, 128], [5560, 140], [5760, 140], [6000, 134],
-];
+/** The Sky Gardens path is a level terrace: only the pool dips below it. */
+export const PATH_H = 112;
+const GROUND: readonly (readonly [number, number])[] = [[0, PATH_H], [6000, PATH_H]];
 export const ZONES = [
-  { id: 'meadow', from: 0, to: 1100 },
-  { id: 'birches', from: 1100, to: 2300 },
-  { id: 'brook', from: 2300, to: 2980 },
-  { id: 'oaks', from: 2980, to: 4600 },
-  { id: 'clearing', from: 4600, to: WORLD_W },
+  { id: 'lavender', from: 0, to: 1100 },
+  { id: 'terraces', from: 1100, to: 2300 },
+  { id: 'gardenPool', from: 2300, to: 2980 },
+  { id: 'growers', from: 2980, to: 4600 },
+  { id: 'domePlaza', from: 4600, to: WORLD_W },
 ] as const;
 export const LOGS: readonly { x: number; r: number }[] = [{ x: 1240, r: 22 }, { x: 1960, r: 26 }];
 export const STREAM = { from: 2400, to: 2860, bed: 18, water: 9 } as const;
@@ -87,7 +88,7 @@ export const SEEDS: Readonly<Record<SeedId, { x: number; rest: number; lift: num
   hollow: { x: 3830, rest: 3830, lift: 0 },
 };
 /** How far above its stone the fox's feet must rise to nose the hanging pod: more than a hop, less than a jump. */
-export const POD_REACH = 38;
+export const POD_REACH = 52;
 /** Springy toadstools: landing on a cap sends the fox up again, higher each time. */
 export const BOUNCERS: readonly { x: number; w: number; top: number }[] = [
   { x: 2150, w: 58, top: 30 }, { x: 3585, w: 62, top: 34 }, { x: 4330, w: 54, top: 28 },
@@ -97,8 +98,8 @@ export const BOUNCE_FIRST = 520;
 export const BOUNCE_MIN = 420;
 export const BOUNCE_MAX = 920;
 /** The hollow oak's mossy top: out of a jump's reach, in a good bounce's. */
-export const ROOF = { from: TUNNEL.from - 30, to: TUNNEL.to + 30, h: 126 } as const;
-/** The hidden nook up there, where a moon-moth sleeps. */
+export const ROOF = { from: TUNNEL.from - 30, to: TUNNEL.to + 30, h: 106 } as const;
+/** The hidden nook up there, where a fallen star sleeps. */
 export const NOOK_X = 3880;
 export const NOOK_R = 46;
 
@@ -191,10 +192,10 @@ export interface FoxState {
   variant: number;
   /** The last toadstool bounced on (-1: none yet) and how many bounces in a row. */
   bouncer: number; bounces: number;
-  /** 1 while paddling; a 'dry' shake follows on the bank. */
+  /** 1 while paddling; a happy shake follows on the bank. */
   wet: number;
-  /** The secret: the moon-moth in the nook on the hollow oak. */
-  moth: 'asleep' | 'awake';
+  /** The secret: a fallen star asleep in the ferns on top of the raised planter. */
+  star: 'asleep' | 'awake';
   inRange: boolean;
   blocked: boolean;
   phase: WorldPhase;
@@ -214,7 +215,7 @@ export function initialFoxState(variant = 0): FoxState {
     roll: 0, rollDir: 1, rollCool: 0, dist: 0, still: 0, target: null,
     seeds: { tallGrass: 'hidden', stone: 'resting', hollow: 'resting' },
     seedX: { tallGrass: SEEDS.tallGrass.x, stone: podStone.x, hollow: SEEDS.hollow.x },
-    pop: 0, variant: v, bouncer: -1, bounces: 0, wet: 0, moth: 'asleep',
+    pop: 0, variant: v, bouncer: -1, bounces: 0, wet: 0, star: 'asleep',
     inRange: false, blocked: false, phase: 'dusk', wake: 0, t: 0, events: [],
   };
 }
@@ -350,7 +351,7 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
 
   // Out of the stream and onto the bank: a happy shake.
   if (wet) s.wet = 1;
-  else if (s.wet > 0 && s.onGround && (s.x < STREAM.from - 24 || s.x > STREAM.to + 24)) { s.wet = 0; ev.push('dry'); }
+  else if (s.wet > 0 && s.onGround && (s.x < STREAM.from - 24 || s.x > STREAM.to + 24)) { s.wet = 0; ev.push('shakeDry'); }
 
   // Standing still long enough: the fox sits.
   s.still = s.onGround && Math.abs(s.vx) < 4 && s.roll <= 0 ? s.still + dt : 0;
@@ -370,8 +371,8 @@ export function step(prev: FoxState, input: FoxInput, dt: number = STEP_DT): Fox
     if (Math.abs(s.x - sx) < PICK_R && reached) { s.seeds[id] = 'carried'; ev.push('seed'); }
   }
 
-  // The secret: up on the hollow oak a moon-moth sleeps until the fox finds it.
-  if (s.moth === 'asleep' && s.onGround && upOnRoof(s.x, s.y) && Math.abs(s.x - NOOK_X) < NOOK_R) { s.moth = 'awake'; ev.push('moth'); }
+  // The secret: up on the raised planter a fallen star sleeps until Pep finds it.
+  if (s.star === 'asleep' && s.onGround && upOnRoof(s.x, s.y) && Math.abs(s.x - NOOK_X) < NOOK_R) { s.star = 'awake'; ev.push('fallenStar'); }
 
   // The mirror stone.
   const near = nearStone(s);

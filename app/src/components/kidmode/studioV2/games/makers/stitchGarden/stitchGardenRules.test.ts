@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { STITCH_GARDEN_COPY } from './stitchGardenCopy';
 import { TEXTILE_CELLS, TEXTILE_FLOWERS, TEXTILE_MAX_MOTIFS, freeCells, plant, reopenTextile, storyLines, textileOf, unpick, validTextile, type TextileMotif } from './stitchGardenRules';
-import { CLOTH_R, HOOP_CX, HOOP_CY, STITCH_MS, cellCentre, motifStitches, prng, seedFor, stitchesFor } from './stitchGardenStitches';
+import { ART_H, ART_W, CLOTH_R, HOOP_CX, HOOP_CY, STITCH_MS, UNPICK_MS, cellCentre, motifStitches, prng, seedFor, stitchesFor } from './stitchGardenStitches';
+import { ARRIVE_MS, BEAT_STITCHES, HOME_MS, PARKED_NEEDLE, TIE_MS, landsAt, needleAt, planMs, walkTo, type NeedlePlan } from './stitchGardenMotion';
+import { SCALE, degree, stitchNote, threadRoot } from './stitchGardenAudio';
+import { critterStitches } from './stitchGardenCritters';
+import { BUD, GOBGOB_GLAD, GOBGOB_WAITING, TABLE } from './stitchGardenKit';
+import { TEXTILE_CLOTHS, TEXTILE_THREADS } from './stitchGardenRules';
 
 const fill = (n: number) => { let m: TextileMotif[] = []; for (let i = 0; i < n; i++) m = plant(m, TEXTILE_FLOWERS[i % 5], i, i % 5)!; return m; };
 
@@ -45,6 +50,36 @@ describe('the hem story', () => {
     }
     expect(STITCH_GARDEN_COPY.en.story[7]).toBe('Now the whole garden is awake.');
     for (const line of STITCH_GARDEN_COPY.he.story) { expect(line).toMatch(/[א-ת]/); expect(line).not.toMatch(/[A-Za-z]/); }
+  });
+  it('has a poem for every cloth, eight short lines each, and linen keeps the first one', () => {
+    for (const lang of ['en', 'he'] as const) {
+      const w = STITCH_GARDEN_COPY[lang];
+      expect(Object.keys(w.stories).sort()).toEqual([...TEXTILE_CLOTHS].sort());
+      expect(w.stories.linen).toBe(w.story);
+      const all = TEXTILE_CLOTHS.flatMap(cloth => [...w.stories[cloth]]);
+      expect(new Set(all).size).toBe(TEXTILE_CLOTHS.length * TEXTILE_MAX_MOTIFS);
+      for (const cloth of TEXTILE_CLOTHS) {
+        expect(w.stories[cloth], `${lang} ${cloth}`).toHaveLength(TEXTILE_MAX_MOTIFS);
+        for (const line of w.stories[cloth]) { expect(line.length, line).toBeLessThanOrEqual(32); if (lang === 'he') { expect(line).toMatch(/[א-ת]/); expect(line).not.toMatch(/[A-Za-z]/); } }
+      }
+    }
+  });
+  it('keeps the three poems on the same beats: water second, a visitor fifth, the bud open seventh', () => {
+    const en = STITCH_GARDEN_COPY.en.stories;
+    for (const cloth of TEXTILE_CLOTHS) {
+      expect(en[cloth][1], cloth).toMatch(/water/i);
+      expect(en[cloth][4], cloth).toMatch(/bee|firefly|butterfly/i);
+      expect(en[cloth][6], cloth).toMatch(/opened/i);
+    }
+    const he = STITCH_GARDEN_COPY.he.stories;
+    for (const cloth of TEXTILE_CLOTHS) { expect(he[cloth][1], cloth).toMatch(/מים|משפך/); expect(he[cloth][6], cloth).toMatch(/נפתח/); }
+  });
+  it('keeps every cue to eight words or fewer, in both languages', () => {
+    for (const lang of ['en', 'he'] as const) {
+      const w = STITCH_GARDEN_COPY[lang];
+      for (const cue of [w.cueStart, w.cueStitching.replace('{flower}', w.flowers.sunflower), w.cueMore, w.cueFull, w.cueLifting]) expect(cue.trim().split(/\s+/).length, cue).toBeLessThanOrEqual(8);
+      expect(w.threads).toHaveLength(TEXTILE_THREADS);
+    }
   });
   it('shows one line per flower, and unpicking takes the newest line away', () => {
     const story = STITCH_GARDEN_COPY.en.story;
@@ -139,5 +174,129 @@ describe('stitchesFor: the embroidery', () => {
   });
   it('rejects a cell off the grid', () => {
     expect(stitchesFor('daisy', 12)).toEqual([]);
+  });
+});
+
+describe('the needle', () => {
+  const plan = (mode: NeedlePlan['mode'], startCount = 0): NeedlePlan => ({ mode, stitches: mode === 'flick' ? [] : stitchesFor('sunflower', 6), from: PARKED_NEEDLE, startCount });
+  const finite = (f: ReturnType<typeof needleAt>) => [f.pose.x, f.pose.y, f.pose.angle, f.pose.z, f.pose.slack].every(Number.isFinite);
+  it('leaves its cushion, stitches the whole flower in 1.6 s, ties off and comes home', () => {
+    const p = plan('stitch'), total = p.stitches.length;
+    expect(needleAt(p, 0).pose).toEqual(PARKED_NEEDLE);
+    expect(needleAt(p, 0).count).toBe(0);
+    expect(landsAt(p)).toBe(ARRIVE_MS + STITCH_MS);
+    expect(planMs(p)).toBe(ARRIVE_MS + STITCH_MS + TIE_MS + HOME_MS);
+    let last = 0;
+    for (let t = 0; t <= planMs(p) + 50; t += 7) {
+      const f = needleAt(p, t);
+      expect(finite(f), `t=${t}`).toBe(true);
+      expect(f.count).toBeGreaterThanOrEqual(last); expect(f.count).toBeLessThanOrEqual(total);
+      last = f.count;
+    }
+    expect(needleAt(p, landsAt(p) - 1).count).toBe(total);
+    expect(needleAt(p, landsAt(p) + 1).phase).toBe('tie');
+    const end = needleAt(p, planMs(p));
+    expect(end.phase).toBe('done'); expect(end.pose).toBe(PARKED_NEEDLE); expect(end.count).toBe(total);
+  });
+  it('works on the flower it is stitching: its point stays by the newest stitch', () => {
+    const p = plan('stitch'), c = cellCentre(6);
+    for (let t = ARRIVE_MS; t < landsAt(p); t += 11) {
+      const f = needleAt(p, t);
+      expect(f.phase).toBe('atWork');
+      expect(Math.abs(f.pose.x - c.x)).toBeLessThan(50); expect(Math.abs(f.pose.y - c.y)).toBeLessThan(56);
+      expect(f.pose.anchor).not.toBeNull();
+    }
+  });
+  it('dips through the cloth once a beat and pulls the thread taut between dips', () => {
+    const p = plan('stitch'), per = STITCH_MS / p.stitches.length;
+    let dips = 0, wasDown = false, taut = 0;
+    for (let t = ARRIVE_MS; t < landsAt(p); t += 2) {
+      const f = needleAt(p, t), down = f.pose.z < -0.6;
+      if (down && !wasDown) dips++;
+      wasDown = down;
+      if (f.pose.z > 0.6) { taut++; expect(f.pose.slack).toBeLessThan(0.4); }
+      expect(f.pose.z).toBeGreaterThanOrEqual(-1); expect(f.pose.z).toBeLessThanOrEqual(1);
+    }
+    const beats = p.stitches.length / BEAT_STITCHES;
+    expect(Math.abs(dips - beats)).toBeLessThanOrEqual(1);
+    expect(taut).toBeGreaterThan(0);
+    expect(needleAt(p, ARRIVE_MS + per * BEAT_STITCHES * 0.5).pose.z).toBeCloseTo(-1, 1);
+    // One pluck of the tune for each dip.
+    const heard = new Set<number>();
+    for (let t = ARRIVE_MS; t < landsAt(p); t += 3) heard.add(needleAt(p, t).beat);
+    expect(Math.abs(heard.size - beats)).toBeLessThanOrEqual(1.5);
+  });
+  it('unpicks from where the flower had got to, down to nothing, faster than it stitched', () => {
+    const total = stitchesFor('sunflower', 6).length, half = plan('unpick', Math.floor(total / 2)), whole = plan('unpick', total);
+    expect(needleAt(whole, 0).count).toBe(total);
+    expect(needleAt(half, 0).count).toBe(Math.floor(total / 2));
+    expect(landsAt(whole)).toBe(ARRIVE_MS + UNPICK_MS);
+    expect(landsAt(half)).toBeLessThan(landsAt(whole));
+    let last = total;
+    for (let t = 0; t <= planMs(whole); t += 9) { const f = needleAt(whole, t); expect(finite(f)).toBe(true); expect(f.count).toBeLessThanOrEqual(last); last = f.count; }
+    expect(needleAt(whole, landsAt(whole)).count).toBe(0);
+    expect(needleAt(whole, planMs(whole)).pose).toBe(PARKED_NEEDLE);
+  });
+  it('hops in its cushion when it is tapped, and lands where it was', () => {
+    const p = plan('flick');
+    expect(needleAt(p, planMs(p) / 2).pose.y).toBeLessThan(PARKED_NEEDLE.y - 10);
+    expect(needleAt(p, planMs(p)).pose).toBe(PARKED_NEEDLE);
+    expect(needleAt(p, 0).count).toBe(0);
+  });
+  it('rests on the table, inside the drawing, and survives a clock that jumps', () => {
+    expect(PARKED_NEEDLE.x).toBeGreaterThan(0); expect(PARKED_NEEDLE.x).toBeLessThan(ART_W);
+    expect(PARKED_NEEDLE.y).toBeGreaterThan(0); expect(PARKED_NEEDLE.y).toBeLessThan(ART_H);
+    expect(Math.hypot(PARKED_NEEDLE.x - HOOP_CX, PARKED_NEEDLE.y - HOOP_CY)).toBeGreaterThan(CLOTH_R);
+    for (const t of [-5, Number.NaN, 1e9]) expect(Number.isFinite(needleAt(plan('stitch'), t).pose.x)).toBe(true);
+    expect(needleAt({ mode: 'stitch', stitches: [], from: PARKED_NEEDLE, startCount: 0 }, 100).phase).toBe('done');
+  });
+  it('sends the ladybird the short way round the hoop', () => {
+    expect(walkTo(-90, 80)).toBe(80);
+    expect(walkTo(170, -170)).toBe(190);
+    expect(walkTo(-170, 170)).toBe(-190);
+    expect(walkTo(720, 10) - 720).toBe(10);
+  });
+});
+
+describe('sound, as numbers', () => {
+  it('draws every note from one pentatonic scale, so overlapping sounds agree', () => {
+    const pitchClass = (f: number) => Math.round(12 * Math.log2(f / 261.63) + 120) % 12;
+    expect(new Set(SCALE.map(pitchClass))).toEqual(new Set([0, 2, 4, 7, 9]));
+    for (let thread = 0; thread < TEXTILE_THREADS; thread++) for (const part of ['stem', 'leaf', 'petal', 'centre'] as const) for (let beat = 0; beat < 12; beat++) {
+      const f = stitchNote(thread, beat, part);
+      expect(SCALE).toContain(f);
+      expect(f).toBeGreaterThanOrEqual(261); expect(f).toBeLessThanOrEqual(1760);
+    }
+    // The shared tap sound (E5) belongs to the same scale.
+    expect([0, 2, 4, 7, 9]).toContain(pitchClass(660));
+  });
+  it('gives each thread its own voice, and the tune climbs from stem to centre', () => {
+    expect(new Set(Array.from({ length: TEXTILE_THREADS }, (_, t) => threadRoot(t))).size).toBe(TEXTILE_THREADS);
+    const mean = (part: 'stem' | 'leaf' | 'petal' | 'centre') => [0, 1, 2, 3, 4, 5].reduce((sum, b) => sum + stitchNote(2, b, part), 0) / 6;
+    expect(mean('stem')).toBeLessThan(mean('leaf')); expect(mean('leaf')).toBeLessThan(mean('petal')); expect(mean('petal')).toBeLessThan(mean('centre'));
+    expect(degree(-4)).toBe(SCALE[0]); expect(degree(99)).toBe(SCALE[SCALE.length - 1]);
+    expect(new Set([0, 1, 2, 3].map(b => stitchNote(0, b, 'petal'))).size).toBeGreaterThan(2);
+  });
+});
+
+describe('the table', () => {
+  it('stitches the four visitors in thread, small enough to sit on a flower', () => {
+    for (const kind of ['honeyBee', 'fireFly', 'butterFly', 'ladyBird'] as const) {
+      const c = critterStitches(kind), all = [...c.body, ...c.wings, ...c.legs].flatMap(l => l.stitches);
+      expect(all.length, kind).toBeGreaterThanOrEqual(12);
+      expect(critterStitches(kind)).toBe(c);
+      for (const l of [...c.body, ...c.wings, ...c.legs]) { expect(l.thread).toBeGreaterThanOrEqual(0); expect(l.thread).toBeLessThan(TEXTILE_THREADS); }
+      for (const s of all) for (const v of [s.x1, s.y1, s.x2, s.y2]) expect(Math.abs(v), kind).toBeLessThan(16);
+    }
+    expect(critterStitches('fireFly').lamp).not.toBeNull();
+    expect(critterStitches('honeyBee').wings.length).toBeGreaterThan(0);
+    expect(critterStitches('ladyBird').legs.length).toBeGreaterThan(0);
+  });
+  it('takes its pictures from the kit only, each with its source, and names GobGob in every file that shows him', () => {
+    expect(TABLE.src).toMatch(/^\/visuals\/studio-v2\/bop\/scene-table\.webp$/);
+    expect(TABLE.ringAt).toBeGreaterThan(CLOTH_R + 20);
+    expect(BUD).toHaveLength(3);
+    for (const picture of BUD) { expect(picture.src).toMatch(/^\/visuals\/studio-v2\/makers\/stitch-garden-bud-[123]\.webp$/); expect(picture.from).toMatch(/^kit\//); expect(picture.width).toBe(BUD[0].width); expect(picture.height).toBe(BUD[0].height); }
+    for (const picture of [GOBGOB_WAITING, GOBGOB_GLAD]) if (picture) { expect(picture.src).toMatch(/\/kit-gobgob-/); expect(picture.from).toMatch(/gobgob/); }
   });
 });

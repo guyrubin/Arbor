@@ -29,7 +29,8 @@ export const scaleNote = note;
 /** A tapped glass rings lower the fuller it is. */
 export const ringNote = (shape: ShapeId, level: number) => note(RING_TOP[shape] - clampLevel(level));
 /** Blown across its open top, a bottle hoots higher the fuller it is (less air inside). */
-export const hootNote = (shape: ShapeId, level: number) => note(RING_TOP[shape] - 9 + clampLevel(level));
+const HOOT_LOW: Readonly<Record<ShapeId, number>> = { round: 1, tall: 2, flask: 0 };
+export const hootNote = (shape: ShapeId, level: number) => note(HOOT_LOW[shape] + clampLevel(level));
 /** The three arched windows each ping their own note. */
 export const windowNote = (x: number) => note(x < 118 ? 5 : x > 242 ? 8 : 7);
 

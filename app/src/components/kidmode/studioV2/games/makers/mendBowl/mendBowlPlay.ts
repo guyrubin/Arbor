@@ -7,26 +7,30 @@
 import { ROTATE_STEP, SEAM_COVER, SNAP_DEG, normalizeDeg, type BowlPatternData, type Point, type Pose } from './mendBowlRules';
 
 /* ---------- the table, framed for the screen ---------- */
-/** The part of the table the stage shows, in stage units. The bowl and its
- * cloth always sit in 0…440 by 0…390; a tall stage shows more table in front
- * of the cloth, a wide stage more to each side. */
+/** The part of the table the stage shows, in stage units. The bowl sits at the
+ * table's centre (220, 220). A wide stage shows more table to each side; a tall
+ * stage shows more above and below, and once the top of the picture is reached
+ * it shows the floor in front of the table instead. */
 export interface StageView { x: number; y: number; w: number; h: number }
+export const VIEW_CENTRE: Point = { x: 220, y: 220 };
 export const VIEW_BASE = { w: 440, h: 470 } as const;
-export const VIEW_MAX = { w: 640, h: 580 } as const;
-/** Where the front strip of the table starts (just under the cloth's hem). */
-export const STRIP_TOP = 394;
+/** The table picture's reach in stage units: the view never leaves it. */
+export const VIEW_TOP = -50;
+export const VIEW_MAX = { w: 540, h: 680 } as const;
 
 export function stageView(boxW: number, boxH: number): StageView {
-  if (!(boxW > 0) || !(boxH > 0)) return { x: 0, y: 0, w: VIEW_BASE.w, h: VIEW_BASE.h };
-  const ratio = boxH / boxW;
-  if (ratio >= VIEW_BASE.h / VIEW_BASE.w) return { x: 0, y: 0, w: VIEW_BASE.w, h: Math.round(Math.min(VIEW_MAX.h, VIEW_BASE.w * ratio)) };
-  const w = Math.round(Math.min(VIEW_MAX.w, VIEW_BASE.h / ratio));
-  return { x: (VIEW_BASE.w - w) / 2, y: 0, w, h: VIEW_BASE.h };
+  let w: number = VIEW_BASE.w, h: number = VIEW_BASE.h;
+  if (boxW > 0 && boxH > 0) {
+    const ratio = boxH / boxW;
+    if (ratio >= VIEW_BASE.h / VIEW_BASE.w) h = Math.round(Math.min(VIEW_MAX.h, VIEW_BASE.w * ratio));
+    else w = Math.round(Math.min(VIEW_MAX.w, VIEW_BASE.h / ratio));
+  }
+  return { x: VIEW_CENTRE.x - w / 2, y: Math.max(VIEW_TOP, VIEW_CENTRE.y - h / 2), w, h };
 }
 /** A pointer position inside the stage box, in stage units (the drawing is
  * scaled evenly and centred, exactly as the SVG layers are). */
 export function toUnits(view: StageView, boxW: number, boxH: number, px: number, py: number): Point {
-  if (!(boxW > 0) || !(boxH > 0)) return { x: 0, y: 0 };
+  if (!(boxW > 0) || !(boxH > 0)) return { ...VIEW_CENTRE };
   const scale = Math.min(boxW / view.w, boxH / view.h);
   return { x: view.x + view.w / 2 + (px - boxW / 2) / scale, y: view.y + view.h / 2 + (py - boxH / 2) / scale };
 }
@@ -35,18 +39,35 @@ export function unitsPerPixel(view: StageView, boxW: number, boxH: number): numb
   return boxW > 0 && boxH > 0 ? 1 / Math.min(boxW / view.w, boxH / view.h) : 1;
 }
 
-/** The five standing places along the front of the table: `feet` is where a
- * thing's base rests, `scale` grows the things when the strip is deep. */
-export interface TableRow { feet: number; scale: number; slots: readonly [number, number, number, number, number] }
-export const PROP_HEIGHT = 60;
-export function tableRow(view: StageView): TableRow {
-  const depth = view.y + view.h - STRIP_TOP;
-  const scale = Math.max(1, Math.min(1.34, (depth - 14) / (PROP_HEIGHT + 2)));
-  const feet = STRIP_TOP + (depth + PROP_HEIGHT * scale) / 2 - 2;
-  const span = Math.min(view.w, 540) * 0.8, centre = view.x + view.w / 2;
-  const at = (k: number) => Math.round(centre + (k / 4 - 0.5) * span);
-  return { feet: Math.round(feet), scale: Math.round(scale * 100) / 100, slots: [at(0), at(1), at(2), at(3), at(4)] };
+/** Where the things on the table stand (centre and width, stage units). They
+ * keep to the rim of the linen and the wood beyond it, clear of the pieces,
+ * and all of them are inside the smallest view. Left and right are the
+ * table's own: nothing here mirrors with the reading direction. */
+export interface TableSpot { x: number; y: number; size: number }
+export const TABLE_SPOTS = {
+  lamp: { x: 62, y: 54, size: 78 },
+  fern: { x: 380, y: 50, size: 88 },
+  bloom: { x: 408, y: 150, size: 48 },
+  gold: { x: 72, y: 384, size: 70 },
+  roller: { x: 140, y: 410, size: 86 },
+} as const satisfies Record<string, TableSpot>;
+/** Where a standing friend goes: on the floor in front of the table when the
+ * stage is tall, beside the table when it is wide. `x` is the figure's left
+ * edge, `feet` its base line, `tall` its height (stage units). When the stage
+ * shows neither floor nor room at the side, there is no place for one. */
+export interface StandingSpot { x: number; feet: number; tall: number }
+export const FRIEND_TALL = 176;
+export function standingSpot(view: StageView): StandingSpot | null {
+  const floor = view.y + view.h - (VIEW_CENTRE.y + 235), side = -view.x;
+  // On the floor, the figure's head stays just under the tools at the table's near-left edge.
+  if (floor >= 110) return { x: view.x + 10, feet: view.y + view.h - 6, tall: Math.min(FRIEND_TALL, floor + 26) };
+  if (side >= 30) return { x: view.x + 4, feet: view.y + view.h - 6, tall: FRIEND_TALL };
+  return null;
 }
+/** The four glaze dishes, in an arc in front of the bowl (left to right). */
+export const GLAZE_SPOTS: readonly TableSpot[] = [150, 122, 94, 66].map(deg => ({
+  x: Math.round(VIEW_CENTRE.x + 152 * Math.cos(deg * Math.PI / 180)), y: Math.round(VIEW_CENTRE.y + 152 * Math.sin(deg * Math.PI / 180)), size: 66,
+}));
 
 /* ---------- a second arrangement for a replay ---------- */
 /** How far a replay swirls the scatter about the middle of the table, in degrees. */

@@ -161,7 +161,7 @@ export function coastStep(speed: number, dtMs: number): { speed: number; advance
   const k = Math.exp(-dt / COAST_TAU_MS);
   return { speed: v * k, advance: (v * COAST_TAU_MS * (1 - k)) / 1000 };
 }
-/** How far a flick at `speed` coasts before it stops, in turns. */
+/** How far a flick at a given speed coasts before it stops, in turns. */
 export function coastReach(speed: number): number {
   const v = Math.min(COAST_MAX, Math.max(-COAST_MAX, finite(speed)));
   return Math.abs(v) <= COAST_STOP ? 0 : (Math.sign(v) * (Math.abs(v) - COAST_STOP) * COAST_TAU_MS) / 1000;
@@ -211,6 +211,24 @@ export function lapTurns(fromTurns: number, t: number): number {
 export const LAP_STEPS = 16;
 export function lapStep(fromTurns: number, turns: number): number {
   return Math.min(LAP_STEPS - 1, Math.max(-1, Math.floor((finite(turns) - finite(fromTurns)) * LAP_STEPS + 1e-9)));
+}
+
+/* ── the first five seconds: a hand shows the turn ──────────────────────── */
+
+/** The hint is a hand that takes the pointer, turns the dial a little way on
+ * and brings it back, and the valley really follows. One showing lasts
+ * HINT_MS; it comes again after HINT_IDLE_MS without a touch, until the
+ * child has turned the dial once. */
+export const HINT_MS = 2800;
+export const HINT_FIRST_MS = 1100;
+export const HINT_IDLE_MS = 6000;
+export const HINT_REACH = 0.07;
+/** Where the hint is at `t` (0..1): how far on it has turned the dial (in
+ * turns), how visible the hand is, and whether it is pressing. */
+export function hintAt(t: number): { offset: number; show: number; press: number } {
+  const x = clamp01(t);
+  const out = smoothstep(0.2, 0.58, x), back = smoothstep(0.7, 0.93, x);
+  return { offset: HINT_REACH * (out - back), show: smoothstep(0, 0.1, x) * (1 - smoothstep(0.9, 1, x)), press: smoothstep(0.1, 0.18, x) * (1 - smoothstep(0.93, 0.98, x)) };
 }
 
 /* ── a different year each time ─────────────────────────────────────────── */
@@ -311,12 +329,13 @@ export function sunHeight(year: number): number {
 }
 const SUN_CORE: readonly (readonly [number, Paint])[] = [[0.02, mix('butter', 'white', 0.3)], [0.32, 'sun'], [0.57, mix('amber', 'sun', 0.25)], [0.82, mix('butter', 'blossom', 0.35)]];
 const SUN_GLOW: readonly (readonly [number, Paint])[] = [[0.02, 'butter'], [0.32, 'sun'], [0.57, 'orange'], [0.82, 'blossom']];
-/** The sun stands high in summer and low over the hills in winter (light is
- * always from the top left). Viewbox units: the scene is 400 by 320. */
+/** The sun stands high in summer and low over the valley's hills in winter
+ * (light is always from the top left; it never sinks behind the rendered
+ * hills). Viewbox units: the scene is 400 by 320. */
 export function sunAt(year: number): Sun {
   const e = sunHeight(year), warm = bump(year, 0.57, 0.2);
   return {
-    x: 92 - 18 * e, y: 98 - 50 * e, r: 17 + 3 * (1 - e) * 0.5,
+    x: 92 - 18 * e, y: 74 - 26 * e, r: 17 + 3 * (1 - e) * 0.5,
     core: cyclicPaint(SUN_CORE, year), glow: cyclicPaint(SUN_GLOW, year),
     glowR: 48 + 26 * warm + 10 * (1 - e) * 0.5, glowAlpha: 0.45 + 0.25 * warm - 0.12 * bump(year, 0.15, 0.08),
   };
@@ -457,9 +476,17 @@ export const FRIENDS = ['ayaWinter', 'ayaSpring', 'chockSummer', 'pepAutumn'] as
 export type Friend = typeof FRIENDS[number];
 export function friendsAt(year: number): Readonly<Record<Friend, number>> {
   return {
-    ayaWinter: window4(year, 0.7, 0.745, 0.905, 0.945), ayaSpring: window4(year, 0.935, 0.975, 0.165, 0.205),
-    chockSummer: window4(year, 0.195, 0.235, 0.435, 0.475), pepAutumn: window4(year, 0.465, 0.505, 0.67, 0.71),
+    ayaWinter: window4(year, 0.67, 0.71, 0.92, 0.96), ayaSpring: window4(year, 0.92, 0.96, 0.17, 0.21),
+    chockSummer: window4(year, 0.17, 0.21, 0.435, 0.475), pepAutumn: window4(year, 0.435, 0.475, 0.67, 0.71),
   };
+}
+/** The children of the valley come out for two kinds of weather: GobGob, in
+ * the yellow hooded jacket, for the spring rain; Bebe, in the navy one, for
+ * the snow (beside the snow friend, for as long as it stands). */
+export const CREW = ['gobgobRain', 'bebeSnow'] as const;
+export type Crew = typeof CREW[number];
+export function crewAt(year: number): Readonly<Record<Crew, number>> {
+  return { gobgobRain: window4(year, 0.1, 0.13, 0.19, 0.225), bebeSnow: window4(year, 0.765, 0.8, 0.875, 0.915) };
 }
 /** The friend who is most there at this point of the year. */
 export function friendAt(year: number): Friend {
@@ -485,4 +512,49 @@ export function viewMix(stops: readonly number[], year: number): { from: number;
     if (y >= p0 && y < p1) return { from: i, to: (i + 1) % n, t: smoothstep(p0, p1, y) };
   }
   return { from: 0, to: 1 % n, t: 0 };
+}
+
+/* ── LeafLab: what the garden feels ─────────────────────────────────────── */
+
+/** Aya's LeafLab reads three things from the tree's bed: how wet the soil is,
+ * how much light falls on it and how warm it is. Each is 0..1 and a function
+ * of the year alone, shown as a pictured gauge (never a number to read). */
+export interface LeafLab { readonly moisture: number; readonly light: number; readonly warmth: number }
+export function leafLab(year: number): LeafLab {
+  return {
+    moisture: clamp01(0.34 + 0.56 * bump(year, 0.16, 0.09) + 0.4 * puddles(year) + 0.16 * snowDepth(year) - 0.22 * bump(year, 0.37, 0.15) + 0.12 * bump(year, 0.62, 0.1)),
+    light: clamp01((0.5 + 0.5 * sunHeight(year)) * (1 - 0.45 * cloudCover(year)) * 1.08 + 0.06),
+    warmth: clamp01(0.5 + 0.5 * Math.cos(2 * Math.PI * (wrapYear(year) - 0.37))),
+  };
+}
+
+/** A reading as one of three steps, for its words: 0 low, 1 middling, 2 high. */
+export function labLevel(value: number): 0 | 1 | 2 {
+  const v = clamp01(value);
+  return v < 0.34 ? 0 : v < 0.67 ? 1 : 2;
+}
+
+export interface Gains { readonly birds: number; readonly insects: number; readonly wind: number; readonly rain: number; readonly chimes: number }
+/** Sound levels, 0..1: one audio graph whose layers are set from `year`, so
+ * turning back and forth can never stack sounds. */
+export function gains(year: number): Gains {
+  return {
+    birds: window4(year, 0.96, 0.03, 0.3, 0.44), insects: bump(year, 0.36, 0.12), wind: Math.max(bump(year, 0.6, 0.12), 0.35 * bump(year, 0.8, 0.1)),
+    rain: bump(year, 0.16, 0.075), chimes: bump(year, 0.82, 0.11),
+  };
+}
+
+/** Which of the eight described moments of the year (the copy's `phases`):
+ * late-winter buds, blossom, spring rain, summer, late summer, autumn
+ * colour, falling leaves, winter snow. */
+export const PHASE_STARTS: readonly number[] = [0.92, 0.03, 0.12, 0.22, 0.38, 0.5, 0.6, 0.72];
+export function phaseAt(year: number): number {
+  const y = wrapYear(year);
+  if (y >= PHASE_STARTS[0] || y < PHASE_STARTS[1]) return 0;
+  for (let i = PHASE_STARTS.length - 1; i >= 1; i--) if (y >= PHASE_STARTS[i]) return i;
+  return 0;
+}
+/** Fills the numbered blanks of a line: `{0}` is the first value. */
+export function seasonLine(template: string, ...values: (string | number)[]): string {
+  return template.replace(/\{(\d)\}/g, (_match, slot: string) => String(values[Number(slot)] ?? ''));
 }

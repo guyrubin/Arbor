@@ -2,6 +2,7 @@ import { memo, useId, type CSSProperties, type ReactNode } from 'react';
 import { CX, FIBRE, VIEW_H, VIEW_W, normDeg, toRad, type Pt } from './phageGeometry';
 import PhageArt from './PhageArt';
 import { SCALE_STOPS } from './tinyScale';
+import { ART_FERN, ART_LEAFLAB } from './tinyKitArt';
 
 /** What the game draws on top of the kit pictures: the white model turntable
  * on Aya's bench, and the living things her lens finds in a drop of pond
@@ -16,7 +17,7 @@ const stroke = (value: string): CSSProperties => ({ stroke: value });
 const clear = (a: string, share: number) => mix(a, share, 'transparent');
 
 /* ---------- the bench: the model's turntable ---------- */
-export const TABLE = { cy: FIBRE.tip.y, rx: 150, wood: 9, top: 8 } as const;
+export const TABLE = { cy: FIBRE.tip.y, rx: 130, wood: 7, top: 8 } as const;
 
 /** A white ceramic turntable on a pale-wood foot, with a teal ring let into
  * its top (the kit's own table, small). Its rim marks turn with the model,
@@ -165,7 +166,9 @@ export function Tag({ x, y, name, note, side = 'above' }: { x: number; y: number
   return <span className="tiny-tag" data-side={side} style={{ left: `${x / VIEW_W * 100}%`, top: `${y / VIEW_H * 100}%` }}><strong>{name}</strong>{note}</span>;
 }
 
-/** Stop 1, on the bench: one drop of pond water, marked. The picture behind is the kit's; this adds the drop's glint and the ring. */
+/** Stop 1, what the ProofLens records: Aya's LeafLab among the fern, with one
+ * drop of pond water on its lid. The pictures are the kit's; this adds the
+ * drop and the ring. */
 export const LeafScene = memo(function LeafScene({ dropName, dropNote }: { dropName: string; dropNote: string }) {
   const id = useId(), at = stop('leaf').ring!, r = stop('leaf').bigUnits / 2;
   return <Scene tags={<Tag x={at.x} y={at.y - at.r - 8} name={dropName} note={dropNote} />}>
@@ -176,7 +179,9 @@ export const LeafScene = memo(function LeafScene({ dropName, dropNote }: { dropN
         <stop offset="1" style={{ stopColor: clear('var(--mk-sea)', 58) }} />
       </radialGradient>
     </defs>
-    <ellipse cx={at.x + 2.5} cy={at.y + r * 0.8} rx={r * 1.05} ry={r * 0.42} style={fill(clear('var(--mk-shadow)', 26))} />
+    <image href={ART_FERN.src} x={-90} y={-40} width={580} height={520} preserveAspectRatio="xMidYMid slice" />
+    <image href={ART_LEAFLAB.src} x={at.x - 100} y={at.y - 84} width={200} height={178} />
+    <ellipse cx={at.x + 2.5} cy={at.y + r * 0.8} rx={r * 1.05} ry={r * 0.42} style={fill(clear('var(--mk-shadow)', 36))} />
     <circle cx={at.x} cy={at.y} r={r} style={fill(`url(#${id}drop)`)} />
     <circle cx={at.x} cy={at.y} r={r} fill="none" strokeWidth={1.1} style={stroke(clear('var(--mk-white)', 85))} />
     <ellipse cx={at.x - r * 0.36} cy={at.y - r * 0.42} rx={r * 0.26} ry={r * 0.16} transform={`rotate(-32 ${at.x - r * 0.36} ${at.y - r * 0.42})`} style={fill('var(--mk-white)')} />

@@ -1,12 +1,12 @@
 import { memo, useId, type CSSProperties } from 'react';
 import {
-  FRIENDS, appleState, blossomState, budState, cloudCover, cloudPaint, fallenLeaves, friendsAt, frost, leafState, lifeAt, lightAt, mixPaint, puddles, rainbow, skyAt,
-  snowCap, snowDepth, sunAt, viewMix, type Friend,
+  appleState, blossomState, budState, cloudCover, cloudPaint, crewAt, fallenLeaves, friendsAt, frost, leafState, lifeAt, lightAt, mixPaint, puddles, rainbow, skyAt,
+  snowCap, snowDepth, sunAt, viewMix, type Crew, type Friend, type Paint,
 } from './seasonDialRules';
 import { TREE } from './seasonDialTree';
 import { applePaint, leafPaint, paint, shaded, yearLook } from './seasonDialPaint';
 import { CLOUDS, FRIEND_AT, PUDDLES, SCENE_H, SCENE_W, SNOWMAN_AT, TREE_AT, cloudShown } from './seasonDialToys';
-import { FRIEND_PICTURES, SEASON_VIEWS, WATERING_CAN } from './seasonDialKit';
+import { CREW_PICTURES, FRIEND_PICTURES, SEASON_VIEWS, WATERING_CAN, type KitPicture } from './seasonDialKit';
 
 /** The little world over the dial: the Sky Gardens terrace above Horizon
  * Valley (the kit's rendered view, the same camera at each moment of the
@@ -115,16 +115,16 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
     const c = TREE.clumps[i], st = leafState(c.seed, year);
     const k = st.size * st.on;
     if (k <= 0.02) continue;
-    const s = 0.34 + 0.72 * k, tint = st.tint + (c.seed.hue - 0.5) * (st.tint < 2 ? 0.5 : 0.25), leafy = leafPaint(tint), o = Math.min(1, 3 * k);
-    backNodes.push(<path key={i} d={c.spray} transform={`translate(${c.x} ${c.y}) scale(${s.toFixed(3)})`} style={{ fill: paint(mixPaint(leafy, 'shadow', 0.2 + 0.14 * c.shade)), opacity: o }} />);
-    if (c.shade < 0.56) litNodes.push(<path key={i} d={c.spray} transform={`translate(${(c.x - c.r * 0.2).toFixed(1)} ${(c.y - c.r * 0.26).toFixed(1)}) rotate(${Math.round(c.seed.hue * 50 - 25)}) scale(${(s * 0.78).toFixed(3)})`} style={{ fill: paint(mixPaint(leafy, 'butter', 0.1 + 0.12 * (0.56 - c.shade))), opacity: o }} />);
+    const s = 0.34 + 0.72 * k, tint = st.tint + (c.seed.hue - 0.5) * (st.tint < 2 ? 0.5 : 0.25), leafy = kitGreen(tint), o = Math.min(1, 3 * k);
+    backNodes.push(<path key={i} d={c.spray} transform={`translate(${c.x} ${c.y}) scale(${s.toFixed(3)})`} style={{ fill: paint(mixPaint(leafy, 'shadow', 0.1 + 0.2 * c.shade)), opacity: o }} />);
+    if (c.shade < 0.5) litNodes.push(<path key={i} d={c.spray} transform={`translate(${(c.x - c.r * 0.2).toFixed(1)} ${(c.y - c.r * 0.26).toFixed(1)}) rotate(${Math.round(c.seed.hue * 50 - 25)}) scale(${(s * 0.78).toFixed(3)})`} style={{ fill: paint(mixPaint(leafy, 'butter', 0.14 + 0.2 * (0.56 - c.shade))), opacity: o }} />);
   }
   const leafNodes = [];
   for (let i = 0; i < TREE.leaves.length; i++) {
     const leaf = TREE.leaves[i], st = leafState(leaf.seed, year);
     if (st.on <= 0.01 || st.size <= 0.02) continue;
     const scale = (st.size * leaf.length) / 12, tint = st.tint + (leaf.seed.hue - 0.5) * (st.tint < 2 ? 0.7 : 0.2);
-    leafNodes.push(<path key={i} d={LEAF} fillRule="evenodd" transform={`translate(${leaf.x} ${(leaf.y + st.drop * 9).toFixed(1)}) rotate(${leaf.angle + st.drop * 40}) scale(${scale.toFixed(3)})`} style={{ fill: paint(shaded(leafPaint(tint), leaf.shade)), opacity: st.on }} />);
+    leafNodes.push(<path key={i} d={LEAF} fillRule="evenodd" transform={`translate(${leaf.x} ${(leaf.y + st.drop * 9).toFixed(1)}) rotate(${leaf.angle + st.drop * 40}) scale(${scale.toFixed(3)})`} style={{ fill: paint(shaded(kitGreen(tint), leaf.shade)), opacity: st.on }} />);
   }
   const blossomNodes = [];
   for (let i = 0; i < TREE.blossoms.length; i++) {
@@ -144,10 +144,12 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
     const a = TREE.apples[i], st = appleState(a.seed, year);
     if (st.size <= 0.03 || off.includes(i)) continue;
     const r = a.r * (0.35 + 0.65 * st.size);
-    appleNodes.push(<g key={i} className="sd-apple" transform={`translate(${a.x} ${a.y})`} style={{ opacity: Math.min(1, st.size * 2) }}>
-      <path d={`M0 ${(-r * 0.8).toFixed(1)}l.8 -3.2`} style={{ stroke: 'var(--mk-umber)', strokeWidth: 0.9, strokeLinecap: 'round' }} />
-      <circle r={r.toFixed(2)} fill={`url(#${id}apple)`} style={{ color: paint(applePaint(st.red, kind)) }} />
-      <circle cx={(-r * 0.32).toFixed(2)} cy={(-r * 0.34).toFixed(2)} r={(r * 0.3).toFixed(2)} style={{ fill: 'var(--mk-white)', opacity: 0.45 }} />
+    appleNodes.push(<g key={i} transform={`translate(${a.x} ${a.y})`} style={{ opacity: Math.min(1, st.size * 2) }}>
+      <g className="sd-apple">
+        <path d={`M0 ${(-r * 0.8).toFixed(1)}l.8 -3.2`} style={{ stroke: 'var(--mk-umber)', strokeWidth: 0.9, strokeLinecap: 'round' }} />
+        <circle r={r.toFixed(2)} style={{ fill: paint(applePaint(st.red, kind)) }} />
+        <circle r={r.toFixed(2)} fill={`url(#${id}orb)`} />
+      </g>
     </g>);
   }
 
@@ -170,10 +172,10 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
           <stop offset=".6" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow), var(--mk-snow-shade) 45%)' }} />
           <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-snow-shade), var(--mk-lilac) 35%)' }} />
         </radialGradient>
-        <radialGradient id={`${id}apple`} cx=".36" cy=".32" r=".8">
-          <stop offset="0" style={{ stopColor: 'color-mix(in srgb, currentColor, var(--mk-white) 22%)' }} />
-          <stop offset=".6" style={{ stopColor: 'currentColor' }} />
-          <stop offset="1" style={{ stopColor: 'color-mix(in srgb, currentColor, var(--mk-shadow) 30%)' }} />
+        <radialGradient id={`${id}orb`} cx=".34" cy=".3" r=".78">
+          <stop offset="0" style={{ stopColor: 'var(--mk-white)', stopOpacity: 0.55 }} />
+          <stop offset=".42" style={{ stopColor: 'var(--mk-white)', stopOpacity: 0 }} />
+          <stop offset="1" style={{ stopColor: 'var(--mk-shadow)', stopOpacity: 0.34 }} />
         </radialGradient>
         <linearGradient id={`${id}kerb`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" style={{ stopColor: 'var(--mk-white)' }} />
@@ -224,7 +226,7 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
         })}
       </g>
 
-      {/* Pools of melt-water on the terrace floor. */
+      {/* Pools of melt-water on the terrace floor. */}
       {pools > 0.01 && PUDDLES.map((p, i) => <g key={i} style={{ opacity: pools * 0.9 }}>
         <ellipse cx={p.x} cy={p.y} rx={p.rx} ry={p.ry} style={{ fill: paint(mixPaint(mixPaint(sky.mid, 'water', 0.3), 'white', 0.25)) }} />
         <ellipse cx={p.x} cy={p.y + 0.8} rx={p.rx * 0.94} ry={p.ry * 0.82} style={{ fill: paint(mixPaint(sky.top, 'slate', 0.2)), opacity: 0.55 }} />
@@ -234,7 +236,7 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
       {/* The tree's shadow on the terrace, thrown away from the top-left sun. */}
       <ellipse cx={TREE_AT.x + shadowW * 0.5} cy={TREE_AT.y + 9} rx={shadowW} ry={11} fill={`url(#${id}shadow)`} style={{ opacity: light.shadow * 1.1 }} />
 
-      {life.snowman > 0.01 && <g transform={`translate(${SNOWMAN_AT.x} ${SNOWMAN_AT.y}) scale(${(0.72 * (0.75 + 0.25 * life.snowman)).toFixed(3)} ${(0.72 * (melt * (0.35 + 0.65 * life.snowman) + (1 - melt) * life.snowman)).toFixed(3)})`} style={{ opacity: Math.min(1, life.snowman * (melt ? 2.2 : 1.2)) }}>
+      {life.snowman > 0.01 && <g transform={`translate(${SNOWMAN_AT.x} ${SNOWMAN_AT.y}) scale(${(0.95 * (0.75 + 0.25 * life.snowman)).toFixed(3)} ${(0.95 * (melt * (0.35 + 0.65 * life.snowman) + (1 - melt) * life.snowman)).toFixed(3)})`} style={{ opacity: Math.min(1, life.snowman * (melt ? 2.2 : 1.2)) }}>
         <g key={live.snowman ?? 0} className={live.snowman !== undefined ? 'sd-snowman sd-snowman--wobble' : 'sd-snowman'}><Snowman id={id} scarf={look.scarf} scarfEnd={look.scarfEnd} /></g>
       </g>}
 
@@ -246,12 +248,20 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
         <ellipse rx="42.5" ry="9.2" style={{ fill: 'none', stroke: 'var(--mk-sea)', strokeWidth: 1.5, opacity: 0.85 }} />
         <ellipse rx="38" ry="7.6" fill={`url(#${id}soil)`} />
         <ellipse rx="38" ry="7.6" style={{ fill: 'var(--mk-snow)', opacity: Math.min(1, snow * 1.3) }} />
+        {/* Aya's LeafLab, pushed into the soil of the bed: the little puck whose three readings show in the corner. */}
+        <g transform="translate(-25 -2)">
+          <path d="M0 2L0 6" style={{ stroke: 'var(--mk-steel)', strokeWidth: 1.4, strokeLinecap: 'round' }} />
+          <ellipse cy="1.6" rx="5.4" ry="2.4" style={{ fill: 'color-mix(in srgb, var(--mk-chalk), var(--mk-steel-light) 60%)' }} />
+          <ellipse rx="5.4" ry="2.4" style={{ fill: 'var(--mk-white)' }} />
+          <ellipse rx="3.6" ry="1.5" style={{ fill: 'none', stroke: 'var(--mk-teal)', strokeWidth: 0.9 }} />
+          <circle r=".9" style={{ fill: 'var(--mk-sea)' }} />
+        </g>
       </g>
 
       {fallen > 0.01 && FALLEN.map((f, i) => f.at < fallen && <path key={i} d={LEAF} fillRule="evenodd" transform={`translate(${f.x} ${f.y}) rotate(${f.a}) scale(${f.s.toFixed(2)} ${(f.s * 0.6).toFixed(2)})`} style={{ fill: paint(shaded(leafPaint(f.tint), 0.5)), opacity: Math.min(1, (fallen - f.at) * 6) * (1 - snow) }} />)}
 
       <g transform={TREE_PLACE}>
-        <g key={live.tree ?? 0} className={live.tree !== undefined ? 'sd-shake' : undefined} style={{ transformOrigin: `${base.x}px ${base.y}px` }}>
+        <g key={live.tree ?? 0} className={live.tree !== undefined ? 'sd-shaken' : undefined} style={{ transformOrigin: `${base.x}px ${base.y}px` }}>
           <g className="sd-tree" style={{ transformOrigin: `${base.x}px ${base.y}px` }}>
             <path d={TREE.roots} style={{ fill: 'var(--mk-fur)' }} />
             {TREE.strokes.map(s => <path key={`b${s.width}`} d={s.bark} style={{ fill: 'none', stroke: 'var(--mk-fur)', strokeWidth: s.width, strokeLinecap: 'round' }} />)}
@@ -292,8 +302,8 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
       {/* The light of the season over everything: warm in autumn, cool in winter. */}
       <rect width={SCENE_W} height={SCENE_H} style={{ fill: 'var(--mk-amber)', opacity: 0.09 * light.warm }} />
       <rect width={SCENE_W} height={SCENE_H} style={{ fill: 'var(--mk-indigo)', opacity: 0.07 * light.cool }} />
-      {ice > 0.01 && <g style={{ opacity: ice * 0.85 }}>
-        {[[0, 0, 1, 1], [SCENE_W, 0, -1, 1], [0, SCENE_H, 1, -1], [SCENE_W, SCENE_H, -1, -1]].map(([x, y, sx, sy], i) => <path key={i} d={FROST} transform={`translate(${x} ${y}) scale(${sx * (1 + 0.2 * (i % 2))} ${sy * (1 + 0.2 * (i % 2))})`} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' }} />)}
+      {ice > 0.01 && <g style={{ opacity: ice * 0.6 }}>
+        {[[0, 0, 1, 1], [SCENE_W, 0, -1, 1], [0, SCENE_H, 1, -1], [SCENE_W, SCENE_H, -1, -1]].map(([x, y, sx, sy], i) => <path key={i} d={FROST} transform={`translate(${x} ${y}) scale(${sx * (1 + 0.2 * (i % 2))} ${sy * (1 + 0.2 * (i % 2))})`} style={{ fill: 'none', stroke: 'var(--mk-white)', strokeWidth: 1.1, strokeLinecap: 'round', strokeLinejoin: 'round' }} />)}
       </g>}
       <rect width={SCENE_W} height={SCENE_H} fill={`url(#${id}vignette)`} />
     </svg>
@@ -301,23 +311,39 @@ function SceneArt({ year, live = NOTHING, kind = 0 }: { year: number; live?: Liv
   </>;
 }
 
+/** The leaf ramp's greens leaned toward the valley's own warm, olive green, so the tree belongs to the rendered garden. */
+function kitGreen(tint: number): Paint {
+  const green = Math.max(0, 1 - Math.abs(tint - 1.3) / 1.5);
+  return mixPaint(leafPaint(tint), mixPaint('moss', 'spring', 0.35), 0.42 * green);
+}
 const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`;
-/** The companions: the kit's own pictures, each standing on the terrace for
- * its part of the year. A touch or a reward moment makes the one who is
- * there hop (the happy pose). */
+/** Who can stand on the terrace: the pose each is seen in, and (where the kit has one) the glad pose a touch brings. */
+const CAST: readonly { who: Friend | Crew; calm: KitPicture; glad: KitPicture | null }[] = [
+  { who: 'bebeSnow', calm: CREW_PICTURES.bebeSnow, glad: null }, { who: 'gobgobRain', calm: CREW_PICTURES.gobgobRain, glad: null },
+  { who: 'ayaWinter', calm: FRIEND_PICTURES.ayaIdle, glad: FRIEND_PICTURES.ayaHappy }, { who: 'ayaSpring', calm: CREW_PICTURES.ayaLeafLab, glad: null },
+  { who: 'chockSummer', calm: FRIEND_PICTURES.chockIdle, glad: FRIEND_PICTURES.chockHappy }, { who: 'pepAutumn', calm: FRIEND_PICTURES.pepIdle, glad: FRIEND_PICTURES.pepHappy },
+];
+/** The companions and the crew: the kit's own pictures, each standing on the
+ * terrace for its part of the year. A touch or a reward moment makes whoever
+ * is there hop (in the glad pose, where the kit has one). Nobody is redrawn:
+ * a hop is the whole picture moving. */
 function Friends({ year, live }: { year: number; live: LiveToys }) {
-  const there = friendsAt(year);
+  const friends = friendsAt(year), crew = crewAt(year);
   const glad = live.friend !== undefined || live.cheer !== undefined, beat = `${live.friend ?? 0}-${live.cheer ?? 0}`;
-  const picture = (f: Friend) => f === 'ayaWinter' ? (glad ? FRIEND_PICTURES.ayaHappy : FRIEND_PICTURES.ayaWinter) : f === 'ayaSpring' ? (glad ? FRIEND_PICTURES.ayaHappy : FRIEND_PICTURES.ayaIdle)
-    : f === 'chockSummer' ? (glad ? FRIEND_PICTURES.chockHappy : FRIEND_PICTURES.chockIdle) : (glad ? FRIEND_PICTURES.pepIdle : FRIEND_PICTURES.pepHappy);
-  return <div className="sd-friends" aria-hidden="true">
-    {there.ayaSpring > 0.01 && <img className="sd-prop" src={WATERING_CAN.src} alt="" draggable={false} decoding="async"
-      style={{ insetInlineStart: pct(FRIEND_AT.ayaSpring.x - 62, SCENE_W), insetBlockStart: pct(FRIEND_AT.ayaSpring.y - 22, SCENE_H), inlineSize: pct(34, SCENE_W), opacity: there.ayaSpring }} />}
-    {FRIENDS.map(f => {
-      const at = FRIEND_AT[f], o = there[f];
+  return <div className="sd-friends" dir="ltr" aria-hidden="true">
+    {friends.ayaSpring > 0.01 && <img className="sd-prop" src={WATERING_CAN.src} alt="" draggable={false} decoding="async"
+      style={{ insetInlineStart: pct(FRIEND_AT.ayaSpring.x - 62, SCENE_W), insetBlockStart: pct(FRIEND_AT.ayaSpring.y - 22, SCENE_H), inlineSize: pct(34, SCENE_W), opacity: friends.ayaSpring }} />}
+    {CAST.map(({ who, calm, glad: happy }) => {
+      const at = FRIEND_AT[who], o = who === 'gobgobRain' || who === 'bebeSnow' ? crew[who] : friends[who];
       if (o <= 0.01) return null;
-      return <span key={f} className="sd-friend" data-sd-friend={f} style={{ insetInlineStart: pct(at.x - at.w / 2, SCENE_W), insetBlockStart: pct(at.y - at.w, SCENE_H), inlineSize: pct(at.w, SCENE_W), opacity: o }}>
-        <img key={glad ? beat : 'calm'} className={glad ? 'sd-friend__art sd-friend__art--glad' : 'sd-friend__art'} src={picture(f).src} alt="" draggable={false} decoding="async" style={at.flip ? { scale: '-1 1' } : undefined} />
+      const w = (at.h * calm.width) / calm.height;
+      // Both poses stay mounted, so the glad one is there the instant it is wanted.
+      return <span key={who} className="sd-friend" data-sd-friend={who} data-glad={(glad && happy !== null) || undefined} style={{ insetInlineStart: pct(at.x - w / 2, SCENE_W), insetBlockStart: pct(at.y - at.h, SCENE_H), inlineSize: pct(w, SCENE_W), blockSize: pct(at.h, SCENE_H), opacity: o }}>
+        <span className="sd-friend__shade" />
+        <span key={glad ? beat : 'calm'} className={glad ? 'sd-friend__art sd-friend__art--glad' : 'sd-friend__art'}>
+          <img className="sd-friend__pose" data-pose="calm" src={calm.src} alt="" draggable={false} decoding="async" />
+          {happy && <img className="sd-friend__pose" data-pose="glad" src={happy.src} alt="" draggable={false} decoding="async" />}
+        </span>
       </span>;
     })}
   </div>;

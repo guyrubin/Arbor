@@ -90,7 +90,7 @@ describe('forgiveness', () => {
   it('the top of a jump hangs a moment and the way down is quicker than the way up', () => {
     let s = step(at(1500), { dir: 0, jump: true }), up = 1, down = 0, top = 0;
     while (!s.onGround) { s = step(s, { dir: 0 }); top = Math.max(top, s.y - surfaceAt(1500)); if (s.vy > 0) up++; else down++; }
-    expect(top).toBeGreaterThan(100); expect(top).toBeLessThan(ROOF.h - 10);
+    expect(top).toBeGreaterThan(80); expect(top).toBeLessThan(ROOF.h - 10);
     expect(down).toBeLessThan(up);
   });
   it('a fox standing right against a log still gets over it', () => {
@@ -109,7 +109,7 @@ describe('forgiveness', () => {
   it('leaving the stream wet ends in one happy shake on the bank', () => {
     const s = run(at(STREAM.from - 100), { dir: 1 }, 5);
     expect(s.x).toBeGreaterThan(STREAM.to + 24);
-    expect(s.events.filter(e => e === 'dry')).toHaveLength(1); expect(s.wet).toBe(0);
+    expect(s.events.filter(e => e === 'shakeDry')).toHaveLength(1); expect(s.wet).toBe(0);
   });
 });
 
@@ -139,22 +139,28 @@ describe('toadstools and the hidden nook', () => {
     let s = run(at(TUNNEL.from - 0.5), { dir: 1, jump: true }, 1.2);
     expect(upOnRoof(s.x, s.y)).toBe(false); expect(s.x).toBeLessThan(TUNNEL.from);
     s = run(at(cap.x - 400), { dir: 1 }, 3);
-    expect(s.x).toBeLessThan(TUNNEL.from); expect(s.blocked).toBe(true); expect(s.moth).toBe('asleep');
+    expect(s.x).toBeLessThan(TUNNEL.from); expect(s.blocked).toBe(true); expect(s.star).toBe('asleep');
   });
-  it('a jump onto the cap bounces the fox up onto the oak, where a moon-moth wakes; the seed inside still needs a roll', () => {
-    // a running jump that comes down on the cap
-    let s = at(cap.x - 150, { vx: RUN_MAX });
-    s = step(s, { dir: 1, jump: true });
-    let bounced = false;
-    for (let i = 0; i < 120 * 4 && !(s.onGround && upOnRoof(s.x, s.y)); i++) { s = step(s, { dir: s.x < cap.x - 6 || bounced ? 1 : 0 }); bounced = bounced || s.events.includes('bounce'); }
-    expect(bounced).toBe(true);
+  it('a few bounces on the cap carry Pep up onto the planter, where a fallen star wakes; the light underneath still needs a roll', () => {
+    let s = step(at(cap.x - cap.w / 2 - 20), { dir: 0, target: cap.x });
+    for (let i = 0; i < 120 * 8 && s.bounces < 3; i++) s = step(s, { dir: 0 });
+    expect(s.bounces).toBe(3);
+    for (let i = 0; i < 120 * 4 && !(s.onGround && upOnRoof(s.x, s.y)); i++) s = step(s, { dir: 1 });
     expect(upOnRoof(s.x, s.y)).toBe(true); expect(s.y).toBeCloseTo(roofTop(), 5);
     s = runTo(s, NOOK_X, 4);
-    expect(s.moth).toBe('awake');
+    expect(s.star).toBe('awake');
     s = run(s, { dir: 1 }, 3);
     expect(s.x).toBeGreaterThan(TUNNEL.to); expect(s.onGround).toBe(true);
     expect(s.seeds.hollow).toBe('resting');
-    expect(resetFoxState(s).moth).toBe('asleep');
+    expect(resetFoxState(s).star).toBe('asleep');
+  });
+  it('a jump that comes down on the cap is enough too', () => {
+    const reached = [150, 160, 170, 180, 190, 200, 210].filter(d => {
+      let s = step(at(cap.x - d, { vx: RUN_MAX }), { dir: 1, jump: true });
+      for (let i = 0; i < 120 * 3 && !s.onGround; i++) s = step(s, { dir: 1 });
+      return upOnRoof(s.x, s.y);
+    });
+    expect(reached.length).toBeGreaterThanOrEqual(2);
   });
 });
 

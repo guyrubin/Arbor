@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   DISCOVERIES, PARTS, SPRING_OMEGA, TIER_STRANDS, ZOOM_MAX, ZOOM_MIN, allFound, binFor, capOffset, chooseTier, clampCamera, clampZoom, discover,
-  flowAngle, focusTarget, generateStrands, gustAt, isDiscovery, mixCamera, pointInPolygon, seeded, springStep, strokeWeight, trunkAngle, windStrength, zoomAbout,
+  flowAngle, focusTarget, generateStrands, gustAt, isDiscovery, mixCamera, pointInPolygon, seeded, springStep, stageCamera, strokeWeight, trunkAngle, trunkHalfWidth, windStrength, zoomAbout,
+  FOCUS_ZOOMS,
   type Bounds, type FlowKind,
 } from './iceAgeFriendRules';
-import { mammothView, turnPoint, unturnPoint } from './mammothShape';
+import { mammothView, strokePoint, toyAt, turnPoint, unturnPoint } from './mammothShape';
 
 const BOUNDS: Bounds = { minX: 70, minY: 150, maxX: 910, maxY: 640 };
 const HALF = { w: 600, h: 300 };
@@ -104,14 +105,25 @@ describe('camera', () => {
     for (const view of ['side', 'turned'] as const) {
       const v = mammothView(view);
       for (const [id, [x, y]] of Object.entries(v.hotspots)) {
-        const t = focusTarget({ x, y }, v.bounds, HALF, 70);
-        expect(t.zoom, id).toBeGreaterThan(2);
+        const t = focusTarget({ x, y }, v.bounds, HALF, 70, FOCUS_ZOOMS[id]);
+        expect(t.zoom, id).toBeGreaterThanOrEqual(1.5);
         const clamped = clampCamera(t, t.zoom, v.bounds, HALF, 70);
         expect(clamped.x).toBeCloseTo(t.x); expect(clamped.y).toBeCloseTo(t.y);
         // The ring stays on screen at the target.
         expect(Math.abs(x - t.x)).toBeLessThan(HALF.w / t.zoom); expect(Math.abs(y - t.y)).toBeLessThan(HALF.h / t.zoom);
       }
     }
+  });
+  it('seen whole, the stage camera rests on the composed picture; zoomed in, it is held on the animal', () => {
+    const home = { x: 470, y: 330 };
+    expect(stageCamera({ x: 9000, y: -9000 }, 1, home, BOUNDS, HALF, 70)).toEqual(home);
+    for (const zoom of [1.6, 2.5, 4]) for (const [x, y] of [[-5000, 900], [5000, -900], [490, 395]]) {
+      const c = stageCamera({ x, y }, zoom, home, BOUNDS, HALF, 70), held = clampCamera({ x, y }, zoom, BOUNDS, HALF, 70);
+      expect(c.x).toBeCloseTo(held.x); expect(c.y).toBeCloseTo(held.y);
+    }
+    // In between it eases from one to the other, never past either.
+    const part = stageCamera({ x: 5000, y: 395 }, 1.3, home, BOUNDS, HALF, 70), far = clampCamera({ x: 5000, y: 395 }, 1.3, BOUNDS, HALF, 70);
+    expect(part.x).toBeGreaterThan(Math.min(home.x, far.x) - 1e-6); expect(part.x).toBeLessThan(Math.max(home.x, far.x) + 1e-6);
   });
   it('mixCamera starts and ends exactly', () => {
     const a = { x: 0, y: 0, zoom: 1 }, b = { x: 100, y: 50, zoom: 4 };
@@ -187,17 +199,62 @@ describe('the animal', () => {
     const tuskX = Math.min(...v.tusks.near.flat().map(([x]) => x));
     expect(tuskX).toBeLessThan(Math.min(...v.shapes.head.map(([x]) => x)) - 120);
   });
-  it('the trunk hangs at rest and points up at the end of the lift', () => {
+  it('the trunk hangs at rest, points up at the end of the lift, and curls back to the mouth with a tuft', () => {
     expect(Math.sin(trunkAngle(0.3, 0, 0))).toBeGreaterThan(0.9);
     expect(Math.sin(trunkAngle(1, 1, 0))).toBeLessThan(-0.5);
+    // Curled, the tip ends up beside the mouth: behind the trunk's root and not far below it.
+    let x = 300, y = 294;
+    const n = 28, step = 300 / (n - 1);
+    for (let i = 0; i < n - 1; i++) { const a = (trunkAngle(i / (n - 1), 0, 0, 1) + trunkAngle((i + 1) / (n - 1), 0, 0, 1)) / 2; x += Math.cos(a) * step; y += Math.sin(a) * step; }
+    const mouth = mammothView('side').mouth;
+    expect(Math.hypot(x - mouth[0], y - mouth[1])).toBeLessThan(40);
+    expect(trunkAngle(0.5, 0, 0, 0)).toBe(trunkAngle(0.5, 0, 0));
   });
-  it('the turned view faces the other way, and the warp can be undone', () => {
+  it('the trunk tapers: broad where it leaves the face, slim at the tip, narrowing all the way', () => {
+    expect(trunkHalfWidth(0)).toBeGreaterThan(30); expect(trunkHalfWidth(1)).toBeLessThan(12); expect(trunkHalfWidth(1)).toBeGreaterThan(8);
+    for (let s = 0.05; s <= 1; s += 0.05) expect(trunkHalfWidth(s)).toBeLessThan(trunkHalfWidth(s - 0.05));
+  });
+  it('turned about, it is the same animal facing the other way: an honest mirror, the same size, and the turn can be undone', () => {
     const side = mammothView('side'), turned = mammothView('turned');
     expect(side.hotspots.tusks[0]).toBeLessThan(side.hotspots.coats[0]);
     expect(turned.hotspots.tusks[0]).toBeGreaterThan(turned.hotspots.coats[0]);
     for (const p of [[300, 300], [600, 500], [120, 450]] as const) {
       const [x, y] = unturnPoint(turnPoint(p));
       expect(x).toBeCloseTo(p[0], 2); expect(y).toBeCloseTo(p[1], 2);
+      // No part grows or shrinks on the way round: heights are untouched.
+      expect(turnPoint(p)[1]).toBe(p[1]);
     }
+    const w = (v: typeof side) => v.bounds.maxX - v.bounds.minX, h = (v: typeof side) => v.bounds.maxY - v.bounds.minY;
+    expect(w(turned)).toBeCloseTo(w(side), 3); expect(h(turned)).toBeCloseTo(h(side), 3);
+    // Both sides fill the same frame, so turning never slides the animal across the stage.
+    expect(Math.abs((turned.bounds.minX + turned.bounds.maxX) / 2 - (side.bounds.minX + side.bounds.maxX) / 2)).toBeLessThan(4);
+    expect(turned.groundY).toBe(side.groundY);
+  });
+  it('snow lies along the top of the animal, the hint stroke runs down the back, and the face has an eye above a mouth', () => {
+    for (const id of ['side', 'turned'] as const) {
+      const v = mammothView(id);
+      expect(v.snow.length).toBeGreaterThanOrEqual(10);
+      for (const spot of v.snow) {
+        const shape = spot.part === 'head' ? v.shapes.head : v.shapes.body;
+        const top = Math.min(...shape.filter(([x]) => Math.abs(x - spot.at[0]) < 24).map(([, y]) => y));
+        expect(Math.abs(spot.at[1] - top), `${id} ${spot.at}`).toBeLessThan(40);
+      }
+      const from = strokePoint(v, 0), to = strokePoint(v, 1);
+      expect(pointInPolygon(from[0], from[1], v.shapes.body)).toBe(true); expect(pointInPolygon(to[0], to[1], v.shapes.body)).toBe(true);
+      expect(to[1]).toBeGreaterThan(from[1]);
+      expect(v.eye[1]).toBeLessThan(v.mouth[1]);
+      expect(pointInPolygon(v.eye[0], v.eye[1], v.shapes.head)).toBe(true);
+    }
+  });
+  it('a tap finds the toy under it: trunk tip, tusk, the spot behind the ear, tail, a foot, the coat, or nothing', () => {
+    const v = mammothView('side'), tip: [number, number] = [262, 596];
+    const hit = (x: number, y: number) => toyAt(v, x, y, tip, pointInPolygon);
+    expect(hit(tip[0] + 6, tip[1] - 4)?.toy).toBe('trunkTip');
+    expect(hit(120, 454)?.toy).toBe('tuskNear');
+    expect(hit(v.tickle[0], v.tickle[1])?.toy).toBe('earSpot');
+    expect(hit(880, 430)?.toy).toBe('tailTip');
+    expect(hit(750, 600)).toEqual({ toy: 'footNear', leg: 'legHind' });
+    expect(hit(600, 400)?.toy).toBe('coat');
+    expect(hit(40, 100)).toBeNull();
   });
 });

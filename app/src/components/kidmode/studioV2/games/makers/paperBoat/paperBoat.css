@@ -1,45 +1,53 @@
-/* The Paper Boat: a pop-up book lying open on a table, seen from the front and
-   above. The stage is drawn once at 556 × 332 and scaled whole; the book inside
-   is real CSS 3D (preserve-3d all the way down to each pop-up card). Nothing in
-   the 3D tree may flatten it: no overflow, filter, opacity or blend on an
-   element that holds 3D children. Hebrew mirrors the book (spine order and
-   turn), never the words. Motion is decoration: the game moves play on with
-   its own frame clock, and reduced motion keeps every step playable. */
+/* The Paper Boat: a pop-up book of Horizon Valley lying open on the round
+   table of the reading room, seen from the front and above. The book is real
+   CSS 3D (preserve-3d all the way down to each standing card), drawn once in
+   book px and scaled whole to the room the screen gives it. Nothing in the 3D
+   tree may flatten it: no overflow, filter, opacity or blend on an element
+   that holds 3D children, and nothing inside the book animates in CSS (an
+   animated layer drops out of the depth order): the game's clock moves it.
+   Chrome wears the v30 register (pearl, graphite, teal, a signal ring); the
+   colour is in the kit pictures the book is printed with. Hebrew mirrors the
+   book (spine order and turn), never the words. Reduced motion keeps every
+   step playable. */
 .pb {
-  --pb-ink: var(--studio-deep-ink);
-  --pb-table: color-mix(in srgb, var(--mk-wood-light) 34%, var(--studio-canvas));
-  position: relative; display: grid; justify-items: center; gap: 6px;
-  max-inline-size: 1040px; margin-inline: auto; padding: 10px 4px 14px;
-  border-radius: var(--studio-radius-panel);
-  background:
-    radial-gradient(120% 70% at 30% 0%, color-mix(in srgb, var(--studio-canvas-soft) 90%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--studio-canvas) 0%, var(--pb-table) 100%);
-  box-shadow: 0 24px 60px color-mix(in srgb, var(--mk-shadow) 45%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mk-white) 60%, transparent);
-  color: var(--pb-ink); font-family: var(--studio-font);
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 4px;
+  inline-size: 100%; max-inline-size: 1040px; margin-inline: auto; padding: 10px 0 12px; overflow: hidden; isolation: isolate;
+  border-radius: var(--studio-radius-panel); border: 1px solid var(--studio-surface);
+  background: linear-gradient(180deg, var(--studio-surface) 0%, var(--studio-pearl) 46%, var(--studio-mist) 100%);
+  box-shadow: var(--studio-lift);
+  color: var(--studio-graphite); font-family: var(--studio-font);
   touch-action: manipulation; user-select: none; -webkit-user-select: none;
 }
 .pb button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.pb button:focus-visible, .pb [role=slider]:focus-visible { outline: 3px solid var(--studio-deep-ink); outline-offset: 3px; }
+.pb button:focus-visible, .pb [role=slider]:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
 
-/* The page's words, on a paper label pinned above the book: two short lines. */
-.pb-label { position: relative; z-index: 3; display: grid; justify-items: center; gap: 6px; inline-size: min(100%, 520px); min-block-size: 88px; padding: 12px 18px 10px; border-radius: 6px 6px 14px 14px; background: var(--mk-white); box-shadow: 0 2px 0 var(--mk-paper-shade), 0 10px 22px color-mix(in srgb, var(--mk-shadow) 16%, transparent); rotate: -.6deg; animation: pb-label-in .45s var(--studio-ease-soft); }
-.pb-label::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background-image: var(--pb-grain); opacity: .45; pointer-events: none; }
-.pb-label p { position: relative; margin: 0; display: grid; text-align: center; font: 900 clamp(20px, 5.4vw, 26px)/1.22 var(--studio-font); letter-spacing: -.01em; color: var(--pb-ink); }
-.pb-label p span:last-child { color: color-mix(in srgb, var(--pb-ink) 78%, var(--mk-teal-deep)); }
-.pb-label__pin { position: absolute; inset-block-start: -7px; inset-inline-start: calc(50% - 7px); inline-size: 14px; block-size: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--mk-gold-light), var(--mk-gold) 60%, var(--mk-gold-deep)); box-shadow: 0 2px 3px color-mix(in srgb, var(--mk-shadow) 35%, transparent); }
-.pb-label__pages { position: relative; display: flex; gap: 6px; }
-.pb-label__pages i { display: block; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--mk-paper-shade); }
-.pb-label__pages i[data-on=true] { inline-size: 18px; border-radius: 4px; background: var(--mk-gold); }
+/* The reading room behind the table: its window and its bench, in soft focus. */
+.pb-room { position: absolute; z-index: -1; inset-block-start: 0; inset-inline: 0; block-size: 56%; pointer-events: none; -webkit-mask-image: linear-gradient(180deg, var(--studio-graphite) 70%, transparent); mask-image: linear-gradient(180deg, var(--studio-graphite) 70%, transparent); }
+.pb-room img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; object-position: 34% 92%; filter: blur(.6px); }
 
-/* The stage: a fixed drawing, scaled. Corners and tabs sit on top in screen px. */
-.pb-stage { position: relative; z-index: 2; inline-size: 100%; touch-action: pan-y; }
-.pb-scaler { position: absolute; top: 0; left: 50%; transform-origin: 50% 0; }
-.pb-table { position: absolute; left: 6%; right: 6%; top: 74%; height: 22%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 38%, transparent), transparent); }
+/* The page's words, on a frosted card, with the CrewLink's five presence dots. */
+.pb-label { position: relative; z-index: 3; display: grid; justify-items: center; gap: 7px; inline-size: min(calc(100% - 20px), 520px); min-block-size: 84px; padding: 11px 16px 10px; border-radius: var(--studio-radius-card); border: 1px solid var(--studio-line); background: var(--studio-frost); box-shadow: 0 6px 18px var(--studio-shade); }
+.pb-label p { margin: 0; display: grid; text-align: center; font: 900 clamp(19px, 5.2vw, 25px)/1.2 var(--studio-font); letter-spacing: -.01em; color: var(--studio-graphite); animation: pb-words-in .4s var(--studio-ease-soft); }
+.pb-label p span:last-child { color: var(--studio-graphite-soft); }
+.pb-link { display: flex; align-items: center; gap: 7px; padding: 4px 9px; border-radius: 999px; background: var(--studio-mist); }
+.pb-link i { display: block; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--studio-surface); box-shadow: inset 0 0 0 1.5px var(--studio-graphite-soft); transition: background-color .3s var(--studio-ease-soft), box-shadow .3s var(--studio-ease-soft), scale .3s var(--studio-ease-spring); }
+.pb-link i[data-on=true] { background: var(--studio-done); box-shadow: 0 0 0 2px var(--studio-teal-soft); scale: 1.15; }
+
+/* The stage: the book stands on its near edge at the bottom; the room is above it. */
+.pb-stage { position: relative; z-index: 2; inline-size: 100%; block-size: 100%; min-block-size: 0; touch-action: pan-y; }
+.pb-scaler { position: absolute; left: 50%; transform-origin: 50% 100%; pointer-events: none; }
 .pb-persp { position: absolute; perspective-origin: 50% 50%; }
-.pb-book { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; }
-/* the cloth board under the pages, and the page block's front edge */
-.pb-board { position: absolute; inset: -8px -9px -10px; border-radius: 7px; transform: translateZ(-10px); background: linear-gradient(90deg, var(--mk-indigo) 0%, color-mix(in srgb, var(--mk-indigo) 80%, var(--mk-bluebell)) 48%, var(--mk-indigo-deep) 50%, color-mix(in srgb, var(--mk-indigo) 80%, var(--mk-bluebell)) 52%, var(--mk-indigo) 100%); box-shadow: 0 18px 30px color-mix(in srgb, var(--mk-shadow) 50%, transparent); }
-.pb-block { position: absolute; left: 0; right: 0; top: 100%; height: 9px; transform-origin: 50% 0; transform: rotateX(-90deg); background: repeating-linear-gradient(180deg, var(--mk-paper) 0 2px, var(--mk-paper-shade) 2px 3px); }
+.pb-book { position: absolute; left: 0; top: 0; transform-style: preserve-3d; transform-origin: 50% 50%; pointer-events: auto; }
+/* the round table the book lies on, and the book's shadow on it */
+.pb-tabletop { position: absolute; border-radius: 50%; transform: translateZ(-16px); background-size: 108% 108%; background-position: 50% 50%; box-shadow: 0 40px 70px var(--studio-shade); pointer-events: none; }
+.pb-under { position: absolute; inset: -4px -16px -30px; border-radius: 30px; transform: translateZ(-15px); background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 46%, transparent), color-mix(in srgb, var(--mk-shadow) 22%, transparent) 60%, transparent); pointer-events: none; }
+/* the linen boards under the pages, the page block's front edge, the back cover */
+.pb-board { position: absolute; top: -8px; bottom: -10px; transform: translateZ(-10px); background: linear-gradient(180deg, var(--mk-white), var(--mk-linen)); box-shadow: inset 0 0 0 1px var(--mk-linen-shade); }
+.pb-board--left { left: -9px; right: 50%; border-radius: 9px 0 0 9px; }
+.pb-board--right { left: 50%; right: -9px; border-radius: 0 9px 9px 0; }
+.pb-block { position: absolute; left: 0; width: 100%; top: 100%; height: 9px; transform-origin: 50% 0; transform: rotateX(-90deg); background: repeating-linear-gradient(180deg, var(--mk-paper) 0 2px, var(--mk-paper-shade) 2px 3px); }
+.pb-cover { position: absolute; inset: -8px -9px -10px 0; display: grid; place-items: center; border-radius: 0 9px 9px 0; background: linear-gradient(135deg, var(--mk-white), var(--mk-linen)); box-shadow: inset 0 0 0 1px var(--mk-linen-shade), inset 0 0 0 9px var(--mk-white), inset 0 0 0 10.5px var(--mk-sea); }
+.pb-cover__boat { inline-size: 96px; block-size: 72px; transform: scaleX(-1); }
 .pb-page, .pb-leaf { position: absolute; top: 0; width: 250px; height: 290px; transform-style: preserve-3d; }
 .pb-page--left { left: 0; }
 .pb-page--right { left: 250px; }
@@ -49,75 +57,109 @@
 .pb-face--back { transform: rotateY(180deg) translateZ(.3px); }
 .pb-page__shade { position: absolute; inset: 0; transform: translateZ(.6px); background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 70%, transparent), color-mix(in srgb, var(--mk-shadow) 25%, transparent)); pointer-events: none; }
 .pb-page--left .pb-page__shade { background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 60%, transparent), color-mix(in srgb, var(--mk-shadow) 15%, transparent)); }
+/* the light that slides across a page as it bends over */
+.pb-sheen { position: absolute; inset: 0; transform: translateZ(.8px); background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--mk-white) 80%, transparent) 50%, transparent 70%); background-size: 240% 100%; background-repeat: no-repeat; pointer-events: none; }
 
-/* One half of a spread: the printed page, then its pop-up cards. */
+/* One half of a spread: the printed page, then its standing cards. */
 .pb-half { position: absolute; inset: 0; transform-style: preserve-3d; }
-.pb-print { position: absolute; inset: 0; border-radius: 2px; overflow: hidden; background: var(--mk-paper); }
+.pb-print { position: absolute; inset: 0; overflow: hidden; background: var(--mk-paper); }
 .pb-half[data-side=left] .pb-print { border-radius: 5px 1px 1px 5px; }
 .pb-half[data-side=right] .pb-print { border-radius: 1px 5px 5px 1px; }
-.pb-print > svg { position: absolute; inset: 0; display: block; }
-.pb-print__live { pointer-events: none; }
-.pb-grain { position: absolute; inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .55; pointer-events: none; }
+.pb-print__art, .pb-slice { position: absolute; inset: 0; display: block; background-size: 200% 100%; background-repeat: no-repeat; }
+.pb-print__live { position: absolute; inset: 0; display: block; pointer-events: none; }
+.pb-grain { position: absolute; inset: 0; background-image: var(--pb-grain); background-size: 180px 180px; opacity: .28; pointer-events: none; }
 /* gutter shading at the spine */
-.pb-gutter { position: absolute; top: 0; bottom: 0; width: 46px; pointer-events: none; }
-.pb-half[data-side=left] .pb-gutter { right: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--mk-umber) 30%, transparent), color-mix(in srgb, var(--mk-umber) 8%, transparent) 40%, transparent); }
-.pb-half[data-side=right] .pb-gutter { left: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-umber) 30%, transparent), color-mix(in srgb, var(--mk-umber) 8%, transparent) 40%, transparent); }
+.pb-gutter { position: absolute; top: 0; bottom: 0; width: 40px; pointer-events: none; }
+.pb-half[data-side=left] .pb-gutter { right: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--mk-shadow) 34%, transparent), color-mix(in srgb, var(--mk-shadow) 8%, transparent) 40%, transparent); }
+.pb-half[data-side=right] .pb-gutter { left: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--mk-shadow) 34%, transparent), color-mix(in srgb, var(--mk-shadow) 8%, transparent) 40%, transparent); }
 
-.pb-pop { position: absolute; pointer-events: none; }
-.pb-pop > .pb-art { position: absolute; inset: 0; display: block; overflow: visible; }
-.pb-wave > .pb-art { overflow: hidden; }
-/* the shadow a standing card casts back across the page; it grows with the fold */
-.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; border-radius: 40% 40% 6px 6px; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 62%, transparent), color-mix(in srgb, var(--mk-shadow) 22%, transparent) 55%, transparent); }
+.pb-pop { position: absolute; transform-origin: 50% 100%; pointer-events: none; }
+/* the shadow a standing card throws back across the page, and the dark line at its foot */
+.pb-cast { position: absolute; pointer-events: none; transform-origin: 50% 100%; background: linear-gradient(0deg, color-mix(in srgb, var(--mk-shadow) 50%, transparent), color-mix(in srgb, var(--mk-shadow) 16%, transparent) 55%, transparent); }
+.pb-foot { position: absolute; height: 9px; transform: translateZ(.5px); background: linear-gradient(180deg, color-mix(in srgb, var(--mk-shadow) 46%, transparent), transparent); pointer-events: none; }
+.pb-fx { position: absolute; display: block; overflow: visible; pointer-events: none; }
+.pb-glow { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-sun) 92%, transparent), color-mix(in srgb, var(--mk-amber) 46%, transparent) 46%, transparent); pointer-events: none; }
 
-/* the paper boat. Nothing inside the book animates in CSS: an animated layer
-   is lifted out of the 3D depth order, so every motion there comes from the
-   game's frame clock. */
-.pb-boat-card { pointer-events: none; }
+/* stand-up figures: the crew and the shipped props */
+.pb-figure { position: absolute; left: 50%; inline-size: auto; max-inline-size: none; transform-origin: 50% 100%; filter: drop-shadow(0 1px 0 var(--mk-white)) drop-shadow(0 2px 2px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
+/* the paper boat */
 .pb-boat { position: absolute; inset-inline: 0; bottom: 0; display: grid; justify-items: center; transform-origin: 50% 90%; }
-.pb-boat svg { inline-size: 76px; block-size: 57px; display: block; overflow: visible; }
-.pb-boat-card--launch .pb-boat svg { inline-size: 84px; block-size: 63px; }
-.pb-boat-button { position: absolute; inset: 0; pointer-events: auto; border: 0; border-radius: 24px; background: transparent; touch-action: none; }
-.pb-boat-button:focus-visible { outline: 4px solid var(--mk-gold); outline-offset: -4px; }
+.pb-boat svg { display: block; overflow: visible; filter: drop-shadow(0 0 1px color-mix(in srgb, var(--mk-shadow) 50%, transparent)) drop-shadow(0 3px 3px color-mix(in srgb, var(--mk-shadow) 42%, transparent)); }
+/* a gate on the river: the kit's knit arch */
+.pb-gate { position: absolute; inset: 0; display: block; inline-size: 100%; block-size: 100%; filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--mk-shadow) 30%, transparent)); }
+.pb-gate[data-lit=true] { filter: brightness(1.1) drop-shadow(0 0 4px color-mix(in srgb, var(--mk-white) 90%, transparent)); }
+/* what the ScoutCam sees, on its paper arm */
+.pb-view { position: absolute; inset: 0; display: block; }
+.pb-view i { position: absolute; left: calc(50% - 3px); bottom: 0; inline-size: 6px; block-size: 52%; border-radius: 2px; background: linear-gradient(90deg, var(--mk-white), var(--mk-paper-shade)); }
+.pb-view img { position: absolute; left: 0; top: 0; inline-size: 100%; aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--mk-white); box-shadow: 0 2px 5px color-mix(in srgb, var(--mk-shadow) 40%, transparent); object-fit: cover; }
+/* a storm cloud on its stalk, and its rain */
+.pb-cloud { position: absolute; inset: 0; display: block; }
+.pb-cloud img { position: absolute; left: 0; inline-size: 100%; block-size: auto; transform-origin: 50% 80%; }
+.pb-cloud__stalk { position: absolute; left: calc(50% - 3px); bottom: 0; inline-size: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--mk-white), var(--mk-paper-shade)); }
+.pb-cloud__rain { position: absolute; inline-size: 3px; border-radius: 2px; transform: skewX(-16deg); background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--mk-white) 86%, transparent)); }
+/* the lamp's beam */
+.pb-beam__ray { position: absolute; inset: 0; transform-origin: 96% 22%; background: conic-gradient(from 258deg at 96% 22%, transparent 0deg, color-mix(in srgb, var(--mk-butter) 62%, transparent) 9deg, color-mix(in srgb, var(--mk-sun) 46%, transparent) 14deg, transparent 24deg); -webkit-mask-image: linear-gradient(270deg, var(--studio-graphite) 30%, transparent 96%); mask-image: linear-gradient(270deg, var(--studio-graphite) 30%, transparent 96%); }
 
-.pb-overlay { position: absolute; top: 0; bottom: 0; left: 50%; translate: -50% 0; pointer-events: none; }
+/* On top of the book, in screen px: the things that answer a tap, the page corners. */
+.pb-overlay { position: absolute; inset: 0; pointer-events: none; }
 .pb-overlay > * { pointer-events: auto; }
-/* Page corners: the dog-ear that turns the page, and the back corner. */
-.pb-corner { position: absolute; z-index: 3; display: grid; place-items: center; inline-size: 60px; block-size: 60px; padding: 0; border: 0; color: var(--studio-action-ink); background: var(--studio-action-fill); border-radius: 18px 18px 18px 4px; box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--mk-white) 70%, transparent); touch-action: none; animation: pb-corner-in .4s var(--studio-ease-spring); }
-.pb-corner--next { animation: pb-corner-in .4s var(--studio-ease-spring), pb-glow 1.8s 0.4s ease-in-out infinite; }
-.pb-corner--back { color: var(--pb-ink); background: var(--mk-white); border-radius: 18px 18px 4px 18px; inline-size: 56px; block-size: 56px; }
-[dir=rtl] .pb-corner--next { border-radius: 18px 18px 4px 18px; }
-[dir=rtl] .pb-corner--back { border-radius: 18px 18px 18px 4px; }
-.pb-corner--end { display: flex; gap: 8px; inline-size: auto; padding-inline: 14px 18px; font: 900 18px/1 var(--studio-font); white-space: nowrap; border-radius: 18px; animation: pb-corner-in .5s var(--studio-ease-spring), pb-glow 1.8s .5s ease-in-out infinite; }
-.pb-corner:active { scale: .96; }
+.pb-toy { position: absolute; z-index: 1; inline-size: 52px; block-size: 52px; margin: -26px 0 0 -26px; padding: 0; border: 0; border-radius: 50%; background: transparent; touch-action: pan-y; }
+.pb-toy--boat { z-index: 2; inline-size: 96px; block-size: 76px; margin: -42px 0 0 -48px; border-radius: 26px; touch-action: none; cursor: grab; }
+.pb-toy:active { background: color-mix(in srgb, var(--studio-surface) 34%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--studio-surface) 70%, transparent); }
+.pb-toy:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: -3px; background: color-mix(in srgb, var(--studio-surface) 30%, transparent); }
+/* Page corners: the tab that turns the page (graphite, ringed in the signal colour), and the back corner. */
+.pb-corner { position: absolute; z-index: 3; display: grid; place-items: center; inline-size: 60px; block-size: 60px; padding: 0; border: 0; color: var(--studio-action-ink); background: var(--studio-action); border-radius: 18px 18px 18px 5px; box-shadow: var(--studio-lift); touch-action: none; animation: pb-corner-in .4s var(--studio-ease-spring); transition: scale .12s var(--studio-ease-soft); }
+.pb-corner--next::after, .pb-corner--end::after { content: ''; position: absolute; inset: -6px; border-radius: inherit; border: 3px solid var(--studio-signal); animation: pb-ring 1.8s .4s ease-in-out infinite; pointer-events: none; }
+.pb-corner--back { color: var(--studio-graphite); background: var(--studio-surface); border: 1px solid var(--studio-line); border-radius: 18px 18px 5px 18px; inline-size: 56px; block-size: 56px; box-shadow: 0 6px 16px var(--studio-shade); }
+[dir=rtl] .pb-corner--next { border-radius: 18px 18px 5px 18px; }
+[dir=rtl] .pb-corner--back { border-radius: 18px 18px 18px 5px; }
+.pb-corner--end { display: flex; gap: 8px; inline-size: auto; padding-inline: 14px 18px; font: 900 18px/1 var(--studio-font); white-space: nowrap; border-radius: 18px; animation: pb-corner-in .5s var(--studio-ease-spring); }
+.pb-corner:active { scale: .93; }
 
-/* The wheel row: the steer buttons beside the pocketed wheel. */
-.pb-controls { display: grid; justify-items: center; inline-size: 100%; }
-.pb-wheel-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.pb-steer { display: grid; place-items: center; inline-size: 60px; block-size: 60px; border-radius: 50%; border: 0; color: var(--pb-ink); background: var(--mk-white); box-shadow: 0 4px 0 var(--mk-paper-shade), 0 8px 16px color-mix(in srgb, var(--mk-shadow) 16%, transparent); transition: opacity .3s, scale .15s; }
-.pb-steer:active:not(:disabled) { scale: .94; }
-.pb-steer:disabled { opacity: .35; cursor: default; }
-.pb-wheel { position: relative; inline-size: 220px; block-size: 168px; border-radius: 0 0 14px 14px; touch-action: none; cursor: grab; }
+/* The wheel: the steer buttons beside it. */
+.pb-controls { position: relative; z-index: 2; display: grid; justify-items: center; inline-size: 100%; }
+.pb-wheel-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.pb-steer { display: grid; place-items: center; flex: none; inline-size: 60px; block-size: 60px; border-radius: 50%; border: 1px solid var(--studio-line); color: var(--studio-graphite); background: var(--studio-surface); box-shadow: 0 6px 16px var(--studio-shade); transition: opacity .3s, scale .12s var(--studio-ease-soft); }
+.pb-steer:active:not(:disabled) { scale: .92; }
+.pb-steer:disabled { opacity: .4; cursor: default; }
+.pb-wheel { position: relative; flex: none; inline-size: var(--pb-wheel, 220px); aspect-ratio: 220 / 172; border-radius: 16px; touch-action: none; cursor: grab; }
 .pb-wheel[aria-disabled=true] { cursor: default; }
 .pb-wheel__svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
-.pb-wheel__cloth { position: absolute; left: 0; right: 0; bottom: 0; height: 22%; opacity: .25; pointer-events: none; border-radius: 0 0 14px 14px; }
 .pb-wheel__tuck { transition: transform .6s var(--studio-ease-spring); }
-.pb-wheel-row[data-tucked=true] .pb-wheel__tuck { transform: translateY(66px); }
+.pb-wheel-row[data-tucked=true] .pb-wheel__tuck { transform: translateY(58px); }
+.pb-wheel__marks { animation: pb-words-in .3s var(--studio-ease-soft); }
+
+/* The hand that shows the first move. Its fingertip is at its own top-left corner. */
+.pb-hand { position: absolute; z-index: 6; inline-size: 0; block-size: 0; pointer-events: none; }
+.pb-hand__art { position: absolute; left: -16px; top: -8px; inline-size: 56px; block-size: 70px; max-inline-size: none; overflow: visible; filter: drop-shadow(0 4px 6px var(--studio-shade)); }
 
 .pb-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
 
-@keyframes pb-label-in { from { opacity: 0; translate: 0 -6px; } to { opacity: 1; translate: 0 0; } }
+@keyframes pb-words-in { from { opacity: 0; translate: 0 -5px; } to { opacity: 1; translate: 0 0; } }
 @keyframes pb-corner-in { from { scale: .6; opacity: 0; } to { scale: 1; opacity: 1; } }
-@keyframes pb-glow { 0%, 100% { box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), 0 0 0 0 color-mix(in srgb, var(--mk-sun) 70%, transparent); } 50% { box-shadow: 0 6px 16px color-mix(in srgb, var(--mk-shadow) 30%, transparent), 0 0 0 10px color-mix(in srgb, var(--mk-sun) 0%, transparent); } }
+@keyframes pb-ring { 0%, 100% { opacity: 1; scale: 1; } 50% { opacity: .35; scale: 1.08; } }
 
+/* A wide screen: the book takes the whole height; the words and the wheel sit beside it. */
+.pb[data-layout=book-beside] { grid-template-columns: minmax(0, 1fr) clamp(236px, 27%, 290px); grid-template-rows: auto minmax(0, 1fr); column-gap: 8px; padding: 14px 16px 14px 8px; }
+.pb[data-layout=book-beside] > .pb-stage { grid-column: 1; grid-row: 1 / span 2; }
+.pb[data-layout=book-beside] > .pb-label { grid-column: 2; grid-row: 1; inline-size: 100%; align-self: start; }
+.pb[data-layout=book-beside] > .pb-controls { grid-column: 2; grid-row: 2; align-self: end; }
+.pb[data-layout=book-beside] > .pb-room { inset-inline-end: 22%; block-size: 62%; }
+.pb[data-layout=book-beside] .pb-wheel-row { flex-wrap: wrap; row-gap: 8px; }
+.pb[data-layout=book-beside] .pb-wheel { order: -1; margin-inline: 12px; }
+.pb[data-layout=book-beside] .pb-label p { font-size: clamp(19px, 2vw, 24px); }
+
+@media (max-width: 560px) {
+  /* A phone: the book runs edge to edge. */
+  .pb { inline-size: 100vw; max-inline-size: none; margin-inline: calc(50% - 50vw); border-radius: 0; border-inline: 0; }
+}
 @media (min-width: 800px) {
-  .pb { padding: 16px 16px 20px; gap: 10px; }
-  .pb-label { min-block-size: 96px; }
-  .pb-wheel { inline-size: 240px; block-size: 183px; }
   .pb-steer { inline-size: 64px; block-size: 64px; }
+  .pb-label { min-block-size: 92px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pb *, .pb { animation: none !important; transition: none !important; }
 }
 @media (forced-colors: active) {
-  .pb-corner, .pb-steer { border: 2px solid ButtonText; }
+  .pb-corner, .pb-steer, .pb-toy:focus-visible { border: 2px solid ButtonText; }
 }

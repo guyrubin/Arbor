@@ -13,7 +13,7 @@ import { TRUNK_LENGTH, bezierAt, type Bezier, type MammothView } from './mammoth
 import type { SnowClump } from './mammothPlayRules';
 
 export type RGB = readonly [number, number, number];
-const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft', 'moss'] as const;
+const PALETTE_KEYS = ['fur-dark', 'fur', 'fur-light', 'fur-tip', 'umber', 'rust', 'shadow', 'cream', 'paper-shade', 'sand', 'white', 'snow', 'snow-shade', 'chalk', 'sky-pale', 'storm-grey', 'wood', 'wood-light', 'wood-dark', 'rose', 'clay', 'ink-soft', 'moss', 'teal-deep'] as const;
 export type PaletteKey = typeof PALETTE_KEYS[number];
 export type Palette = Record<PaletteKey, RGB>;
 
@@ -205,9 +205,6 @@ export interface Flake { x: number; y: number; r: number; speed: number; drift: 
 export interface Puff { x: number; y: number; born: number }
 /** Loose snow in the air: brushed off the back, shaken out of the coat, knocked off by a heavy step. World units. */
 export interface Mote { x: number; y: number; vx: number; vy: number; r: number; born: number; life: number; floor: number }
-/** The quick ring that answers a touch where it lands. */
-export interface Ripple { x: number; y: number; born: number }
-export const RIPPLE_SECONDS = 0.4;
 /** A patch of breath on the glass, where the trunk tip or a finger met it. World units. */
 export interface Mist { x: number; y: number; r: number; born: number }
 export const MIST_SECONDS = 3.2;
@@ -215,6 +212,8 @@ export const MIST_SECONDS = 3.2;
 export interface Bundle { x: number; y: number; angle: number; size: number }
 /** The grass standing in its basket: where its roots are (world units), how much has grown back, when it was last rustled. */
 export interface Sheaf { x: number; y: number; size: number; grown: number; shaken: number }
+/** A crew tool at work on the animal: the RouteScope tracing the tusk's curve (k 0..1 along it), or the ScoutCam's frame round a world point. */
+export interface ToolMark { kind: 'routeScope' | 'scoutCam'; k: number; at: Vec }
 /** The wall of glass, in world units. */
 export interface Glass {
   panes: Path2D | null;
@@ -238,8 +237,11 @@ export interface FrameInput {
   palette: Palette; inks: Inks;
   glass: Glass;
   flakes: readonly Flake[]; puffs: readonly Puff[]; mists: readonly Mist[];
-  snow: readonly SnowClump[]; motes: readonly Mote[]; ripples: readonly Ripple[];
+  snow: readonly SnowClump[]; motes: readonly Mote[];
   bundle: Bundle | null; sheaf: Sheaf | null;
+  tool: ToolMark | null;
+  /** How solid the animal is (1 = fully there): it fades in out of the breath on the glass. */
+  fade: number;
 }
 export interface FrameOutput { frames: PartFrames; trunk: TrunkLine }
 
@@ -272,12 +274,20 @@ export function drawFrame(input: FrameInput): FrameOutput {
     toWorld();
     drawSheen(ctx, glass, p);
     drawMists(ctx, input.mists, p, input.time);
+    // One great breath whitens the whole wall of glass; the mammoth steps through under it.
+    if (glass.bloom > 0.01) {
+      const { minX, minY, maxX, maxY } = glass.box, cx = (minX + maxX) / 2, cy = minY + (maxY - minY) * 0.62, r = (maxX - minX) * (0.25 + 0.5 * glass.bloom);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, paint(p.white, Math.min(1, glass.bloom * 1.3))); g.addColorStop(0.7, paint(p.snow, Math.min(1, glass.bloom * 1.1))); g.addColorStop(1, paint(p.snow, glass.bloom * glass.bloom));
+      ctx.fillStyle = g; ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+    }
     ctx.restore();
   };
   if (!glass.behind) onGlass();
 
   ctx.save();
   if (glass.behind && glass.panes) { toWorld(); ctx.clip(glass.panes); }
+  ctx.globalAlpha = Math.max(0, Math.min(1, input.fade));
   set(IDENTITY);
   drawShadow(ctx, view, p, pose, glass.behind);
   const byPart = new Map(input.strands.parts.map(part => [part.part, part]));
@@ -299,10 +309,14 @@ export function drawFrame(input: FrameInput): FrameOutput {
       case 'head': set(frames.head); fillShape(ctx, st.shapes.head, view, p, 'head'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.head); drawFace(ctx, view, p, pose); drawSnow(ctx, view, st, input.snow, 'head', p); break;
       case 'ear': set(frames.ear); fillShape(ctx, st.shapes.ear, view, p, 'ear'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.ear); drawEarRim(ctx, st.shapes.ear, p); break;
       case 'trunk': set(frames.head); drawStrands(input, part, view4, SA, true, trunk, drawTrunkBase(ctx, trunk, view, p)); drawTrunkTip(ctx, trunk, view, p); break;
-      case 'tuskNear': set(frames.head); drawTusk(ctx, st.tuskNear, p, false); break;
+      case 'tuskNear': set(frames.head); drawTusk(ctx, st.tuskNear, p, false); if (input.tool?.kind === 'routeScope') drawMeasure(ctx, st.tuskNear, p, input.tool.k, SA); break;
       case 'sheath': set(frames.head); fillShape(ctx, st.shapes.sheath, view, p, 'sheath'); drawStrands(input, part, view4, SA, false, trunk, st.shapes.sheath); break;
     }
   }
+  // The body's own roundness in the hall's light: shade gathers under the belly and between the legs, and the
+  // sky through the dome cools the top of the back. Laid over the hair only (never the room behind it).
+  set(frames.body);
+  drawVolume(ctx, view, p);
   ctx.restore();
   if (glass.behind) onGlass();
 
@@ -311,14 +325,7 @@ export function drawFrame(input: FrameInput): FrameOutput {
   if (input.bundle) drawBundle(ctx, input.bundle, p);
   drawPuffs(ctx, input.puffs, p, input.time);
   drawMotes(ctx, input.motes, p, input.time);
-  drawRipples(ctx, input.ripples, p, input.time, S);
-  if (glass.bloom > 0.01) {
-    // One great breath on the glass: a soft white cloud from the middle of the wall outward.
-    const cx = (glass.box.minX + glass.box.maxX) / 2, cy = glass.box.minY + (glass.box.maxY - glass.box.minY) * 0.6, r = Math.max(glass.box.maxX - glass.box.minX, (bottom - top)) * (0.5 + 0.5 * glass.bloom);
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    g.addColorStop(0, paint(p.white, Math.min(1, glass.bloom * 1.25))); g.addColorStop(0.55, paint(p.snow, glass.bloom)); g.addColorStop(1, paint(p.snow, 0));
-    ctx.fillStyle = g; ctx.fillRect(left, top, right - left, bottom - top);
-  }
+  if (input.tool?.kind === 'scoutCam') drawFinder(ctx, input.tool, p, S);
   return { frames, trunk };
 }
 
@@ -344,6 +351,23 @@ function drawShadow(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette
     foot.addColorStop(0, paint(mix(tone, p.shadow, 0.5), 0.55 * k)); foot.addColorStop(0.7, paint(tone, 0.22 * k)); foot.addColorStop(1, paint(tone, 0));
     ctx.fillStyle = foot; ctx.beginPath(); ctx.arc(0, 0, rw, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
+}
+
+function drawVolume(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette) {
+  const b = view.furBounds, w = b.maxX - b.minX, h = b.maxY - b.minY;
+  const before = ctx.globalCompositeOperation, alpha = ctx.globalAlpha;
+  ctx.globalCompositeOperation = 'source-atop';
+  const under = ctx.createLinearGradient(0, b.minY + h * 0.46, 0, b.maxY);
+  under.addColorStop(0, paint(p.shadow, 0)); under.addColorStop(0.5, paint(p.shadow, 0.2)); under.addColorStop(1, paint(p.shadow, 0.44));
+  ctx.fillStyle = under; ctx.fillRect(b.minX - 120, b.minY + h * 0.46, w + 240, h * 0.6);
+  const sky = ctx.createLinearGradient(0, b.minY - 20, 0, b.minY + h * 0.36);
+  sky.addColorStop(0, paint(mix(p['sky-pale'], p.white, 0.4), 0.3)); sky.addColorStop(1, paint(p['sky-pale'], 0));
+  ctx.fillStyle = sky; ctx.fillRect(b.minX - 120, b.minY - 40, w + 240, h * 0.36 + 40);
+  // The far end of the animal falls a little into the room's shade; the end nearer the light stays warm.
+  const along = ctx.createLinearGradient(b.minX, 0, b.maxX, 0);
+  along.addColorStop(0, paint(p['fur-tip'], 0.07)); along.addColorStop(0.5, paint(p.shadow, 0)); along.addColorStop(1, paint(p.shadow, 0.2));
+  ctx.fillStyle = along; ctx.fillRect(b.minX - 120, b.minY - 40, w + 240, h + 80);
+  ctx.globalCompositeOperation = before; ctx.globalAlpha = alpha;
 }
 
 const gradientCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>();
@@ -415,7 +439,7 @@ function drawFace(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette, 
   const skin = mix(mix(p['fur-dark'], p.umber, 0.55), p.clay, 0.16), deep = mix(p.umber, p.shadow, 0.7);
 
   /* the mouth */
-  ctx.save(); ctx.translate(view.mouth[0], view.mouth[1]); ctx.scale(m, 1);
+  ctx.save(); ctx.translate(view.mouth[0], view.mouth[1]); ctx.scale(m * 0.9, 0.82);
   const jaw = Math.max(0, Math.min(1, pose.jaw));
   // Inside, seen only while it chews or calls.
   if (jaw > 0.02) {
@@ -438,7 +462,8 @@ function drawFace(ctx: CanvasRenderingContext2D, view: MammothView, p: Palette, 
 
   /* the eye */
   const [ex, ey] = view.eye;
-  ctx.save(); ctx.translate(ex, ey); ctx.scale(m, 1);
+  // A little larger than life: a mammoth's eye is small, and this one has to be met.
+  ctx.save(); ctx.translate(ex, ey); ctx.scale(m * 1.3, 1.3);
   // The socket: bare, creased skin round the eye, darker than the fur.
   const socket = ctx.createRadialGradient(0, 0, 4, 0, 0, 21);
   socket.addColorStop(0, paint(mix(skin, p.shadow, 0.5), 0.95)); socket.addColorStop(0.62, paint(mix(skin, p.shadow, 0.4), 0.7)); socket.addColorStop(1, paint(skin, 0));
@@ -584,25 +609,72 @@ function drawTusk(ctx: CanvasRenderingContext2D, tusk: TuskPaths, p: Palette, fa
   ctx.restore();
 }
 
-/** Snow lying on the crown, the hump and the back: soft heaps that follow the slope, lit from the top left, blue in their own shade. */
+/** The RouteScope's reading: a fine teal line laid along the outside of the tusk as it is measured, with a tick at every step and a bead at each end. */
+function drawMeasure(ctx: CanvasRenderingContext2D, tusk: TuskPaths, p: Palette, k: number, S: number) {
+  const n = tusk.spine.length, upto = Math.max(1, Math.round((n - 1) * Math.max(0, Math.min(1, k))));
+  const q = Math.floor(n / 5), qa = tusk.spine[q - 1], qb = tusk.spine[q + 1];
+  const side = -(qb[1] - qa[1]) + (qb[0] - qa[0]) > 0 ? 1 : -1;
+  const at = (i: number, out: number): Vec => {
+    const a = tusk.spine[Math.max(0, i - 1)], b = tusk.spine[Math.min(n - 1, i + 1)];
+    let nx = -(b[1] - a[1]), ny = b[0] - a[0];
+    const m = Math.hypot(nx, ny) || 1; nx = (nx / m) * side; ny = (ny / m) * side;
+    return [tusk.spine[i][0] + nx * (tusk.widths[i] + out), tusk.spine[i][1] + ny * (tusk.widths[i] + out)];
+  };
+  const gap = 9 / Math.max(0.5, Math.sqrt(S)), line = Math.max(1.6, 2.4 / S);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [colour, w] of [[paint(p.white, 0.9), line * 2.4], [paint(p['teal-deep']), line]] as const) {
+    ctx.strokeStyle = colour; ctx.lineWidth = w;
+    ctx.beginPath();
+    for (let i = 0; i <= upto; i++) { const [x, y] = at(i, gap); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i <= upto; i += 4) { const [x, y] = at(i, gap - 3.5), [x2, y2] = at(i, gap + 5.5); ctx.moveTo(x, y); ctx.lineTo(x2, y2); }
+    ctx.stroke();
+  }
+  for (const i of [0, upto]) {
+    const [x, y] = at(i, gap);
+    ctx.fillStyle = paint(p.white); ctx.beginPath(); ctx.arc(x, y, line * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = paint(p['teal-deep']); ctx.beginPath(); ctx.arc(x, y, line * 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+}
+/** The ScoutCam's frame: four soft corners closing in on what Pep's camera is looking at. */
+function drawFinder(ctx: CanvasRenderingContext2D, tool: ToolMark, p: Palette, S: number) {
+  const k = Math.max(0, Math.min(1, tool.k)), r = (62 + 44 * (1 - k) * (1 - k)) / S, arm = r * 0.4, [cx, cy] = tool.at;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [colour, w, alpha] of [[p['ink-soft'], 5.4 / S, 0.3], [p.white, 3 / S, 0.96]] as const) {
+    ctx.strokeStyle = paint(colour, alpha * Math.min(1, k * 3 + 0.2)); ctx.lineWidth = w;
+    ctx.beginPath();
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+      ctx.moveTo(cx + sx * r, cy + sy * (r - arm)); ctx.quadraticCurveTo(cx + sx * r, cy + sy * r, cx + sx * (r - arm), cy + sy * r);
+    }
+    ctx.stroke();
+  }
+}
+
+/** Snow lying on the crown, the hump and the back: one soft, lumpy blanket that follows the slope, lit from the top left, blue in its own shade. */
 function drawSnow(ctx: CanvasRenderingContext2D, view: MammothView, st: Statics, snow: readonly SnowClump[], part: 'head' | 'body', p: Palette) {
+  const lumps: { x: number; y: number; rx: number; ry: number; tilt: number; a: number }[] = [];
   for (const clump of snow) {
     const spot = view.snow[clump.spot];
     if (!spot || spot.part !== part || clump.amount <= 0) continue;
-    const r = spot.r * clump.size * (0.5 + 0.5 * clump.amount), [x, y] = spot.at;
-    ctx.save(); ctx.translate(x, y - r * 0.12); ctx.rotate(st.snowTilt[clump.spot] + clump.tilt * 0.3);
-    const lump = (cx: number, cy: number, rx: number, ry: number) => {
-      const g = ctx.createRadialGradient(cx - rx * 0.3, cy - ry * 0.5, ry * 0.1, cx, cy, rx);
-      g.addColorStop(0, paint(p.white, 0.98)); g.addColorStop(0.55, paint(p.snow, 0.96)); g.addColorStop(0.88, paint(mix(p['snow-shade'], p.snow, 0.35), 0.9)); g.addColorStop(1, paint(p['snow-shade'], 0));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-    };
-    // A shade under the heap where it presses the hair down.
-    ctx.fillStyle = paint(mix(p['fur-dark'], p.shadow, 0.5), 0.3 * clump.amount);
-    ctx.beginPath(); ctx.ellipse(1.5, r * 0.36, r * 1.02, r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
-    lump(-r * 0.5, r * 0.1, r * 0.62, r * 0.34);
-    lump(r * 0.52, r * 0.12, r * 0.58, r * 0.3);
-    lump(0, -r * 0.04, r * 0.86, r * 0.46);
-    ctx.restore();
+    const k = 0.55 + 0.45 * clump.amount, r = spot.r * clump.size * 1.5 * k, tilt = st.snowTilt[clump.spot] + clump.tilt * 0.25;
+    const c = Math.cos(tilt), s = Math.sin(tilt), [x, y] = spot.at;
+    for (const [dx, dy, kx, ky] of [[-0.62, 0.08, 0.6, 0.34], [0.6, 0.1, 0.58, 0.32], [0, -0.06, 0.92, 0.44]] as const) {
+      lumps.push({ x: x + (dx * c - dy * s) * r, y: y - r * 0.1 + (dx * s + dy * c) * r, rx: r * kx, ry: r * ky * (0.7 + 0.3 * clump.amount), tilt, a: Math.min(1, clump.amount * 1.6) });
+    }
+  }
+  if (!lumps.length) return;
+  // The shade the blanket lays on the hair under it, then its blue underside, then the sunlit top.
+  for (const pass of [0, 1, 2] as const) {
+    for (const l of lumps) {
+      ctx.save(); ctx.translate(l.x, l.y + (pass === 0 ? l.ry * 0.9 : pass === 1 ? l.ry * 0.3 : 0)); ctx.rotate(l.tilt); ctx.scale(1, l.ry / l.rx);
+      const g = ctx.createRadialGradient(pass === 2 ? -l.rx * 0.25 : 0, pass === 2 ? -l.rx * 0.3 : 0, 0, 0, 0, l.rx);
+      if (pass === 0) { g.addColorStop(0, paint(p.shadow, 0.3 * l.a)); g.addColorStop(1, paint(p.shadow, 0)); }
+      else if (pass === 1) { g.addColorStop(0, paint(mix(p['snow-shade'], p['storm-grey'], 0.18), 0.95 * l.a)); g.addColorStop(0.8, paint(p['snow-shade'], 0.85 * l.a)); g.addColorStop(1, paint(p['snow-shade'], 0)); }
+      else { g.addColorStop(0, paint(p.white, l.a)); g.addColorStop(0.62, paint(p.snow, 0.97 * l.a)); g.addColorStop(0.9, paint(mix(p.snow, p['snow-shade'], 0.4), 0.7 * l.a)); g.addColorStop(1, paint(p.snow, 0)); }
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, l.rx, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
   }
 }
 
@@ -667,17 +739,6 @@ function drawMotes(ctx: CanvasRenderingContext2D, motes: readonly Mote[], p: Pal
       }
       ctx.fill();
     }
-  }
-}
-function drawRipples(ctx: CanvasRenderingContext2D, ripples: readonly Ripple[], p: Palette, time: number, S: number) {
-  for (const ripple of ripples) {
-    const age = (time - ripple.born) / RIPPLE_SECONDS;
-    if (age < 0 || age >= 1) continue;
-    const r = (9 + 22 * (1 - Math.pow(1 - age, 2))) / S, alpha = 1 - age;
-    ctx.lineWidth = 4.2 / S; ctx.strokeStyle = paint(p['ink-soft'], 0.22 * alpha);
-    ctx.beginPath(); ctx.arc(ripple.x, ripple.y, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.lineWidth = 2.4 / S; ctx.strokeStyle = paint(p.white, 0.95 * alpha);
-    ctx.beginPath(); ctx.arc(ripple.x, ripple.y, r, 0, Math.PI * 2); ctx.stroke();
   }
 }
 /** Daylight lying across the glass: two soft slanting bands, so the wall reads as glass and what is beyond it as beyond. */

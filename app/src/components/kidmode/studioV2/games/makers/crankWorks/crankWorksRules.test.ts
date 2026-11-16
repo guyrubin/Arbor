@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BOTTOM_DEAD_CENTRE, HAND_TURN_GOAL, KEY_STEP, LINKAGE, MACHINE_PARTS, MAX_HAND_OMEGA, PUSH_OMEGA, SPEED_OMEGA, START, TAU, TOP_DEAD_CENTRE, TRACE_BINS,
-  advance, angleDelta, badgesOf, canFinish, canSelect, carrySelection, clampOmega, coast, crankPin, cueFor, easeMotor, hiddenByCase, lookedInside, metPart,
-  partsMet, pistonLift, pointerAngle, push, releaseSpeed, rodLean, rodLength, sawMachine, strokeFraction, strokeOf, strokePlace, sweepBins, topCentresCrossed,
-  traceBin, turnedByHand, wrapAngle, wristPin, type Linkage,
+  BOTTOM_DEAD_CENTRE, DETENTS, FEED, HAND_TURN_GOAL, KEY_STEP, LINKAGE, LOAD, MACHINES, MACHINE_PARTS, MAX_HAND_OMEGA, PUSH_OMEGA, SPEED_OMEGA, START, TAU, TOP_DEAD_CENTRE, TRACE_BINS, WAVE_LENGTH,
+  advance, angleDelta, badgesOf, canFinish, canSelect, carrySelection, clampOmega, crankPin, cueFor, detentSteps, detentsCrossed, easeMotor, follow, hiddenByCase, liftSlope, loadTurn, lookedInside, metPart,
+  partsMet, pistonLift, pointerAngle, push, releaseSpeed, rodLean, rodLength, sawMachine, spinEnergy, startOn, strokeFraction, strokeOf, strokePlace, sweepBins, swing, topCentresCrossed,
+  traceBin, turnedByHand, waveReach, wrapAngle, wristPin, writeInk, type Linkage, type Spin,
 } from './crankWorksRules';
 
 const FULL_CYCLE = Array.from({ length: 3601 }, (_, i) => i / 3600 * TAU);
@@ -101,11 +101,65 @@ describe('angles and turning by hand', () => {
     expect(w).toBe(SPEED_OMEGA.quick);
     expect(easeMotor(1, 5, 0)).toBe(1);
   });
-  it('a let-go wheel slows smoothly and stops', () => {
-    let w = MAX_HAND_OMEGA, last = w, frames = 0;
-    while (w !== 0 && frames < 2000) { w = coast(w, 1 / 60); expect(Math.abs(w)).toBeLessThan(Math.abs(last)); last = w; frames++; }
-    expect(w).toBe(0); expect(frames).toBeLessThan(600);
-    expect(coast(-3, 1 / 60)).toBeLessThan(0);
+  it('the load turns the crank by the slope of the lift, and not at all on a dead centre', () => {
+    for (const theta of [0.2, 1, 1.9, 3.3, 4.4, 6]) {
+      const h = 1e-6;
+      expect(liftSlope(theta)).toBeCloseTo((pistonLift(theta + h) - pistonLift(theta - h)) / (2 * h), 5);
+      expect(loadTurn(theta)).toBeCloseTo(-LOAD * liftSlope(theta), 12);
+    }
+    expect(liftSlope(TOP_DEAD_CENTRE)).toBeCloseTo(0, 12); expect(liftSlope(BOTTOM_DEAD_CENTRE)).toBeCloseTo(0, 9);
+    // Past the top the load falls on round the way it is going; before the bottom it is still falling.
+    expect(loadTurn(0.4)).toBeGreaterThan(0); expect(loadTurn(-0.4)).toBeLessThan(0);
+    expect(loadTurn(Math.PI - 0.4)).toBeGreaterThan(0); expect(loadTurn(Math.PI + 0.4)).toBeLessThan(0);
+  });
+  it('a let-go wheel never gains energy, rocks to rest with the load at the bottom, and stays there', () => {
+    for (const start of [{ theta: 0.3, omega: 0 }, { theta: 2, omega: MAX_HAND_OMEGA }, { theta: 5, omega: -6 }, { theta: 1.2, omega: 2 }] as Spin[]) {
+      let spin = start, frames = 0; const most = spinEnergy(start);
+      while (spin.omega !== 0 || frames === 0) {
+        spin = swing(spin, 1 / 60); frames++;
+        expect(spinEnergy(spin)).toBeLessThanOrEqual(most + 0.02);
+        if (frames > 1800) break;
+      }
+      expect(spin.omega).toBe(0); expect(frames).toBeLessThan(1500);
+      expect(Math.abs(angleDelta(spin.theta, BOTTOM_DEAD_CENTRE))).toBeLessThan(0.12);
+      expect(swing(spin, 1)).toEqual(spin);
+    }
+    // Balanced dead still on the top dead centre, it stays (a dead centre).
+    expect(swing({ theta: 0, omega: 0 }, 0.5)).toEqual({ theta: 0, omega: 0 });
+    expect(swing({ theta: 1, omega: 2 }, 0)).toEqual({ theta: 1, omega: 2 });
+  });
+  it('one push from rest at the bottom carries the load once over the top, and no further', () => {
+    let spin: Spin = { theta: BOTTOM_DEAD_CENTRE, omega: push(0) }, tops = 0, frames = 0;
+    while (spin.omega !== 0 && frames < 3000) { const next = swing(spin, 1 / 60); tops += topCentresCrossed(spin.theta, next.theta); spin = next; frames++; }
+    expect(tops).toBe(1);
+    expect(spin.theta).toBeGreaterThan(TAU); expect(spin.theta).toBeLessThan(TAU * 2);
+  });
+  it('a held wheel follows the finger with weight: it settles just behind a still finger and sags under the load', () => {
+    let spin: Spin = { theta: 0, omega: 0 };
+    for (let i = 0; i < 6; i++) spin = follow(spin, 1, 1 / 60);
+    expect(spin.theta).toBeGreaterThan(0.2); expect(spin.theta).toBeLessThan(1); // on its way, not there yet
+    for (let i = 0; i < 240; i++) spin = follow(spin, 1, 1 / 60);
+    expect(Math.abs(spin.omega)).toBeLessThan(1e-3);
+    // The load at θ = 1 pulls the crank on, so the wheel rests a touch ahead of the finger.
+    expect(spin.theta - 1).toBeGreaterThan(0); expect(spin.theta - 1).toBeLessThan(0.1);
+    let lift: Spin = { theta: 5, omega: 0 };
+    for (let i = 0; i < 240; i++) lift = follow(lift, 5, 1 / 60);
+    expect(lift.theta).toBeLessThan(5); // lifting the load, the wheel sags behind
+    expect(follow(spin, 3, 0)).toEqual(spin);
+  });
+  it('the wheel clicks past twelve soft stops a turn, and their notes rise and fall with the load', () => {
+    expect(detentsCrossed(0.01, TAU + 0.01)).toBe(DETENTS); expect(detentsCrossed(1, 1.01)).toBe(0); expect(detentsCrossed(0.01, -0.01)).toBe(1);
+    const step = TAU / DETENTS;
+    // One whole turn from the top, a stop at a time: down to the bottom note and back up.
+    const notes: number[] = [];
+    for (let k = 0; k < DETENTS; k++) notes.push(...detentSteps(k * step + 0.01, (k + 1) * step + 0.01));
+    expect(notes).toHaveLength(DETENTS);
+    expect(notes[DETENTS / 2 - 1]).toBe(0); expect(notes[DETENTS - 1]).toBe(4);
+    for (let i = 1; i < DETENTS / 2; i++) expect(notes[i]).toBeLessThanOrEqual(notes[i - 1]);
+    for (let i = DETENTS / 2 + 1; i < DETENTS; i++) expect(notes[i]).toBeGreaterThanOrEqual(notes[i - 1]);
+    // Backwards plays the same stops in the other order; a fling keeps only the latest few.
+    expect(detentSteps(step + 0.01, 0.01)).toEqual([Math.round(strokeFraction(step) * 4)]);
+    expect(detentSteps(0, TAU * 3)).toHaveLength(3); expect(detentSteps(2, 2.001)).toEqual([]);
   });
   it('a push turns clockwise and is capped', () => {
     expect(push(0)).toBe(PUSH_OMEGA); expect(push(-5)).toBe(PUSH_OMEGA);
@@ -126,18 +180,22 @@ describe('the parts and the case', () => {
   it('the case hides the inside and leaves the wheel and the top of the stroke in sight', () => {
     expect(MACHINE_PARTS.engine.filter(p => hiddenByCase('engine', p))).toEqual(['crank', 'rod', 'piston', 'cylinder']);
     expect(MACHINE_PARTS.toy.filter(p => hiddenByCase('toy', p))).toEqual(['crank', 'rod']);
-    expect(hiddenByCase('engine', 'wheel')).toBe(false); expect(hiddenByCase('toy', 'bird')).toBe(false); expect(hiddenByCase('toy', 'handle')).toBe(false);
+    expect(MACHINE_PARTS.writer.filter(p => hiddenByCase('writer', p))).toEqual(['crank', 'rod']);
+    expect(hiddenByCase('engine', 'wheel')).toBe(false); expect(hiddenByCase('toy', 'bloom')).toBe(false); expect(hiddenByCase('toy', 'handle')).toBe(false); expect(hiddenByCase('writer', 'tracer')).toBe(false);
+    // Every machine is the same idea: each has the crank and the rod.
+    for (const m of MACHINES) { expect(MACHINE_PARTS[m]).toContain('crank'); expect(MACHINE_PARTS[m]).toContain('rod'); }
   });
   it('parts are met only with the case open, and only parts of the machine in view', () => {
     expect(canSelect('engine', 'piston', false)).toBe(false);
     expect(canSelect('engine', 'piston', true)).toBe(true);
-    expect(canSelect('engine', 'bird', true)).toBe(false);
+    expect(canSelect('engine', 'bloom', true)).toBe(false); expect(canSelect('writer', 'tracer', true)).toBe(true);
     expect(canSelect('toy', 'handle', true)).toBe(true);
     expect(canSelect('toy', null, true)).toBe(false);
   });
   it('switching machine keeps the crank or rod selected and lets go of the rest', () => {
     expect(carrySelection('crank', 'toy')).toBe('crank'); expect(carrySelection('rod', 'engine')).toBe('rod');
-    expect(carrySelection('piston', 'toy')).toBeNull(); expect(carrySelection('bird', 'engine')).toBeNull(); expect(carrySelection(null, 'toy')).toBeNull();
+    expect(carrySelection('piston', 'toy')).toBeNull(); expect(carrySelection('bloom', 'engine')).toBeNull(); expect(carrySelection(null, 'toy')).toBeNull();
+    expect(carrySelection('wheel', 'writer')).toBe('wheel'); expect(carrySelection('rod', 'writer')).toBe('rod');
   });
 });
 
@@ -160,12 +218,24 @@ describe('the gentle arc to Done', () => {
     e = sawMachine(e, 'toy'); expect(canFinish(e)).toBe(true); expect(cueFor(e, true, 'toy')).toBe('ready');
   });
   it('the crank and rod met in one machine count in the other', () => {
-    expect(partsMet(['handle', 'bird'])).toBe(false);
-    expect(partsMet(['crank', 'rod', 'handle', 'bird'])).toBe(true);
+    expect(partsMet(['handle', 'bloom'])).toBe(false);
+    expect(partsMet(['crank', 'rod', 'handle', 'bloom'])).toBe(true);
+    expect(partsMet(['crank', 'rod', 'wheel', 'tracer'])).toBe(true);
     expect(partsMet(['crank', 'rod', 'wheel', 'piston'])).toBe(false);
   });
   it('seeing both machines without the badges is not enough', () => {
     expect(canFinish(sawMachine(START, 'toy'))).toBe(false);
+    expect(canFinish(sawMachine(sawMachine(START, 'toy'), 'writer'))).toBe(false);
+  });
+  it('any two of the three machines show the idea twice, wherever the visit began', () => {
+    let e = startOn('writer');
+    expect(e.seen).toEqual(['writer']); expect(cueFor(e, false, 'writer')).toBe('turn');
+    e = lookedInside(turnedByHand(e, HAND_TURN_GOAL));
+    for (const p of MACHINE_PARTS.writer) e = metPart(e, p);
+    expect(canFinish(e)).toBe(false); expect(cueFor(e, true, 'writer')).toBe('other');
+    e = sawMachine(e, 'engine');
+    expect(canFinish(e)).toBe(true); expect(cueFor(e, true, 'engine')).toBe('ready');
+    expect(START.seen).toEqual(['engine']);
   });
 });
 
@@ -177,5 +247,36 @@ describe('the motion traces', () => {
     expect(quarter.filter(Boolean).length).toBeLessThanOrEqual(TRACE_BINS / 4 + 1);
     expect(sweepBins([], 1, 1 + 10 * TAU).every(Boolean)).toBe(true);
     expect(sweepBins([], 0.5, 0.2).filter(Boolean).length).toBeGreaterThan(1);
+  });
+});
+
+describe('the wave writer', () => {
+  it('the glass slides one wave for every turn, however fast the wheel goes', () => {
+    expect(FEED * TAU).toBeCloseTo(WAVE_LENGTH, 12);
+    expect(waveReach(2, 2)).toBe(0);
+    expect(waveReach(2, 2 + TAU)).toBeCloseTo(WAVE_LENGTH, 12);
+    expect(waveReach(2 + TAU, 2)).toBeCloseTo(-WAVE_LENGTH, 12); // turned back, the line is on the other side of the pen
+    // The line is the lift written against the angle: one wave on, the same height again.
+    for (const at of [0.4, 2.2, 5]) expect(pistonLift(at + TAU)).toBeCloseTo(pistonLift(at), 9);
+  });
+  it('the pen paints its ink over the stretch it passes, joining and covering', () => {
+    let marks = writeInk([], 0, 1, 0);
+    expect(marks).toEqual([{ from: 0, to: 1, ink: 0 }]);
+    marks = writeInk(marks, 1, 2.5, 0);
+    expect(marks).toEqual([{ from: 0, to: 2.5, ink: 0 }]);
+    marks = writeInk(marks, 2.5, 4, 1);
+    expect(marks).toEqual([{ from: 0, to: 2.5, ink: 0 }, { from: 2.5, to: 4, ink: 1 }]);
+    // Turning back in a new ink repaints the middle and leaves both ends.
+    marks = writeInk(marks, 3, 1, 2);
+    expect(marks).toEqual([{ from: 0, to: 1, ink: 0 }, { from: 1, to: 3, ink: 2 }, { from: 3, to: 4, ink: 1 }]);
+    // Going over a stretch again in its own ink changes nothing.
+    expect(writeInk(marks, 1.2, 2.8, 2)).toEqual(marks);
+    expect(writeInk(marks, 2, 2, 1)).toEqual(marks);
+    for (let i = 1; i < marks.length; i++) expect(marks[i].from).toBeGreaterThanOrEqual(marks[i - 1].to);
+  });
+  it('remembers only the line near the pen', () => {
+    let marks = writeInk([], 0, 1, 0, 10);
+    marks = writeInk(marks, 1, 30, 0, 10);
+    expect(marks).toEqual([{ from: 20, to: 30, ink: 0 }]);
   });
 });

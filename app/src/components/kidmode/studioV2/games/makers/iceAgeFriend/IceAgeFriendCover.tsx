@@ -1,11 +1,15 @@
 import { useId } from 'react';
+import { FRIENDS, HALL_PICTURE, STEPPE_PICTURE } from './mammothArt';
 import '../makerPalette.css';
 
-/** Woolly Mammoth cover: the mammoth's head and shoulder close up, its coat
- * catching a low winter sun from the left. Fills its box (the box sets the
- * size); one scene for the tile, the book row, the card and the sticker.
- * A static approximation of the game's fur: a few hundred strands, grouped
- * into a handful of paths by colour so the cover stays light. */
+/** Woolly Mammoth cover: the giant behind the glass. The kit's glass hall
+ * (the same two pictures the game is staged in: the Ice Age view, then the
+ * hall with its windows cut clear, laid over it), the mammoth's head, shoulder
+ * and tusk close up between them, and Bebe and Pep small on the floor in
+ * front, looking up. Fills its box (the box sets the size); one scene for the
+ * tile, the book row, the card and the sticker. The fur is a static
+ * approximation of the game's: a few hundred strands, grouped into a handful
+ * of paths by colour so the cover stays light. */
 type Pt = readonly [number, number];
 let seed = 11;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
@@ -62,21 +66,14 @@ const WIDTH = [2.4, 2.1, 1.9, 1.7, 1.6];
 const TRUNK = 'M120 168C104 206 104 250 114 290L120 320L86 320L80 292C70 250 76 200 94 162Z';
 const TUSK = 'M128 204C126 262 104 300 70 300C46 300 40 276 50 250C52 268 62 280 76 278C102 274 108 236 104 198Z';
 
+/** Where the hall picture sits in the cover's 400 by 300 frame: its three middle windows fill the frame, a mullion each side of the eye. */
+const HALL_AT = { x: -257, y: -122, width: 803, height: 536 };
+
 export default function IceAgeFriendCover({ size = 'tile' }: { size?: 'tile' | 'card' }) {
   const id = useId();
+  const small = size === 'tile';
   return <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%', display: 'block' }} data-size={size} aria-hidden="true" focusable="false">
     <defs>
-      <linearGradient id={`${id}sky`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" style={{ stopColor: 'color-mix(in srgb, var(--mk-sky) 55%, var(--mk-indigo))' }} />
-        <stop offset=".7" style={{ stopColor: 'var(--mk-sky-pale)' }} />
-        <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-butter) 50%, var(--mk-snow))' }} />
-      </linearGradient>
-      <radialGradient id={`${id}sun`} cx=".08" cy=".42" r=".55">
-        <stop offset="0" style={{ stopColor: 'var(--mk-white)' }} />
-        <stop offset=".12" style={{ stopColor: 'color-mix(in srgb, var(--mk-sun) 70%, var(--mk-white))' }} />
-        <stop offset=".45" style={{ stopColor: 'color-mix(in srgb, var(--mk-amber) 30%, transparent)' }} />
-        <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-amber) 0%, transparent)' }} />
-      </radialGradient>
       <linearGradient id={`${id}base`} x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" style={{ stopColor: 'var(--mk-fur)' }} />
         <stop offset=".5" style={{ stopColor: 'var(--mk-fur-dark)' }} />
@@ -92,25 +89,39 @@ export default function IceAgeFriendCover({ size = 'tile' }: { size?: 'tile' | '
         <stop offset="0" style={{ stopColor: 'var(--mk-fur-dark)' }} />
         <stop offset="1" style={{ stopColor: 'color-mix(in srgb, var(--mk-umber) 80%, var(--mk-paper-shade))' }} />
       </linearGradient>
+      <linearGradient id={`${id}snow`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" style={{ stopColor: 'var(--mk-white)' }} />
+        <stop offset="1" style={{ stopColor: 'var(--mk-snow-shade)' }} />
+      </linearGradient>
     </defs>
-    <rect width="400" height="300" fill={`url(#${id}sky)`} />
-    <path d="M-10 236L40 200L80 222L130 188L190 226L250 196L330 230L410 204L410 300L-10 300Z" style={{ fill: 'color-mix(in srgb, var(--mk-snow-shade) 70%, var(--mk-storm-grey))', opacity: 0.55 }} />
-    <rect width="400" height="300" fill={`url(#${id}sun)`} />
-    <path d="M-10 268Q120 250 230 266T410 258L410 300L-10 300Z" style={{ fill: 'var(--mk-snow)' }} />
-    <path d={path(BODY)} fill={`url(#${id}base)`} />
-    <path d={path(HEAD)} fill={`url(#${id}base)`} />
-    <path d={TRUNK} fill={`url(#${id}trunk)`} />
-    <path d="M86 196q12 3 30 0M84 222q14 3 30 0M84 248q14 3 28 0M88 274q12 3 26 0" fill="none" strokeWidth="1.6" strokeLinecap="round" style={{ stroke: 'color-mix(in srgb, var(--mk-fur-dark) 60%, var(--mk-shadow))', opacity: 0.6 }} />
-    {STRANDS.map((d, i) => <path key={i} d={d} fill="none" strokeLinecap="round" strokeWidth={WIDTH[i]} style={{ stroke: INK[i] }} />)}
-    <path d={TUSK} fill={`url(#${id}tusk)`} />
-    <path d="M112 220C110 258 96 284 74 288" fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: 'var(--mk-white)', opacity: 0.7 }} />
-    <ellipse cx="114" cy="214" rx="14" ry="9" style={{ fill: 'var(--mk-fur-dark)' }} />
-    {/* The small ear and the eye, with a catch-light. */}
-    <ellipse cx="190" cy="128" rx="16" ry="21" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur-dark) 70%, var(--mk-shadow))' }} />
-    <ellipse cx="187" cy="125" rx="11" ry="16" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur) 60%, var(--mk-fur-tip))', opacity: 0.55 }} />
-    <ellipse cx="191" cy="130" rx="10" ry="15" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur-dark) 70%, var(--mk-shadow))' }} />
-    <ellipse cx="128" cy="112" rx="9" ry="7" style={{ fill: 'var(--mk-shadow)', opacity: 0.35 }} />
-    <ellipse cx="128" cy="111" rx="5" ry="4.4" style={{ fill: 'color-mix(in srgb, var(--mk-umber) 40%, var(--mk-shadow))' }} />
-    <circle cx="126.4" cy="109.4" r="1.5" style={{ fill: 'var(--mk-white)' }} />
+    {/* The Ice Age beyond the glass. */}
+    <image href={small ? STEPPE_PICTURE.src480 : STEPPE_PICTURE.src} {...HALL_AT} preserveAspectRatio="none" />
+    <g transform="translate(6 2)">
+      <path d={path(BODY)} fill={`url(#${id}base)`} />
+      <path d={path(HEAD)} fill={`url(#${id}base)`} />
+      <path d={TRUNK} fill={`url(#${id}trunk)`} />
+      <path d="M86 196q12 3 30 0M84 222q14 3 30 0M84 248q14 3 28 0M88 274q12 3 26 0" fill="none" strokeWidth="1.6" strokeLinecap="round" style={{ stroke: 'color-mix(in srgb, var(--mk-fur-dark) 60%, var(--mk-shadow))', opacity: 0.6 }} />
+      {STRANDS.map((d, i) => <path key={i} d={d} fill="none" strokeLinecap="round" strokeWidth={WIDTH[i]} style={{ stroke: INK[i] }} />)}
+      {/* Snow on the crown and the hump. */}
+      <path d="M118 56Q150 34 190 54Q160 44 124 62Z M236 82Q296 44 372 78Q300 56 244 90Z" fill={`url(#${id}snow)`} />
+      <path d={TUSK} fill={`url(#${id}tusk)`} />
+      <path d="M112 220C110 258 96 284 74 288" fill="none" strokeWidth="3" strokeLinecap="round" style={{ stroke: 'var(--mk-white)', opacity: 0.7 }} />
+      <ellipse cx="114" cy="214" rx="14" ry="9" style={{ fill: 'var(--mk-fur-dark)' }} />
+      {/* The small ear and the eye, with a catch-light. */}
+      <ellipse cx="190" cy="128" rx="16" ry="21" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur-dark) 70%, var(--mk-shadow))' }} />
+      <ellipse cx="187" cy="125" rx="11" ry="16" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur) 60%, var(--mk-fur-tip))', opacity: 0.55 }} />
+      <ellipse cx="191" cy="130" rx="10" ry="15" transform="rotate(14 190 128)" style={{ fill: 'color-mix(in srgb, var(--mk-fur-dark) 70%, var(--mk-shadow))' }} />
+      <ellipse cx="128" cy="112" rx="11" ry="8.4" style={{ fill: 'var(--mk-shadow)', opacity: 0.4 }} />
+      <ellipse cx="128" cy="111" rx="6.4" ry="5.2" style={{ fill: 'color-mix(in srgb, var(--mk-umber) 40%, var(--mk-shadow))' }} />
+      <path d="M120 108Q128 102 137 108" fill="none" strokeWidth="2" strokeLinecap="round" style={{ stroke: 'color-mix(in srgb, var(--mk-fur-dark) 60%, var(--mk-shadow))' }} />
+      <circle cx="126" cy="109.2" r="1.8" style={{ fill: 'var(--mk-white)' }} />
+    </g>
+    {/* The hall: its frame, mullions and planters stand in front of the giant. */}
+    <image href={small ? HALL_PICTURE.src480 : HALL_PICTURE.src} {...HALL_AT} preserveAspectRatio="none" />
+    {/* Bebe and Pep, small, looking up. */}
+    <ellipse cx="80" cy="293" rx="22" ry="4" style={{ fill: 'var(--mk-shadow)', opacity: 0.22 }} />
+    <image href={FRIENDS.bebe.src.replace('.webp', '-480.webp')} x="62" y="192" width={102 * FRIENDS.bebe.aspect} height="102" preserveAspectRatio="xMidYMax meet" />
+    <ellipse cx="117" cy="294" rx="13" ry="3" style={{ fill: 'var(--mk-shadow)', opacity: 0.22 }} />
+    <image href={FRIENDS.pep.src.replace('.webp', '-480.webp')} x="107" y="248" width={46 * FRIENDS.pep.aspect} height="46" preserveAspectRatio="xMidYMax meet" />
   </svg>;
 }

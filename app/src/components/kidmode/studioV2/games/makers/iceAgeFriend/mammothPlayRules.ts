@@ -108,10 +108,38 @@ export function ghostAt(t: number): { u: number; press: number; alpha: number } 
   const press = Math.min(smooth(0.1, 0.2, x), 1 - smooth(0.78, 0.88, x));
   return { u: smooth(0.16, 0.8, x), press, alpha };
 }
+/** The first lesson, t 0..1: the hand comes to the glass and taps it twice. `tap` is true on the frames a tap lands. */
+export function ghostKnockAt(t: number): { press: number; alpha: number; tap: 0 | 1 | 2 } {
+  const x = clamp01(t);
+  const alpha = Math.min(smooth(0, 0.12, x), 1 - smooth(0.84, 1, x));
+  const pulse = (at: number) => Math.max(0, 1 - Math.abs(x - at) / 0.09);
+  return { press: Math.max(pulse(0.3), pulse(0.58)), alpha, tap: x >= 0.58 ? 2 : x >= 0.3 ? 1 : 0 };
+}
 /** Is a demonstration due? Only until the child has stroked once, and only after a quiet spell. */
 export function ghostDue(idleSeconds: number, shown: number, learned: boolean, busy: boolean): boolean {
   if (learned || busy) return false;
   return idleSeconds >= (shown === 0 ? GHOST.first : GHOST.again);
+}
+
+/* ── meeting at the glass ─────────────────────────────────────────────── */
+
+/** What a touch on the glass is worth: two touches, or a second of stroking the glass, and the mammoth is a friend. */
+export const MEET = { tap: 0.5, perSecond: 1.1, patience: 3 } as const;
+export function meetStep(trust: number, tap: boolean, strokeSeconds: number): number {
+  return clamp01(trust + (tap ? MEET.tap : 0) + MEET.perSecond * Math.max(0, Math.min(0.1, strokeSeconds)));
+}
+/** After this many unanswered lessons the mammoth comes in anyway: the game never waits on a child who is only watching. */
+export function comesAnyway(lessonsShown: number): boolean {
+  return lessonsShown >= MEET.patience;
+}
+export const ENTER_SECONDS = 1.7;
+/** Stepping through: it comes up to the glass, one great breath whitens the
+ * wall (`bloom` 0..1), and when the breath clears it is standing in the hall
+ * (`inside`), settling with a heavy step (`settle` 1..0). */
+export function enterAt(t: number): { near: number; bloom: number; inside: boolean; settle: number; done: boolean } {
+  const k = clamp01(t / ENTER_SECONDS), swap = 0.46;
+  const bloom = k < swap ? smooth(0.16, swap, k) : 1 - smooth(swap, 0.86, k);
+  return { near: smooth(0, swap, k), bloom, inside: k >= swap, settle: k >= swap ? 1 - smooth(swap, 0.8, k) : 0, done: k >= 1 };
 }
 
 /* ── a tuft of grass ──────────────────────────────────────────────────── */
@@ -175,7 +203,7 @@ export function gestureAt(id: GestureId, t: number): PoseDelta {
     // Tickled behind the ear: the ear flutters, the eye squeezes shut, the head wags.
     case 'tickle': return { ...NO_DELTA, ear: -0.5 * Math.abs(Math.sin(Math.PI * 5 * k)) * (1 - k), squeeze: bell > 0.25 ? 1 : 0, brow: 1 - k, nod: 0.03 * wave(3), tail: 0.2 * wave(2) };
     case 'trunkBoop': return { ...NO_DELTA, curl: 0.22 * bell, swing: -0.25 * wave(1.5), brow: 0.8 * (1 - k) };
-    case 'tuskKnock': return { ...NO_DELTA, nod: 0.022 * wave(2) };
+    case 'tuskKnock': return { ...NO_DELTA, nod: 0.034 * wave(2) };
     case 'tailSwish': return { ...NO_DELTA, tail: 0.5 * wave(2.5) };
     // Face to the sun, eyes closed.
     case 'sunWarm': return { ...NO_DELTA, nod: 0.05 * bell, squeeze: smooth(0.1, 0.25, k) * (1 - smooth(0.8, 0.95, k)), rise: 2 * bell };

@@ -84,13 +84,29 @@ export function growPlant(stage: number): number {
   const now = Number.isFinite(stage) ? Math.max(0, Math.trunc(stage)) : 0;
   return Math.min(PLANT_FULL, now + 1);
 }
-/** The keyboard in the room has three rows of ten keys. Each tap presses
- * three of them, a different three each time. */
-export const KEY_COUNT = 30;
-export function keysFor(tap: number): number[] {
-  const n = Number.isFinite(tap) ? Math.abs(Math.trunc(tap)) : 0;
-  const first = (n * 7 + 3) % KEY_COUNT;
-  return [first, (first + 4 + (n % 5)) % KEY_COUNT, (first + 13 + (n % 3) * 2) % KEY_COUNT];
+/** The five tools docked in the TrailBench's trays, left to right. Each does
+ * its one real thing from the kit: a true picture, the view from lower down,
+ * amber pause and cyan ready, a plant reading, a clear mend whose seam shows. */
+export const TOOLS = ['proofLens', 'viewCheck', 'pulsePod', 'leafLab', 'clearPatch'] as const;
+export type ToolId = typeof TOOLS[number];
+/** The tool under a tap: `across` runs 0 to 1 along the row of trays. */
+export function toolAt(across: number): ToolId {
+  const at = Number.isFinite(across) ? Math.min(0.999999, Math.max(0, across)) : 0;
+  return TOOLS[Math.floor(at * TOOLS.length)];
+}
+/** With no pointer (a keyboard press), the next tool along, round and round. */
+export function nextTool(last: ToolId | null): ToolId {
+  return TOOLS[(TOOLS.indexOf(last as ToolId) + 1) % TOOLS.length];
+}
+/** The crew of Horizon Valley, in the order of CrewLink's five presence dots. */
+export const CREW = ['bebe', 'gobgob', 'chock', 'pep', 'aya'] as const;
+export type CrewId = typeof CREW[number];
+const GUESTS: readonly CrewId[] = ['bebe', 'gobgob', 'pep'];
+/** Who is around the desk this sitting: Chock always, Aya while she visits,
+ * and one more friend who dropped by (a different one each sitting). */
+export function crewAround(guest: number, ayaHere: boolean): Record<CrewId, boolean> {
+  const dropIn = GUESTS[(Number.isFinite(guest) ? Math.abs(Math.trunc(guest)) : 0) % GUESTS.length];
+  return { bebe: dropIn === 'bebe', gobgob: dropIn === 'gobgob', chock: true, pep: dropIn === 'pep', aya: ayaHere };
 }
 /** The desktop clock is a picture, not numerals: sun from six to six. */
 export function skyPicture(hour: number): 'day' | 'night' {
@@ -112,7 +128,7 @@ export type TermLine =
   | { kind: 'hello'; before: string; name: string | null; after: string }
   /** A small authored picture the screen plays (never built from input). */
   | { kind: 'show'; show: TermShow };
-export const TERM_SHOWS = ['wiggle', 'rainbow', 'stars'] as const;
+export const TERM_SHOWS = ['wiggle', 'rainbow', 'starfall'] as const;
 export type TermShow = typeof TERM_SHOWS[number];
 
 export interface TerminalContext {
@@ -124,7 +140,7 @@ export interface TerminalContext {
   /** Which riddle `cat secret.txt` shows this time. */
   riddle: number;
 }
-export type Sound = 'beep' | 'answer' | 'unknown' | 'tune' | 'magic' | null;
+export type Sound = 'beep' | 'answer' | 'unknown' | 'singSong' | 'magicChime' | null;
 /** What a command does outside the screen: `lamp` clicks the desk lamp. */
 export type TermEffect = 'lamp' | null;
 export interface RunResult {
@@ -149,10 +165,10 @@ export const SCREEN_MAX = 60;
 export const QUICK_COMMANDS: readonly string[] = ['help', 'ls', 'cat about.txt', 'hello', 'dance', 'sing', 'clear'];
 
 /** The fixed command words, before any file names. */
-const BASE_VOCABULARY: readonly string[] = ['help', 'ls', 'ls things', 'cat about.txt', 'cat secret.txt', 'hello', 'dance', 'sing', 'lamp', 'rainbow', 'whoami', 'beep', 'clear'];
+const BASE_VOCABULARY: readonly string[] = ['help', 'ls', 'ls things', 'cat about.txt', 'cat secret.txt', 'cat valley.txt', 'hello', 'dance', 'sing', 'lamp', 'rainbow', 'whoami', 'beep', 'clear', 'crew', 'tools', 'valley'];
 /** The fixed virtual files. The dot file is hidden: only `ls -a` lists it, and
  * the trail to it starts in a riddle. Hidden words are never suggested. */
-export const FILES: readonly string[] = ['about.txt', 'secret.txt', 'things/'];
+export const FILES: readonly string[] = ['about.txt', 'secret.txt', 'valley.txt', 'things/'];
 export const HIDDEN_FILE = '.magic';
 export const MAGIC_WORD = 'abracadabra';
 
@@ -200,19 +216,23 @@ function answer(command: string, ctx: TerminalContext): Omit<RunResult, 'readAs'
       { kind: 'out', code: 'ls things', text: w.help.things }, { kind: 'out', code: 'hello', text: w.help.hello },
       { kind: 'out', code: 'dance', text: w.help.dance }, { kind: 'out', code: 'sing', text: w.help.sing },
       { kind: 'out', code: 'lamp', text: w.help.lamp }, { kind: 'out', code: 'rainbow', text: w.help.rainbow },
+      { kind: 'out', code: 'crew', text: w.help.crew }, { kind: 'out', code: 'tools', text: w.help.tools }, { kind: 'out', code: 'valley', text: w.help.valley },
       { kind: 'out', code: 'beep', text: w.help.beep }, { kind: 'out', code: 'clear', text: w.help.clear },
     ]);
+    case 'crew': return done([{ kind: 'out', text: w.crewTitle, tone: 'title' }, ...CREW.map((id): TermLine => ({ kind: 'out', text: w.crewLines[id] }))]);
+    case 'tools': return done([{ kind: 'out', text: w.toolsTitle, tone: 'title' }, ...TOOLS.map((id): TermLine => ({ kind: 'out', code: w.toolNames[id], text: w.toolLines[id] }))]);
     case 'ls': return done([{ kind: 'listing', names: FILES }]);
     case 'ls -a': return done([{ kind: 'listing', names: [HIDDEN_FILE, ...FILES] }]);
     case `cat ${HIDDEN_FILE}`: return done([{ kind: 'out', text: w.magicFile, code: MAGIC_WORD, codeLast: true, tone: 'joke' }]);
-    case MAGIC_WORD: return done([{ kind: 'show', show: 'stars' }, { kind: 'out', text: w.magic, tone: 'title' }], 'magic');
+    case MAGIC_WORD: return done([{ kind: 'show', show: 'starfall' }, { kind: 'out', text: w.magic, tone: 'title' }], 'magicChime');
     case 'dance': return done([{ kind: 'out', text: w.dance }, { kind: 'show', show: 'wiggle' }]);
-    case 'sing': return done([{ kind: 'out', text: w.sing, tone: 'joke' }], 'tune');
+    case 'sing': return done([{ kind: 'out', text: w.sing, tone: 'joke' }], 'singSong');
     case 'lamp': return done([{ kind: 'out', text: w.lampClick }], 'answer', false, true, 'lamp');
     case 'rainbow': return done([{ kind: 'show', show: 'rainbow' }, { kind: 'out', text: w.rainbow, tone: 'soft' }]);
     case 'whoami': return done([{ kind: 'out', text: w.whoami, tone: 'title' }]);
     case 'ls things': return done(things.length ? [{ kind: 'listing', names: things.map(kind => THING_FILES[kind]) }] : [{ kind: 'out', text: w.thingsEmptyTerm, tone: 'soft' }]);
     case 'cat about.txt': return done(w.about.map((text): TermLine => ({ kind: 'out', text })));
+    case 'cat valley.txt': return done(w.valley.map((text, index): TermLine => ({ kind: 'out', text, tone: index === 0 ? 'title' : undefined })));
     case 'cat secret.txt': {
       const turn = Number.isFinite(ctx.riddle) ? Math.abs(Math.trunc(ctx.riddle)) % w.riddles.length : 0;
       const [ask, reply] = w.riddles[turn];
@@ -233,7 +253,7 @@ function answer(command: string, ctx: TerminalContext): Omit<RunResult, 'readAs'
 }
 
 /** Fixed spellings that mean the same command. */
-const ALIASES: Readonly<Record<string, string>> = { hi: 'hello', 'ls things/': 'ls things', 'ls ./things': 'ls things', 'help me': 'help', '?': 'help', cls: 'clear', 'who am i': 'whoami', 'la la la': 'sing', joke: 'cat secret.txt' };
+const ALIASES: Readonly<Record<string, string>> = { hi: 'hello', 'ls things/': 'ls things', 'ls ./things': 'ls things', 'help me': 'help', '?': 'help', cls: 'clear', 'who am i': 'whoami', 'la la la': 'sing', joke: 'cat secret.txt', valley: 'cat valley.txt' };
 
 /** Runs one line of input against the fixed table. Unknown input of any
  * shape (a path, a script, a URL, a very long string) gets one fixed reply.

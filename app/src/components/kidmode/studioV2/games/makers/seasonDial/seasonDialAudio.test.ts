@@ -9,14 +9,15 @@ vi.mock('../../../../audio/kidAudio', () => ({
   kidAudioContext: () => h.ctx,
   onKidHush: (fn: () => void) => { h.hush.push(fn); return () => { h.hush = h.hush.filter(f => f !== fn); }; },
 }));
-import { LAYER_PEAK, createSeasonAudio } from './seasonDialAudio';
+import { LAP_TUNES, LAYER_PEAK, ONE_SHOT_PEAK, SCALE_HZ, SEASON_DEGREE, createSeasonAudio, scaleNote } from './seasonDialAudio';
+import { TOYS } from './seasonDialToys';
 import { gains } from './seasonDialRules';
 
-type Param = { value: number; target: number | null; setValueAtTime: (v: number) => void; setTargetAtTime: (v: number) => void; exponentialRampToValueAtTime: () => void };
+type Param = { value: number; target: number | null; peak: number; setValueAtTime: (v: number) => void; setTargetAtTime: (v: number) => void; exponentialRampToValueAtTime: (v: number) => void };
 type Node = { kind: string; gain?: Param; frequency?: Param; Q?: Param; type?: string; connected: unknown[]; disconnected: boolean; started: boolean; stopped: boolean; connect: (n: unknown) => void; disconnect: () => void; start: () => void; stop: () => void; onended: null | (() => void); buffer?: unknown; loop?: boolean };
 function fakeContext() {
   const made: Node[] = [];
-  const param = (): Param => { const p: Param = { value: 0, target: null, setValueAtTime: v => { p.value = v; }, setTargetAtTime: v => { p.target = v; }, exponentialRampToValueAtTime: () => {} }; return p; };
+  const param = (): Param => { const p: Param = { value: 0, target: null, peak: 0, setValueAtTime: v => { p.value = v; }, setTargetAtTime: v => { p.target = v; }, exponentialRampToValueAtTime: v => { p.peak = Math.max(p.peak, v); } }; return p; };
   const node = (kind: string, extra: Partial<Node> = {}): Node => {
     const n: Node = { kind, connected: [], disconnected: false, started: false, stopped: false, onended: null,
       connect: t => { n.connected.push(t); }, disconnect: () => { n.disconnected = true; }, start: () => { n.started = true; }, stop: () => { n.stopped = true; }, ...extra };
@@ -100,6 +101,59 @@ describe('Weather Maker sound', () => {
     const audio = createSeasonAudio(() => 0.5); audio.wake();
     h.allowed = false; vi.advanceTimersByTime(300);
     expect(audio.running()).toBe(false);
+    audio.dispose();
+  });
+  it('draws every pitched sound from one scale, so whatever overlaps is consonant', () => {
+    expect(scaleNote(0)).toBeCloseTo(261.63); expect(scaleNote(5)).toBeCloseTo(523.26); expect(scaleNote(-5)).toBeCloseTo(130.815); expect(scaleNote(7)).toBeCloseTo(659.26);
+    const inScale = (hz: number) => { const base = hz / 2 ** Math.floor(Math.log2(hz / SCALE_HZ[0])); return SCALE_HZ.some(n => Math.abs(base / n - 1) < 0.002); };
+    for (const tune of LAP_TUNES) { expect(tune).toHaveLength(16); expect(tune[15]).toBe(5); for (const d of tune) expect(inScale(scaleNote(d))).toBe(true); }
+    // The four seasons' notes are four different notes of the scale.
+    expect(new Set(SEASON_DEGREE.map(d => ((d % 5) + 5) % 5)).size).toBe(4);
+    const audio = createSeasonAudio(() => 0.5); audio.wake();
+    const before = fake.made.length;
+    audio.badge(2); audio.lapNote(3, 1); audio.fanfare();
+    const voices = fake.made.slice(before).filter(n => n.kind === 'osc');
+    expect(voices.length).toBeGreaterThan(8);
+    // Fundamentals and their soft overtones: every fundamental is a scale note.
+    expect(voices.filter(v => inScale(v.frequency!.value)).length).toBeGreaterThanOrEqual(12);
+    audio.dispose();
+  });
+  it('every touch has a voice, none louder than a whisper, and none without the graph', () => {
+    const silent = createSeasonAudio(() => 0.5);
+    silent.click(1); silent.tick(); silent.badge(0); silent.lapNote(0, 0); silent.fanfare(); for (const toy of TOYS) silent.toy(toy, 0, 1);
+    expect(fake.made).toHaveLength(0); // not awake: nothing is built
+    const audio = createSeasonAudio(() => 0.42); audio.wake();
+    const master = fake.made.find(n => n.kind === 'gain' && n.connected.includes(fake.ctx.destination))!;
+    for (const toy of TOYS.filter(t => t !== 'wholeYear')) for (const mood of [0, 1, 2, 3] as const) for (const detail of [0, 1, 2, 3]) {
+      const before = fake.made.length;
+      audio.toy(toy, mood, detail);
+      const made = fake.made.slice(before);
+      expect(made.length, `${toy} ${mood}`).toBeGreaterThan(0);
+      for (const g of made.filter(n => n.kind === 'gain')) { expect(g.gain!.peak).toBeGreaterThan(0); expect(g.gain!.peak).toBeLessThanOrEqual(ONE_SHOT_PEAK); expect(g.connected).toContain(master); }
+      for (const src of made.filter(n => n.kind === 'osc' || n.kind === 'noise')) { expect(src.started).toBe(true); expect(src.stopped).toBe(true); } // each is scheduled to end by itself
+    }
+    audio.dispose();
+  });
+  it('a fast spin purrs: ticks closer together than a few hundredths of a second are dropped', () => {
+    const audio = createSeasonAudio(() => 0.5); audio.wake();
+    const before = fake.made.length;
+    for (let i = 0; i < 50; i++) audio.tick();
+    expect(fake.made.slice(before).filter(n => n.kind === 'osc')).toHaveLength(1);
+    (fake.ctx as { currentTime: number }).currentTime = 0.05; audio.tick();
+    expect(fake.made.slice(before).filter(n => n.kind === 'osc')).toHaveLength(2);
+    // The season's click carries its own note under the knock.
+    const at = fake.made.length; audio.click(3);
+    expect(fake.made.slice(at).filter(n => n.kind === 'osc').some(o => Math.abs(o.frequency!.value - scaleNote(SEASON_DEGREE[3])) < 0.01)).toBe(true);
+    audio.dispose();
+  });
+  it('the toys’ sounds are released with everything else when the sound is turned off', () => {
+    const audio = createSeasonAudio(() => 0.5); audio.wake();
+    audio.toy('appleTree', 1, 3); audio.fanfare();
+    h.allowed = false;
+    const made = fake.made.length;
+    audio.toy('sunDisc', 1); audio.tick(); audio.click(0);
+    expect(fake.made).toHaveLength(made); // nothing new once sound is off
+    vi.advanceTimersByTime(300); expect(audio.running()).toBe(false);
     audio.dispose();
   });
 });

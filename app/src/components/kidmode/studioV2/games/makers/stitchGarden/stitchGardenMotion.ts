@@ -20,7 +20,7 @@ export interface NeedlePose {
   slack: number;
 }
 export type NeedleMode = 'stitch' | 'unpick' | 'flick';
-export type NeedlePhase = 'arrive' | 'work' | 'tie' | 'home' | 'done';
+export type NeedlePhase = 'arrive' | 'atWork' | 'tie' | 'home' | 'done';
 export interface NeedlePlan {
   mode: NeedleMode;
   stitches: readonly Stitch[];
@@ -31,8 +31,8 @@ export interface NeedlePlan {
 }
 export interface NeedleFrame { pose: NeedlePose; count: number; beat: number; phase: NeedlePhase }
 
-/** Laid across the cloth's lower corner, its loose thread curled beside it. */
-export const PARKED_NEEDLE: NeedlePose = { x: 352, y: 428, angle: 166, z: 0, anchor: null, slack: 1 };
+/** Stuck in the pincushion at the table's near corner, its loose thread hanging from the eye. */
+export const PARKED_NEEDLE: NeedlePose = { x: 397, y: 407, angle: 128, z: -0.6, anchor: null, slack: 1 };
 /** The angle a hand holds it at: the point down and to the left. */
 export const HAND_ANGLE = 122;
 /** One dip of the needle for every so many stitches laid. */
@@ -71,10 +71,10 @@ export function needleAt(plan: NeedlePlan, t: number): NeedleFrame {
   const time = Math.max(0, Number.isFinite(t) ? t : 0);
   const total = plan.stitches.length;
   if (plan.mode === 'flick') {
-    // A tapped needle hops off the cloth, turns once in the air and lands where it lay.
+    // A tapped needle hops out of its cushion, turns once in the air and lands where it was.
     if (time >= FLICK_MS) return { pose: PARKED_NEEDLE, count: plan.startCount, beat: 0, phase: 'done' };
     const u = time / FLICK_MS;
-    return { pose: { ...PARKED_NEEDLE, y: PARKED_NEEDLE.y - Math.sin(Math.PI * u) * 26, angle: PARKED_NEEDLE.angle + 360 * smooth(u), z: Math.sin(Math.PI * u) * 0.9, slack: 1 - Math.sin(Math.PI * u) * 0.5 }, count: plan.startCount, beat: 0, phase: 'home' };
+    return { pose: { ...PARKED_NEEDLE, y: PARKED_NEEDLE.y - Math.sin(Math.PI * u) * 26, angle: PARKED_NEEDLE.angle + 360 * smooth(u), z: PARKED_NEEDLE.z + Math.sin(Math.PI * u) * 1.5, slack: 1 - Math.sin(Math.PI * u) * 0.5 }, count: plan.startCount, beat: 0, phase: 'home' };
   }
   if (total === 0) return { pose: PARKED_NEEDLE, count: 0, beat: 0, phase: 'done' };
   const work = workMs(plan), stitching = plan.mode === 'stitch';
@@ -97,13 +97,13 @@ export function needleAt(plan: NeedlePlan, t: number): NeedleFrame {
       const lean = Math.max(-9, Math.min(9, (here.x - prev.x) * 0.9));
       return {
         pose: { x: lerp(prev.x, here.x, e), y: lerp(prev.y, here.y, e), angle: HAND_ANGLE + 8 * Math.sin(2 * Math.PI * phase) + lean, z: z > 0 ? z * 0.85 : z, anchor: prev, slack: 1 - clamp01(z) },
-        count: done, beat: Math.floor(turns + 0.5), phase: 'work',
+        count: done, beat: Math.floor(turns + 0.5), phase: 'atWork',
       };
     }
     // Unpicking: the needle is held high and tugs; the stitches come out last first.
     const count = startCount - done, held = endOf(plan.stitches[Math.max(0, count)]);
     const tug = Math.sin(tw / 46);
-    return { pose: { x: held.x + 5, y: held.y - 6, angle: HAND_ANGLE - 22 + tug * 5, z: 0.75 + tug * 0.2, anchor: held, slack: 0.12 + (tug + 1) * 0.06 }, count, beat: Math.floor(tw / 120), phase: 'work' };
+    return { pose: { x: held.x + 5, y: held.y - 6, angle: HAND_ANGLE - 22 + tug * 5, z: 0.75 + tug * 0.2, anchor: held, slack: 0.12 + (tug + 1) * 0.06 }, count, beat: Math.floor(tw / 120), phase: 'atWork' };
   }
 
   const tied: NeedlePose = { x: last.x + 9, y: last.y - 13, angle: HAND_ANGLE - 14, z: 1.25, anchor: null, slack: 0.5 };

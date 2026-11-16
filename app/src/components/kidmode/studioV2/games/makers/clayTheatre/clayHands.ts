@@ -34,14 +34,14 @@ export const GARDEN_SUN = { x: 78, y: 70, r: 18 } as const;
 /** The part of the frame the felt curtain leaves open. */
 export const WINDOW = { x0: 15, y0: 20, x1: 385, y1: 300 } as const;
 /** The audience in front of the stage, in the order they stand. */
-export const FRIENDS = ['gobgob', 'bebe', 'aya', 'chock', 'pep'] as const;
+export const FRIENDS = ['bebe', 'gobgob', 'chock', 'aya', 'pep'] as const;
 export type FriendId = typeof FRIENDS[number];
 
 /* ── the things a hand can touch ───────────────────────────────────────── */
 
 export type ToyKind =
   | 'clayHero' | 'wireStar' | 'nightMoon' | 'daySun' | 'seaSkin' | 'padLeaf' | 'puffCloud' | 'lotusBloom' | 'gardenBloom'
-  | 'openAir' | 'deepWater' | 'feltDrape' | 'cometWish' | 'kitFriend' | 'deskLamp' | 'reelDone';
+  | 'openAir' | 'deepWater' | 'feltDrape' | 'cometWish' | 'kitFriend' | 'proofLens' | 'wallPoster' | 'reelDone';
 export interface ToySpot { toy: ToyKind; index: number; x: number; y: number; rx: number; ry: number }
 /** Where the clay itself is on stage at `t`, and how it is turned and sized. */
 export interface HeroPlace { cx: number; cy: number; rot: number; sx: number; sy: number; reach: number; base: number }
@@ -56,7 +56,7 @@ export function heroPlace(reel: ReelId, t: number, hands: Hands = FRESH_HANDS): 
   }
   if (reel === 'ayaSeed') {
     const f = ayaFilm(t);
-    return { cx: f.x, cy: AYA_GROUND - 30 - f.lift, rot: 0, sx: f.sx, sy: f.sy, reach: 40, base: AYA_GROUND - f.lift };
+    return { cx: f.x, cy: AYA_GROUND - 42 - f.lift, rot: 0, sx: f.sx, sy: f.sy, reach: 48, base: AYA_GROUND - f.lift };
   }
   const f = frogFilm(t);
   return { cx: f.nose - 36, cy: PAD_Y - 20 - f.lift, rot: 0, sx: 1.25 * f.sx, sy: 1.25 * f.sy, reach: 38, base: PAD_Y + 1 - f.lift };
@@ -75,7 +75,7 @@ export function toySpots(reel: ReelId, t: number, hands: Hands = FRESH_HANDS, sh
     if (seen(JUMP_SUN.y - cam, 26)) out.push({ toy: 'daySun', index: 0, x: JUMP_SUN.x, y: JUMP_SUN.y - cam, rx: 30, ry: 30 });
     cloudsOf(show.sky).forEach(([x, y, s], index) => { if (seen(y - cam, 16)) out.push({ toy: 'puffCloud', index, x, y: y - cam - 4, rx: 40 * s, ry: 24 * s }); });
   } else if (reel === 'ayaSeed') {
-    out.push({ toy: 'gardenBloom', index: 0, x: PLANTER_X, y: SOIL_Y - 22, rx: 36, ry: 48 });
+    out.push({ toy: 'gardenBloom', index: 0, x: PLANTER_X, y: SOIL_Y - 30, rx: 36, ry: 62 });
     out.push({ toy: 'daySun', index: 0, x: GARDEN_SUN.x, y: GARDEN_SUN.y, rx: 30, ry: 30 });
   } else {
     out.push({ toy: 'lotusBloom', index: 0, x: FROG_XF + 4, y: BLOOM_Y + 2, rx: 32, ry: 30 });
@@ -108,7 +108,7 @@ export interface LiveTouch { key: number; toy: ToyKind; index: number; x: number
 /** Hand-frames a touch goes on answering after it is let go. */
 export const TOY_TAIL: Readonly<Record<ToyKind, number>> = {
   clayHero: 12, wireStar: 44, nightMoon: 14, daySun: 12, seaSkin: 12, padLeaf: 10, puffCloud: 9, lotusBloom: 12, gardenBloom: 12,
-  openAir: 9, deepWater: 11, feltDrape: 10, cometWish: 20, kitFriend: 15, deskLamp: 40, reelDone: 16,
+  openAir: 9, deepWater: 11, feltDrape: 10, cometWish: 20, kitFriend: 15, proofLens: 12, wallPoster: 22, reelDone: 16,
 };
 /** A press cannot be held for ever: it lets go by itself. */
 export const HOLD_MAX = 30, MAX_TOUCHES = 8;
@@ -269,10 +269,10 @@ export function curtainCall(c: number): CallFrame {
   for (let id = 0; id < 7; id++) {
     const born = 1.2 + 0.085 * id, u = (c - born) / 0.62;
     if (u < 0) continue;
-    const x0 = 40 + 320 * seeded(id, 61), x1 = 74 + 252 * seeded(id, 62), y1 = 240 + 16 * seeded(id, 63), v = Math.min(1, u);
+    const x0 = 40 + 320 * seeded(id, 61), x1 = 74 + 252 * seeded(id, 62), y1 = 244 + 14 * seeded(id, 63), v = Math.min(1, u);
     roses.push({ id, x: lerp(x0, x1, v), y: lerp(300, y1, v) - (70 + 40 * seeded(id, 64)) * 4 * v * (1 - v), rot: (seeded(id, 65) < 0.5 ? -1 : 1) * 300 * (1 - v), landed: u >= 1 });
   }
   return { drapes, bows, roses, cast: c >= CLOSE_BY ? 1 : 0 };
 }
 /** The rocket in the cast stands on its fins. */
-export const CAST_ROCKET_SCALE = ROCKET_SCALE * 0.62;
+export const CAST_SCALE = ROCKET_SCALE * 0.7;

@@ -183,23 +183,38 @@ function grow(): Tree {
   };
   const turnRank = rank('turn'), fallRank = rank('fall');
   const ranked: Leaf[] = leaves.map((l, i) => ({ ...l, seed: { ...l.seed, turn: turnRank[i], fall: fallRank[i] } }));
-  // Foliage masses behind the leaves, so a summer crown reads full.
+  // The crown is leaves all the way down: at every twig end, and along the
+  // outer limbs between them, a leafy shoot (a short stem with its leaves set
+  // alternately, a last one at the tip), so the crown's edge is leaf tips and
+  // its inside is full. Their own sequence, so the blossom and the apples
+  // stay where they always were.
   const clumps: Clump[] = [];
   const fan = seeded(733);
-  for (let i = 0; i < twigs.length; i++) {
-    const t = twigs[i];
-    const x = t.x + (rand() - 0.5) * 8, y = t.y + 3 + (rand() - 0.5) * 8;
-    const r = 10 + rand() * 6;
-    // Six to eight leaves fanned out from the twig's own direction (their own
-    // sequence, so the blossom and the apples stay where they always were).
-    const count = 6 + Math.floor(fan() * 3), turn = (t.angle * Math.PI) / 180 + (fan() - 0.5) * 0.6;
-    let spray = '';
+  const shoot = (r: number, toward: number): string => {
+    const count = 5 + Math.floor(fan() * 3), length = r * (1.25 + fan() * 0.5), bend = (fan() - 0.5) * 0.5;
+    let d = '', x = 0, y = 0, a = toward;
     for (let k = 0; k < count; k++) {
-      const a = turn + ((k + 0.5) / count - 0.5) * 5.4 + (fan() - 0.5) * 0.5;
-      const reach = r * (0.95 + fan() * 0.5), root = r * 0.12 * fan();
-      spray += leafShape(Math.cos(a) * root, Math.sin(a) * root, a, reach, reach * (0.4 + fan() * 0.12));
+      const along = (k + 0.4) / count;
+      a = toward + bend * along;
+      x = Math.cos(a) * length * along; y = Math.sin(a) * length * along;
+      const side = k % 2 ? 1 : -1, last = k === count - 1;
+      const leafLength = r * (0.9 - 0.25 * along + fan() * 0.2);
+      d += leafShape(x, y, last ? a : a + side * (1.05 - 0.45 * along + (fan() - 0.5) * 0.3), leafLength, leafLength * (0.5 + fan() * 0.1));
     }
-    clumps.push({ x: r1(x), y: r1(y), r: r1(r), shade: r1(shadeAt(x, y)), seed: seedAt(x, y), spray });
+    return d;
+  };
+  const addClump = (cx: number, cy: number, toward: number, size: number) => {
+    const x = cx + (rand() - 0.5) * 8, y = cy + 3 + (rand() - 0.5) * 8;
+    const r = size * (10 + rand() * 6);
+    clumps.push({ x: r1(x), y: r1(y), r: r1(r), shade: r1(shadeAt(x, y)), seed: seedAt(x, y), spray: shoot(r, toward) + shoot(r * 0.85, toward + (fan() < 0.5 ? 1 : -1) * (1.5 + fan() * 0.8)) });
+  };
+  for (const t of twigs) addClump(t.x, t.y, (t.angle * Math.PI) / 180 + (fan() - 0.5) * 0.5, 1);
+  // Side shoots along the outer limbs: they fill the crown between the twig ends.
+  let side = 0;
+  for (const s of segments) {
+    if (s.depth < 3 || side++ % 2) continue;
+    const a = Math.atan2(s.y2 - s.y1, s.x2 - s.x1);
+    addClump((s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2 - 3, a + (fan() < 0.5 ? 1 : -1) * (0.9 + fan() * 0.7), 0.92);
   }
   const spots = (count: number, jitter: number, rMin: number, rMax: number): Spot[] => Array.from({ length: count }, (_, i) => {
     const t = twigs[(i * 7 + 3) % twigs.length];

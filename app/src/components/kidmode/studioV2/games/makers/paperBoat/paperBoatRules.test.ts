@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ARRIVE, BOOK_TILT_MIN, GRAB_MIN, HINT_PLAY, HINT_REST, HOME_MS, PAGE_W, PEEK_RISE, RIVER_COURSES, SETTLE_SPAN, SETTLE_STAGGER,
+  fitBook, grabRadius, hintPose, hopArc, leafFraction, peek, riverCourse, riverGates, settleRise, settleSeconds, shake, stageBox, stepped, turnRelease, unprojectBookPoint,
   BOOK_TILT, END_MS, GATE_HOLD, GUST_EVERY, GUST_PUSH, HARBOUR_LAMPS, LANE_Y, LAUNCH_DRAG, PAGE_D, QUAY_HOLD, QUAY_LANE, QUAY_X, RIVER_BOAT_X, RIVER_COURSE, RIVER_END, RIVER_GATES,
   SPREAD_W, STAND_MAX, STORM_BAND, STORM_NEED, WHEEL_LIMIT, WHEEL_STEP,
   angleDelta, angleForLane, bookScene, boatYaw, canFinish, canTurn, clampWheel, createBook, createHarbour, createRiver, createStorm, dragFraction, edgeProgress, foldAngles,
@@ -222,5 +224,140 @@ describe('spread 4: the harbour', () => {
   it('the lamps come on one by one after the rope drops, then the end', () => {
     expect(lampsLit(0)).toBe(0); expect(lampsLit(700)).toBe(1); expect(lampsLit(700 + 420)).toBe(2);
     expect(lampsLit(END_MS)).toBe(HARBOUR_LAMPS); expect(lampsLit(Number.NaN)).toBe(0);
+  });
+});
+
+describe('the book on the screen', () => {
+  it('a point of the page projects to the screen and back, at any tilt, in both reading directions', () => {
+    for (const tilt of [BOOK_TILT_MIN, BOOK_TILT]) for (const mirror of [false, true]) for (const [x, y] of [[0, 0], [130, 250], [SPREAD_W, PAGE_D], [296, 262]]) {
+      const p = projectBookPoint(x, y, mirror, 0, tilt), back = unprojectBookPoint(p.x, p.y, mirror, tilt);
+      expect(back.x).toBeCloseTo(x, 4); expect(back.y).toBeCloseTo(y, 4);
+    }
+  });
+  it('a piece standing off the page is drawn above its foot, more so the flatter the book is seen', () => {
+    const foot = projectBookPoint(250, 100), top = projectBookPoint(250, 100, false, 120);
+    expect(top.y).toBeLessThan(foot.y); expect(top.x).toBeCloseTo(foot.x);
+    const rise = (tilt: number) => projectBookPoint(250, 100, false, 0, tilt).y - projectBookPoint(250, 100, false, 120, tilt).y;
+    expect(rise(BOOK_TILT)).toBeGreaterThan(rise(BOOK_TILT_MIN));
+  });
+  it('the stage holds the whole book: its near corners, and the tallest piece on the far edge', () => {
+    for (const tilt of [BOOK_TILT_MIN, BOOK_TILT]) {
+      const box = stageBox(tilt), corner = projectBookPoint(SPREAD_W, PAGE_D, false, 0, tilt), tall = projectBookPoint(250, 30, false, 179, tilt);
+      expect(box.cx + corner.x).toBeLessThan(box.w); expect(box.cy + corner.y).toBeLessThan(box.h);
+      expect(box.cy + tall.y).toBeGreaterThan(0); expect(box.cx).toBeCloseTo(box.w / 2);
+    }
+  });
+  it('a tall phone gets the widest book and a view from higher up; a wide screen keeps the low view', () => {
+    const phone = fitBook(386, 420), wide = fitBook(900, 380);
+    expect(phone.tilt).toBe(BOOK_TILT_MIN); expect(phone.scale).toBeCloseTo(386 / phone.box.w, 5);
+    expect(wide.tilt).toBe(BOOK_TILT); expect(wide.scale).toBeCloseTo(380 / wide.box.h, 5);
+    expect(phone.box.h * phone.scale).toBeLessThanOrEqual(420); expect(wide.box.w * wide.scale).toBeLessThanOrEqual(900);
+    expect(fitBook(Number.NaN, 0).scale).toBeGreaterThan(0);
+    expect(BOOK_TILT_MIN).toBeLessThan(BOOK_TILT);
+  });
+});
+
+describe('a finger on the page', () => {
+  it('the grabbed point stays under the finger: flat at the grab, upright over the spine, flat again on the far side', () => {
+    expect(leafFraction(200, 200)).toBe(0); expect(leafFraction(0, 200)).toBeCloseTo(0.5); expect(leafFraction(-200, 200)).toBe(1);
+    expect(leafFraction(100, 200)).toBeCloseTo(1 / 3); expect(leafFraction(999, 200)).toBe(0); expect(leafFraction(-999, 200)).toBe(1);
+    let last = -1;
+    for (let offset = 200; offset >= -200; offset -= 20) { const f = leafFraction(offset, 200); expect(f).toBeGreaterThanOrEqual(last); last = f; }
+  });
+  it('the radius is where the page was grabbed, never so near the spine that the page whips over', () => {
+    expect(grabRadius(180, 250, 'next')).toBe(180); expect(grabRadius(20, 250, 'next')).toBe(GRAB_MIN * 250);
+    expect(grabRadius(-180, 250, 'back')).toBe(180); expect(grabRadius(400, 250, 'next')).toBe(250);
+    // a swipe that starts on the other page takes the page by its edge
+    expect(grabRadius(-120, 250, 'next')).toBe(250); expect(grabRadius(120, 250, 'back')).toBe(250);
+    expect(PAGE_W * GRAB_MIN).toBeGreaterThan(80);
+  });
+  it('letting go: a flick carries the page over or back, a still page falls to its nearer side', () => {
+    expect(turnRelease(0.3, 0)).toBe(0); expect(turnRelease(0.6, 0)).toBe(1);
+    expect(turnRelease(0.2, 2)).toBe(1); expect(turnRelease(0.8, -2)).toBe(0);
+    expect(turnRelease(0.02, 5)).toBe(0); expect(turnRelease(0.99, -5)).toBe(1);
+    expect(turnRelease(Number.NaN, Number.NaN)).toBe(0);
+  });
+  it('follow-through: the pieces rise the last of the way a beat after the page lands, far ones first, and then are still', () => {
+    expect(settleRise(0, 0)).toEqual({ p: ARRIVE, lean: 0 });
+    expect(ARRIVE).toBeGreaterThan(0.7); expect(ARRIVE).toBeLessThan(1);
+    const early = 0.05 + SETTLE_SPAN * 0.2;
+    expect(settleRise(early, 0).p).toBeGreaterThan(ARRIVE); expect(settleRise(early, 6).p).toBe(ARRIVE);
+    expect(Math.abs(settleRise(0.05 + SETTLE_SPAN * 0.5, 0).lean)).toBeGreaterThan(0.5);
+    const done = settleSeconds(8);
+    for (let order = 0; order <= 8; order++) expect(settleRise(done, order)).toEqual({ p: 1, lean: 0 });
+    let last = 0;
+    for (let t = 0; t < done; t += 0.02) { const p = settleRise(t, 3).p; expect(p).toBeGreaterThanOrEqual(last); expect(p).toBeLessThanOrEqual(1); last = p; }
+    expect(SETTLE_STAGGER).toBeGreaterThan(0); expect(settleRise(Number.NaN, 0)).toEqual({ p: 1, lean: 0 });
+  });
+});
+
+describe('things that answer a poke', () => {
+  it('a wobble dies away and is over within a few seconds', () => {
+    expect(shake(-1)).toBe(0); expect(shake(0)).toBe(0); expect(shake(3)).toBe(0);
+    expect(Math.abs(shake(0.1, 8))).toBeGreaterThan(Math.abs(shake(1.4, 8)));
+    for (let s = 0; s < 2.4; s += 0.05) expect(Math.abs(shake(s, 8))).toBeLessThanOrEqual(8);
+  });
+  it('a hop goes up and comes down; a pop-up piece overshoots a little, stays, and folds away', () => {
+    expect(hopArc(0)).toBe(0); expect(hopArc(0.25, 0.5)).toBeCloseTo(1); expect(hopArc(0.5, 0.5)).toBe(0); expect(hopArc(-1)).toBe(0);
+    expect(peek(0)).toBe(0); expect(peek(-2)).toBe(0);
+    let top = 0; for (let s = 0; s < PEEK_RISE; s += 0.01) top = Math.max(top, peek(s));
+    expect(top).toBeGreaterThan(1); expect(top).toBeLessThan(1.3);
+    expect(peek(PEEK_RISE + 0.5)).toBe(1); expect(peek(PEEK_RISE + 1.5 + 0.16)).toBeLessThan(1); expect(peek(9)).toBe(0);
+  });
+  it('things that happen one after another are counted by the clock', () => {
+    expect(stepped(-5, 0, 100, 4)).toBe(0); expect(stepped(0, 0, 100, 4)).toBe(1); expect(stepped(250, 0, 100, 4)).toBe(3); expect(stepped(9999, 0, 100, 4)).toBe(4);
+    expect(stepped(Number.NaN, 0, 100, 4)).toBe(0);
+  });
+  it('the hand that shows a first move fades in, presses, travels, holds and lets go; it never lingers', () => {
+    expect(hintPose(0)).toEqual({ show: 0, press: 0, travel: 0 });
+    const mid = hintPose(0.45); expect(mid.show).toBe(1); expect(mid.press).toBe(1); expect(mid.travel).toBeGreaterThan(0); expect(mid.travel).toBeLessThan(1);
+    const hold = hintPose(0.75); expect(hold.travel).toBe(1); expect(hold.press).toBe(1);
+    expect(hintPose(1).show).toBe(0); expect(hintPose(1).press).toBe(0);
+    expect(HINT_REST).toBeGreaterThanOrEqual(5); expect(HINT_PLAY).toBeLessThan(HINT_REST);
+  });
+});
+
+describe('play again is another river', () => {
+  it('every course has three arches that need the wheel turned both ways, in a different order from the first', () => {
+    expect(RIVER_COURSES.length).toBeGreaterThanOrEqual(3);
+    expect(RIVER_COURSES[0]).toBe(RIVER_COURSE);
+    const orders = RIVER_COURSES.map((_, i) => riverGates(i).map(gate => gate.lane).join(''));
+    expect(new Set(orders).size).toBe(RIVER_COURSES.length);
+    for (let i = 0; i < RIVER_COURSES.length; i++) {
+      const lanes = riverGates(i).map(gate => gate.lane);
+      expect(lanes).toHaveLength(3); expect(lanes).toContain(0); expect(lanes).toContain(2);
+      expect(lanes[0]).not.toBe(1); // the first arch always asks for a turn of the wheel
+      expect(riverCourse(i).every((item, n, all) => n === 0 || item.at > all[n - 1].at)).toBe(true);
+    }
+    expect(riverCourse(RIVER_COURSES.length)).toBe(RIVER_COURSES[0]); expect(riverCourse(-1)).toBe(RIVER_COURSES[RIVER_COURSES.length - 1]);
+  });
+  it('every course can be sailed, a stone only ever nudges, and nothing is lost on any of them', () => {
+    for (let i = 0; i < RIVER_COURSES.length; i++) {
+      let river = createRiver(i); const events: string[] = [];
+      for (const gate of riverGates(i)) { const leg = sail(river, gate.lane, 12); river = leg.river; events.push(...leg.events); }
+      expect(river.gates).toBe(3); expect(river.course).toBe(i); expect(events.filter(e => e === 'reedGate')).toHaveLength(3);
+      // never steering at all: the river waits at the first arch
+      const idle = sail(createRiver(i), 1, 20).river;
+      expect(idle.gates).toBe(0); expect(idle.d).toBeCloseTo(riverGates(i)[0].at - GATE_HOLD);
+    }
+  });
+  it('a stone waits in the lane of the arch just passed and nudges the boat on towards the next one', () => {
+    for (let i = 0; i < RIVER_COURSES.length; i++) {
+      const gates = riverGates(i), stones = riverCourse(i).filter(item => item.kind === 'rock');
+      stones.forEach((stone, n) => {
+        expect(stone.lane).toBe(gates[n].lane);
+        const step = sail({ ...createRiver(i), d: stone.at - 30, pos: stone.lane, gates: n + 1 }, stone.lane, 0.6);
+        expect(step.events).toContain('bump');
+        expect(Math.abs(step.river.pos - gates[n + 1].lane)).toBeLessThan(Math.abs(stone.lane - gates[n + 1].lane));
+      });
+    }
+  });
+  it('a reading picks its river and which way the first gust blows; the first reading is always the same', () => {
+    expect(createBook()).toEqual(createBook(0));
+    expect(createBook(1).river.course).toBe(1); expect(createBook(1).storm.gustSign).toBe(-1); expect(createBook(2).storm.gustSign).toBe(1);
+    expect(createBook(RIVER_COURSES.length).river.course).toBe(0); expect(createBook(Number.NaN).river.course).toBe(0);
+  });
+  it('the homecoming is a celebration of about two seconds before the end is offered', () => {
+    expect(HOME_MS).toBeGreaterThanOrEqual(1500); expect(HOME_MS).toBeLessThanOrEqual(2500);
   });
 });

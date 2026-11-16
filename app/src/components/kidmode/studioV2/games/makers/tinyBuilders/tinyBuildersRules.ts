@@ -239,7 +239,7 @@ export function turnBy(rotation: number, deg: number): number {
 /** The turntable has weight: let go, it coasts and slows. `friction` is the
  * share of speed lost per second (as a rate); a coast started at v degrees a
  * second runs v / friction degrees in all. */
-export const SPIN_FRICTION = 2.6, SPIN_REST = 5, SPIN_MAX = 900;
+export const SPIN_FRICTION = 2.6, SPIN_REST = 5, SPIN_MAX = 1400;
 export function coast(velocity: number, dtSeconds: number): { velocity: number; turn: number } {
   if (!Number.isFinite(velocity) || !Number.isFinite(dtSeconds) || dtSeconds <= 0) return { velocity: 0, turn: 0 };
   const v = Math.max(-SPIN_MAX, Math.min(SPIN_MAX, velocity)), decay = Math.exp(-SPIN_FRICTION * dtSeconds);

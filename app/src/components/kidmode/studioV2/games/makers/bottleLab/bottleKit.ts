@@ -11,11 +11,19 @@ export interface KitPicture { src: string; src480: string; width: number; height
 const bop = (stem: string, width: number, height: number, twin = false): KitPicture =>
   ({ src: studioBopArt(stem), src480: studioBopArt(twin ? `${stem}-480` : stem), width, height, source: `app/public/visuals/studio-v2/bop/${stem}.webp` });
 
-/** The room behind the bottle and where it sits in the 360 by 440 still life:
- * the line where its wall meets its floor lies on the scene's TABLE_Y. */
-export const KIT_ROOM = { ...bop('scene-delivery', 1024, 1024, true), place: { x: -90, y: -46, width: 540, height: 540 } } as const;
-/** How far the room reaches past the still life on each side, in scene units. */
-export const ROOM_SPILL = -KIT_ROOM.place.x;
+/** The room behind the bottle, and where it sits in the 360 by 440 still
+ * life. One picture edited from two shipped kit pictures: the arched pavilion
+ * room (`scene-delivery`, carried on both ways as its own mirror image and
+ * softened a little, as a room behind a close object is) with the kit's round
+ * pale-wood table and linen top (`scene-table`, laid down in the room's
+ * perspective) in front. The bottle, the lamp and Aya stand on that table. */
+export const KIT_ROOM = {
+  src: '/visuals/studio-v2/makers/bottle-lab-bench.webp', src480: '/visuals/studio-v2/makers/bottle-lab-bench-480.webp', width: 1536, height: 1024,
+  source: 'app/public/visuals/studio-v2/bop/scene-delivery.webp + app/public/visuals/studio-v2/bop/scene-table.webp',
+  place: { x: -270, y: -92, width: 900, height: 600 },
+} as const;
+/** The far edge of the table top, in scene units: beyond it is the room. */
+export const BENCH_Y = 334;
 
 export const KIT_LAMP = bop('item-lamp', 245, 300);
 export const KIT_CAN = bop('item-can', 278, 205);

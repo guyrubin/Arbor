@@ -1,401 +1,311 @@
 import type { Ref } from 'react';
-import { mk, mx } from './windupCar';
-import { pointAt, shapeOf, type Track } from './windupRaceRules';
+import { TILT, mk, mx } from './windupCar';
+import { BALL_ART, BLOOM_ART, CAN_ART, CUSHION_ART, FLOOR_ART, FLOWER_FOLDED_ART, FLOWER_OPEN_ART, LAMP_ART, PAD_ARTS, PEP_HAPPY_ART, PEP_IDLE_ART, PEP_SIDE_ART, PETAL_ARTS, RUG_ART, SIGN_ART, TILE_ARTS, WALL_ART, WALL_SHARE } from './windupKit';
+import { pointAt, shapeOf, type Track, type TrackId } from './windupRaceRules';
 
-/** Wind-up Racer scenery: a sunny room seen side-on, a wooden table, and the
- * household things each track is built from. Paper-cut shapes, soft
- * gradients, one light from the window at the top left, no outlines.
+/** Wind-up Racer scenery: a Wonderworks pavilion gallery in Horizon Valley,
+ * seen side-on from a little above. The wall and the floor are the kit's own
+ * pictures; the toys, Pep, the flower and the cushion are kit sprites; the
+ * blocks and ramps the trail climbs, the arches, the key and the chalk are
+ * drawn here in pale wood, knit and brass, lit from the upper left like the
+ * kit, with contact shadows.
  *
- * World space is SVG space: x to the right along the table, y DOWN, y = 0 is
- * the line the wheels roll on (track heights are drawn as -y). */
+ * World space is SVG space: x to the right along the trail, y DOWN, y = 0 the
+ * line the wheels roll on (heights are drawn as -y). The floor runs away from
+ * the camera upward: a thing `d` deep behind the lane is drawn TILT * d higher. */
 
-export const TABLE_BACK = -50;
-export const TABLE_FRONT = 26;
-export const APRON = 30;
+/** Half the lane's depth, and how far that reaches up and down the picture. */
+export const LANE = 46;
+export const EDGE = LANE * TILT;
+/** The floor's far edge (where the wall stands), above the lane line. */
+export const FLOOR_TOP = -124;
+export const FLOOR_TILE = 944;
+export const FLOOR_DEEP = 372;
+export const WALL_TILE = 500;
+export const WALL_HIGH = WALL_TILE * WALL_SHARE;
+/** Where the two picture layers begin (world x), so the camera never runs off them. */
+export const BACKDROP_X0 = -1300;
 
 const fill = (colour: string) => ({ style: { fill: colour } });
 
-/** Every gradient and pattern the scene uses, once per scene. */
+/* ---------- the room: two layers of kit pictures behind the drawing ---------- */
+
+/** The wall and the floor, as plain pictures the camera slides and scales.
+ * `width` is the world width to cover. Every other picture is mirrored so
+ * they meet without a seam. */
+export function Backdrop({ width, wallRef, floorRef }: { width: number; wallRef: Ref<HTMLDivElement>; floorRef: Ref<HTMLDivElement> }) {
+  const walls = Math.ceil((width - BACKDROP_X0 + 1300) / WALL_TILE), floors = Math.ceil((width - BACKDROP_X0 + 1300) / FLOOR_TILE);
+  return <>
+    <div className="wr-wall" ref={wallRef} style={{ inlineSize: walls * WALL_TILE, blockSize: WALL_HIGH }} aria-hidden="true">
+      {Array.from({ length: walls }, (_, i) => <img key={i} src={WALL_ART} alt="" draggable={false} decoding="async" data-flip={i % 2 === 1} style={{ insetInlineStart: i * WALL_TILE - .5, inlineSize: WALL_TILE + 1, blockSize: WALL_TILE }} />)}
+    </div>
+    <div className="wr-floor" ref={floorRef} style={{ inlineSize: floors * FLOOR_TILE, blockSize: FLOOR_DEEP }} aria-hidden="true">
+      {Array.from({ length: floors }, (_, i) => <img key={i} src={FLOOR_ART} alt="" draggable={false} decoding="async" data-flip={i % 2 === 1} style={{ insetInlineStart: i * FLOOR_TILE - .5, inlineSize: FLOOR_TILE + 1, blockSize: FLOOR_DEEP }} />)}
+    </div>
+  </>;
+}
+
+/** Every gradient the drawn things use, once per scene. */
 export function SceneDefs({ id }: { id: string }) {
   const stop = (offset: string, colour: string) => <stop offset={offset} style={{ stopColor: colour }} />;
   return <defs>
-    <linearGradient id={`${id}wall`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('paper', 'butter', 78))}{stop('.7', mx('paper', 'sand', 70))}{stop('1', mx('sand', 'clay-pale', 60))}</linearGradient>
-    <pattern id={`${id}paper`} width="34" height="40" patternUnits="userSpaceOnUse">
-      <rect x="16" width="2" height="40" {...fill(mx('sand', 'transparent', 32))} />
-      <circle cx="0" cy="10" r="2.2" {...fill(mx('rose', 'transparent', 30))} />
-      <circle cx="34" cy="10" r="2.2" {...fill(mx('rose', 'transparent', 30))} />
-      <path d="M-2 14q2 3 4 0M32 14q2 3 4 0" style={{ fill: 'none', stroke: mx('sage', 'transparent', 45), strokeWidth: 1.2 }} />
-      <circle cx="17" cy="30" r="1.2" {...fill(mx('sage', 'transparent', 40))} />
-    </pattern>
-    <linearGradient id={`${id}sky`} x1="0" y1="0" x2="0" y2="1">{stop('0', mk('sky'))}{stop('.65', mk('sky-pale'))}{stop('1', mk('butter'))}</linearGradient>
-    <radialGradient id={`${id}sun`} cx=".5" cy=".5" r=".5">{stop('0', mk('white'))}{stop('.35', mx('sun', 'white', 60))}{stop('1', mx('sun', 'transparent', 0))}</radialGradient>
-    <linearGradient id={`${id}beam`} x1="0" y1="0" x2="1" y2="1">{stop('0', mx('butter', 'transparent', 70))}{stop('1', mx('butter', 'transparent', 0))}</linearGradient>
-    <linearGradient id={`${id}top`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood', 'wood-dark', 70))}{stop('.35', mk('wood'))}{stop('1', mx('wood-light', 'wood', 70))}</linearGradient>
-    <linearGradient id={`${id}apron`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood-light', 'white', 80))}{stop('.12', mk('wood'))}{stop('1', mk('wood-dark'))}</linearGradient>
-    <linearGradient id={`${id}under`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('umber', 'wood-dark', 75))}{stop('.12', mx('wood-dark', 'umber', 60))}{stop('.4', mx('wood', 'wood-dark', 55))}{stop('1', mx('wood', 'clay', 70))}</linearGradient>
-    <pattern id={`${id}grain`} width="260" height="76" patternUnits="userSpaceOnUse">
-      <path d="M0 8C60 5 120 11 260 7M0 30C80 27 150 34 260 29M10 52C90 49 170 56 250 51M0 68C70 66 160 71 260 67" style={{ fill: 'none', stroke: mx('wood-dark', 'transparent', 28), strokeWidth: 1.4, strokeLinecap: 'round' }} />
-      <ellipse cx="190" cy="40" rx="14" ry="3.2" style={{ fill: 'none', stroke: mx('wood-dark', 'transparent', 22), strokeWidth: 1.1 }} />
-    </pattern>
-    <linearGradient id={`${id}ruler`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood-light', 'butter', 70))}{stop('1', mk('wood-light'))}</linearGradient>
-    <linearGradient id={`${id}block`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood-light', 'white', 75))}{stop('1', mx('wood-light', 'wood', 60))}</linearGradient>
-    <linearGradient id={`${id}pages`} x1="0" y1="0" x2="0" y2="1">{stop('0', mk('white'))}{stop('1', mk('paper-shade'))}</linearGradient>
-    <radialGradient id={`${id}wool`} cx=".35" cy=".3" r=".75">{stop('0', mx('blossom', 'rose', 40))}{stop('.7', mk('rose'))}{stop('1', mk('rose-deep'))}</radialGradient>
-    <linearGradient id={`${id}cushion`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('celadon', 'white', 60))}{stop('1', mk('celadon-deep'))}</linearGradient>
-    <linearGradient id={`${id}tunnel`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('paper', 'white', 50))}{stop('1', mx('paper-shade', 'paper', 70))}</linearGradient>
-    <linearGradient id={`${id}wallshade`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('umber', 'transparent', 0))}{stop('1', mx('umber', 'transparent', 16))}</linearGradient>
-    <radialGradient id={`${id}pool`} cx=".5" cy=".5" r=".5">{stop('0', mx('butter', 'transparent', 55))}{stop('1', mx('butter', 'transparent', 0))}</radialGradient>
+    <linearGradient id={`${id}deck`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood-light', 'white', 30))}{stop('1', mx('wood-light', 'paper', 46))}</linearGradient>
+    <linearGradient id={`${id}face`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('wood-light', 'paper', 48))}{stop('.6', mx('wood-light', 'paper', 72))}{stop('1', mx('wood-light', 'wood', 86))}</linearGradient>
+    <linearGradient id={`${id}knit`} x1="0" y1="0" x2="0" y2="1">{stop('0', mk('white'))}{stop('.6', mk('paper'))}{stop('1', mx('linen', 'paper', 60))}</linearGradient>
+    <linearGradient id={`${id}roll`} x1="0" y1="0" x2="0" y2="1">{stop('0', mx('clay-light', 'white', 70))}{stop('.5', mx('poppy', 'clay-light', 55))}{stop('1', mx('rust', 'poppy', 50))}</linearGradient>
+    <linearGradient id={`${id}arch`} x1="0" y1="0" x2="1" y2="0">{stop('0', mx('linen', 'white', 45))}{stop('.45', mk('cream'))}{stop('1', mx('linen-shade', 'cream', 60))}</linearGradient>
+    <linearGradient id={`${id}cuff`} x1="0" y1="0" x2="1" y2="0">{stop('0', mk('sun'))}{stop('1', mx('amber', 'gold', 60))}</linearGradient>
+    <radialGradient id={`${id}shade`} cx=".5" cy=".5" r=".5">{stop('0', mx('shadow', 'transparent', 34))}{stop('.6', mx('shadow', 'transparent', 18))}{stop('1', mx('shadow', 'transparent', 0))}</radialGradient>
+    <radialGradient id={`${id}pool`} cx=".5" cy=".5" r=".5">{stop('0', mx('sun', 'transparent', 62))}{stop('1', mx('sun', 'transparent', 0))}</radialGradient>
+    <linearGradient id={`${id}coil`} x1="0" y1="0" x2="1" y2="0">{stop('0', mk('steel-dark'))}{stop('.45', mk('steel-light'))}{stop('1', mk('steel'))}</linearGradient>
   </defs>;
 }
 
-/* ---------- the room (two parallax layers behind the table) ---------- */
-
-export const WINDOW_EVERY = 1150;
-function Window({ x, id }: { x: number; id: string }) {
-  return <g transform={`translate(${x} 0)`}>
-    {/* Sunlight falling from the window toward the table, down to the right. */}
-    <path d="M10 -430L210 -430L520 -60L250 -60Z" style={{ fill: `url(#${id}beam)`, opacity: .38 }} />
-    <rect x="-12" y="-448" width="244" height="292" rx="6" {...fill(mx('shadow', 'transparent', 10))} />
-    <rect x="-8" y="-452" width="236" height="286" rx="6" {...fill(mk('white'))} />
-    <rect x="6" y="-438" width="208" height="258" rx="3" style={{ fill: `url(#${id}sky)` }} />
-    <circle cx="160" cy="-388" r="64" style={{ fill: `url(#${id}sun)` }} />
-    {/* Garden outside: soft hills and a round tree, cut from paper. */}
-    <path d="M6 -228C50 -258 100 -246 140 -236C170 -228 196 -250 214 -246L214 -180L6 -180Z" {...fill(mx('sage', 'sky-pale', 70))} />
-    <path d="M6 -206C60 -224 120 -214 214 -222L214 -180L6 -180Z" {...fill(mx('spring', 'sage', 55))} />
-    <rect x="58" y="-262" width="7" height="50" rx="3" {...fill(mx('wood-dark', 'sage', 60))} />
-    <circle cx="61" cy="-276" r="28" {...fill(mx('leaf', 'sage', 55))} />
-    <circle cx="50" cy="-284" r="16" {...fill(mx('spring', 'leaf', 45))} />
-    {/* Glazing bars and their shadows. */}
-    <rect x="107" y="-438" width="8" height="258" {...fill(mk('white'))} />
-    <rect x="6" y="-314" width="208" height="8" {...fill(mk('white'))} />
-    <rect x="115" y="-438" width="2" height="258" {...fill(mx('shadow', 'transparent', 10))} />
-    <rect x="6" y="-306" width="208" height="2" {...fill(mx('shadow', 'transparent', 10))} />
-    {/* Sill. */}
-    <rect x="-22" y="-172" width="264" height="14" rx="5" {...fill(mk('white'))} />
-    <rect x="-22" y="-160" width="264" height="5" rx="2.5" {...fill(mx('paper-shade', 'linen-shade', 50))} />
-    {/* Linen curtains, gathered at each side. */}
-    <path d="M-34 -470C-14 -470 6 -466 14 -460C4 -380 26 -300 8 -170C-4 -166 -20 -164 -36 -166C-26 -260 -40 -380 -34 -470Z" {...fill(mx('linen', 'butter', 70))} />
-    <path d="M-20 -462C-24 -380 -12 -300 -22 -168" style={{ fill: 'none', stroke: mx('linen-shade', 'transparent', 70), strokeWidth: 3, strokeLinecap: 'round' }} />
-    <path d="M254 -470C234 -470 214 -466 206 -460C216 -380 194 -300 212 -170C224 -166 240 -164 256 -166C246 -260 260 -380 254 -470Z" {...fill(mx('linen', 'butter', 60))} />
-    <path d="M240 -462C244 -380 232 -300 242 -168" style={{ fill: 'none', stroke: mx('linen-shade', 'transparent', 70), strokeWidth: 3, strokeLinecap: 'round' }} />
-    <rect x="-50" y="-478" width="320" height="9" rx="4.5" {...fill(mx('wood', 'wood-dark', 60))} />
-    <circle cx="-50" cy="-473.5" r="7" {...fill(mk('wood-dark'))} />
-    <circle cx="270" cy="-473.5" r="7" {...fill(mk('wood-dark'))} />
-  </g>;
+/** A soft contact shadow on the floor. */
+function Shade({ x = 0, y = 0, rx, ry, id }: { x?: number; y?: number; rx: number; ry: number; id: string }) {
+  return <ellipse cx={x} cy={y} rx={rx} ry={ry} style={{ fill: `url(#${id}shade)` }} />;
 }
 
-/** The far wall: wallpaper, windows with the afternoon sun. */
-export function WallLayer({ width, id }: { width: number; id: string }) {
-  const windows: number[] = [];
-  for (let x = -60; x < width; x += WINDOW_EVERY) windows.push(x);
-  return <g>
-    <rect x="-3000" y="-1400" width={width + 6000} height={1400 + TABLE_BACK + 6} style={{ fill: `url(#${id}wall)` }} />
-    <rect x="-3000" y="-1400" width={width + 6000} height={1400 + TABLE_BACK + 6} style={{ fill: `url(#${id}paper)`, opacity: .9 }} />
-    {/* Picture rail. */}
-    <rect x="-3000" y="-560" width={width + 6000} height="10" {...fill(mx('white', 'paper-shade', 70))} />
-    <rect x="-3000" y="-550" width={width + 6000} height="3" {...fill(mx('shadow', 'transparent', 8))} />
-    {windows.map(x => <Window key={x} x={x} id={id} />)}
-    {/* The table's own shadow on the wall. */}
-    <rect x="-3000" y={TABLE_BACK - 70} width={width + 6000} height="76" style={{ fill: `url(#${id}wallshade)` }} />
-  </g>;
-}
+/* ---------- the trail: blocks, ramps and planks of pale wood with a knit runner ---------- */
 
-function Plant({ x }: { x: number }) {
-  return <g transform={`translate(${x} 0)`}>
-    <path d="M-6 -30C-30 -60 -26 -92 -10 -104C-8 -80 -4 -60 -2 -30Z" {...fill(mx('leaf', 'leaf-deep', 60))} />
-    <path d="M2 -30C10 -70 30 -88 44 -90C34 -64 18 -46 6 -30Z" {...fill(mk('leaf'))} />
-    <path d="M-2 -30C-6 -64 4 -100 18 -116C22 -84 12 -56 4 -30Z" {...fill(mx('spring', 'leaf', 50))} />
-    <path d="M-22 -32L22 -32L17 0L-17 0Z" {...fill(mk('clay'))} />
-    <path d="M-25 -36L25 -36L24 -27L-24 -27Z" {...fill(mk('clay-light'))} />
-    <path d="M-17 -27L-14 0L-17 0Z" {...fill(mx('rust', 'transparent', 40))} />
-  </g>;
-}
-function Jar({ x }: { x: number }) {
-  return <g transform={`translate(${x} 0)`}>
-    <rect x="-17" y="-52" width="34" height="52" rx="9" {...fill(mx('sky-pale', 'transparent', 70))} />
-    {[[-8, -10, 'red'], [4, -12, 'amber'], [-2, -22, 'teal'], [8, -26, 'violet'], [-9, -30, 'sun'], [3, -36, 'poppy'], [-4, -6, 'leaf']].map(([cx, cy, c]) => <circle key={`${cx}${cy}`} cx={cx} cy={cy} r="4.6" {...fill(mk(String(c)))} />)}
-    <rect x="-17" y="-52" width="34" height="52" rx="9" {...fill(mx('white', 'transparent', 22))} />
-    <rect x="-12" y="-46" width="4" height="36" rx="2" {...fill(mx('white', 'transparent', 70))} />
-    <rect x="-15" y="-60" width="30" height="10" rx="3" {...fill(mk('steel'))} />
-  </g>;
-}
-function Clock({ x }: { x: number }) {
-  return <g transform={`translate(${x} 0)`}>
-    <rect x="-18" y="-6" width="6" height="6" rx="2" {...fill(mk('teal-deep'))} />
-    <rect x="12" y="-6" width="6" height="6" rx="2" {...fill(mk('teal-deep'))} />
-    <circle cy="-30" r="26" {...fill(mk('teal'))} />
-    <circle cy="-30" r="19" {...fill(mk('white'))} />
-    <path d="M0 -30V-43M0 -30L9 -25" style={{ stroke: mk('ink'), strokeWidth: 2.4, strokeLinecap: 'round' }} />
-    <circle cx="-15" cy="-58" r="7" {...fill(mk('gold'))} /><circle cx="15" cy="-58" r="7" {...fill(mk('gold'))} />
-    <path d="M-8 -40A13 13 0 0 1 4 -45" style={{ fill: 'none', stroke: mx('white', 'transparent', 60), strokeWidth: 2, strokeLinecap: 'round' }} />
-  </g>;
-}
-function Spool({ x, colour }: { x: number; colour: string }) {
-  return <g transform={`translate(${x} 0)`}>
-    <rect x="-13" y="-5" width="26" height="5" rx="1.5" {...fill(mk('wood-light'))} />
-    <rect x="-10" y="-30" width="20" height="25" {...fill(mk(colour))} />
-    {[-24, -18, -12].map(y => <path key={y} d={`M-10 ${y}h20`} style={{ stroke: mx('white', 'transparent', 30), strokeWidth: 1 }} />)}
-    <rect x="-13" y="-35" width="26" height="5" rx="1.5" {...fill(mx('wood-light', 'white', 70))} />
-  </g>;
-}
-
-export const SHELF_EVERY = 1100;
-/** The middle layer: a wall shelf with small things on it. */
-export function ShelfLayer({ width }: { width: number }) {
-  const shelves: number[] = [];
-  for (let x = 520; x < width; x += SHELF_EVERY) shelves.push(x);
-  return <g>
-    {shelves.map((x, i) => <g key={x} transform={`translate(${x} -262)`}>
-      <rect x="-10" y="12" width="400" height="22" rx="10" {...fill(mx('umber', 'transparent', 14))} />
-      <path d="M30 12L30 54L44 54Z" {...fill(mk('wood-dark'))} />
-      <path d="M330 12L330 54L344 54Z" {...fill(mk('wood-dark'))} />
-      <rect x="0" y="0" width="380" height="13" rx="3" {...fill(mk('wood'))} />
-      <rect x="0" y="0" width="380" height="3" rx="1.5" {...fill(mk('wood-light'))} />
-      {i % 2 === 0
-        ? <><Plant x={56} /><Jar x={150} /><Spool x={214} colour="poppy" /><Spool x={246} colour="bluebell" /><Clock x={320} /></>
-        : <><Clock x={60} /><Spool x={130} colour="amber" /><Jar x={200} /><Plant x={310} /></>}
-    </g>)}
-  </g>;
-}
-
-/* ---------- the table ---------- */
-
-/** Table top, its front edge, the shade under it and the legs. */
-export function Table({ from, to, id }: { from: number; to: number; id: string }) {
-  const width = to - from;
-  const legs: number[] = [];
-  for (let x = from + 260; x < to; x += 1000) legs.push(x);
-  return <g>
-    <rect x={from} y={TABLE_FRONT + APRON - 4} width={width} height="1400" style={{ fill: `url(#${id}under)` }} />
-    {/* The floor far below: a woven rug on boards, out of focus in the shade. */}
-    {[110, 170, 250].map(y => <rect key={y} x={from} y={TABLE_FRONT + APRON + y} width={width} height="3" {...fill(mx('wood-dark', 'transparent', 45))} />)}
-    <rect x={from} y={TABLE_FRONT + APRON + 196} width={width} height="40" {...fill(mx('rose-deep', 'wood', 45))} />
-    <rect x={from} y={TABLE_FRONT + APRON + 204} width={width} height="5" {...fill(mx('butter', 'rose-deep', 40))} />
-    <rect x={from} y={TABLE_FRONT + APRON + 222} width={width} height="5" {...fill(mx('butter', 'rose-deep', 40))} />
-    {legs.map(x => <g key={x}>
-      <rect x={x} y={TABLE_FRONT + APRON - 4} width="46" height="250" {...fill(mx('wood-dark', 'umber', 70))} />
-      <rect x={x} y={TABLE_FRONT + APRON - 4} width="10" height="250" {...fill(mx('wood', 'wood-dark', 50))} />
-    </g>)}
-    <rect x={from} y={TABLE_BACK} width={width} height={TABLE_FRONT - TABLE_BACK} style={{ fill: `url(#${id}top)` }} />
-    <rect x={from} y={TABLE_BACK} width={width} height={TABLE_FRONT - TABLE_BACK} style={{ fill: `url(#${id}grain)` }} />
-    {Array.from({ length: Math.ceil(width / WINDOW_EVERY) + 1 }, (_, i) => from + 300 + i * WINDOW_EVERY).map(x => <ellipse key={x} cx={x} cy="-8" rx="260" ry="34" style={{ fill: `url(#${id}pool)` }} />)}
-    <rect x={from} y={TABLE_FRONT} width={width} height={APRON} style={{ fill: `url(#${id}apron)` }} />
-    <rect x={from} y={TABLE_FRONT + APRON} width={width} height="8" {...fill(mx('shadow', 'transparent', 22))} />
-  </g>;
-}
-
-/* ---------- household things the tracks are built from ---------- */
-
-const BOOK_COLOURS = ['indigo', 'rust', 'celadon-deep', 'plum', 'teal-deep', 'moss', 'rose-deep', 'bluebell', 'wood-dark', 'red'];
-/** A cloth-bound book standing up, spine to the room. */
-function StandingBook({ x, w, h, colour, lean = 0 }: { x: number; w: number; h: number; colour: string; lean?: number }) {
-  return <g transform={`translate(${x} ${TABLE_BACK + 14}) rotate(${lean})`}>
-    <rect x="0" y={-h} width={w} height={h} rx="3" {...fill(mk(colour))} />
-    <rect x="0" y={-h} width={w * .32} height={h} rx="3" {...fill(mx('white', 'transparent', 14))} />
-    <rect x="2" y={-h + 12} width={w - 4} height="3" {...fill(mx('gold-light', 'transparent', 80))} />
-    <rect x="2" y={-14} width={w - 4} height="3" {...fill(mx('gold-light', 'transparent', 80))} />
-    <rect x={w * .2} y={-h * .62} width={w * .6} height={h * .2} rx="2" {...fill(mx('paper', colour, 80))} />
-  </g>;
-}
-/** A book lying flat: cloth cover top and bottom, the page block between. */
-function FlatBook({ x, y, w, h, colour }: { x: number; y: number; w: number; h: number; colour: string }) {
-  return <g transform={`translate(${x} ${y})`}>
-    <rect x="0" y="0" width={w} height={h} rx="3" {...fill(mk(colour))} />
-    <rect x="5" y="3.5" width={w - 5} height={h - 7} rx="1" style={{ fill: 'url(#wr-pages)' }} className="wr-pages" />
-    {Array.from({ length: Math.max(1, Math.floor((h - 9) / 3)) }, (_, i) => <path key={i} d={`M7 ${6 + i * 3}H${w - 2}`} style={{ stroke: mx('paper-shade', 'transparent', 80), strokeWidth: .8 }} />)}
-    <rect x="0" y="0" width={w} height="3.5" rx="1.5" {...fill(mx('white', colour, 22))} />
-    <rect x="0" y="0" width="7" height={h} rx="3" {...fill(mx(colour, 'shadow', 82))} />
-  </g>;
-}
-
-function track1Props() {
-  const books: { x: number; w: number; h: number; colour: string; lean?: number }[] = [];
-  let x = 150, i = 0;
-  while (x < 1000) {
-    const w = 24 + ((i * 7) % 15), h = 96 + ((i * 37) % 52);
-    books.push({ x, w, h, colour: BOOK_COLOURS[i % BOOK_COLOURS.length], lean: i === 6 ? 8 : 0 });
-    x += w + (i === 5 ? 18 : 2); i++;
+/** The pieces of the rolling line that stand above the floor, with the line run on past both ends. */
+function raised(track: Track): { x0: number; h0: number; x1: number; h1: number }[] {
+  const pts = track.points, parts: { x0: number; h0: number; x1: number; h1: number }[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, h0] = pts[i - 1], [x1, h1] = pts[i];
+    // The little hump of a knit roll is not a block: it is drawn as the roll.
+    if (x1 - x0 < .5 || Math.max(h0, h1) < 8) continue;
+    parts.push({ x0: i === 1 ? x0 - 1400 : x0, h0, x1: i === pts.length - 1 ? x1 + 1400 : x1, h1 });
   }
-  return <g>{books.map(b => <StandingBook key={b.x} {...b} />)}</g>;
+  return parts;
 }
-
-function Ramp() {
-  // The leaning book's top cover is the rolling surface from (250,0) up to (520,-90).
-  const angle = Math.atan2(90, 270) * 180 / Math.PI, length = Math.hypot(270, 90);
+export function Terrain({ track, id }: { track: Track; id: string }) {
+  const parts = raised(track);
+  const runner = EDGE * .58;
   return <g>
-    <FlatBook x={500} y={-30} w={200} h={30} colour="rust" />
-    <FlatBook x={512} y={-60} w={182} h={30} colour="celadon-deep" />
-    <FlatBook x={504} y={-90} w={196} h={30} colour="indigo" />
-    <g transform={`translate(250 0) rotate(${-angle})`}>
-      {/* A big hardback lying on its back: cloth boards top and bottom, the page block between, a round spine at the low end. */}
-      <rect x="-2" y="0" width={length + 8} height="24" rx="3" {...fill(mk('plum'))} />
-      <rect x="4" y="4" width={length - 2} height="16" style={{ fill: `url(#${'wr-'}pages)` }} />
-      {[7, 10, 13, 16].map(y => <path key={y} d={`M6 ${y}H${length - 2}`} style={{ stroke: mx('paper-shade', 'transparent', 80), strokeWidth: .7 }} />)}
-      <path d="M-2 0C-12 4 -12 20 -2 24L6 24L6 0Z" {...fill(mx('plum', 'shadow', 82))} />
-      <rect x="-2" y="0" width={length + 8} height="3.2" rx="1.6" {...fill(mx('white', 'plum', 28))} />
-      <rect x={length * .3} y="20" width={length * .4} height="4" {...fill(mx('gold-light', 'plum', 60))} />
-    </g>
-    {/* The wooden ruler, from the top of the stack down to the table. */}
-    <g transform={`translate(680 -90) rotate(${Math.atan2(90, 320) * 180 / Math.PI})`}>
-      <rect x="0" y="0" width={Math.hypot(320, 90) + 6} height="8" rx="1.5" style={{ fill: 'url(#wr-ruler)' }} className="wr-ruler" />
-      {Array.from({ length: 33 }, (_, i) => <path key={i} d={`M${6 + i * 10} 8V${i % 5 === 0 ? 2.5 : 5}`} style={{ stroke: mx('wood-dark', 'transparent', 80), strokeWidth: .9 }} />)}
-      <rect x="0" y="0" width={Math.hypot(320, 90) + 6} height="1.6" {...fill(mx('white', 'transparent', 60))} />
-    </g>
+    {/* What the blocks hide of the light: one soft shadow thrown forward and to the right. */}
+    <path d={parts.map(p => `M${p.x0} ${EDGE}L${p.x1} ${EDGE}L${p.x1 + 16 + p.h1 * .18} ${EDGE + 9 + p.h1 * .1}L${p.x0 + 16 + p.h0 * .18} ${EDGE + 9 + p.h0 * .1}Z`).join('')} {...fill(mx('shadow', 'transparent', 13))} />
+    {parts.map((p, i) => {
+      const rising = p.h1 - p.h0;
+      const top = `M${p.x0} ${-p.h0 - EDGE}L${p.x1} ${-p.h1 - EDGE}L${p.x1} ${-p.h1 + EDGE}L${p.x0} ${-p.h0 + EDGE}Z`;
+      return <g key={i}>
+        {/* The near face of the block, down to the floor. */}
+        <path d={`M${p.x0} ${-p.h0 + EDGE}L${p.x1} ${-p.h1 + EDGE}L${p.x1} ${EDGE}L${p.x0} ${EDGE}Z`} style={{ fill: `url(#${id}face)` }} />
+        <path d={`M${p.x0} ${EDGE - 5}H${p.x1}V${EDGE}H${p.x0}Z`} {...fill(mx('wood-dark', 'transparent', 16))} />
+        {/* The plies of the wood, along the top edge. */}
+        <path d={`M${p.x0} ${-p.h0 + EDGE + 4}L${p.x1} ${-p.h1 + EDGE + 4}`} style={{ fill: 'none', stroke: mx('wood', 'transparent', 42), strokeWidth: 1.2 }} />
+        <path d={`M${p.x0} ${-p.h0 + EDGE + 7.5}L${p.x1} ${-p.h1 + EDGE + 7.5}`} style={{ fill: 'none', stroke: mx('white', 'transparent', 40), strokeWidth: 1 }} />
+        {/* The top, in the light; a slope that faces the window is brighter, one that faces away is in a little shade. */}
+        <path d={top} style={{ fill: `url(#${id}deck)` }} />
+        {rising !== 0 && <path d={top} {...fill(rising > 0 ? mx('white', 'transparent', 26) : mx('wood-dark', 'transparent', 10))} />}
+        {/* The knit runner the wheels roll on. */}
+        <path d={`M${p.x0} ${-p.h0 - runner}L${p.x1} ${-p.h1 - runner}L${p.x1} ${-p.h1 + runner}L${p.x0} ${-p.h0 + runner}Z`} style={{ fill: `url(#${id}knit)` }} />
+        <path d={`M${p.x0} ${-p.h0}L${p.x1} ${-p.h1}`} style={{ fill: 'none', stroke: mx('linen-shade', 'transparent', 55), strokeWidth: runner * 1.7, strokeDasharray: '1.6 4.4' }} />
+        {[-1, 1].map(side => <path key={side} d={`M${p.x0} ${-p.h0 + side * runner}L${p.x1} ${-p.h1 + side * runner}`} style={{ fill: 'none', stroke: mx('teal', 'sea', 60), strokeWidth: 2.2 }} />)}
+        <path d={`M${p.x0} ${-p.h0 + EDGE}L${p.x1} ${-p.h1 + EDGE}`} style={{ fill: 'none', stroke: mx('white', 'transparent', 85), strokeWidth: 1.6 }} />
+        {/* Where two blocks meet. */}
+        {i > 0 && <path d={`M${p.x0} ${-p.h0 + EDGE}V${EDGE}`} style={{ fill: 'none', stroke: mx('wood-dark', 'transparent', 34), strokeWidth: 1.2 }} />}
+      </g>;
+    })}
   </g>;
 }
 
-/** A yellow pencil lying across the table, under the lane at x. */
-function Pencil({ x }: { x: number }) {
-  return <g transform={`translate(${x} -2) rotate(-62)`}>
-    <rect x="-46" y="-4" width="74" height="8" {...fill(mk('amber'))} />
-    <rect x="-46" y="-4" width="74" height="2.6" {...fill(mx('sun', 'white', 60))} />
-    <rect x="-46" y="1.6" width="74" height="2.4" {...fill(mx('orange', 'amber', 60))} />
-    <path d="M28 -4L42 0L28 4Z" {...fill(mk('sand'))} />
-    <path d="M38 -1.2L42 0L38 1.2Z" {...fill(mk('graphite'))} />
-    <rect x="-56" y="-4" width="10" height="8" rx="1" {...fill(mk('rose'))} />
-    <rect x="-48" y="-4.4" width="4" height="8.8" {...fill(mk('steel'))} />
+/** The dashed lane line on the floor (as on the kit's Rover floor), where the trail is on the ground. */
+export function LaneMarks({ track }: { track: Track }) {
+  const pts = track.points, total = shapeOf(track).total, runs: [number, number][] = [];
+  for (let i = 1; i < pts.length; i++) if (pts[i - 1][1] < .01 && pts[i][1] < .01 && pts[i][0] - pts[i - 1][0] > 1) runs.push([i === 1 ? -1400 : pts[i - 1][0], i === pts.length - 1 ? total + 1400 : pts[i][0]]);
+  return <g>{runs.map(([from, to], i) => <g key={i}>
+    <path d={`M${from} ${EDGE + 11.5}H${to}`} style={{ fill: 'none', stroke: mx('steel', 'transparent', 26), strokeWidth: 5, strokeDasharray: '34 22' }} />
+    <path d={`M${from} ${EDGE + 10}H${to}`} style={{ fill: 'none', stroke: mx('white', 'transparent', 96), strokeWidth: 5, strokeDasharray: '34 22' }} />
+  </g>)}</g>;
+}
+
+/** The start: the kit's arrow sign lying on the floor behind Rover, pointing the way. */
+export function StartSign({ track, id }: { track: Track; id: string }) {
+  const p = pointAt(track, track.start - 92);
+  return <g transform={`translate(${p.x} ${-p.y})`}>
+    <Shade x={4} y={3} rx={62} ry={24} id={id} />
+    <g transform={`scale(1 ${TILT}) rotate(90)`}><image href={SIGN_ART} x="-56" y="-56" width="112" height="112" /></g>
   </g>;
 }
 
-function Blocks() {
-  // A wooden wedge up to a long plank: from (1180,0) up to (1380,-30), then flat.
-  return <g>
-    <path d="M1180 0L1380 -30L1380 4L1180 4Z" {...fill(mx('sun', 'amber', 45))} />
-    <path d="M1240 4L1380 -16L1380 4Z" {...fill(mx('amber', 'orange', 70))} />
-    <path d="M1180 0L1380 -30L1380 -26.5L1186 1.4Z" {...fill(mx('white', 'transparent', 60))} />
-    <rect x="1378" y="-30" width="400" height="34" rx="3" {...fill(mx('sky', 'water', 55))} />
-    <rect x="1378" y="-30" width="400" height="5" rx="2" {...fill(mx('sky-pale', 'sky', 50))} />
-    {[1460, 1560, 1660].map(x => <circle key={x} cx={x} cy="-12" r="5" {...fill(mx('white', 'transparent', 35))} />)}
-  </g>;
-}
-
-/** Props drawn behind the car, for each track. */
-export function TrackBack({ track }: { track: Track }) {
-  return <g>
-    {track.id === 'shelf' && track1Props()}
-    {track.id === 'ramp' && <><StandingBook x={30} w={26} h={118} colour="teal-deep" /><StandingBook x={58} w={30} h={104} colour="red" /><StandingBook x={1180} w={28} h={126} colour="moss" lean={-6} /><StandingBook x={1210} w={24} h={112} colour="indigo" /></>}
-    {track.id === 'table' && <><StandingBook x={250} w={30} h={120} colour="plum" /><StandingBook x={282} w={24} h={100} colour="celadon-deep" /><Blocks /></>}
-  </g>;
-}
-/** Props the car rolls over (drawn under the car but over the back props). */
-export function TrackFloor({ track }: { track: Track }) {
-  return <g>
-    {track.id === 'ramp' && <Ramp />}
-    {track.id === 'table' && <Pencil x={380} />}
-  </g>;
-}
-
-/** The start: a painted toy block behind the car and a strip of masking tape. */
-export function StartLine({ track }: { track: Track }) {
-  const nose = pointAt(track, track.start + 48).x;
-  return <g>
-    {/* A strip of masking tape across the table, torn at both ends. */}
-    <path d={`M${nose - 4} ${TABLE_BACK + 16}l3 -2 3 2 2 -2 2 2L${nose + 15} ${TABLE_FRONT - 6}l-2 2 -3 -2 -2 2 -3 -2Z`} style={{ fill: mx('butter', 'sand', 55), opacity: .85 }} />
-    <path d={`M${nose - 2} ${TABLE_BACK + 17}L${nose + 9} ${TABLE_FRONT - 7}`} style={{ stroke: mx('white', 'transparent', 45), strokeWidth: 1.4 }} />
-    <g transform="translate(-6 -38)">
-      <rect x="0" y="0" width="28" height="38" rx="4" {...fill(mk('red'))} />
-      <rect x="0" y="0" width="28" height="5" rx="2.5" {...fill(mx('poppy', 'white', 70))} />
-      <path d="M14 10l3 6.5 7 .6-5.3 4.6 1.6 6.8L14 25l-6.3 3.5 1.6-6.8L4 17.1l7-.6z" {...fill(mk('sun'))} />
-    </g>
-  </g>;
-}
-
-/** The finish flag: a toothpick and folded paper, stuck in a lump of clay. */
-export function Flag({ x, y, flying, flagRef }: { x: number; y: number; flying: boolean; flagRef?: Ref<SVGGElement> }) {
-  return <g transform={`translate(${x} ${y})`} className="wr-flag" data-flying={flying} ref={flagRef}>
-    <ellipse cx="0" cy="1" rx="16" ry="3" {...fill(mx('shadow', 'transparent', 18))} />
-    <rect x="-1.6" y="-128" width="3.2" height="124" rx="1.6" {...fill(mk('wood-light'))} />
-    <rect x="-1.6" y="-128" width="1.2" height="124" {...fill(mx('white', 'transparent', 60))} />
-    <g className="wr-flag__paper">
-      <path d="M1.6 -126L56 -112L1.6 -96Z" {...fill(mk('poppy'))} />
-      <path d="M1.6 -126L30 -118.6L1.6 -111Z" {...fill(mx('white', 'poppy', 30))} />
-      <path d="M1.6 -96L56 -112L50 -108Z" {...fill(mx('red', 'shadow', 80))} />
-    </g>
-    <path d="M-13 0C-13 -10 -6 -14 0 -14C6 -14 13 -10 13 0Z" {...fill(mk('clay'))} />
-    <path d="M-8 -6C-6 -11 -2 -12 2 -12" style={{ fill: 'none', stroke: mx('clay-light', 'transparent', 80), strokeWidth: 2, strokeLinecap: 'round' }} />
-  </g>;
-}
-
-/** The cushion that catches an overshoot; `squashRef` scales it from its face. */
-export function Cushion({ x, y, squashRef }: { x: number; y: number; squashRef?: Ref<SVGGElement> }) {
+/** The finish: a stitched line across the lane, and the knit flower that opens when Rover reaches it. */
+export function Finish({ x, y, id, wrapRef, foldedRef, openRef, onPoke }: { x: number; y: number; id: string; wrapRef?: Ref<SVGGElement>; foldedRef?: Ref<SVGImageElement>; openRef?: Ref<SVGImageElement>; onPoke?: () => void }) {
   return <g transform={`translate(${x} ${y})`}>
-    <ellipse cx="44" cy="1" rx="50" ry="4" {...fill(mx('shadow', 'transparent', 22))} />
-    <g ref={squashRef}>
-      <path d="M2 -6C-2 -30 4 -52 16 -56C40 -62 60 -62 76 -56C88 -50 92 -30 86 -6C70 2 20 2 2 -6Z" style={{ fill: 'url(#wr-cushion)' }} className="wr-cushion" />
-      <path d="M14 -48C30 -54 50 -54 70 -50" style={{ fill: 'none', stroke: mx('white', 'transparent', 55), strokeWidth: 3, strokeLinecap: 'round' }} />
-      <path d="M44 -58C46 -40 46 -20 44 -2" style={{ fill: 'none', stroke: mx('celadon-deep', 'transparent', 60), strokeWidth: 1.2, strokeDasharray: '3 3' }} />
-      <circle cx="44" cy="-30" r="4" {...fill(mx('celadon-deep', 'leaf-deep', 70))} />
-      {[-2, 90].map(cx => <path key={cx} d={`M${cx} -10l-6 4 6 2z`} {...fill(mx('celadon-deep', 'celadon', 60))} />)}
-    </g>
-  </g>;
-}
-
-/** A painted wooden domino, standing; the game tips it about its front foot. */
-export const DOMINO_COLOURS = ['red', 'amber', 'teal', 'violet', 'poppy', 'water'];
-export function Domino({ colour, dominoRef }: { colour: string; dominoRef?: Ref<SVGGElement> }) {
-  return <g ref={dominoRef}>
-    <rect x="-13" y="-58" width="13" height="58" rx="2.5" {...fill(mk(colour))} />
-    <rect x="-13" y="-58" width="4.4" height="58" rx="2" {...fill(mx('white', 'transparent', 35))} />
-    <rect x="-3" y="-58" width="3" height="58" rx="1.5" {...fill(mx('shadow', 'transparent', 18))} />
-    <rect x="-13" y="-30" width="13" height="2.4" {...fill(mx('white', 'transparent', 70))} />
-    <circle cx="-6.5" cy="-45" r="2.4" {...fill(mk('white'))} />
-    <circle cx="-6.5" cy="-14" r="2.4" {...fill(mk('white'))} />
-  </g>;
-}
-
-/** A ball of wool with a loose end. */
-export function WoolBall({ ballRef, spinRef }: { ballRef?: Ref<SVGGElement>; spinRef?: Ref<SVGGElement> }) {
-  return <g ref={ballRef}>
-    <ellipse cx="0" cy="1" rx="20" ry="3" {...fill(mx('shadow', 'transparent', 22))} />
-    <path d="M14 -6C26 -2 34 2 48 0" style={{ fill: 'none', stroke: mk('rose'), strokeWidth: 2.4, strokeLinecap: 'round' }} />
-    <g transform="translate(0 -20)">
-      <g ref={spinRef}>
-        <circle r="20" style={{ fill: 'url(#wr-wool)' }} className="wr-wool" />
-        {['M-18 -6C-6 -2 6 -2 18 -8', 'M-16 6C-4 10 8 10 18 4', 'M-8 -18C-2 -6 -2 6 -8 18', 'M6 -19C12 -6 12 6 6 19', 'M-19 -1C-8 4 8 -10 14 -14'].map(d => <path key={d} d={d} style={{ fill: 'none', stroke: mx('rose-deep', 'transparent', 55), strokeWidth: 1.6, strokeLinecap: 'round' }} />)}
-        <path d="M-12 -12C-6 -16 2 -17 8 -15" style={{ fill: 'none', stroke: mx('white', 'transparent', 55), strokeWidth: 2, strokeLinecap: 'round' }} />
+    <path d={`M-4 ${-EDGE}L4 ${-EDGE}L10 ${EDGE}L2 ${EDGE}Z`} {...fill(mx('white', 'transparent', 92))} />
+    <path d={`M0 ${-EDGE}L6 ${EDGE}`} style={{ fill: 'none', stroke: mk('teal'), strokeWidth: 2.6, strokeDasharray: '5 4' }} />
+    <g transform={`translate(-6 ${-EDGE - 12})`}>
+      <Shade x={2} y={0} rx={34} ry={9} id={id} />
+      <g ref={wrapRef} className="wr-toy" onPointerDown={onPoke}>
+        <g className="wr-nod">
+          <image ref={foldedRef} href={FLOWER_FOLDED_ART} x="-50" y="-148" width="100" height="150" />
+          <image ref={openRef} href={FLOWER_OPEN_ART} x="-50" y="-148" width="100" height="150" style={{ opacity: 0 }} />
+        </g>
+        <rect x="-44" y="-150" width="88" height="154" style={{ fill: 'none', pointerEvents: 'all' }} />
       </g>
     </g>
   </g>;
 }
 
-/** The paper tunnel: its back half sits behind the car, its front sheet over it.
- * The paper lets the light through, so the car shows as a shadow inside. */
-export function TunnelBack({ from, to }: { from: number; to: number }) {
-  return <path d={`M${from} 4C${from} -96 ${to} -96 ${to} 4Z`} {...fill(mx('linen-shade', 'umber', 80))} />;
-}
-export function TunnelFront({ from, to }: { from: number; to: number }) {
-  const w = to - from, folds = 5;
-  const arch = `M${from} 6C${from} -104 ${to} -104 ${to} 6Z`;
-  return <g>
-    {/* One sheet of printed paper bent into a long arch. It glows a little in
-        the window light and lets the car show through as a shadow. */}
-    <path d={arch} style={{ fill: 'url(#wr-tunnel)', opacity: .8 }} />
-    {Array.from({ length: folds }, (_, i) => from + (i + 0.5) * w / folds).map((x, i) => <path key={x} d={`M${x - w / folds / 2} 6L${x - w / folds / 2} -60L${x + w / folds / 2} -60L${x + w / folds / 2} 6Z`} style={{ fill: i % 2 ? mx('paper-shade', 'transparent', 30) : mx('white', 'transparent', 20) }} clipPath="url(#wr-arch)" />)}
-    <clipPath id="wr-arch"><path d={arch} /></clipPath>
-    <g clipPath="url(#wr-arch)">
-      {Array.from({ length: 9 }, (_, row) => Array.from({ length: Math.ceil(w / 34) }, (_, col) => <circle key={`${row}:${col}`} cx={from + 12 + col * 34 + (row % 2) * 17} cy={-6 - row * 11} r="3.2" style={{ fill: mx(row % 3 === 0 ? 'rose' : row % 3 === 1 ? 'sky' : 'amber', 'transparent', 55) }} />))}
-      <rect x={from} y="-20" width={w} height="26" style={{ fill: mx('umber', 'transparent', 10) }} />
+/** The knit cushion that catches an overshoot; `squashRef` presses it from its near face. */
+export function Catcher({ x, y, id, squashRef, onPoke }: { x: number; y: number; id: string; squashRef?: Ref<SVGGElement>; onPoke?: () => void }) {
+  return <g transform={`translate(${x} ${y})`}>
+    <Shade x={78} y={EDGE - 2} rx={86} ry={20} id={id} />
+    <g ref={squashRef} className="wr-toy" onPointerDown={onPoke}>
+      <image href={CUSHION_ART} x="0" y={EDGE + 10 - 82} width="152" height="82" preserveAspectRatio="none" />
     </g>
-    {/* The cut paper edges at each end, a little curled. */}
-    <path d={`M${from} 6C${from} -60 ${from + 30} -90 ${from + 70} -96C${from + 34} -86 ${from + 8} -56 ${from + 7} 6Z`} {...fill(mx('linen-shade', 'umber', 70))} />
-    <path d={`M${to} 6C${to} -60 ${to - 30} -90 ${to - 70} -96C${to - 34} -86 ${to - 8} -56 ${to - 7} 6Z`} {...fill(mx('linen-shade', 'umber', 70))} />
-    <path d={`M${from + 26} -46C${from + 46} -78 ${to - 70} -86 ${to - 34} -66`} style={{ fill: 'none', stroke: mx('white', 'transparent', 75), strokeWidth: 3, strokeLinecap: 'round' }} />
   </g>;
 }
 
-/** Chalk marks where earlier runs reached; the newest is the brightest. */
+/** A glass petal standing on its stem; the game tips it about its foot. */
+export function PetalPin({ index, pinRef, id }: { index: number; pinRef?: Ref<SVGGElement>; id: string }) {
+  return <g>
+    <g ref={pinRef}>
+      <Shade x={3} y={0} rx={11} ry={3.4} id={id} />
+      <image href={PETAL_ARTS[index % PETAL_ARTS.length]} x="-13" y="-43" width="26" height="43.5" />
+    </g>
+  </g>;
+}
+
+/** The knit ball. */
+export function KnitBall({ ballRef, spinRef, id }: { ballRef?: Ref<SVGGElement>; spinRef?: Ref<SVGGElement>; id: string }) {
+  return <g ref={ballRef}>
+    <Shade x={3} y={1} rx={24} ry={6.5} id={id} />
+    <g transform="translate(0 -21)"><g ref={spinRef}><image href={BALL_ART} x="-22" y="-21.5" width="44" height="43" /></g></g>
+  </g>;
+}
+
+/** A rolled knit rug lying across the lane: the bump. */
+export function KnitRoll({ x, id }: { x: number; id: string }) {
+  return <g transform={`translate(${x} 0)`}>
+    <Shade x={5} y={EDGE - 1} rx={26} ry={7} id={id} />
+    <path d={`M-13 ${-EDGE - 7}C-13 ${-EDGE - 13} 13 ${-EDGE - 13} 13 ${-EDGE - 7}L17 ${EDGE - 6}C17 ${EDGE + 3} -9 ${EDGE + 3} -9 ${EDGE - 6}Z`} style={{ fill: `url(#${id}roll)` }} />
+    {[-.72, -.36, 0, .36, .72].map(f => <path key={f} d={`M${-11 + (f + 1) * 2} ${f * EDGE - 8}C-4 ${f * EDGE - 13} 6 ${f * EDGE - 13} ${13 + (f + 1) * 2} ${f * EDGE - 8}`} style={{ fill: 'none', stroke: mx('white', 'transparent', 55), strokeWidth: 1.3, strokeLinecap: 'round' }} />)}
+    <ellipse cx="4" cy={EDGE - 5} rx="13" ry="7.6" {...fill(mx('poppy', 'rust', 55))} />
+    <ellipse cx="4" cy={EDGE - 5} rx="8.6" ry="4.9" style={{ fill: 'none', stroke: mk('cream'), strokeWidth: 2 }} />
+    <ellipse cx="4" cy={EDGE - 5} rx="3.6" ry="2" {...fill(mk('cream'))} />
+  </g>;
+}
+
+/** The arches Rover runs under: three knit hoops with mustard cuffs, like the
+ * kit's own. The far leg of each stands behind the lane, the near leg in front. */
+const hoopsAt = (from: number, to: number) => [from + 26, (from + to) / 2, to - 26];
+const HOOP_HIGH = 114;
+function hoopHalf(x: number, near: boolean) {
+  return near
+    ? `M${x} ${-HOOP_HIGH}C${x + 15} ${-HOOP_HIGH} ${x + 23} ${-68} ${x + 23} ${EDGE + 6}`
+    : `M${x - 23} ${-EDGE - 4}C${x - 23} ${-74} ${x - 15} ${-HOOP_HIGH} ${x} ${-HOOP_HIGH}`;
+}
+function Hoop({ x, near, id }: { x: number; near: boolean; id: string }) {
+  const d = hoopHalf(x, near), footX = near ? x + 23 : x - 23, footY = near ? EDGE + 6 : -EDGE - 4;
+  return <g>
+    {near && <Shade x={footX + 4} y={footY + 1} rx={15} ry={4.5} id={id} />}
+    <path d={d} style={{ fill: 'none', stroke: `url(#${id}arch)`, strokeWidth: 21, strokeLinecap: 'butt' }} />
+    <path d={d} style={{ fill: 'none', stroke: mx('linen-shade', 'transparent', 60), strokeWidth: 21, strokeDasharray: '1.4 3.6' }} />
+    <path d={d} transform="translate(-5 0)" style={{ fill: 'none', stroke: mx('white', 'transparent', 62), strokeWidth: 3, strokeLinecap: 'round' }} />
+    <path d={`M${footX} ${footY - 17}V${footY}`} style={{ fill: 'none', stroke: `url(#${id}cuff)`, strokeWidth: 25, strokeLinecap: 'butt' }} />
+    <path d={`M${footX} ${footY - 17}V${footY}`} style={{ fill: 'none', stroke: mx('gold', 'transparent', 60), strokeWidth: 25, strokeDasharray: '1.4 3.2' }} />
+    <ellipse cx={footX} cy={footY} rx="12.5" ry="3.6" {...fill(mx('amber', 'gold', 55))} />
+  </g>;
+}
+export function Hoops({ from, to, near, id, hoopRef }: { from: number; to: number; near: boolean; id: string; hoopRef?: (i: number) => (node: SVGGElement | null) => void }) {
+  return <g>{hoopsAt(from, to).map((x, i) => <g key={x} ref={hoopRef?.(i)}><Hoop x={x} near={near} id={id} /></g>)}</g>;
+}
+
+/** Chalk marks where earlier runs reached; the newest is the strongest. */
 export function ChalkMarks({ track, marks }: { track: Track; marks: readonly number[] }) {
   return <g>{marks.map((reach, i) => {
     const p = pointAt(track, Math.min(reach, shapeOf(track).total));
     const fresh = i === marks.length - 1;
-    return <g key={`${i}:${reach}`} transform={`translate(${p.x} ${-p.y})`} style={{ opacity: fresh ? 1 : .32 + i * .16 }}><g className="wr-chalk" data-fresh={fresh}>
-      {/* A chalk tick across the front of the table: rough, two strokes. */}
-      <path d="M-4 -6L5 24" style={{ fill: 'none', stroke: mx('wood-dark', 'transparent', 25), strokeWidth: 7, strokeLinecap: 'round' }} />
-      <path d="M-5 -8L4 22" style={{ fill: 'none', stroke: mk('chalk'), strokeWidth: 5, strokeLinecap: 'round' }} />
-      <path d="M-3 -6L5.5 20" style={{ fill: 'none', stroke: mk('white'), strokeWidth: 1.6, strokeLinecap: 'round', strokeDasharray: '6 3' }} />
-      <path d="M-10 10L11 8" style={{ fill: 'none', stroke: mx('chalk', 'transparent', 85), strokeWidth: 3.6, strokeLinecap: 'round' }} />
+    return <g key={`${i}:${reach}`} transform={`translate(${p.x} ${-p.y})`} style={{ opacity: fresh ? 1 : .3 + i * .16 }}><g className="wr-chalk" data-fresh={fresh}>
+      <path d={`M-5 ${-EDGE + 2}L4 ${EDGE + 6}`} style={{ fill: 'none', stroke: mx('teal-deep', 'transparent', 22), strokeWidth: 8, strokeLinecap: 'round' }} />
+      <path d={`M-6 ${-EDGE}L3 ${EDGE + 4}`} style={{ fill: 'none', stroke: mx('teal', 'sea', 55), strokeWidth: 5, strokeLinecap: 'round' }} />
+      <path d={`M-4 ${-EDGE + 2}L4.5 ${EDGE + 2}`} style={{ fill: 'none', stroke: mx('white', 'transparent', 80), strokeWidth: 1.5, strokeLinecap: 'round', strokeDasharray: '6 3' }} />
+      <path d={`M-12 ${EDGE - 4}L11 ${EDGE - 7}`} style={{ fill: 'none', stroke: mx('teal', 'transparent', 70), strokeWidth: 3.4, strokeLinecap: 'round' }} />
     </g></g>;
   })}</g>;
+}
+
+/* ---------- toys along the gallery (kit sprites, behind the lane) ---------- */
+
+export type ToyKind = 'pad' | 'musicTile' | 'waterCan' | 'deskLamp' | 'restRug';
+export interface Toy { kind: ToyKind; x: number; /** Up the picture from the lane line (it stands this far behind). */ back: number; pick: number }
+const pads = (x: number, back: number, count: number, first = 0): Toy[] => Array.from({ length: count }, (_, i) => ({ kind: 'pad' as const, x: x + i * 74, back: back + (i % 2) * 7, pick: first + i }));
+const tiles = (x: number, back: number): Toy[] => [0, 1, 2].map(i => ({ kind: 'musicTile' as const, x: x + i * 82, back, pick: i }));
+/** What stands along each trail. Nothing here changes a run: these are for curious fingers. */
+export const TRACK_TOYS: Readonly<Record<TrackId, readonly Toy[]>> = {
+  shelf: [{ kind: 'restRug', x: 250, back: 112, pick: 0 }, ...pads(390, 76, 5), { kind: 'deskLamp', x: 800, back: 96, pick: 0 }, { kind: 'waterCan', x: 940, back: 84, pick: 0 }],
+  ramp: [{ kind: 'waterCan', x: 150, back: 92, pick: 0 }, ...tiles(1010, 66), { kind: 'deskLamp', x: 1330, back: 104, pick: 0 }, { kind: 'restRug', x: 1500, back: 118, pick: 0 }],
+  table: [{ kind: 'restRug', x: 250, back: 116, pick: 0 }, ...pads(470, 84, 4, 2), { kind: 'deskLamp', x: 790, back: 108, pick: 0 }, ...tiles(880, 118), { kind: 'waterCan', x: 1130, back: 78, pick: 0 }],
+  blockBridge: [...tiles(60, 98), { kind: 'deskLamp', x: 960, back: 100, pick: 0 }, ...pads(1040, 70, 3, 1), { kind: 'waterCan', x: 1290, back: 96, pick: 0 }],
+  bookSlide: [...pads(540, 74, 4), { kind: 'waterCan', x: 850, back: 110, pick: 0 }, { kind: 'restRug', x: 700, back: 128, pick: 0 }],
+  grandTour: [{ kind: 'restRug', x: 240, back: 118, pick: 0 }, ...tiles(420, 122), { kind: 'deskLamp', x: 660, back: 112, pick: 0 }, ...pads(900, 78, 4, 1), { kind: 'waterCan', x: 1180, back: 92, pick: 0 }],
+};
+/** Toy places are authored on a deeper floor than the camera shows: this brings them in. */
+export const BACK = .78;
+const TOY_BOX: Record<ToyKind, { w: number; h: number; shade: number }> = {
+  pad: { w: 62, h: 54, shade: 34 }, musicTile: { w: 72, h: 47, shade: 38 }, waterCan: { w: 98, h: 72, shade: 44 }, deskLamp: { w: 74, h: 90, shade: 30 }, restRug: { w: 168, h: 77, shade: 0 },
+};
+const toyArt = (toy: Toy) => toy.kind === 'pad' ? PAD_ARTS[toy.pick % PAD_ARTS.length] : toy.kind === 'musicTile' ? TILE_ARTS[toy.pick % TILE_ARTS.length] : toy.kind === 'waterCan' ? CAN_ART : toy.kind === 'deskLamp' ? LAMP_ART : RUG_ART;
+
+export function Toys({ track, id, toyRef, glowRef, onPoke }: { track: Track; id: string; toyRef: (i: number) => (node: SVGGElement | null) => void; glowRef: (i: number) => (node: SVGEllipseElement | null) => void; onPoke: (i: number) => void }) {
+  const toys = TRACK_TOYS[track.id];
+  // Further back first, so nearer toys overlap the ones behind them.
+  const order = toys.map((toy, i) => ({ toy, i })).sort((a, b) => b.toy.back - a.toy.back);
+  return <g>{order.map(({ toy, i }) => {
+    const box = TOY_BOX[toy.kind];
+    return <g key={i} transform={`translate(${toy.x} ${-toy.back * BACK})`}>
+      {box.shade > 0 && <Shade x={4} y={-2} rx={box.shade} ry={box.shade * .3} id={id} />}
+      {toy.kind === 'deskLamp' && <ellipse ref={glowRef(i)} cx="34" cy="6" rx="62" ry="20" style={{ fill: `url(#${id}pool)`, opacity: 0 }} />}
+      <g ref={toyRef(i)} className={toy.kind === 'restRug' ? undefined : 'wr-toy'} onPointerDown={toy.kind === 'restRug' ? undefined : () => onPoke(i)}>
+        <image href={toyArt(toy)} x={-box.w / 2} y={-box.h} width={box.w} height={box.h} preserveAspectRatio="none" />
+        {toy.kind !== 'restRug' && <rect x={-box.w / 2 - 6} y={-box.h - 6} width={box.w + 12} height={box.h + 12} style={{ fill: 'none', pointerEvents: 'all' }} />}
+      </g>
+    </g>;
+  })}</g>;
+}
+
+/* ---------- Pep, the scout ---------- */
+
+export interface PepParts { root?: Ref<SVGGElement>; flip?: Ref<SVGGElement>; bob?: Ref<SVGGElement>; sit?: Ref<SVGImageElement>; side?: Ref<SVGImageElement>; glad?: Ref<SVGImageElement>; shade?: Ref<SVGEllipseElement> }
+/** How far behind the lane Pep runs (up the picture), and how tall he stands. */
+export const PEP_BACK = 36;
+export const PEP_TALL = 122;
+export function Pep({ parts, id, onPoke }: { parts: PepParts; id: string; onPoke: () => void }) {
+  return <g ref={parts.root}>
+    <ellipse ref={parts.shade} cx="0" cy="-2" rx="46" ry="11" style={{ fill: `url(#${id}shade)` }} />
+    <g ref={parts.flip}>
+      <g ref={parts.bob} className="wr-toy" onPointerDown={onPoke}>
+        <g className="wr-breathe">
+          <image ref={parts.sit} href={PEP_IDLE_ART} x={-PEP_TALL / 2} y={-PEP_TALL} width={PEP_TALL} height={PEP_TALL} />
+          <image ref={parts.side} href={PEP_SIDE_ART} x={-PEP_TALL * .48} y={-PEP_TALL * 1.005} width={PEP_TALL * .96} height={PEP_TALL * 1.005} preserveAspectRatio="none" style={{ opacity: 0 }} />
+          <image ref={parts.glad} href={PEP_HAPPY_ART} x={-PEP_TALL / 2} y={-PEP_TALL} width={PEP_TALL} height={PEP_TALL} style={{ opacity: 0 }} />
+        </g>
+        <rect x={-PEP_TALL * .4} y={-PEP_TALL} width={PEP_TALL * .8} height={PEP_TALL} style={{ fill: 'none', pointerEvents: 'all' }} />
+      </g>
+    </g>
+  </g>;
+}
+
+/* ---------- the celebration: knit blooms on coiled springs ---------- */
+
+export const POPPER_HIGH = 92;
+export const POPPERS = [{ dx: -128, back: 30 }, { dx: 62, back: 40 }, { dx: -58, back: 70 }, { dx: 128, back: 64 }] as const;
+const SPRING = (() => { let d = 'M0 0'; for (let i = 1; i <= 14; i++) d += `L${i % 2 ? 7 : -7} ${-(i - .5) * (POPPER_HIGH / 14)}`; return `${d}L0 ${-POPPER_HIGH}`; })();
+export function Poppers({ x, y, id, coilRef, bloomRef }: { x: number; y: number; id: string; coilRef: (i: number) => (node: SVGGElement | null) => void; bloomRef: (i: number) => (node: SVGGElement | null) => void }) {
+  return <g>{POPPERS.map((p, i) => <g key={i} transform={`translate(${x + p.dx} ${y - EDGE - p.back})`}>
+    <g ref={coilRef(i)} style={{ opacity: 0 }}>
+      <Shade x={2} y={0} rx={20} ry={5} id={id} />
+      <path d={SPRING} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: `url(#${id}coil)`, strokeWidth: 2.6, strokeLinejoin: 'round', strokeLinecap: 'round' }} />
+    </g>
+    <g ref={bloomRef(i)} style={{ opacity: 0 }}><image href={BLOOM_ART} x="-27" y="-25" width="54" height="49" /></g>
+  </g>)}</g>;
+}
+
+/** Small soft puffs (dust at the wheels, drops from the watering can): a fixed pool the game moves. */
+export const PUFFS = 12;
+export function Puffs({ puffRef }: { puffRef: (i: number) => (node: SVGCircleElement | null) => void }) {
+  return <g>{Array.from({ length: PUFFS }, (_, i) => <circle key={i} ref={puffRef(i)} r="6" style={{ fill: mx('white', 'steel-light', 70), opacity: 0 }} />)}</g>;
 }
 
 /** The rolling line, for the little map. */

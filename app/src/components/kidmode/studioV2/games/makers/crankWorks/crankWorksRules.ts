@@ -1,6 +1,6 @@
 /** How Things Move rules. Pure: no React, no timers, no randomness, no DOM.
  *
- * One idea, shown twice: a slider-crank. A crank of radius `r` turns about a
+ * One idea, shown three times: a slider-crank. A crank of radius `r` turns about a
  * fixed shaft; a rigid rod of length `l` joins the crank pin to a wrist pin
  * that can only slide along one straight vertical line. One angle, `theta`,
  * places every part, so nothing can ever come apart or stretch.
@@ -19,17 +19,24 @@
  *   stretches; pins have no play).
  * - The engine is drawn single-cylinder and upright, with the cylinder axis
  *   passing through the shaft (an in-line slider-crank).
- * - A wheel let go of by the hand coasts to a gentle stop: an easing for the
- *   child's hand, not a model of bearing friction.
- * - The toy's bird rides straight up and down on its stick (the slider); it
- *   meets the bell exactly at the top of the stroke.
+ * - The slide carries a load (the piston, the flower, the pen) that weighs on
+ *   the crank exactly as a weight on that slide would: its turning effect is
+ *   the slope of the lift, d(lift)/dθ. A wheel let go of by the hand is slowed
+ *   by a simple drag and rocks to rest with the load at the bottom. The drag
+ *   is an easing for the child's hand, not a model of bearing friction; the
+ *   motor ignores the load and holds its speed.
+ * - The lifter's flower rides straight up and down on its stem (the slider)
+ *   and is fully open exactly at the top of the stroke.
+ * - The wave writer's glass is geared to the crank: it slides the same
+ *   distance for every turn, however fast the wheel goes, so the line the pen
+ *   leaves is the lift written out against the angle.
  */
 
 export const TAU = Math.PI * 2;
 
 export interface Linkage { readonly r: number; readonly l: number }
 /** The drawing's linkage, in drawing units: the rod is three cranks long. */
-export const LINKAGE: Linkage = { r: 34, l: 102 };
+export const LINKAGE: Linkage = { r: 30, l: 90 };
 /** Top and bottom dead centre: the crank pin straight up, then straight down. */
 export const TOP_DEAD_CENTRE = 0;
 export const BOTTOM_DEAD_CENTRE = Math.PI;
@@ -40,7 +47,7 @@ export interface Point { readonly x: number; readonly y: number }
 export function crankPin(theta: number, { r }: Linkage = LINKAGE): Point {
   return { x: r * Math.sin(theta), y: -r * Math.cos(theta) };
 }
-/** How far above the shaft the wrist pin (the piston, the bird's stick) is. */
+/** How far above the shaft the wrist pin (the piston, the flower's stem, the pen's mast) is. */
 export function pistonLift(theta: number, { r, l }: Linkage = LINKAGE): number {
   const s = r * Math.sin(theta);
   return r * Math.cos(theta) + Math.sqrt(l * l - s * s);
@@ -59,6 +66,12 @@ export function rodLength(theta: number, link: Linkage = LINKAGE): number {
 export function rodLean(theta: number, link: Linkage = LINKAGE): number {
   const pin = crankPin(theta, link), wrist = wristPin(theta, link);
   return Math.atan2(wrist.x - pin.x, -(wrist.y - pin.y)) * 180 / Math.PI;
+}
+/** How fast the lift changes as the crank turns: d(lift)/dθ, exact. It is zero
+ * at both dead centres, where a push on the slide cannot turn the crank. */
+export function liftSlope(theta: number, { r, l }: Linkage = LINKAGE): number {
+  const s = r * Math.sin(theta);
+  return -s * (1 + r * Math.cos(theta) / Math.sqrt(l * l - s * s));
 }
 /** The full travel of the piston: twice the crank. */
 export const strokeOf = ({ r }: Linkage = LINKAGE) => 2 * r;
@@ -102,16 +115,27 @@ export type Speed = 'slow' | 'steady' | 'quick';
 export const SPEEDS: readonly Speed[] = ['slow', 'steady', 'quick'];
 /** Motor speeds in radians per second (0.3, 0.6 and 1.1 turns a second). */
 export const SPEED_OMEGA: Readonly<Record<Speed, number>> = { slow: TAU * 0.3, steady: TAU * 0.6, quick: TAU * 1.1 };
-/** The fastest a hand may fling the wheel, and the push the Turn button gives. */
-export const MAX_HAND_OMEGA = TAU * 1.6;
-export const PUSH_OMEGA = TAU * 0.55;
+/** The fastest a hand may fling the wheel, and the push the Turn button gives:
+ * enough to carry the load once over the top from rest at the bottom. */
+export const MAX_HAND_OMEGA = TAU * 1.8;
+export const PUSH_OMEGA = TAU * 1.3;
 /** With motion reduced, a push is a quarter turn at the slow speed, no fling. */
 export const CALM_PUSH = TAU / 4;
 /** One arrow key press: a twenty-fourth of a turn. */
 export const KEY_STEP = TAU / 24;
-/** Coasting: the spin halves about every 0.7 s and stops below this. */
-export const COAST_TAU = 1;
-export const COAST_STOP = 0.12;
+/** The load's weight on the crank, in rad/s² for each drawing unit of slope. */
+export const LOAD = 0.3;
+/** A free wheel's drag (1/s), stronger near rest so the rocking soon settles. */
+export const DRAG = 0.5;
+export const DRAG_SLOW = 2.6;
+/** A wheel this slow, with this little turning effect on it, is at rest. */
+export const REST_SPEED = 0.05;
+export const REST_TURN = 0.3;
+/** The hand holds the wheel through a firm spring: the wheel has weight. */
+export const HAND_STIFF = 170;
+export const HAND_DAMP = 25;
+/** The wheel clicks past this many soft stops in a turn. */
+export const DETENTS = 12;
 /** The motor eases to a new speed over about a fifth of a second. */
 export const MOTOR_EASE = 0.18;
 
@@ -125,12 +149,61 @@ export function easeMotor(current: number, target: number, dt: number): number {
   const next = current + (target - current) * (1 - Math.exp(-dt / MOTOR_EASE));
   return Math.abs(next - target) < 1e-3 ? target : next;
 }
-/** A let-go wheel slows smoothly and stops. */
-export function coast(omega: number, dt: number): number {
-  const next = omega * Math.exp(-Math.max(0, dt) / COAST_TAU);
-  return Math.abs(next) < COAST_STOP ? 0 : next;
-}
 export const clampOmega = (omega: number) => Math.max(-MAX_HAND_OMEGA, Math.min(MAX_HAND_OMEGA, omega));
+export interface Spin { readonly theta: number; readonly omega: number }
+/** The turning effect of the load on the crank (rad/s²): it pulls the crank
+ * toward bottom dead centre and vanishes at both dead centres. */
+export function loadTurn(theta: number): number {
+  return -LOAD * liftSlope(theta);
+}
+/** What a free wheel holds: its spin, and the height of its load. */
+export function spinEnergy({ theta, omega }: Spin): number {
+  return omega * omega / 2 + LOAD * pistonLift(theta);
+}
+const SUBSTEP = 1 / 240;
+/** A let-go wheel: the load swings it, a drag slows it, and it comes to rest
+ * with the load at the bottom (or balanced, dead still, exactly on a dead
+ * centre). It never gains energy. */
+export function swing({ theta, omega }: Spin, dt: number): Spin {
+  if (!(dt > 0) || (omega === 0 && Math.abs(loadTurn(theta)) < REST_TURN)) return { theta, omega };
+  const n = Math.max(1, Math.ceil(dt / SUBSTEP)), h = dt / n;
+  let t = theta, w = omega;
+  for (let i = 0; i < n; i++) {
+    w += loadTurn(t) * h;
+    w *= Math.exp(-(DRAG + DRAG_SLOW / (1 + (w / 1.6) ** 2)) * h);
+    t += w * h;
+  }
+  if (Math.abs(w) < REST_SPEED && Math.abs(loadTurn(t)) < REST_TURN) w = 0;
+  return { theta: t, omega: clampOmega(w) };
+}
+/** A held wheel: it follows the finger's angle through a spring, so it lags a
+ * little, sags under the load on the way up and runs ahead on the way down. */
+export function follow({ theta, omega }: Spin, target: number, dt: number): Spin {
+  if (!(dt > 0)) return { theta, omega };
+  const n = Math.max(1, Math.ceil(dt / SUBSTEP)), h = dt / n;
+  let t = theta, w = omega;
+  for (let i = 0; i < n; i++) {
+    w += (HAND_STIFF * (target - t) - HAND_DAMP * w + loadTurn(t)) * h;
+    t += w * h;
+  }
+  return { theta: t, omega: w };
+}
+/** How many soft stops the wheel clicked past between two unwrapped angles. */
+export function detentsCrossed(from: number, to: number): number {
+  const step = TAU / DETENTS;
+  return Math.abs(Math.floor(to / step) - Math.floor(from / step));
+}
+/** The stops passed between two angles, as steps of the stroke (0 at the
+ * bottom to `steps - 1` at the top): the notes a turning wheel plays, rising
+ * as the load rises and falling as it falls. At most `limit`, the latest. */
+export function detentSteps(from: number, to: number, steps = 5, limit = 3): number[] {
+  const step = TAU / DETENTS, a = Math.floor(from / step), b = Math.floor(to / step), out: number[] = [];
+  if (a === b) return out;
+  const dir = b > a ? 1 : -1;
+  // Going up the angle passes the stop at k·step on reaching it; going back passes the one just left.
+  for (let k = a; k !== b; k += dir) out.push(Math.round(strokeFraction((dir > 0 ? k + 1 : k) * step) * (steps - 1)));
+  return out.slice(-limit);
+}
 /** The Turn button: a push clockwise, added to any spin already going that way. */
 export function push(omega: number): number {
   return clampOmega(Math.max(0, omega) + PUSH_OMEGA);
@@ -149,18 +222,21 @@ export function releaseSpeed(samples: readonly TurnSample[], now: number, window
 }
 
 /* ----------------------------------------------------------------- parts */
-export type MachineId = 'engine' | 'toy';
-export const MACHINES: readonly MachineId[] = ['engine', 'toy'];
-export type PartId = 'wheel' | 'crank' | 'rod' | 'piston' | 'cylinder' | 'handle' | 'bird';
+/** The glass piston, the bloom lifter and the wave writer. */
+export type MachineId = 'engine' | 'toy' | 'writer';
+export const MACHINES: readonly MachineId[] = ['engine', 'toy', 'writer'];
+export type PartId = 'wheel' | 'crank' | 'rod' | 'piston' | 'cylinder' | 'handle' | 'bloom' | 'tracer';
 export const MACHINE_PARTS: Readonly<Record<MachineId, readonly PartId[]>> = {
   engine: ['wheel', 'crank', 'rod', 'piston', 'cylinder'],
-  toy: ['handle', 'crank', 'rod', 'bird'],
+  toy: ['handle', 'crank', 'rod', 'bloom'],
+  writer: ['wheel', 'crank', 'rod', 'tracer'],
 };
-/** Parts the front casing hides while it is closed. The wheel (or handle) and
- * the piston's top rod (or the bird) stay in sight. */
+/** Parts the frosted glass hides while it is closed. The wheel (or handle) and
+ * the piston's top rod (or the flower, or the pen) stay in sight. */
 const BEHIND_CASE: Readonly<Record<MachineId, readonly PartId[]>> = {
   engine: ['crank', 'rod', 'piston', 'cylinder'],
   toy: ['crank', 'rod'],
+  writer: ['crank', 'rod'],
 };
 export function hiddenByCase(machine: MachineId, part: PartId): boolean {
   return BEHIND_CASE[machine].includes(part);
@@ -185,6 +261,10 @@ export interface Explore {
   readonly seen: readonly MachineId[];
 }
 export const START: Explore = { hand: 0, inside: false, met: [], seen: ['engine'] };
+/** A visit that opens on another machine (play again is not the same again). */
+export const startOn = (machine: MachineId): Explore => ({ ...START, seen: [machine] });
+/** The idea has to be seen twice before Done: any two machines. */
+export const MACHINES_TO_SEE = 2;
 export const turnedByHand = (e: Explore, amount: number): Explore => amount === 0 ? e : { ...e, hand: e.hand + Math.abs(amount) };
 export const lookedInside = (e: Explore): Explore => e.inside ? e : { ...e, inside: true };
 export const metPart = (e: Explore, part: PartId): Explore => e.met.includes(part) ? e : { ...e, met: [...e.met, part] };
@@ -199,10 +279,10 @@ export function badgesOf(e: Explore): Badges {
   // A whole turn made of small steps may fall a rounding error short of 2π.
   return { turned: e.hand >= HAND_TURN_GOAL - 1e-6, inside: e.inside, parts: partsMet(e.met) };
 }
-/** Done appears once all three badges are lit and both machines were seen. */
+/** Done appears once all three badges are lit and two machines were seen. */
 export function canFinish(e: Explore): boolean {
   const b = badgesOf(e);
-  return b.turned && b.inside && b.parts && MACHINES.every(m => e.seen.includes(m));
+  return b.turned && b.inside && b.parts && MACHINES.filter(m => e.seen.includes(m)).length >= MACHINES_TO_SEE;
 }
 export type Cue = 'turn' | 'look' | 'meet' | 'more' | 'other' | 'ready';
 /** The next small step, never a judgement. */
@@ -213,8 +293,7 @@ export function cueFor(e: Explore, open: boolean, machine: MachineId): Cue {
   if (!open && !b.parts) return 'look';
   if (!b.parts) return e.met.length ? 'more' : 'meet';
   if (!b.turned) return 'turn';
-  if (!e.seen.includes(machine === 'engine' ? 'toy' : 'engine')) return 'other';
-  return 'ready';
+  return e.seen.some(m => m !== machine) ? 'ready' : 'other';
 }
 
 /* ------------------------------------------------------------- traces */
@@ -230,4 +309,38 @@ export function sweepBins(bins: readonly boolean[], from: number, to: number): b
   const dir = to >= from ? 1 : -1;
   for (let i = 0; i <= steps; i++) next[traceBin(from + dir * span * i / steps)] = true;
   return next;
+}
+
+/* --------------------------------------------------------- the wave writer */
+/** How far the writer's glass slides for each radian of the crank: one turn
+ * of the wheel is one wave, this many drawing units long. */
+export const WAVE_LENGTH = 60;
+export const FEED = WAVE_LENGTH / TAU;
+/** How far along the glass (from the pen, the way the glass slides) the line
+ * written at angle `at` sits, now that the crank is at `now`. */
+export const waveReach = (at: number, now: number) => FEED * (now - at);
+/** A stretch of line: from one unwrapped angle to another, in one ink. */
+export interface Ink { readonly from: number; readonly to: number; readonly ink: number }
+/** The pen moved from one angle to another: it paints its ink over that
+ * stretch, covering whatever was written there. Stretches stay sorted, never
+ * overlap, and neighbours in one ink join up. Only a set stretch (the last argument, in radians) either side
+ * of the pen are remembered. */
+export function writeInk(marks: readonly Ink[], from: number, to: number, ink: number, keep = TAU * 24): Ink[] {
+  const lo = Math.min(from, to), hi = Math.max(from, to);
+  if (!(hi > lo)) return [...marks];
+  const out: Ink[] = [];
+  for (const m of marks) {
+    if (m.to <= lo || m.from >= hi) { out.push(m); continue; }
+    if (m.from < lo) out.push({ from: m.from, to: lo, ink: m.ink });
+    if (m.to > hi) out.push({ from: hi, to: m.to, ink: m.ink });
+  }
+  out.push({ from: lo, to: hi, ink });
+  out.sort((a, b) => a.from - b.from);
+  const joined: Ink[] = [];
+  for (const m of out) {
+    const last = joined[joined.length - 1];
+    if (last && last.ink === m.ink && m.from - last.to < 1e-9) joined[joined.length - 1] = { from: last.from, to: m.to, ink: m.ink };
+    else joined.push(m);
+  }
+  return joined.filter(m => m.to > to - keep && m.from < to + keep).map(m => ({ from: Math.max(m.from, to - keep), to: Math.min(m.to, to + keep), ink: m.ink }));
 }

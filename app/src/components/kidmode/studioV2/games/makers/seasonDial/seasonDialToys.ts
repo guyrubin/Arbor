@@ -1,6 +1,6 @@
 import {
-  FRIENDS, appleState, blossomState, cloudCover, fallenLeaves, friendsAt, leafState, lifeAt, puddles, smoothstep, snowCap, snowDepth, sunAt, weatherAt, wrapYear,
-  type Friend,
+  CREW, FRIENDS, appleState, blossomState, cloudCover, crewAt, fallenLeaves, friendsAt, leafState, lifeAt, puddles, smoothstep, snowCap, snowDepth, sunAt, weatherAt, wrapYear,
+  type Crew, type Friend,
 } from './seasonDialRules';
 import { TREE } from './seasonDialTree';
 
@@ -49,11 +49,12 @@ export function cloudShown(i: number, year: number): number {
 }
 /** Melt-water and rain pools on the terrace floor. */
 export const PUDDLES = [{ x: 96, y: 298, rx: 44, ry: 7 }, { x: 214, y: 246, rx: 30, ry: 4.4 }, { x: 348, y: 304, rx: 34, ry: 5.6 }] as const;
-export const SNOWMAN_AT = { x: 62, y: 262 } as const;
-/** Where each friend stands (feet), and how wide its picture is drawn. */
-export const FRIEND_AT: Readonly<Record<Friend, { x: number; y: number; w: number; flip: boolean }>> = {
-  ayaWinter: { x: 118, y: 286, w: 74, flip: false }, ayaSpring: { x: 168, y: 292, w: 78, flip: false },
-  chockSummer: { x: 142, y: 296, w: 104, flip: false }, pepAutumn: { x: 132, y: 298, w: 100, flip: false },
+export const SNOWMAN_AT = { x: 88, y: 270 } as const;
+/** Where each friend stands (feet) and how tall it is drawn, in scene units. */
+export const FRIEND_AT: Readonly<Record<Friend | Crew, { x: number; y: number; h: number }>> = {
+  ayaWinter: { x: 142, y: 288, h: 74 }, ayaSpring: { x: 168, y: 292, h: 62 },
+  chockSummer: { x: 140, y: 296, h: 92 }, pepAutumn: { x: 134, y: 298, h: 88 },
+  gobgobRain: { x: 82, y: 302, h: 66 }, bebeSnow: { x: 40, y: 294, h: 84 },
 };
 
 export const TOYS = ['appleTree', 'terraceFloor', 'openSky', 'sunDisc', 'cloudPuff', 'perchBirds', 'valleyFriend', 'snowFriend', 'knotHole', 'wholeYear'] as const;
@@ -100,9 +101,10 @@ export function toyAt(x: number, y: number, year: number): Toy {
   const life = lifeAt(year), sun = sunAt(year), friends = friendsAt(year);
   if (Math.hypot(x - KNOT_AT.x, y - KNOT_AT.y) <= 8) return 'knotHole';
   if (life.birds > 0.4 && inEllipse(x, y, PERCH_AT.x, PERCH_AT.y - 9, 22, 17)) return 'perchBirds';
-  for (const f of FRIENDS) {
-    const at = FRIEND_AT[f];
-    if (friends[f] > 0.4 && inEllipse(x, y, at.x, at.y - at.w * 0.36, at.w * 0.36, at.w * 0.42)) return 'valleyFriend';
+  const crew = crewAt(year);
+  for (const f of [...FRIENDS, ...CREW]) {
+    const at = FRIEND_AT[f], there = f === 'gobgobRain' || f === 'bebeSnow' ? crew[f] : friends[f];
+    if (there > 0.4 && inEllipse(x, y, at.x, at.y - at.h * 0.44, at.h * 0.26, at.h * 0.46)) return 'valleyFriend';
   }
   if (life.snowman > 0.4 && inEllipse(x, y, SNOWMAN_AT.x, SNOWMAN_AT.y - 30, 26, 36)) return 'snowFriend';
   if (limbDistance(x, y) <= 7 || leafDistance(x, y) <= 8) return 'appleTree';
@@ -194,8 +196,8 @@ export interface ToyParticle {
 }
 
 const fadeOut = (t: number, from = 0.78) => 1 - smoothstep(from, 1, t);
-/** A thing let go at `y0` that falls to `floor` under gravity `g` (units/s²),
- * then bounces `bounces` times, each lower. Returns its height and whether it
+/** A thing let go at height y0 that falls to the floor line under gravity g (units/s²),
+ * then bounces, each bounce lower. Returns its height and whether it
  * has landed for good. Closed form: a function of the time alone. */
 export function fallAt(y0: number, floor: number, g: number, seconds: number, bounce = 0): { y: number; landed: boolean; hops: number } {
   const drop = Math.max(0, floor - y0), tFall = Math.sqrt((2 * drop) / g);
@@ -293,11 +295,12 @@ function skyParticles(poke: Poke, year: number, age: number, still: boolean): To
   if (skyIsWindow(year)) {
     // Breath on the cold glass: it blooms, holds, and clears from the edge.
     const bloom = still ? 1 : smoothstep(0, 0.1, age);
-    const out: ToyParticle[] = [{ look: LOOK.fog, x: poke.x, y: poke.y, r: 20 + 16 * bloom, turn: 0, alpha: 0.62 * bloom * fadeOut(age, 0.45), tone: 0.5 }];
-    for (let k = 0; k < 4; k++) {
-      const a = hash(k, salt) * Math.PI * 2, d = 6 + 16 * hash(k, salt + 1);
-      const twinkle = still ? 1 : 0.5 + 0.5 * Math.sin(seconds * 5 + k * 1.9);
-      out.push({ look: LOOK.sunMote, x: poke.x + Math.cos(a) * d, y: poke.y + Math.sin(a) * d * 0.8, r: 1 + 1.2 * hash(k, salt + 2), turn: 0, alpha: 0.9 * twinkle * bloom * fadeOut(age, 0.4), tone: 1 });
+    const out: ToyParticle[] = [{ look: LOOK.fog, x: poke.x, y: poke.y, r: 22 + 18 * bloom, turn: 0, alpha: 0.8 * bloom * fadeOut(age, 0.5), tone: 0.5 }];
+    // Frost crystals grow in the breath, one after another, and go with it.
+    for (let k = 0; k < 5; k++) {
+      const a = hash(k, salt) * Math.PI * 2, d = 5 + 17 * hash(k, salt + 1);
+      const grown = still ? 1 : smoothstep(0.06 + 0.05 * k, 0.2 + 0.05 * k, age);
+      out.push({ look: LOOK.sunMote, x: poke.x + Math.cos(a) * d, y: poke.y + Math.sin(a) * d * 0.8, r: (2.4 + 2.2 * hash(k, salt + 2)) * grown, turn: 0.4 * hash(k, salt + 3), alpha: (grown > 0.02 ? 0.95 : 0) * fadeOut(age, 0.55), tone: 1 });
     }
     return out;
   }

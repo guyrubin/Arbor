@@ -28,3 +28,18 @@ export const AYA_GLAD: KitPicture = shipped('aya-happy', 440, 440);
 export const WATERING_CAN: KitPicture = shipped('item-can', 278, 205);
 /** Where the needle rests: a knit round, seen from above. */
 export const PINCUSHION: KitPicture = shipped('rover-bloom-folded', 280, 254);
+
+/** The bud that would not hurry (the kit's Flower Journal: day one, later, later still), cut to one canvas so the pot never moves. */
+const BOARD_23 = 'kit/v30/23-bop-props-T08-T10.png (T08 Flower Journal)';
+export const BUD: readonly KitPicture[] = [1, 2, 3].map(n => cut(`stitch-garden-bud-${n}`, 277, 410, BOARD_23));
+
+/** From the Studio's shared kit library (`kit-*`, cut once for every maker).
+ * A null picture has not been cut yet: its place on the table stays empty. */
+const library = (stem: string, width: number, height: number, from: string): KitPicture => ({ src: `${CUT}${stem}.webp`, src480: `${CUT}${stem}-480.webp`, width, height, from });
+/** GobGob, who waits with the bud: his patient face, his glad one when a flower is whole, and his curious one when he is tapped. */
+const BOARD_14 = 'kit/v30/14-gobgob-expressions.png';
+export const GOBGOB_WAITING: KitPicture | null = library('kit-gobgob-face-patient', 512, 506, BOARD_14);
+export const GOBGOB_GLAD: KitPicture | null = library('kit-gobgob-face-delighted', 511, 512, BOARD_14);
+export const GOBGOB_CURIOUS: KitPicture | null = library('kit-gobgob-face-curious', 512, 479, BOARD_14);
+/** Aya's LeafLab: the puck that reads water, light and warmth. Not in the library yet. */
+export const LEAFLAB: KitPicture | null = null;

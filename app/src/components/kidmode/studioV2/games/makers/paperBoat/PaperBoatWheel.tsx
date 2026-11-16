@@ -1,21 +1,28 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { RotateCcw, RotateCw } from 'lucide-react';
 import { STORM_BAND, WHEEL_LIMIT, WHEEL_STEP, clampWheel, pointerAngle, wheelDrag } from './paperBoatRules';
-import { CLOTH_GRAIN, WheelDisc, fade, mix, mk } from './PaperBoatArt';
+import { WheelDisc, fade, mix, mk } from './PaperBoatArt';
 
-/** The paper wheel: a card disc pinned behind a paper pocket at the book's
- * edge, its top showing through, a thumb notch cut in the pocket. Drag around
- * its centre to turn it (a finger on it also holds it against the wind), or use
- * the two buttons, or the arrow keys when it has focus. It is a physical object,
- * so it is the same way round in both languages: clockwise is clockwise. */
+/** The boat's wheel: a pale-wood toy wheel on a white ceramic stand, on the
+ * table in front of the book. Drag around its centre to turn it (a finger on
+ * it also holds it against the wind), or use the two buttons, or the arrow
+ * keys when it has focus. It is a physical object, so it is the same way round
+ * in both languages: clockwise is clockwise. The marks over it are interface:
+ * a ring in the signal colour marks where to turn to, teal marks steady. */
 export interface PaperWheelProps {
   angle: number;
+  /** A turn shown but not made (the hint hand's demonstration). */
+  nudge?: number;
   enabled: boolean;
-  /** Spread one: the wheel waits tucked in its pocket. */
+  /** Spread one, and once moored: the wheel rests low in its stand. */
   tucked: boolean;
   /** 'steadyBand' shows the steady band at the top; 'lanes' the three channel marks. */
-  marks: 'steadyBand' | 'lanes';
+  marks: 'steadyBand' | 'lanes' | 'noMarks';
   steady: boolean;
+  /** How far the steadiness has gathered, 0 … 1 (the band fills like a wait ring). */
+  calm: number;
+  /** The wheel angle to turn to now, if there is one (its mark is ringed). */
+  aim: number | null;
   label: string;
   valueText: string;
   leftLabel: string;
@@ -23,16 +30,18 @@ export interface PaperWheelProps {
   onTurn: (angle: number) => void;
   onHold: (held: boolean) => void;
 }
-const CX = 110, CY = 108;
+export const WHEEL_BOX = { w: 220, h: 172, cx: 110, cy: 104, rim: 88 } as const;
+const { cx: CX, cy: CY } = WHEEL_BOX;
+const at = (r: number, a: number) => [CX + r * Math.sin((a * Math.PI) / 180), CY - r * Math.cos((a * Math.PI) / 180)];
 const arc = (r: number, from: number, to: number) => {
-  const p = (a: number) => [CX + r * Math.sin((a * Math.PI) / 180), CY - r * Math.cos((a * Math.PI) / 180)];
-  const [x1, y1] = p(from), [x2, y2] = p(to);
+  const [x1, y1] = at(r, from), [x2, y2] = at(r, to);
   return `M${x1.toFixed(2)} ${y1.toFixed(2)} A${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
 };
+const SEGMENTS = 5;
 
-export function PaperWheel({ angle, enabled, tucked, marks, steady, label, valueText, leftLabel, rightLabel, onTurn, onHold }: PaperWheelProps) {
+export function PaperWheel({ angle, nudge = 0, enabled, tucked, marks, steady, calm, aim, label, valueText, leftLabel, rightLabel, onTurn, onHold }: PaperWheelProps) {
   const surface = useRef<SVGSVGElement>(null);
-  const clip = `${useId().replace(/[^a-zA-Z0-9-]/g, '')}-clip`;
+  const uid = useId().replace(/[^a-zA-Z0-9-]/g, '');
   const angleRef = useRef(angle); angleRef.current = angle;
   const enabledRef = useRef(enabled); enabledRef.current = enabled;
   const release = useRef<(() => void) | null>(null);
@@ -44,13 +53,13 @@ export function PaperWheel({ angle, enabled, tucked, marks, steady, label, value
     event.preventDefault(); event.stopPropagation();
     release.current?.();
     const box = surface.current.getBoundingClientRect();
-    const scale = box.width / 220, cx = box.left + CX * scale, cy = box.top + CY * scale, id = event.pointerId;
+    const scale = box.width / WHEEL_BOX.w, cx = box.left + CX * scale, cy = box.top + CY * scale, id = event.pointerId;
     let last = pointerAngle(event.clientX - cx, event.clientY - cy);
     onHold(true);
     const move = (e: PointerEvent) => {
       if (e.pointerId !== id) return;
       const next = pointerAngle(e.clientX - cx, e.clientY - cy);
-      // Very near the pin the angle is noise: hold still there.
+      // Very near the hub the angle is noise: hold still there.
       if (Math.hypot(e.clientX - cx, e.clientY - cy) < 12 * scale) return;
       onTurn(wheelDrag(angleRef.current, last, next)); last = next;
     };
@@ -67,28 +76,38 @@ export function PaperWheel({ angle, enabled, tucked, marks, steady, label, value
     event.preventDefault(); event.stopPropagation();
     onTurn(clampWheel(angle + step));
   };
+  const shown = angle + nudge;
+  const gathered = Math.round(Math.max(0, Math.min(1, calm)) * SEGMENTS);
 
   return <div className="pb-wheel-row" dir="ltr" data-tucked={tucked}>
     <button type="button" className="pb-steer" data-pb-steer="left" aria-label={leftLabel} disabled={!enabled} onClick={() => onTurn(clampWheel(angle - WHEEL_STEP))}><RotateCcw size={26} aria-hidden="true" /></button>
     <div className="pb-wheel" role="slider" tabIndex={enabled ? 0 : -1} aria-label={label} aria-valuemin={-WHEEL_LIMIT} aria-valuemax={WHEEL_LIMIT} aria-valuenow={Math.round(angle)} aria-valuetext={valueText} aria-disabled={!enabled} data-pb-wheel="" data-steady={steady} onKeyDown={key}>
-      <svg ref={surface} className="pb-wheel__svg" viewBox="0 0 220 168" aria-hidden="true" focusable="false" data-pb-wheel-disc="" onPointerDown={down}>
-        {/* the marks printed on the page above the pocket */}
-        {marks === 'steadyBand'
-          ? <path d={arc(103, -STORM_BAND, STORM_BAND)} style={{ fill: 'none', stroke: steady ? mk('sun') : fade('gold-light', 80), strokeWidth: 7, strokeLinecap: 'round' }} />
-          : [-60, 0, 60].map(a => <path key={a} d={arc(103, a - 3, a + 3)} style={{ fill: 'none', stroke: fade('gold-light', 85), strokeWidth: 6, strokeLinecap: 'round' }} />)}
-        <path d={`M${CX - 6} 0 L${CX + 6} 0 L${CX} 7 Z`} style={{ fill: mk('gold') }} />
-        <defs><clipPath id={clip}><rect x="-20" y="-20" width="260" height="188" /></clipPath></defs>
-        <g clipPath={`url(#${clip})`}><g className="pb-wheel__tuck">
-          <ellipse cx={CX + 3} cy={CY + 6} rx="80" ry="80" style={{ fill: fade('shadow', 22) }} />
-          <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: `${CX}px ${CY}px` }}><g transform={`translate(${CX - 100} ${CY - 100})`}><WheelDisc /></g></g>
+      <svg ref={surface} className="pb-wheel__svg" viewBox={`0 0 ${WHEEL_BOX.w} ${WHEEL_BOX.h}`} aria-hidden="true" focusable="false" data-pb-wheel-disc="" onPointerDown={down}>
+        <defs>
+          <linearGradient id={`${uid}-base`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: mk('white') }} /><stop offset="1" style={{ stopColor: mix('snow', 60, 'chalk') }} /></linearGradient>
+          <clipPath id={`${uid}-clip`}><rect x="-20" y="-30" width="260" height="170" /></clipPath>
+        </defs>
+        {/* the marks over the wheel */}
+        {!tucked && marks !== 'noMarks' && (marks === 'steadyBand'
+          ? <g className="pb-wheel__marks">
+            <path d={arc(100, -STORM_BAND - 3, STORM_BAND + 3)} style={{ fill: 'none', stroke: 'var(--studio-surface)', strokeWidth: 12, strokeLinecap: 'round' }} />
+            {Array.from({ length: SEGMENTS }, (_, i) => { const from = -STORM_BAND + (i * 2 * STORM_BAND) / SEGMENTS + 0.9, to = -STORM_BAND + ((i + 1) * 2 * STORM_BAND) / SEGMENTS - 0.9; return <path key={i} d={arc(100, from, to)} style={{ fill: 'none', stroke: i < gathered ? 'var(--studio-teal)' : 'var(--studio-mist)', strokeWidth: 7, strokeLinecap: 'round' }} />; })}
+            {!steady && <path d={arc(108, -STORM_BAND - 2, STORM_BAND + 2)} style={{ fill: 'none', stroke: 'var(--studio-signal)', strokeWidth: 2.4, strokeLinecap: 'round' }} />}
+          </g>
+          : <g className="pb-wheel__marks">{[-60, 0, 60].map(a => { const [x, y] = at(101, a), on = aim !== null && Math.abs(aim - a) < 1; return <g key={a}>
+            <circle cx={x} cy={y} r="5" style={{ fill: 'var(--studio-surface)', stroke: 'var(--studio-graphite-soft)', strokeWidth: 1.6 }} />
+            {on && <circle cx={x} cy={y} r="9" style={{ fill: 'none', stroke: 'var(--studio-signal)', strokeWidth: 2.6 }} />}
+          </g>; })}</g>)}
+        <g clipPath={`url(#${uid}-clip)`}><g className="pb-wheel__tuck">
+          <ellipse cx={CX + 4} cy={CY + 8} rx="78" ry="78" style={{ fill: fade('shadow', 14) }} />
+          <g style={{ transform: `rotate(${shown.toFixed(2)}deg)`, transformOrigin: `${CX}px ${CY}px` }}><g transform={`translate(${CX - 100} ${CY - 100})`}><WheelDisc uid={uid} /></g></g>
         </g></g>
-        {/* the pocket, with its thumb notch */}
-        <path d={`M0 132 L${CX - 26} 132 A26 22 0 0 0 ${CX + 26} 132 L220 132 L220 168 L0 168 Z`} style={{ fill: fade('shadow', 30) }} transform="translate(0 -3)" />
-        <path d={`M0 132 L${CX - 26} 132 A26 22 0 0 0 ${CX + 26} 132 L220 132 L220 168 L0 168 Z`} style={{ fill: mk('indigo') }} />
-        <path d={`M8 138 L${CX - 30} 138 M${CX + 30} 138 L212 138`} style={{ stroke: mk('gold-light'), strokeWidth: 1.6, strokeDasharray: '5 4', opacity: 0.8 }} />
-        <path d={`M0 132 L${CX - 26} 132 A26 22 0 0 0 ${CX + 26} 132 L220 132`} style={{ fill: 'none', stroke: mix('indigo', 50, 'bluebell'), strokeWidth: 2 }} />
+        {/* the ceramic stand, with its teal inlay */}
+        <ellipse cx={CX} cy="167" rx="100" ry="5" style={{ fill: fade('shadow', 16) }} />
+        <path d={`M14 166 C 14 148 30 138 52 138 L 168 138 C 190 138 206 148 206 166 Z`} fill={`url(#${uid}-base)`} />
+        <path d="M22 158 C 30 146 40 142 54 142 L 166 142 C 180 142 190 146 198 158" style={{ fill: 'none', stroke: mk('sea'), strokeWidth: 2.2, strokeLinecap: 'round' }} />
+        <path d="M30 141 C 36 139 44 138 52 138 L 168 138" style={{ fill: 'none', stroke: mk('white'), strokeWidth: 1.6, strokeLinecap: 'round' }} />
       </svg>
-      <span className="pb-wheel__cloth" style={{ backgroundImage: CLOTH_GRAIN }} aria-hidden="true" />
     </div>
     <button type="button" className="pb-steer" data-pb-steer="right" aria-label={rightLabel} disabled={!enabled} onClick={() => onTurn(clampWheel(angle + WHEEL_STEP))}><RotateCw size={26} aria-hidden="true" /></button>
   </div>;

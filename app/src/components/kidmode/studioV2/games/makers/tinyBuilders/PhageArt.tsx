@@ -111,7 +111,9 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
   /** A part that just clicked on flies the last little way and settles; a poked part answers. */
   const arrive = (isFresh: boolean, key: string, node: ReactNode) => isFresh && fresh
     ? <g key={`${key}${fresh.nonce}`} className="tiny-in" style={{ '--tiny-dx': `${fresh.dx.toFixed(1)}px`, '--tiny-dy': `${fresh.dy.toFixed(1)}px` } as CSSProperties}>{node}</g> : node;
-  const poked = (part: PartId | 'dna') => poke?.part === part ? { key: `poke${poke.nonce}`, className: 'tiny-poke', 'data-poke': part } : {};
+  const poked = (part: PartId | 'dna') => poke?.part === part ? { className: 'tiny-poke', 'data-poke': part } : {};
+  /** A new key restarts the poked part's little motion. */
+  const pokeKey = (part: PartId | 'dna') => poke?.part === part ? `poke${poke.nonce}` : undefined;
   const ref = (name: string) => `url(#${id}${name})`;
   const s = Math.max(SHEATH_MIN, Math.min(1, sheath));
   const squeeze = (1 - s) / (1 - SHEATH_MIN);
@@ -137,7 +139,7 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
     const a = P(corner), k = P(knee), b = P(tip);
     const near = Math.sin(toRad(fibreAngle(i, rotation)));
     const d1 = `M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${k.x.toFixed(1)} ${k.y.toFixed(1)}`, d2 = `M${k.x.toFixed(1)} ${k.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
-    if (look !== 'solid') return <g key={`f${i}${look}`} className={look === 'glow' ? 'tiny-glow' : 'tiny-ghost'}><path d={`${d1}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`} /></g>;
+    if (look !== 'solid') return <g key={`f${i}${look}`} className={look === 'glow' ? 'tiny-glow' : 'tiny-ghost'}><path d={`${d1}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`} fillOpacity={0} strokeWidth={look === 'glow' ? 3.4 : 2.2} /></g>;
     // Fine wire: darker near the eye, paler (further into the daylight haze) behind.
     const body = near >= 0 ? mix(paint.wireFar, 30 - near * 30, paint.wire) : mix(paint.wireFar, 46 - near * 34, paint.wire);
     const shine = near >= 0 ? mix('var(--mk-white)', 74, 'transparent') : mix('var(--mk-white)', 40, 'transparent');
@@ -177,7 +179,7 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
     if ((near >= 0) !== front) return null;
     const a = project(WHISKER.from.r, theta, WHISKER.from.y + drop, rotation, tilt), b = project(WHISKER.to.r, theta, WHISKER.to.y + drop, rotation, tilt);
     const d = `M${a.sx.toFixed(1)} ${a.sy.toFixed(1)}Q${((a.sx + b.sx) / 2 + (b.sx - CX) * 0.08).toFixed(1)} ${(a.sy + 4).toFixed(1)} ${b.sx.toFixed(1)} ${b.sy.toFixed(1)}`;
-    if (look !== 'solid') return <path key={i} d={d} className={look === 'glow' ? 'tiny-glow' : 'tiny-ghost'} />;
+    if (look !== 'solid') return <path key={i} d={d} fillOpacity={0} className={look === 'glow' ? 'tiny-glow' : 'tiny-ghost'} />;
     return <path key={i} d={d} fill="none" strokeWidth={1.7} strokeLinecap="round" style={strokeOf(front ? mix('var(--mk-steel-dark)', 70, 'var(--mk-steel)') : mix('var(--mk-steel)', 80, 'var(--mk-steel-light)'))} />;
   });
 
@@ -207,11 +209,11 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
       {coil.front.map((run, i) => <path key={`s${i}`} d={line(run)} fill="none" strokeWidth={0.9} strokeLinecap="round" transform="translate(-0.5 -0.9)" style={strokeOf(mix('var(--mk-white)', 55, 'transparent'))} />)}
       {coil.end && dna > 0 && <path d={`M${coil.end.x.toFixed(1)} ${coil.end.y.toFixed(1)}L${CX} ${HEAD.bottom + drop}`} fill="none" strokeWidth={2.6} strokeLinecap="round" style={strokeOf(threadFront)} />}
     </>;
-    return <g style={litStyle('head')} {...poked('head')}>
+    return <g style={litStyle('head')} key={pokeKey('head')} {...poked('head')}>
       {/* The far wall of the glass shell, then the thread inside it. Closed, the thread shows only faintly through the frosted glass. */}
       {back.map((f, i) => <polygon key={i} points={poly(f.points)} style={fill(innerFill(f, paint))} />)}
       {!opened && <g opacity={0.3}>{coilRuns}</g>}
-      {opened && <g {...hit('dna')} style={litStyle('dna')} {...poked('dna')}>
+      {opened && <g {...hit('dna')} style={litStyle('dna')} key={pokeKey('dna')} {...poked('dna')}>
         {coilRuns}
         {interactive && <rect x={cutX} y={HEAD.top + drop + 8} width={HEAD.r + 6} height={HEAD.bottom - HEAD.top - 16} className="tiny-hit" style={fill('transparent')} />}
       </g>}
@@ -236,7 +238,7 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
       <ellipse cx={CX} cy={plate} rx={COLLAR.plateR} ry={ry(COLLAR.plateR) + 1.6} />
       {whiskers(true, look)}{whiskers(false, look)}
     </g>;
-    return <g style={litStyle('collar')} {...hit('collar')} {...poked('collar')}>
+    return <g style={litStyle('collar')} {...hit('collar')} key={pokeKey('collar')} {...poked('collar')}>
       <rect x={CX - COLLAR.r} y={top - 8} width={COLLAR.r * 2} height={bottom - top + 8 + ry(COLLAR.r)} rx={3} style={fill(ref('steel'))} />
       <ellipse cx={CX} cy={plate + 1.6} rx={COLLAR.plateR} ry={ry(COLLAR.plateR) + 1.9} style={fill('var(--mk-steel-dark)')} />
       <ellipse cx={CX} cy={plate} rx={COLLAR.plateR} ry={ry(COLLAR.plateR) + 1.6} style={fill(ref('plate'))} />
@@ -301,7 +303,7 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
       {tilt > 0.02 && <polygon points={poly(top)} />}
       {sides.map((f, i) => <polygon key={i} points={poly(f.pts)} />)}
     </g>;
-    return <g style={litStyle('baseplate')} {...hit('baseplate')} {...poked('baseplate')}>
+    return <g style={litStyle('baseplate')} {...hit('baseplate')} key={pokeKey('baseplate')} {...poked('baseplate')}>
       {sides.map((f, i) => <polygon key={i} points={poly(f.pts)} strokeWidth={0.6} strokeLinejoin="round" style={{ fill: mix('var(--mk-steel-light)', 14 + f.light * 70, 'var(--mk-steel-dark)'), stroke: mix('var(--mk-white)', 40, 'transparent') }} />)}
       {tilt > 0.02 && <polygon points={poly(top)} strokeWidth={0.8} strokeLinejoin="round" style={{ fill: mix('var(--mk-steel-light)', 70, 'var(--mk-steel)'), stroke: mix('var(--mk-white)', 60, 'transparent') }} />}
       {tilt > 0.02 && <ellipse cx={CX} cy={baseTop} rx={sheathR + 3} ry={(sheathR + 3) * tilt} style={fill('var(--mk-steel-dark)')} />}
@@ -311,7 +313,7 @@ function PhageArtBase({ rotation, tilt, cut = 0, sheath = 1, settle = 0, dna = 0
 
   const show = (part: Exclude<PartId, 'fibres'>, draw: (look: 'solid' | 'ghost' | 'glow') => ReactNode) =>
     on[part] ? arrive(!!fresh?.parts[part], part, draw('solid')) : ghost[part] ? draw(glow[part] ? 'glow' : 'ghost') : null;
-  const collarWhiskers = (front: boolean) => on.collar ? arrive(!!fresh?.parts.collar, front ? 'wf' : 'wb', <g style={litStyle('collar')} {...poked('collar')}>{whiskers(front, 'solid')}</g>) : null;
+  const collarWhiskers = (front: boolean) => on.collar ? arrive(!!fresh?.parts.collar, front ? 'wf' : 'wb', <g style={litStyle('collar')} key={pokeKey('collar')} {...poked('collar')}>{whiskers(front, 'solid')}</g>) : null;
 
   return <g className="tiny-phage" data-cut={opened || undefined} data-paint={paintId}>
     <defs>

@@ -11,25 +11,31 @@ const shipped = (stem: string, width: number, height: number): KitPicture => ({ 
 
 /** The glass rotunda of the Mirror Quarter, its round stage empty. */
 export const KIT_ROOM = shipped('scene-band', 1024, 683);
-/** The audience, seen from behind, watching the little stage. Kit renders only, cut at the waist. */
+/** A character from the shared kit library (one Bebe, one GobGob, one Aya for the whole Studio). */
+const kit = (stem: string, width: number, height: number, from: string): KitPicture => cut(stem, width, height, from);
+/** The audience, seen from behind, watching the little stage: the shared
+ * library's back views. `show` is how much of the figure, from the top, rises
+ * above the front edge of the picture (head and shoulders, like a row of
+ * seats seen from behind). */
 export const KIT_AUDIENCE = {
-  gobgob: cut('clay-theatre-gobgob-back', 180, 261, 'kit/v30/02-gobgob-identity-wardrobes.png (everyday, back)'),
-  bebe: cut('clay-theatre-bebe-back', 161, 254, 'kit/v30/01-bebe-identity-wardrobes.png (everyday, back)'),
-  aya: cut('clay-theatre-aya-back', 219, 334, 'kit/v30/05-aya.png (everyday, back)'),
-  chock: cut('clay-theatre-chock-back', 154, 160, 'kit/v30/03-chock.png (everyday, back)'),
-  pep: cut('clay-theatre-pep-back', 155, 166, 'kit/v30/04-pep.png (everyday, back)'),
+  bebe: { ...kit('kit-bebe-back', 273, 768, 'kit/v30/01-bebe-identity-wardrobes.png (everyday, back)'), show: 0.5 },
+  gobgob: { ...kit('kit-gobgob-back', 306, 768, 'kit/v30/02-gobgob-identity-wardrobes.png (everyday, back)'), show: 0.55 },
+  chock: { ...kit('kit-chock-back', 344, 768, 'kit/v30/03-chock.png (everyday, back)'), show: 0.4 },
+  aya: { ...kit('kit-aya-back', 368, 768, 'kit/v30/05-aya.png (everyday, back)'), show: 0.7 },
+  pep: { ...kit('kit-pep-back', 322, 768, 'kit/v30/04-pep.png (everyday, back)'), show: 0.36 },
 } as const;
 export type AudienceId = keyof typeof KIT_AUDIENCE;
 /** Left to right along the front of the stage. */
-export const AUDIENCE_ROW: readonly AudienceId[] = ['gobgob', 'bebe', 'aya', 'chock', 'pep'];
+export const AUDIENCE_ROW: readonly AudienceId[] = ['bebe', 'gobgob', 'chock', 'aya', 'pep'];
 /** The two playbills hung beside the stage: the channel key art, whole. */
 export const KIT_POSTERS = [
-  cut('clay-theatre-poster-bop', 640, 427, 'kit/v30/17-bop-key-art.png'),
-  cut('clay-theatre-poster-crew', 640, 427, 'kit/v30/16-wonder-crew-key-art.png'),
+  cut('clay-theatre-crew-poster-bop', 640, 427, 'kit/v30/17-bop-key-art.png'),
+  cut('clay-theatre-crew-poster-crew', 640, 427, 'kit/v30/16-wonder-crew-key-art.png'),
 ] as const;
 /** The felt pads the four film reels (and the clay) are kept on. */
 export const KIT_PADS = { rocket: 'pad-navy', jump: 'pad-blue', ayaSeed: 'pad-amber', frog: 'pad-teal', clay: 'pad-cream' } as const;
-export const KIT_LAMP = shipped('item-lamp', 245, 300);
+/** Bebe's ProofLens, the camera puck that records an actual view: it filmed these reels. */
+export const KIT_PROOFLENS = cut('clay-theatre-prooflens', 296, 206, 'kit/v30/09-observe-kit.png (ProofLens, hero shot)');
 export const kitPad = (stem: string) => studioBopArt(stem);
 /** Every picture, for the art manifest. */
-export const KIT_SOURCES: readonly KitPicture[] = [KIT_ROOM, ...Object.values(KIT_AUDIENCE), ...KIT_POSTERS, KIT_LAMP];
+export const KIT_SOURCES: readonly KitPicture[] = [KIT_ROOM, ...Object.values(KIT_AUDIENCE), ...KIT_POSTERS, KIT_PROOFLENS];

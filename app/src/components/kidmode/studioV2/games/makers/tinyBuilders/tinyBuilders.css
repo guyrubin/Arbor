@@ -1,146 +1,288 @@
-/* Tiny Structures: a museum model-maker's bench. The one activity whose
-   stage is the Studio night (a deep slate room); every word sits on cream
-   tags and cards. The scene is drawn once at 400 x 440 and scaled whole; it
-   never mirrors (physics and the model's left and right are the same in both
-   reading directions), only the chrome around it follows the language.
+/* Tiny Structures: Aya's TrailBench in Wonderworks, in daylight. The stage is
+   kit pictures (the white pavilion, the TrailBench, the ProofLens and its
+   screen) with the model and the lens views drawn over them at 400 x 440 and
+   scaled whole. Nothing in the stage mirrors (the model's left and right, and
+   the pictures, are the same in both reading directions); only the chrome
+   around it follows the language. Chrome wears the v30 register: pearl and
+   white surfaces, graphite type and primary action, teal for done or chosen,
+   the signal colour only as a mark on the next thing. Colour lives in the art.
    Motion is decoration: the component moves play on with timers and frames. */
-.adventure.tiny { --tiny-ink: var(--mk-ink); --tiny-ink-soft: var(--mk-ink-soft); --tiny-card: var(--mk-paper); --tiny-card-edge: var(--mk-paper-shade); --tiny-slate: var(--mk-slate); --tiny-night: var(--mk-night); --tiny-gold: var(--studio-action-gold); }
-.tiny .adventure-prompt { margin-block: 0 14px; }
-.tiny-layout { display: grid; gap: 14px; align-items: start; }
-.tiny-stage-wrap { position: relative; min-inline-size: 0; max-inline-size: min(100%, calc((100dvh - 250px) * 400 / 440)); margin-inline: auto; inline-size: 100%; }
-/* Turning sits on the stage, at its two lower corners: left turns left, in
-   both reading directions (it is the model's own left and right). */
-.tiny-turns { position: absolute; inset-block-end: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; pointer-events: none; }
-.adventure .tiny-turn { pointer-events: auto; display: grid; place-items: center; inline-size: var(--studio-tap, 56px); block-size: var(--studio-tap, 56px); padding: 0; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--tiny-card) 92%, transparent); color: var(--tiny-ink); box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 45%, transparent), inset 0 -2px 0 var(--tiny-card-edge); }
-.adventure .tiny-turn:active { transform: scale(.94); }
-.adventure .tiny-turn:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 3px; }
+.adventure.tiny { --tiny-ink: var(--studio-graphite); --tiny-ink-soft: var(--studio-graphite-soft); --tiny-card: var(--studio-surface); --tiny-rest: 470px; --bop-shade: var(--studio-shade); }
+.tiny .adventure-prompt { margin-block: 0 12px; }
+.tiny-layout { display: grid; gap: 12px; align-items: start; }
+.tiny-stage-wrap { position: relative; max-inline-size: min(100%, calc((100dvh - var(--tiny-rest)) * 400 / 440)); min-inline-size: min(100%, 264px); margin-inline: auto; inline-size: 100%; }
+.adventure.tiny[data-phase=build][data-mode=full] { --tiny-rest: 560px; }
+.adventure.tiny[data-phase=explore] { --tiny-rest: 452px; }
+.adventure.tiny[data-phase=journey], .adventure.tiny[data-phase=landed] { --tiny-rest: 500px; }
+.adventure.tiny[data-phase=land], .adventure.tiny[data-phase=cheer] { --tiny-rest: 360px; }
 
-/* The stage keeps the drawing's own shape, so a hotspot in drawing units is a
+/* The stage keeps the drawing's own shape, so a point in drawing units is a
    plain percentage of the box. */
-.tiny-stage { position: relative; inline-size: 100%; aspect-ratio: 400 / 440; border-radius: var(--studio-radius-window, 22px); overflow: hidden; isolation: isolate; background: var(--tiny-night); box-shadow: 0 1px 0 color-mix(in srgb, var(--mk-white) 22%, transparent) inset, 0 18px 40px color-mix(in srgb, var(--mk-shadow) 34%, transparent); outline: 2px solid color-mix(in srgb, var(--mk-paper-shade) 80%, transparent); outline-offset: -1px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.tiny-stage { position: relative; inline-size: 100%; aspect-ratio: 400 / 440; border-radius: var(--studio-radius-card); overflow: hidden; isolation: isolate; background: var(--studio-mist); border: 2px solid var(--studio-surface); box-shadow: 0 12px 30px var(--studio-shade); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .tiny-stage[data-phase=explore] { touch-action: pan-y; cursor: grab; }
 .tiny-stage[data-phase=explore]:active { cursor: grabbing; }
 .tiny-stage[data-phase=build] { cursor: pointer; }
-.tiny-stage:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 3px; }
+.adventure .tiny-stage:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
 .tiny-scene { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
 
-/* Blueprint outlines, the glowing place for the picked piece, and the ring a
-   piece leaves as it snaps on. */
-.tiny-ghost { fill: color-mix(in srgb, var(--mk-sky) 5%, transparent); stroke: color-mix(in srgb, var(--mk-sky) 58%, transparent); stroke-width: 1.3; stroke-dasharray: 4 3; stroke-linejoin: round; stroke-linecap: round; }
-.tiny-glow { fill: color-mix(in srgb, var(--mk-sun) 16%, transparent); stroke: var(--mk-sun); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--mk-sun) 80%, transparent)); animation: tiny-glow 1.3s ease-in-out infinite; }
+/* The bench: the room, the TrailBench across the foot of the picture (its
+   grip mats lie under the turntable), then the drawn turntable and model. */
+.tiny-bench { position: absolute; inset: 0; }
+.tiny-bench[data-on=false] { display: none; }
+.tiny .tiny-room { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; object-fit: cover; object-position: 50% 62%; pointer-events: none; }
+.tiny .tiny-trailbench { position: absolute; left: -11%; top: 66.5%; inline-size: 122%; max-inline-size: none; block-size: auto; pointer-events: none; filter: drop-shadow(0 8px 10px var(--studio-shade)); }
+
+/* The model before it is built: a frosted guide. The place for the picked
+   piece is marked in the signal colour (a line, never a fill). */
+.tiny-ghost { fill: color-mix(in srgb, var(--mk-white) 46%, transparent); stroke: color-mix(in srgb, var(--studio-teal-ink) 62%, transparent); stroke-width: 1.3; stroke-dasharray: 4 3; stroke-linejoin: round; stroke-linecap: round; }
+.tiny-glow { fill: color-mix(in srgb, var(--mk-white) 62%, transparent); stroke: var(--studio-signal); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round; animation: tiny-glow 1.3s ease-in-out infinite; }
 .tiny-hit { cursor: pointer; }
-.tiny-snap { fill: none; stroke: var(--mk-sun); stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: tiny-snap .65s var(--studio-ease-soft, ease-out) forwards; }
 .tiny-phage [data-part] { cursor: pointer; }
+/* A piece clicks on: it flies the last little way, lands with a small squash and settles. */
+.tiny-in { transform-box: fill-box; transform-origin: 50% 100%; animation: tiny-in .42s var(--studio-ease-soft) both; }
+.tiny-poke { transform-box: fill-box; transform-origin: 50% 100%; animation: tiny-poke .46s var(--studio-ease-spring); }
+.tiny-poke[data-poke=collar] { transform-origin: 50% 0; animation-name: tiny-flick; }
+.tiny-poke[data-poke=dna] { animation-name: tiny-shimmer; }
+.tiny-table[data-cheer] .tiny-table__ring { animation: tiny-ringlit 1.1s ease-in-out 2; }
+.tiny-facets polygon { transform-box: fill-box; transform-origin: center; opacity: 0; animation: tiny-fly 1.5s var(--studio-ease-soft) both; }
+
+/* Aya watches from the corner of the bench; the ProofLens lies on it. Both are toys, and real buttons. */
+.adventure .tiny-friend { position: absolute; z-index: 3; left: 1%; bottom: 1%; display: block; padding: 0; border: 0; background: transparent; border-radius: 30%; line-height: 0; cursor: pointer; }
+.adventure .tiny-friend:active .bop-friend { scale: .95; }
+.tiny .bop-sprite { max-inline-size: none; }
+.tiny-stage[data-view=lensDesk] .tiny-friend { left: 27%; }
+/* Bebe, in front of the screen at its foot: the bust's straight cut sits on the stage's edge. */
+.tiny .tiny-watcher { position: absolute; z-index: 3; right: -2%; bottom: 0; inline-size: 33%; max-inline-size: none; block-size: auto; transform: scaleX(-1); transform-origin: 50% 100%; pointer-events: none; filter: drop-shadow(0 4px 8px var(--studio-shade)); }
+.tiny .tiny-watcher[data-pleased] { animation: tiny-nod .5s var(--studio-ease-spring); }
+.adventure .tiny-lens { position: absolute; z-index: 3; right: 1.5%; bottom: 11%; inline-size: 19%; min-inline-size: var(--studio-tap); padding: 0; border: 0; background: transparent; border-radius: 50%; line-height: 0; cursor: pointer; transition: transform .18s var(--studio-ease-spring); }
+.tiny .tiny-lens > img { display: block; inline-size: 100%; block-size: auto; max-inline-size: none; filter: drop-shadow(0 5px 5px var(--studio-shade)); pointer-events: none; }
+.adventure .tiny-lens:active { transform: scale(.93); }
+.tiny-lens[data-next]::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; border: 3px solid var(--studio-signal); animation: tiny-next 1.2s ease-in-out infinite; pointer-events: none; }
+.tiny-ripple { position: absolute; z-index: 2; inline-size: 56px; block-size: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 2px solid var(--studio-surface); box-shadow: 0 0 0 1px color-mix(in srgb, var(--studio-teal) 60%, transparent); pointer-events: none; animation: tiny-ripple .65s var(--studio-ease-soft) forwards; }
 
 /* Keyboard and screen-reader targets over the drawing: pointer taps go to
    the drawing itself (its own hit test), so these never block a finger. */
-.tiny-spot { position: absolute; z-index: 2; inline-size: var(--studio-tap, 56px); block-size: var(--studio-tap, 56px); margin: calc(var(--studio-tap, 56px) / -2) 0 0 calc(var(--studio-tap, 56px) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: none; }
-.adventure .tiny-spot:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 0; box-shadow: 0 0 0 6px color-mix(in srgb, var(--tiny-night) 60%, transparent); }
+.tiny-spot { position: absolute; z-index: 2; inline-size: var(--studio-tap); block-size: var(--studio-tap); margin: calc(var(--studio-tap) / -2) 0 0 calc(var(--studio-tap) / -2); padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: none; }
+.adventure .tiny-spot:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 0; box-shadow: 0 0 0 6px var(--studio-frost); }
+
+/* Round controls on the stage's corners. Left turns left in both reading
+   directions: it is the model's own left and right. */
+.tiny-corners { position: absolute; inset-block-start: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; pointer-events: none; z-index: 4; }
+.tiny-corners[data-kind=turn] { right: 76px; justify-content: flex-start; gap: 8px; }
+.adventure .tiny-round { pointer-events: auto; display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); padding: 0; border: 1px solid var(--studio-line); border-radius: 50%; background: var(--studio-frost); color: var(--studio-graphite); box-shadow: 0 6px 14px var(--studio-shade); transition: transform .16s var(--studio-ease-spring); }
+.adventure .tiny-round:active:not(:disabled) { transform: scale(.92); }
+.adventure .tiny-round:disabled { opacity: .4; box-shadow: none; }
+.adventure .tiny-paint { position: absolute; z-index: 4; inset-block-start: 10px; right: 10px; }
+
+/* The zoom: pictures laid over one another; the one in view is "here". A
+   zoom scales the picture being left up (or down) about the ringed thing
+   while the next one arrives from it. */
+.tiny-zoom__layer { position: absolute; inset: 0; opacity: 0; pointer-events: none; transform-origin: var(--tiny-fx, 50%) var(--tiny-fy, 50%); }
+.tiny-zoom__layer > svg, .tiny-desk__view > svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+.tiny-zoom__layer[data-state=here] { opacity: 1; }
+.tiny-zoom__layer[data-state=leave-in] { animation: tiny-leave-in var(--tiny-zoom-ms, 1200ms) cubic-bezier(.5, 0, .7, .4) both; will-change: transform, opacity; }
+.tiny-zoom__layer[data-state=arrive-in] { animation: tiny-arrive-in var(--tiny-zoom-ms, 1200ms) cubic-bezier(.2, .7, .3, 1) both; will-change: transform, opacity; }
+.tiny-zoom__layer[data-state=leave-out] { animation: tiny-leave-out var(--tiny-zoom-ms, 1200ms) cubic-bezier(.5, 0, .7, .4) both; will-change: transform, opacity; }
+.tiny-zoom__layer[data-state=arrive-out] { animation: tiny-arrive-out var(--tiny-zoom-ms, 1200ms) cubic-bezier(.2, .7, .3, 1) both; will-change: transform, opacity; }
+.tiny-zoom__ring { transform-box: fill-box; transform-origin: center; animation: tiny-next 1.4s ease-in-out infinite; }
+/* The ProofLens on its tripod before its screen: the picture keeps its own shape and stands on the stage's foot. */
+.tiny-desk { inset: auto 0 0 0; aspect-ratio: 450 / 546; background: var(--studio-mist); }
+.tiny .tiny-desk__picture { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; }
+.tiny-desk__screen { position: absolute; inset: 0; }
+.tiny-desk__view { position: absolute; left: 3.1%; top: 10.2%; inline-size: 92.9%; block-size: 53.4%; background: var(--mk-sky-pale); }
+/* The screen filling the view: pond water, the drawn pictures, and the screen's own dark edge with its corner marks. */
+.tiny-screen { position: absolute; inset: 0; }
+.tiny-screen[data-on=false] > :not(.tiny-zoom__layer) { display: none; }
+.tiny .tiny-water { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; object-fit: cover; }
+.tiny-screen__frame { position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 7px solid var(--studio-graphite); border-radius: calc(var(--studio-radius-card) - 2px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-white) 30%, transparent), inset 0 0 26px color-mix(in srgb, var(--mk-teal-deep) 22%, transparent); }
+.tiny-screen__frame::before, .tiny-screen__frame::after { content: ''; position: absolute; inline-size: 26px; block-size: 26px; border: 3px solid var(--mk-sea); }
+.tiny-screen__frame::before { top: 10px; left: 10px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.tiny-screen__frame::after { bottom: 10px; right: 10px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+.tiny-dive { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.tiny-dive > i { position: absolute; left: var(--tiny-fx, 50%); top: var(--tiny-fy, 50%); inline-size: 10px; block-size: 10px; margin: -5px; border-radius: 50%; background: color-mix(in srgb, var(--mk-white) 80%, transparent); opacity: 0; rotate: var(--tiny-a); animation: tiny-speck .9s ease-in both; }
+.tiny-dive[data-dir=out] > i { animation-direction: reverse; }
+/* Life in the drop: the paramecium's coat of hairs beats, the phage hangs in the water, the cell's whips sway. */
+.tiny-swimmer { transform-box: fill-box; transform-origin: center; animation: tiny-drift 7s ease-in-out infinite; }
+.tiny-swimmer__cilia { animation: tiny-beat .5s steps(2, jump-none) infinite; }
+.tiny-hover { animation: tiny-bob 3.6s ease-in-out infinite; }
+.tiny-touch ellipse { transform-box: fill-box; transform-origin: center; animation: tiny-touch .7s var(--studio-ease-soft) both; }
+.tiny-tag { position: absolute; z-index: 1; display: grid; gap: 0; translate: -50% -100%; padding: 5px 11px 6px; border-radius: var(--studio-radius-control); background: var(--studio-frost); border: 1px solid var(--studio-surface); color: var(--studio-graphite); font: 700 13px/1.25 var(--studio-font); text-align: center; white-space: nowrap; box-shadow: 0 6px 14px var(--studio-shade); }
+.tiny-tag[data-side=below] { translate: -50% 0; }
+.tiny-tag > strong { font: 800 16px/1.2 var(--studio-font); }
 
 /* The panel beside (or under) the stage. */
-.tiny-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-inline-size: 0; }
+.tiny-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-inline-size: 0; }
 .tiny .tiny-panel > * { grid-column: 1; margin: 0; }
 .tiny-modes { justify-self: center; }
-.tiny-modes button { min-block-size: 48px; padding-inline: 16px; }
+.tiny-modes button { min-block-size: 46px; padding-inline: 16px; }
 
-/* The parts tray: a slate tray with each piece in its own well, its name on
-   a cream tag. A placed piece leaves an empty, dashed well behind. */
-.tiny-tray { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--tiny-slate) 88%, var(--mk-storm-grey)), color-mix(in srgb, var(--tiny-slate) 70%, var(--tiny-night))); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--mk-white) 14%, transparent), inset 0 -3px 0 color-mix(in srgb, var(--tiny-night) 40%, transparent), 0 8px 18px color-mix(in srgb, var(--mk-shadow) 22%, transparent); }
-.adventure .tiny-piece { position: relative; display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: 5px; min-block-size: 96px; min-inline-size: 0; padding: 6px 4px 7px; border: 0; border-radius: 14px; background: transparent; color: var(--tiny-ink); touch-action: none; transition: transform .18s var(--studio-ease-soft, ease-out); }
-.tiny-piece__well { position: relative; display: block; overflow: hidden; inline-size: 100%; block-size: 62px; border-radius: 12px; background: radial-gradient(ellipse at 40% 30%, color-mix(in srgb, var(--mk-storm-grey) 70%, var(--tiny-slate)), color-mix(in srgb, var(--tiny-night) 55%, var(--tiny-slate))); box-shadow: inset 0 3px 6px color-mix(in srgb, var(--tiny-night) 55%, transparent), 0 1px 0 color-mix(in srgb, var(--mk-white) 12%, transparent); }
-.tiny-piece__art { position: absolute; inset: 5px; inline-size: calc(100% - 10px); block-size: calc(100% - 10px); overflow: visible; filter: drop-shadow(0 3px 2px color-mix(in srgb, var(--tiny-night) 60%, transparent)); }
-.tiny-piece__name { display: block; max-inline-size: 100%; padding: 2px 7px; border-radius: 8px; background: var(--tiny-card); color: var(--tiny-ink); font: 800 13px/1.2 var(--studio-font); text-align: center; overflow-wrap: anywhere; box-shadow: 0 1px 0 var(--tiny-card-edge); }
-.tiny-piece[data-selected=true] .tiny-piece__well { box-shadow: 0 0 0 3px var(--tiny-gold), 0 0 18px color-mix(in srgb, var(--mk-sun) 50%, transparent), inset 0 3px 6px color-mix(in srgb, var(--tiny-night) 55%, transparent); }
-.tiny-piece[data-selected=true] { transform: translateY(-3px); }
+/* The parts tray: a pearl tray, each piece in its own white well. A placed
+   piece leaves its well empty, with a teal tick. */
+.tiny-tray { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: var(--studio-radius-card); background: var(--studio-mist); border: 1px solid var(--studio-surface); box-shadow: inset 0 1px 0 var(--studio-surface), 0 8px 20px var(--studio-shade); }
+.adventure .tiny-piece { position: relative; display: grid; grid-template-rows: 1fr auto; justify-items: center; gap: 5px; min-block-size: 92px; min-inline-size: 0; padding: 0 0 4px; border: 0; border-radius: var(--studio-radius-control); background: transparent; color: var(--tiny-ink); touch-action: none; transition: transform .18s var(--studio-ease-spring); }
+.adventure .tiny-piece:active { transform: scale(.94); }
+.tiny-piece__well { position: relative; display: block; overflow: hidden; inline-size: 100%; block-size: 62px; border-radius: var(--studio-radius-control); background: var(--studio-surface); border: 1px solid var(--studio-line); box-shadow: inset 0 -3px 0 var(--studio-mist), 0 2px 5px var(--studio-shade); transition: box-shadow .18s var(--studio-ease-soft), border-color .18s; }
+.tiny-piece__art { position: absolute; inset: 5px; inline-size: calc(100% - 10px); block-size: calc(100% - 10px); overflow: visible; filter: drop-shadow(0 3px 2px var(--studio-shade)); }
+.tiny-piece__name { display: block; max-inline-size: 100%; color: var(--tiny-ink); font: 800 13px/1.2 var(--studio-font); text-align: center; overflow-wrap: anywhere; }
+.tiny-piece[data-selected=true] .tiny-piece__well { border-color: var(--studio-teal-ink); box-shadow: 0 0 0 3px var(--studio-teal-ink), 0 8px 16px var(--studio-shade); }
+.tiny-piece[data-selected=true] { transform: translateY(-4px); }
 .tiny-piece[data-done=true] { cursor: default; }
-.tiny-piece[data-done=true] .tiny-piece__well { background: transparent; box-shadow: none; outline: 2px dashed color-mix(in srgb, var(--mk-sky) 32%, transparent); outline-offset: -4px; }
-.tiny-piece[data-done=true] .tiny-piece__name { opacity: .55; }
-.tiny-piece[data-lifted] .tiny-piece__art { opacity: .25; }
+.tiny-piece[data-done=true] .tiny-piece__well { background: var(--studio-teal-soft); border: 2px dashed color-mix(in srgb, var(--studio-teal-ink) 46%, transparent); box-shadow: none; }
+.tiny-piece__tick { position: absolute; inset: 0; margin: auto; color: var(--studio-teal-ink); }
+.tiny-piece[data-done=true] .tiny-piece__name { color: var(--tiny-ink-soft); }
+.tiny-piece[data-lifted] .tiny-piece__art { opacity: .2; }
 .tiny-piece[data-wobble=true] { animation: tiny-wobble .5s ease-in-out; }
-.adventure .tiny-piece:focus-visible { outline: 3px solid var(--tiny-gold); outline-offset: 1px; }
+.tiny-tray[data-hop] .tiny-piece:not([data-done=true]) { animation: tiny-hop .45s var(--studio-ease-spring); animation-delay: calc(var(--tiny-i, 0) * 50ms); }
+.adventure .tiny-piece:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 2px; }
 
-/* The piece in the hand while dragging. It drifts back if it does not fit. */
-.tiny-float { position: fixed; z-index: 60; inset-block-start: 0; left: 0; inline-size: 96px; block-size: 96px; margin: -48px 0 0 -48px; pointer-events: none; filter: drop-shadow(0 10px 8px color-mix(in srgb, var(--mk-shadow) 50%, transparent)); }
-.tiny-float > svg { inline-size: 100%; block-size: 100%; overflow: visible; scale: 1.12; }
-.tiny-float[data-back=true] { transition: transform .34s var(--studio-ease-soft, ease-out), opacity .34s; opacity: .7; }
+/* The piece in the hand: the model's own size, lifted off the tray, drawn to
+   its place as it nears. It drifts back if it does not fit. */
+.tiny-float { position: fixed; z-index: 60; inset-block-start: 0; left: 0; pointer-events: none; filter: drop-shadow(0 12px 9px var(--studio-shade)); transition: filter .15s; }
+.tiny-float > svg { inline-size: 100%; block-size: 100%; overflow: visible; animation: tiny-lift .2s var(--studio-ease-spring) both; }
+.tiny-float[data-held=true] { filter: drop-shadow(0 3px 3px var(--studio-shade)); }
+.tiny-float[data-back=true] { transition: transform .32s var(--studio-ease-soft), opacity .32s; opacity: .5; }
 
-/* The museum label: name in bold, one or two true sentences, on cream. */
-.tiny-label { position: relative; display: grid; gap: 4px; padding: 14px 18px 12px; border-radius: 16px; background: var(--tiny-card); color: var(--tiny-ink); box-shadow: 0 1px 0 var(--tiny-card-edge), 0 8px 20px color-mix(in srgb, var(--mk-shadow) 12%, transparent); min-block-size: 112px; align-content: start; }
-.tiny-label::before { content: ''; position: absolute; inset-block-start: 0; inset-inline-start: 18px; inline-size: 44px; block-size: 4px; border-radius: 0 0 4px 4px; background: var(--tiny-gold); }
-.tiny-label__name { margin: 4px 0 0; font: 900 20px/1.2 var(--studio-font); letter-spacing: -.01em; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+/* The ghost hand: shows the first gesture on the real pieces, never takes a touch. */
+.tiny-hand { position: absolute; z-index: 50; inset-block-start: 0; left: 0; inline-size: 46px; block-size: 54px; margin: -6px 0 0 -14px; pointer-events: none; opacity: 0; translate: var(--tiny-x0) var(--tiny-y0); filter: drop-shadow(0 6px 6px var(--studio-shade)); animation: tiny-hand-carry 2.5s var(--studio-ease-soft) both; }
+.tiny-hand[data-kind=sideSwipe] { animation-name: tiny-hand-carry; }
+.tiny-hand[data-kind=press] { animation-name: tiny-hand-press; }
+.tiny-hand__art { display: block; inline-size: 100%; block-size: 100%; overflow: visible; }
+.tiny-hand__piece { position: absolute; inset-block-end: 70%; left: -40%; inline-size: 64px; block-size: 64px; overflow: visible; opacity: .85; }
+/* This activity lays itself out: one column by default (the shared two-column grid is for the wide layout below). */
+.adventure.tiny { position: relative; display: block; }
+.tiny .adventure-prompt { grid-column: auto; align-items: center; }
+.adventure.tiny .adventure-actions button { flex: 1 1 auto; }
+
+/* The museum label: name in bold, one or two true sentences, on white. */
+.tiny-label { position: relative; display: grid; gap: 4px; padding: 14px 18px; border-radius: var(--studio-radius-card); background: var(--tiny-card); border: 1px solid var(--studio-line); color: var(--tiny-ink); box-shadow: 0 8px 20px var(--studio-shade); min-block-size: 104px; align-content: start; }
+.tiny-label__name { margin: 0; font: 800 20px/1.2 var(--studio-font); letter-spacing: -.01em; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .tiny-label__where { font: 700 14px/1.2 var(--studio-font); color: var(--tiny-ink-soft); }
-.tiny-label__text { margin: 0; font: 700 17px/1.45 var(--studio-font); color: var(--tiny-ink); }
+.tiny-label__text { margin: 0; font: 700 17px/1.42 var(--studio-font); color: var(--tiny-ink); }
 .tiny-label__text--hint { color: var(--tiny-ink-soft); }
-.tiny-label__note { margin: 4px 0 0; font: 700 14px/1.4 var(--studio-font); color: var(--tiny-ink-soft); }
-.tiny-label[data-open=true] .tiny-label__name, .tiny-label[data-open=true] .tiny-label__text { animation: tiny-rise .3s var(--studio-ease-soft, ease-out); }
+.tiny-label__note { margin: 2px 0 0; font: 700 13.5px/1.4 var(--studio-font); color: var(--tiny-ink-soft); }
+.tiny-label__note:empty { display: none; }
+.tiny-label[data-open=true] .tiny-label__name, .tiny-label[data-open=true] .tiny-label__text { animation: tiny-rise .3s var(--studio-ease-soft); }
 
-/* Small dots: which parts still wait to be named. No numbers. */
-.tiny-dots { display: flex; gap: 7px; margin-block-start: 6px; }
-.tiny-dots > span { inline-size: 11px; block-size: 11px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--tiny-ink-soft) 50%, transparent); background: transparent; transition: background-color .2s, border-color .2s, transform .2s; }
-.tiny-dots > span[data-hidden=true] { border-style: dotted; }
-.tiny-dots > span[data-seen=true] { background: var(--tiny-gold); border-color: color-mix(in srgb, var(--mk-gold-deep) 70%, var(--tiny-gold)); }
-.tiny-dots > span[data-lit=true] { transform: scale(1.3); }
+/* The six parts: each a small card that gains its name and a teal tick once
+   it has been named. Not yet named: a dashed edge and no name. No numbers. */
+.tiny-parts { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.adventure .tiny-part { display: grid; justify-items: center; gap: 3px; min-inline-size: 0; min-block-size: var(--studio-tap); padding: 0; border: 0; background: transparent; color: var(--tiny-ink); transition: transform .16s var(--studio-ease-spring); }
+.adventure .tiny-part:active { transform: scale(.93); }
+.tiny-part__well { position: relative; display: block; inline-size: 100%; block-size: 46px; border-radius: var(--studio-radius-control); background: var(--studio-surface); border: 2px dashed var(--studio-line); }
+.tiny-part__art { position: absolute; inset: 4px; inline-size: calc(100% - 8px); block-size: calc(100% - 8px); overflow: visible; opacity: .5; filter: grayscale(.7); }
+.tiny-part[data-seen=true] .tiny-part__well { border: 2px solid var(--studio-teal-ink); background: var(--studio-teal-soft); }
+.tiny-part[data-seen=true] .tiny-part__art { opacity: 1; filter: none; }
+.tiny-part[data-hidden] .tiny-part__well { border-style: dotted; }
+.tiny-part[data-hidden] .tiny-part__art { opacity: .16; }
+.tiny-part[data-lit=true] .tiny-part__well { box-shadow: 0 0 0 3px var(--studio-teal-ink); }
+.tiny-part__tick { position: absolute; inset-block-start: -6px; inset-inline-end: -6px; padding: 2px; border-radius: 50%; background: var(--studio-done); color: var(--studio-done-ink); box-sizing: content-box; }
+.tiny-part__name { min-block-size: 15px; max-inline-size: 100%; font: 800 11.5px/1.25 var(--studio-font); text-align: center; overflow-wrap: anywhere; }
+
+/* How far in: the four stops, each a step that can be tapped. */
+.tiny-ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.adventure .tiny-rung { display: grid; justify-items: center; align-content: start; gap: 4px; min-block-size: var(--studio-tap); padding: 8px 2px 6px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-control); background: var(--studio-surface); color: var(--tiny-ink-soft); font: 800 12px/1.2 var(--studio-font); }
+.tiny-rung__dot { inline-size: 12px; block-size: 12px; border-radius: 50%; border: 2px solid var(--studio-line); background: transparent; }
+.tiny-rung[data-seen=true] .tiny-rung__dot { background: var(--studio-done); border-color: var(--studio-done); }
+.tiny-rung[data-here=true] { border: 2px solid var(--studio-teal-ink); color: var(--tiny-ink); background: var(--studio-teal-soft); }
+.tiny-rung__name { text-align: center; overflow-wrap: anywhere; }
+.adventure .tiny-rung:disabled { opacity: .7; }
 
 /* Landing progress: four soft steps, lit as they happen (not a timer). */
 .tiny-steps { display: flex; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
-.tiny-steps > li { flex: 1; block-size: 5px; border-radius: 3px; background: color-mix(in srgb, var(--tiny-ink-soft) 20%, transparent); transition: background-color .3s; }
-.tiny-steps > li[data-on=true] { background: var(--tiny-gold); }
+.tiny-steps > li { flex: 1; block-size: 6px; border-radius: 3px; background: var(--studio-mist); transition: background-color .3s; }
+.tiny-steps > li[data-on=true] { background: var(--studio-done); }
 
 .tiny-actions { gap: 8px; }
 .adventure .tiny-actions button { flex: 1 1 auto; }
-.adventure .tiny-actions button[aria-pressed=true] { background: var(--tiny-card); border-color: var(--tiny-gold); box-shadow: inset 0 0 0 2px var(--tiny-gold); }
-.tiny .tiny-status { min-block-size: 27px; margin-block: 10px 0; color: var(--tiny-ink); }
+.adventure .tiny-actions button[aria-pressed=true] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); box-shadow: inset 0 0 0 2px var(--studio-teal-ink); }
+.tiny .tiny-status { min-block-size: 24px; margin: 0; color: var(--tiny-ink-soft); font-size: 15px; }
+.tiny .tiny-status--quiet:empty { display: none; }
 
-/* The scale picture fades in over the landing. */
-.tiny-scale { position: absolute; inset: 0; z-index: 1; background: var(--tiny-night); animation: tiny-fade .7s var(--studio-ease-soft, ease-out); }
-.tiny-scale > svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-.tiny-scale__ring { transform-box: fill-box; transform-origin: center; animation: tiny-breathe 2.4s ease-in-out infinite; }
-.tiny-tag { position: absolute; display: grid; gap: 0; translate: -50% -100%; padding: 6px 12px 7px; border-radius: 12px; background: var(--tiny-card); color: var(--tiny-ink); font: 700 14px/1.25 var(--studio-font); text-align: center; white-space: nowrap; box-shadow: 0 6px 14px color-mix(in srgb, var(--mk-shadow) 40%, transparent); }
-.tiny-tag > strong { font: 900 17px/1.2 var(--studio-font); }
-
-@keyframes tiny-glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
-@keyframes tiny-snap { from { opacity: 1; transform: scale(.5); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes tiny-glow { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@keyframes tiny-next { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+@keyframes tiny-in { 0% { transform: translate(var(--tiny-dx, 0), var(--tiny-dy, 0)) scale(1.05); } 52% { transform: translate(0, 0) scale(1.04, .94); } 76% { transform: scale(.985, 1.03); } 100% { transform: none; } }
+@keyframes tiny-poke { 0%, 100% { transform: none; } 35% { transform: translateY(-5px) scale(1.03, .98); } 70% { transform: scale(1.03, .97); } }
+@keyframes tiny-flick { 0%, 100% { transform: none; } 40% { transform: scale(1.12, .9); } 70% { transform: scale(.96, 1.05); } }
+@keyframes tiny-shimmer { 0%, 100% { opacity: 1; } 40% { opacity: .45; } }
+@keyframes tiny-ringlit { 0%, 100% { stroke-width: 3.2; } 50% { stroke-width: 6.5; } }
+@keyframes tiny-fly { 0% { opacity: 0; transform: scale(.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--tiny-fly-x, 0), var(--tiny-fly-y, -30px)) rotate(140deg) scale(1.1); } }
+@keyframes tiny-ripple { from { opacity: .95; transform: scale(.3); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes tiny-leave-in { 0% { transform: scale(1); opacity: 1; } 55% { opacity: 0; } 100% { transform: scale(4.2); opacity: 0; } }
+@keyframes tiny-arrive-in { 0%, 42% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes tiny-leave-out { 0% { transform: scale(1); opacity: 1; } 55% { opacity: 0; } 100% { transform: scale(.3); opacity: 0; } }
+@keyframes tiny-arrive-out { 0%, 42% { transform: scale(4.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes tiny-speck { 0% { opacity: 0; transform: translateY(-6px) scale(.3); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-240px) scale(2.2); } }
+@keyframes tiny-drift { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(7px, -5px) rotate(1.6deg); } }
+@keyframes tiny-beat { from { stroke-dasharray: 9 0; } to { stroke-dasharray: 5 2; } }
+@keyframes tiny-nod { 0%, 100% { transform: scaleX(-1) translateY(0); } 45% { transform: scaleX(-1) translateY(-4%); } }
+@keyframes tiny-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes tiny-touch { from { opacity: 1; transform: scale(.4); } to { opacity: 0; transform: scale(2.4); } }
 @keyframes tiny-wobble { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-3deg); } 45% { transform: translateX(5px) rotate(2deg); } 70% { transform: translateX(-3px); } }
+@keyframes tiny-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-7px); } }
+@keyframes tiny-lift { from { transform: scale(.5); } to { transform: scale(1); } }
 @keyframes tiny-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-@keyframes tiny-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tiny-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.12); opacity: .7; } }
+@keyframes tiny-hand-carry { 0% { translate: var(--tiny-x0) var(--tiny-y0); opacity: 0; scale: 1.1; } 12% { opacity: 1; scale: 1.1; } 24% { translate: var(--tiny-x0) var(--tiny-y0); scale: .9; } 72% { translate: var(--tiny-x1) var(--tiny-y1); scale: .9; opacity: 1; } 84% { translate: var(--tiny-x1) var(--tiny-y1); scale: 1.1; opacity: 1; } 100% { translate: var(--tiny-x1) var(--tiny-y1); scale: 1.1; opacity: 0; } }
+@keyframes tiny-hand-press { 0% { opacity: 0; scale: 1.15; } 18% { opacity: 1; scale: 1.15; } 34% { scale: .88; } 50% { scale: 1.1; } 66% { scale: .88; } 82% { scale: 1.1; opacity: 1; } 100% { opacity: 0; scale: 1.1; } }
 
 @media (max-width: 600px) {
   .tiny-tray { gap: 6px; padding: 8px; }
-  .adventure .tiny-piece { min-block-size: 88px; }
-  .tiny-piece__well { block-size: 54px; }
-  .tiny-piece__name { font-size: 12px; padding-inline: 5px; }
-  .tiny-label { padding: 12px 14px 10px; min-block-size: 100px; }
-  .tiny-label__text { font-size: 16px; }
-  .tiny-tag { font-size: 12px; padding: 4px 9px 5px; }
-  .tiny-tag > strong { font-size: 15px; }
+  .adventure .tiny-piece { min-block-size: 84px; }
+  .tiny-piece__well { block-size: 56px; }
+  .tiny-piece__name { font-size: 12px; }
+  .tiny-label { padding: 11px 14px; min-block-size: 96px; }
+  .tiny-label__name { font-size: 18px; }
+  .tiny-label__text { font-size: 15.5px; line-height: 1.38; }
+  .tiny-label__note { font-size: 12.5px; }
+  .tiny-tag { font-size: 11.5px; padding: 4px 8px 5px; }
+  .tiny-tag > strong { font-size: 14px; }
   .adventure .tiny-actions button { padding-inline: 10px; font-size: 15px; }
+  .tiny-rung__name { font-size: 11px; }
+  .tiny-modes button { min-block-size: 44px; }
 }
-/* Desktop: the stage on the start side, the words and controls beside it,
-   all in one field of view (the shared adventure grid, laid out for this
-   stage's own shape). */
-@media (min-width: 800px) {
-  .adventure.tiny { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 16px 26px; align-items: start; }
+/* Tablet upright: one column, a big stage, the panel as wide as the stage. */
+@media (min-width: 601px) {
+  .tiny-panel { max-inline-size: min(100%, calc((100dvh - var(--tiny-rest)) * 400 / 440)); min-inline-size: min(100%, 420px); margin-inline: auto; inline-size: 100%; }
+  .tiny .adventure-prompt { max-inline-size: min(100%, max(420px, calc((100dvh - var(--tiny-rest)) * 400 / 440))); margin-inline: auto; }
+  .adventure .tiny-piece { min-block-size: 112px; }
+  .tiny-piece__well { block-size: 80px; }
+  .tiny-piece__name { font-size: 14px; }
+  .tiny-part__well { block-size: 64px; }
+  .tiny-part__name { font-size: 13px; }
+  .tiny-rung__name { font-size: 13.5px; }
+}
+/* Wide screens: the stage on the start side, the words and controls beside
+   it and centred against it, all in one field of view. */
+@media (min-width: 900px) and (min-aspect-ratio: 11/10) {
+  .adventure.tiny { --tiny-rest: 196px; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr); grid-template-rows: auto minmax(0, 1fr); gap: 14px 28px; align-items: start; }
+  .adventure.tiny[data-phase] { --tiny-rest: 196px; }
   .tiny .tiny-layout { display: contents; }
-  .tiny .adventure-prompt { grid-column: 2; grid-row: 1; margin: 0; }
-  .tiny .tiny-stage-wrap { grid-column: 1; grid-row: 1 / span 3; }
-  .tiny .tiny-panel { grid-column: 2; grid-row: 2; gap: 16px; }
-  .tiny .tiny-status { grid-column: 2; grid-row: 3; margin: 0; text-align: start; }
+  .tiny .adventure-prompt { grid-column: 2; grid-row: 1; margin: 0; max-inline-size: none; }
+  .tiny .tiny-stage-wrap { grid-column: 1; grid-row: 1 / span 2; }
+  .tiny .tiny-panel { grid-column: 2; grid-row: 2; gap: 14px; align-self: center; margin: 0; max-inline-size: none; min-inline-size: 0; }
   .tiny-modes { justify-self: start; }
   .tiny-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
-  .tiny-tray[data-count='7'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .adventure .tiny-piece { min-block-size: 112px; }
-  .tiny-piece__well { block-size: 76px; }
-  .tiny-piece__name { font-size: 14px; }
+  .tiny-tray[data-count='7'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tiny-tray[data-count='7'] .tiny-piece__well { block-size: 74px; }
+  .tiny-piece__well { block-size: 96px; }
+  .tiny-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .tiny-part__well { block-size: 70px; }
+  .tiny-ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .adventure .tiny-rung { grid-auto-flow: column; justify-content: start; align-items: center; justify-items: start; gap: 10px; padding: 10px 14px; }
+  .tiny .tiny-status { text-align: start; }
   .adventure .tiny-actions button { flex: 1 1 40%; }
 }
+/* Motion reduced: the shared rule stills every animation here; these give
+   the still pictures their finished state, so nothing waits on a motion. */
 @media (prefers-reduced-motion: reduce) {
-  .tiny-glow, .tiny-snap, .tiny-scale, .tiny-scale__ring, .tiny-piece[data-wobble=true], .tiny-label[data-open=true] .tiny-label__name, .tiny-label[data-open=true] .tiny-label__text { animation: none; }
-  .tiny-piece[data-wobble=true] { outline: 3px dashed var(--tiny-gold); outline-offset: 2px; }
-  .tiny-snap { opacity: 0; }
-  .adventure .tiny-piece, .tiny-float[data-back=true], .tiny-dots > span, .tiny-steps > li { transition: none; }
+  .tiny-hand { opacity: 1; translate: var(--tiny-x1) var(--tiny-y1); }
+  .tiny-ripple, .tiny-dive, .tiny-touch { display: none; }
+  .tiny-facets polygon { opacity: .9; }
+  .tiny-piece[data-wobble=true] { outline: 3px dashed var(--studio-teal-ink); outline-offset: 2px; }
+  .tiny-lens[data-next]::after { opacity: 1; }
+  .tiny-zoom__layer[data-state^=leave] { opacity: 0; }
+  .tiny-zoom__layer[data-state^=arrive] { opacity: 1; }
 }
 @media (forced-colors: active) {
-  .tiny-piece[data-selected=true] .tiny-piece__well { outline: 3px solid Highlight; }
-  .tiny-dots > span[data-seen=true] { background: Highlight; }
+  .tiny-piece[data-selected=true] .tiny-piece__well, .tiny-part[data-lit=true] .tiny-part__well { outline: 3px solid Highlight; }
+  .tiny-part[data-seen=true] .tiny-part__well, .tiny-rung[data-here=true] { outline: 2px solid Highlight; }
 }

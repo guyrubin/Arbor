@@ -1,63 +1,122 @@
-/** Stitch Garden words. Hebrew is gender-free: nouns, plural verbs and
- * infinitives only. `title`, `description` and `instruction` are the Studio
- * tile and intro card (studioCopy reads them); the rest is the game's own.
- * `story` is the poem sewn along the hem, one line per flower, in order. Each
- * language is written for itself; the Hebrew does not translate the English
- * word for word. `{flower}` is filled in by `sgLine`. */
+/** Stitch Garden words. Hebrew is gender-free towards the child: nouns,
+ * plural verbs and infinitives only (the valley's friends keep their own
+ * grammar). `title`, `description` and `instruction` are the Studio tile and
+ * intro card (studioCopy reads them); the rest is the game's own.
+ *
+ * The poem sewn along the hem has one line per flower, in order. `story` is
+ * the linen cloth's: the kit's "the flower that wouldn't hurry", at Aya's
+ * table in the Sky Gardens. `stories` holds one poem per cloth (linen by day,
+ * indigo by night, sage in the meadow by Glass Grove); the three share their
+ * beats, so the same things happen on the table whichever is sewn: water at
+ * line 2, light at 3, the bud grows at 4, a visitor at 5, waiting at 6, the
+ * bud opens at 7, the whole garden at 8. Each language is written for itself.
+ * `{flower}` is filled in by `sgLine`. */
+const EN_LINEN = [
+  'A little bud sat in its pot.',
+  'Aya gave it a sip of water.',
+  'The sun leaned in to look.',
+  'The bud grew, but not fast.',
+  'A bee stopped by to wait.',
+  'GobGob waited too. No hurry.',
+  'One morning, the bud opened.',
+  'Now the whole garden is awake.',
+] as const;
+const HE_LINEN = [
+  'ניצן קטן ישב בעציץ.',
+  'איה נתנה לו לגימת מים.',
+  'השמש התקרבה להציץ.',
+  'הניצן גדל, אבל לא מיהר.',
+  'דבורה עצרה לחכות איתו.',
+  'כולם חיכו איתו. בלי למהר.',
+  'בוקר אחד הניצן נפתח.',
+  'עכשיו כל הגינה ערה.',
+] as const;
 export const STITCH_GARDEN_COPY = {
   en: {
-    title: 'Stitch Garden', description: 'Sew a garden of flowers.', instruction: 'Choose a cloth and a thread, then stitch flowers wherever you like.',
-    finish: 'Your garden is stitched.', transfer: 'Away from the screen: look for flowers on clothes, cushions and curtains.', done: "I'm finished", keep: 'Your stitched garden',
-    cueStart: 'Pick a flower and a thread. Then tap a cross on the cloth.',
+    title: 'Stitch Garden', description: 'Sew a garden at Aya’s table.', instruction: 'Tap a cross on the cloth and the needle stitches a flower. Choose any flower, thread and cloth.',
+    finish: 'Your garden is stitched.', transfer: 'Away from the screen: look for stitched flowers on clothes, cushions and curtains.', done: "I'm finished", keep: 'Your stitched garden',
+    cueStart: 'Tap a cross to plant a flower.',
     cueStitching: 'The needle is stitching your {flower}.',
-    cueMore: 'Plant another flower, or say you are finished.',
-    cueFull: 'The hoop is full of flowers. Unpick one, or say you are finished.',
-    cueLifting: 'Lifting the cloth out of the hoop…',
-    stitching: 'Stitch by stitch…', unpicked: 'Unpicked. The thread is back on the spool.',
+    cueMore: 'Plant another, or tap “I’m finished”.',
+    cueFull: 'The hoop is full. Tap “I’m finished”.',
+    cueLifting: 'Holding it up to the light…',
+    stitching: 'Stitch by stitch…', unpicked: 'Unpicked. The thread is back on its spool.',
     unpick: 'Unpick', reopen: 'Keep stitching my garden',
-    clothLabel: 'Cloth', flowerLabel: 'Flowers', threadLabel: 'Threads', storyLabel: 'The story on the hem', hoopLabel: 'The cloth in the hoop',
+    clothLabel: 'Cloth', flowerLabel: 'Flowers', threadLabel: 'Threads', storyLabel: 'The story on the hem', hoopLabel: 'The cloth in the hoop', tableLabel: 'On Aya’s table',
     cloths: { linen: 'Linen', indigo: 'Indigo', sage: 'Sage green' },
     flowers: { daisy: 'daisy', tulip: 'tulip', poppy: 'poppy', bluebell: 'bluebell', sunflower: 'sunflower' },
     flowerNames: { daisy: 'Daisy', tulip: 'Tulip', poppy: 'Poppy', bluebell: 'Bluebell', sunflower: 'Sunflower' },
-    threads: ['Poppy red', 'Golden yellow', 'Raspberry pink', 'Cornflower blue', 'Snow white'],
+    threads: ['Knit coral', 'Amber', 'Petal pink', 'Aya blue', 'Cloud white'],
     spot: 'Stitch a {flower} here', spotPlace: ['top row', 'middle row', 'bottom row'],
-    story: [
-      'One seed woke up.',
-      'A friend grew beside it.',
-      'The sun came out to look.',
-      'A bee buzzed hello.',
-      'Rain made every leaf shine.',
-      'Roots met under the soil.',
-      'The wind came to dance.',
-      'Now the whole garden is awake.',
-    ],
+    toys: { aya: 'Aya', wateringCan: 'Aya’s watering can', bud: 'The bud that would not hurry', pincushion: 'The needle in its pincushion', screw: 'The hoop’s brass screw', ladybird: 'A ladybird', leafLab: 'Aya’s LeafLab', gobgob: 'GobGob, waiting', waitRing: 'GobGob’s WaitRing' },
+    visitors: { honeyBee: 'A bee', fireFly: 'A firefly', butterFly: 'A butterfly' },
+    story: EN_LINEN,
+    stories: {
+      linen: EN_LINEN,
+      indigo: [
+        'Evening came to the Sky Gardens.',
+        'Aya filled the watering can.',
+        'The moon lit the glass roofs.',
+        'The bud slept on. No hurry.',
+        'A firefly came to keep watch.',
+        'Chock lay down to wait with it.',
+        'At first light, the bud opened.',
+        'Now the night garden glows.',
+      ],
+      sage: [
+        'A green shoot peeked out.',
+        'Pep ran to fetch the water.',
+        'Light slid down the glass.',
+        'Aya moved a pot to make room.',
+        'A butterfly stopped to rest.',
+        'Nobody pulled. Nobody pushed.',
+        'It opened when it was ready.',
+        'Now the meadow is all in bloom.',
+      ],
+    },
   },
   he: {
-    title: 'גינה רקומה', description: 'רוקמים גינה של פרחים.', instruction: 'בוחרים בד וחוט, ואז רוקמים פרחים איפה שרוצים.',
-    finish: 'הגינה רקומה.', transfer: 'הרחק מהמסך: מחפשים פרחים על בגדים, כריות ווילונות.', done: 'סיימתי', keep: 'הגינה שרקמת',
-    cueStart: 'בוחרים פרח וחוט, ואז נוגעים באחד האיקסים שעל הבד.',
+    title: 'גינה רקומה', description: 'רוקמים גינה על השולחן של איה.', instruction: 'נוגעים באיקס שעל הבד והמחט רוקמת פרח. אפשר לבחור כל פרח, חוט ובד.',
+    finish: 'הגינה רקומה.', transfer: 'הרחק מהמסך: מחפשים פרחים רקומים על בגדים, כריות ווילונות.', done: 'סיימתי', keep: 'הגינה שרקמת',
+    cueStart: 'נוגעים באיקס ושותלים פרח.',
     cueStitching: 'המחט רוקמת {flower}.',
-    cueMore: 'אפשר לשתול עוד פרח, או לגמור כאן.',
-    cueFull: 'החישוק מלא פרחים. אפשר לפרום אחד, או לגמור כאן.',
-    cueLifting: 'מוציאים את הבד מהחישוק…',
+    cueMore: 'אפשר לשתול עוד, או לגעת ב״סיימתי״.',
+    cueFull: 'החישוק מלא. נוגעים ב״סיימתי״.',
+    cueLifting: 'מרימים אותו אל האור…',
     stitching: 'תפר אחרי תפר…', unpicked: 'נפרם. החוט חזר לסליל.',
     unpick: 'לפרום', reopen: 'להמשיך לרקום את הגינה',
-    clothLabel: 'בד', flowerLabel: 'פרחים', threadLabel: 'חוטים', storyLabel: 'הסיפור שעל שולי הבד', hoopLabel: 'הבד שבחישוק',
+    clothLabel: 'בד', flowerLabel: 'פרחים', threadLabel: 'חוטים', storyLabel: 'הסיפור שעל שולי הבד', hoopLabel: 'הבד שבחישוק', tableLabel: 'על השולחן של איה',
     cloths: { linen: 'פשתן', indigo: 'כחול לילה', sage: 'ירוק מרווה' },
     flowers: { daisy: 'חיננית', tulip: 'צבעוני', poppy: 'פרג', bluebell: 'פעמונית', sunflower: 'חמנייה' },
     flowerNames: { daisy: 'חיננית', tulip: 'צבעוני', poppy: 'פרג', bluebell: 'פעמונית', sunflower: 'חמנייה' },
-    threads: ['אדום פרג', 'צהוב זהב', 'ורוד פטל', 'כחול שמיים', 'לבן שלג'],
+    threads: ['אלמוג סרוג', 'ענבר', 'ורוד עלי כותרת', 'הכחול של איה', 'לבן ענן'],
     spot: 'לרקום כאן {flower}', spotPlace: ['שורה עליונה', 'שורה אמצעית', 'שורה תחתונה'],
-    story: [
-      'זרע קטן התעורר.',
-      'פרח נוסף צמח לידו.',
-      'השמש יצאה להציץ.',
-      'דבורה זמזמה שלום.',
-      'טיפות גשם נצצו על העלים.',
-      'השורשים נפגשו באדמה.',
-      'הרוח באה לרקוד איתם.',
-      'עכשיו כל הגינה ערה.',
-    ],
+    toys: { aya: 'איה', wateringCan: 'המשפך של איה', bud: 'הניצן שלא מיהר', pincushion: 'המחט בכרית הסיכות', screw: 'בורג הפליז של החישוק', ladybird: 'פרת משה רבנו', leafLab: 'מד העלים של איה', gobgob: 'גובגוב מחכה', waitRing: 'צמיד ההמתנה של גובגוב' },
+    visitors: { honeyBee: 'דבורה', fireFly: 'גחלילית', butterFly: 'פרפר' },
+    story: HE_LINEN,
+    stories: {
+      linen: HE_LINEN,
+      indigo: [
+        'ערב ירד על גני השמיים.',
+        'איה מילאה את המשפך.',
+        'הירח האיר את גגות הזכוכית.',
+        'הניצן המשיך לישון. בלי למהר.',
+        'גחלילית באה לשמור עליו.',
+        'צ׳וק נשכב לחכות לידו.',
+        'עם אור ראשון הניצן נפתח.',
+        'עכשיו גינת הלילה זוהרת.',
+      ],
+      sage: [
+        'נבט ירוק הציץ החוצה.',
+        'פפ רץ להביא מים.',
+        'האור גלש על הזכוכית.',
+        'איה הזיזה עציץ ופינתה מקום.',
+        'פרפר עצר לנוח.',
+        'אף אחד לא משך ולא דחף.',
+        'הניצן נפתח כשהיה מוכן.',
+        'עכשיו כל האחו פורח.',
+      ],
+    },
   },
 } as const;
 export type StitchGardenWords = typeof STITCH_GARDEN_COPY['en'] | typeof STITCH_GARDEN_COPY['he'];

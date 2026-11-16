@@ -100,7 +100,7 @@ export function bestViewRotation(stickers: readonly BottleStickerPlacement[]): n
 export const LAMP_MIN = -60;
 export const LAMP_MAX = 60;
 export const LAMP_STEP = 10;
-export const LAMP_START = -35;
+export const LAMP_START = -48;
 export const clampLamp = (angle: number) => Number.isFinite(angle) ? Math.min(LAMP_MAX, Math.max(LAMP_MIN, angle)) : LAMP_START;
 
 /** The lamp is the kit's desk lamp: it stands on the table just behind the
@@ -112,7 +112,7 @@ export const LAMP_TRACK = { x: 180, reach: 138, y: 374 } as const;
  * 0 while it passes behind the bottle, so it always leans toward the glass. */
 export function lampPosition(angle: number) {
   const a = clampLamp(angle);
-  return { x: LAMP_TRACK.x + a / LAMP_MAX * LAMP_TRACK.reach, y: LAMP_TRACK.y, face: Math.max(-1, Math.min(1, -a / 9)) };
+  return { x: LAMP_TRACK.x + a / LAMP_MAX * LAMP_TRACK.reach, y: LAMP_TRACK.y, face: Math.max(-1, Math.min(1, -a / 4)) };
 }
 /** The angle a pointer at (x, y) asks the lamp for: only how far along the table it is. */
 export function lampAngleAt(x: number, _y = LAMP_TRACK.y): number {
@@ -156,10 +156,10 @@ export const MAX_BUBBLES = 24;
 export interface Bubble { id: number; x: number; y: number; r: number; speed: number; phase: number; drift: number }
 
 /** Inside the water, how far a bubble of radius `r` at height `y` may sit from
- * the axis without touching the glass. Zero outside the water. */
-export function bubbleHalfWidth(shape: ShapeId, y: number, r: number): number {
-  const level = PROFILES[shape].water;
-  if (!Number.isFinite(y) || y < level || y > BASE_Y) return 0;
+ * the axis without touching the glass. Zero outside the water. `top` is the
+ * water line (the still level unless play has moved it). */
+export function bubbleHalfWidth(shape: ShapeId, y: number, r: number, top = PROFILES[shape].water): number {
+  if (!Number.isFinite(y) || y < top || y > BASE_Y) return 0;
   const inside = radiusAt(shape, y) * (1 - WALL) - r - 1.5;
   return Math.max(0, inside);
 }
@@ -167,18 +167,18 @@ export const bubbleTop = (shape: ShapeId) => PROFILES[shape].water;
 /** Bubbles start a little above the inside of the base ring. */
 export const bubbleFloor = (shape: ShapeId) => BASE_Y - 6;
 /** True when a bubble lies wholly inside the water of this shape. */
-export function bubbleInside(shape: ShapeId, bubble: Pick<Bubble, 'x' | 'y' | 'r'>, axis = 180): boolean {
-  const half = bubbleHalfWidth(shape, bubble.y, bubble.r);
-  return half > 0 && Math.abs(bubble.x - axis) <= half + 1e-6 && bubble.y - bubble.r >= bubbleTop(shape) - 1e-6;
+export function bubbleInside(shape: ShapeId, bubble: Pick<Bubble, 'x' | 'y' | 'r'>, axis = 180, top = bubbleTop(shape)): boolean {
+  const half = bubbleHalfWidth(shape, bubble.y, bubble.r, top);
+  return half > 0 && Math.abs(bubble.x - axis) <= half + 1e-6 && bubble.y - bubble.r >= top - 1e-6;
 }
 
 /** A new bubble from two or more numbers in [0, 1) the caller rolls. */
-export function spawnBubble(shape: ShapeId, id: number, roll: () => number, axis = 180, burst = false): Bubble {
+export function spawnBubble(shape: ShapeId, id: number, roll: () => number, axis = 180, burst = false, top = bubbleTop(shape)): Bubble {
   const n = () => { const v = roll(); return Number.isFinite(v) ? Math.min(0.999, Math.max(0, v)) : 0.5; };
   const r = burst ? 2 + n() * 3.8 : 1.8 + n() * 2.6;
-  const floor = bubbleFloor(shape), top = bubbleTop(shape);
+  const floor = bubbleFloor(shape);
   const y = burst ? top + (floor - top) * (0.45 + 0.5 * n()) : floor - n() * 10;
-  const half = bubbleHalfWidth(shape, y, r);
+  const half = bubbleHalfWidth(shape, y, r, top);
   const x = axis + (n() * 2 - 1) * half * 0.85;
   return { id, x, y, r, speed: 16 + n() * 22 + r * 3, phase: n() * Math.PI * 2, drift: 2 + n() * 4 };
 }
@@ -186,11 +186,11 @@ export function spawnBubble(shape: ShapeId, id: number, roll: () => number, axis
 /** One step of rising: up by its speed, wobbling sideways, held inside the
  * glass. Null when it reaches the water line and pops. `t` is seconds since
  * the start, `dt` this step's seconds. */
-export function riseBubble(shape: ShapeId, bubble: Bubble, t: number, dt: number, axis = 180): Bubble | null {
+export function riseBubble(shape: ShapeId, bubble: Bubble, t: number, dt: number, axis = 180, top = bubbleTop(shape)): Bubble | null {
   const step = Number.isFinite(dt) ? Math.min(0.1, Math.max(0, dt)) : 0;
   const y = bubble.y - bubble.speed * step;
-  if (y - bubble.r <= bubbleTop(shape) + ELLIPSE * 4) return null;
-  const half = bubbleHalfWidth(shape, y, bubble.r);
+  if (y - bubble.r <= top + ELLIPSE * 4) return null;
+  const half = bubbleHalfWidth(shape, y, bubble.r, top);
   if (half <= 0) return null;
   const wobble = Math.sin(t * 5 + bubble.phase) * bubble.drift * step * 4;
   const x = Math.min(axis + half, Math.max(axis - half, bubble.x + wobble));

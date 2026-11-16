@@ -58,7 +58,7 @@ export function BottleDefs({ uid, shape, finish, map, air, wet }: { uid: string;
     <clipPath id={id('outer')}><path d={silhouettePath(shape)} /></clipPath>
     <clipPath id={id('inner')}><path d={innerPath(shape)} /></clipPath>
     <clipPath id={id('water')}><path d={waterPath(shape)} /></clipPath>
-    <filter id={id('grain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
+    <filter id={id('frostGrain')} x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="7" stitchTiles="stitch" /><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.05" /></filter>
     <filter id={id('soft1')} x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.2" /></filter>
     <filter id={id('soft3')} x="-30%" y="-60%" width="160%" height="220%"><feGaussianBlur stdDeviation="3.2" /></filter>
     <filter id={id('soft')} x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation={frost ? 2.2 : 0.7} /></filter>
@@ -133,8 +133,8 @@ export function TableShadow({ uid, shape, angle, on, stickers = [], rotation = 0
   const turn = `rotate(${fx.shadowAngle.toFixed(1)})`;
   return <g>
     <g filter={url('soft3')}>
-      <path d={outline(1)} style={fill(mix('--bl-deep', '--mk-shadow', 55), fx.shadowOpacity)} />
-      {on && <path d={outline(0.72)} style={fill(mix('--bl-glass', '--bl-light', 70), 0.42)} />}
+      <path d={outline(1)} style={fill(mix('--bl-deep', '--mk-shadow', 55), fx.shadowOpacity * 0.72)} />
+      {on && <path d={outline(0.7)} style={fill(mix('--bl-glass', '--bl-light', 70), 0.5)} />}
     </g>
     {on && <g filter={url('soft1')}>{stickers.map(s => {
       const v = stickerShade(shape, s, rotation, angle), p = at(v.t, v.u * 0.82, v.radius), half = PROFILES[shape].sticker / 2;
@@ -151,7 +151,7 @@ export function TableShadow({ uid, shape, angle, on, stickers = [], rotation = 0
 export const LAMP_SIZE = { width: 84, height: 103, foot: 27 } as const;
 export function Lamp({ uid, angle, on, shadow = true }: { uid: string; angle: number; on: boolean; shadow?: boolean }) {
   const { url } = ids(uid);
-  const p = lampPosition(angle), face = Math.abs(p.face) < 0.06 ? 0.06 : p.face;
+  const p = lampPosition(angle), face = Math.abs(p.face) < 0.3 ? (p.face < 0 ? -0.3 : 0.3) : p.face;
   return <g transform={`translate(${p.x.toFixed(1)} ${p.y})`} data-bl-lamp-art="">
     {shadow && <ellipse cy="-1" rx="27" ry="5" filter={url('soft1')} style={fill('var(--mk-shadow)', 0.26)} />}
     <g transform={`scale(${face.toFixed(3)} 1)`}>
@@ -199,7 +199,7 @@ export function GlassInside({ uid, shape, finish, part = 'still', small = false,
     </g>
     {finish === 'frost' && <g clipPath={url(part === 'wet' ? 'inner' : 'outer')}>
       <path d={silhouettePath(shape)} style={{ fill: url('frost') }} />
-      {part !== 'wet' && <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('grain')} style={fill('var(--mk-white)', 0.14)} />}
+      {part !== 'wet' && <rect x={AXIS_X - 100} y={topY(shape) - 4} width="200" height={bottomY(shape) - topY(shape) + 8} filter={url('frostGrain')} style={fill('var(--mk-white)', 0.14)} />}
     </g>}
   </g>;
 }
