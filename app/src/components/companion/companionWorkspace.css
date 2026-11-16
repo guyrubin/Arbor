@@ -47,7 +47,7 @@
    its two lines in Hebrew at 375 px. */
 .companion-launch-mark { display: flex; flex: none; }
 .companion-launch-voice { min-inline-size: 44px; padding-inline: 4px; }
-@media (max-width: 520px) { .companion-launcher.has-voice .companion-launch-mark { display: none; } }
+/* v10 (canvas V77): the bar reads "Ask Arbor", so the mark keeps its place beside the voice door on phones. */
 @media (max-width: 380px) { .companion-launcher.has-voice .companion-launch-main { padding-inline: 4px; gap: 6px; } }
 /* F-TALK-2 / MOB-03: the full-screen panel ends where the phone's keyboard
    begins (useVisualViewportInset publishes the covered height). */

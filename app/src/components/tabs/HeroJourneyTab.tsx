@@ -60,7 +60,7 @@ import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
-import { PageHeader, cardCls } from "../ui/kit";
+import { cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
@@ -78,7 +78,9 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
-import { DsRoot, Guide, Route, RouteSection } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, Token } from "../../design/primitives";
+import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
+import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
 import { ChainStrip } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
@@ -977,7 +979,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         />
       </motion.div>
     ) : (
-      <DsRoot composition={composition} className="stories-v10" data-testid="stories-screen" dir={he ? "rtl" : "ltr"}>
+      <DsRoot composition={composition} className="ds-mychild stories-v10" data-testid="stories-screen" dir={he ? "rtl" : "ltr"}>
       <div className="tg-stack" style={{ gap: composition === "phone" ? 8 : 16 }}>
         <Guide
           label={tCopy.onThisPage}
@@ -988,20 +990,27 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
           ]}
         />
-        {composition === "desk" && storiesChain}
         <Route composition={composition}>
         <RouteSection id="tonight" n={1} on>
-        <div className={composition === "phone" ? "space-y-3" : "space-y-6"}>
-        {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue; no
-            eyebrow, no subtitle (four labels stood before the story). "Starring"
-            only once the child has a hero — the cover cannot keep that claim
-            with the generic mascot. */}
-        {/* v10.1: on a phone the guide's first stop already names tonight's story, so the
-            H1 is read, not drawn (Read it together stays above the fold, SHIP-FIX). */}
-        <PageHeader
-          title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
-          srOnly={composition === "phone"}
-        />
+        {/* V77: the header band, as on Now and My child — the page's h1, the books figure and (desk) the chain. */}
+        <div className="scene now" style={{ padding: composition === "phone" ? "14px 14px 12px" : "22px 28px 18px", gap: composition === "phone" ? 10 : 16 }}>
+          <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
+          <FrameHead
+            phone={composition === "phone"}
+            kicker={tCopy.storiesKicker}
+            startHere={tCopy.startHere}
+            title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
+            figure={composition === "desk" && !showAllAges && displayStories.length > 0
+              ? <FrameFigure n={displayStories.length} unit={tCopy.booksUnit(name)} sub={ageHiddenStories.length > 0 ? tCopy.booksMore(ageHiddenStories.length) : undefined} />
+              : undefined}
+          />
+          {composition === "desk" && storiesChain}
+        </div>
+        <div className={composition === "phone" ? "tg-stack" : "rowa"}>
+        <div className={composition === "phone" ? undefined : "stg"}>
+        <div className={composition === "phone" ? "space-y-3" : "mcst space-y-6"}>
+        {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue ("Starring" only once
+            the child has a hero). V77: it is the header band's h1 above. */}
         {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
             to open on a comic hero banner, a mascot bubble in the kid's voice,
             two in-hub tiles and a filter row, so the FIRST story card rendered
@@ -1182,6 +1191,24 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         )}
         {/* The running Challenge plan's book, read together (program flag). */}
         <StoriesPlanBook />
+        </div>
+        </div>
+        <div className={composition === "phone" ? undefined : "rlc"}>
+          <RailTile icon="grid_view" title={tCopy.howToRead}>
+            <ReadGuide
+              phone={composition === "phone"}
+              steps={[
+                { drawing: Draw.cards(), label: tCopy.stopTonight },
+                { drawing: Draw.list(), label: tCopy.stopRitual },
+                { drawing: Draw.pick(6), label: tCopy.stopPictures },
+              ]}
+              keyItems={[
+                { mark: <span className="ds-pencil" style={{ padding: "0 6px" }} aria-hidden="true"><Icon name="edit" size={14} /></span>, label: tCopy.arborSuggests },
+                { mark: <Token kind="moment" size="sm" label="" />, label: tCopy.chainRead },
+              ]}
+            />
+          </RailTile>
+        </div>
         </div>
         </RouteSection>
         <RouteSection id="family" n={2}>
