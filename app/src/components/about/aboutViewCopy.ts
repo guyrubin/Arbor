@@ -21,6 +21,7 @@ export const ABOUT_COPY = {
     pickArea: "Pick an area of what Arbor knows",
     figWaiting: "waiting for your yes or no",
     figRemembered: (n: number) => (n === 1 ? "1 remembered" : `${n} remembered`),
+    figRememberedUnder: (n: number, area: string) => `${n === 1 ? "1 remembered" : `${n} remembered`}, kept under ${area}`,
     statusTold: "Told",
     statusRemembered: "Remembered",
     statusNothing: "Nothing told yet",
@@ -41,6 +42,9 @@ export const ABOUT_COPY = {
     ifYes: "If you say yes",
     keptUnder: (area: string) => `Kept under ${area}`,
     keptNotebook: "Kept in Arbor's notebook",
+    /** The phone's draft-card line (N-About-M): where it came from, then what a yes does. */
+    phoneWhy: (fromTalk: boolean, area: string | null) =>
+      `${fromTalk ? "You said it in Talk with Arbor." : "Arbor noted it from your record."} ${area ? `A yes keeps it under ${area}, dated today.` : "A yes keeps it in Arbor's notebook, dated today."}`,
     answerHint: "Remember keeps it, dated today. Not this forgets it.",
     approvedMemory: (date: string) => `Approved memory · ${date}`,
     approvedMemoryUndated: "Approved memory",
@@ -70,6 +74,7 @@ export const ABOUT_COPY = {
     pickArea: "בחרו תחום ממה שארבור יודעת",
     figWaiting: "מחכות לתשובה שלכם",
     figRemembered: (n: number) => (n === 1 ? "אחת נזכרה" : `${n} נזכרות`),
+    figRememberedUnder: (n: number, area: string) => `${n === 1 ? "אחת נזכרה" : `${n} נזכרות`}, נשמרה תחת ${area}`,
     statusTold: "סיפרתם",
     statusRemembered: "נזכר",
     statusNothing: "עוד לא סיפרתם",
@@ -90,6 +95,8 @@ export const ABOUT_COPY = {
     ifYes: "אם תגידו כן",
     keptUnder: (area: string) => `יישמר תחת ${area}`,
     keptNotebook: "יישמר במחברת של ארבור",
+    phoneWhy: (fromTalk: boolean, area: string | null) =>
+      `${fromTalk ? "אמרתם את זה בשיחה עם ארבור." : "ארבור רשמה את זה מהתיעוד שלכם."} ${area ? `״כן״ ישמור את זה תחת ${area}, עם התאריך של היום.` : "״כן״ ישמור את זה במחברת של ארבור, עם התאריך של היום."}`,
     answerHint: "״לזכור״ שומר עם התאריך של היום. ״לא זה״ מוחק.",
     approvedMemory: (date: string) => `זיכרון שאישרתם · ${date}`,
     approvedMemoryUndated: "זיכרון שאישרתם",

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 as fmtDay } from "../../lib/formatDate";
 import { visitRecords, type Appointment, type AppointmentFollowUp } from "../../lib/careTrack";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { MoreLink } from "../../design/primitives";
