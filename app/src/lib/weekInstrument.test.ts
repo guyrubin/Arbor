@@ -76,3 +76,21 @@ describe("weekInstrument", () => {
     expect(hasClockTime("2026-10-11T07:00:00.000Z")).toBe(true);
   });
 });
+
+describe("weekInstrument — the join of a hard moment to the step tried for it", () => {
+  const hardLog = [{ id: "h1", intensity: 4 }];
+  const hard = obs("behaviorLogs:h1", at(0, 7));
+  it("pairs a day holding a timed hard moment and a step taken from the hard-moment sheet", () => {
+    const data = weekInstrument({ observations: [hard], logs: hardLog, dayStarts, endMs: START + 7 * DAY - 1, isCurrent: false,
+      actionLoop: [{ id: "s1", source: "hard-moment", outcome: "helped", outcomeAt: at(0, 9) }] });
+    expect(data.joins).toEqual([{ day: 0, hardId: "behaviorLogs:h1" }]);
+  });
+  it("negative controls: a step from another source, or on another day, joins nothing", () => {
+    const other = weekInstrument({ observations: [hard], logs: hardLog, dayStarts, endMs: START + 7 * DAY - 1, isCurrent: false,
+      actionLoop: [{ id: "s1", source: "digest", outcome: "helped", outcomeAt: at(0, 9) }] });
+    expect(other.joins).toEqual([]);
+    const elsewhere = weekInstrument({ observations: [hard], logs: hardLog, dayStarts, endMs: START + 7 * DAY - 1, isCurrent: false,
+      actionLoop: [{ id: "s1", source: "hard-moment", outcome: "helped", outcomeAt: at(2, 9) }] });
+    expect(elsewhere.joins).toEqual([]);
+  });
+});
