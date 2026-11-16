@@ -194,3 +194,25 @@
 /* the shell's global `.arbor-app aside` paint belongs to the sidebar */
 .ds.care-v10 aside.siderail { background: transparent !important; border: 0 !important; box-shadow: none !important; }
 .ds.care-v10 [data-packet-section][hidden] { display: none !important; }
+
+/* Care › People */
+.ds-desk.care-people #people-who { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.ds-desk.care-people #people-who > * { grid-column: 1 / -1; }
+.ds-desk.care-people #people-who > .care-people-scene { grid-column: span 8; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > * { grid-column: 1 / -1; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="coparent-invite"] { grid-column: span 4; background: var(--tint) !important; box-shadow: inset 0 0 0 1px #dbe6f7 !important; border-radius: 18px !important; }
+.ds-desk.care-people #people-who > .rstop { grid-column: auto; }
+.ds.care-people .care-people-scene .fig { margin-top: auto; }
+.ds.care-people #people-roster, .ds.care-people #people-more { gap: 14px; }
+
+/* Care › Records */
+.ds-desk.care-records .care-records-row { align-items: stretch; }
+.ds.care-records .care-records-scene { gap: 16px; }
+.ds.care-records .care-records-fig { margin-inline-start: auto; align-self: center; }
+.ds.care-records .care-records-lead { padding-top: 6px; border-top: 1px solid var(--rule); }
+.ds.care-records .care-records-lead [data-primary-move] { background: var(--sapphire) !important; color: #fff !important; min-height: 48px; border-radius: 14px; padding: 0 22px; }
+.ds.care-records .care-records-docs { padding: 4px 18px; gap: 0; }
+.ds.care-records .care-records-list > li:last-child { border-block-end: 0 !important; }
+.ds.care-records .care-records-door { padding: 4px 18px; }
+.ds.care-records .care-records-data { padding: 6px 18px; }
+.ds.care-records .care-records-hint { color: var(--ink-soft); }

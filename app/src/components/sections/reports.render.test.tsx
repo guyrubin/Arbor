@@ -76,7 +76,9 @@ describe("W2-CAREPRO r2 · one layer of chrome, one row family, a measure", () =
         expect(tag).toContain("t-sm font-bold");
         expect(tag).toContain("var(--font-sans)");
       }
-      expect(html).toContain("max-w-[720px]");
+      // design v10.1: the record's scene beside the documents rail (no stretched column)
+      expect(html).toContain("care-records-row");
+      expect(html).toContain('id="records-docs"');
       expect(html).not.toContain("max-w-[1180px]");
     });
 
