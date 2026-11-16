@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { BehaviorLog } from "../../types";
 import { timeBand } from "../../lib/behaviorUtils";
 import { useLanguage } from "../../context/LanguageContext";
-import { PASTEL, type PastelKey } from "../ui/kit";
+import type { PastelKey } from "../ui/kit";
 import { contextLabel } from "./contextLabel";
 
 // Canonical day-of-week keys (getDay() index → i18n key). Grouping stays on the
@@ -15,7 +15,13 @@ const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
  *  presents COUNTS only (no per-tile avg-intensity) so it stays clear of the
  *  clinical firewall — these are flat aggregates of parent-noticed moments,
  *  never a verdict on the child. Strings flow through t() for He/En + RTL. */
-export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
+export default function PatternInsights({ logs, compact, actions }: {
+  logs: BehaviorLog[];
+  /** N-Hard (v10.3): the rail's form, the headline and its moves only —
+   *  "tile" is its own rail tile, "inline" sits inside the What helped tile (phone). */
+  compact?: "tile" | "inline";
+  actions?: React.ReactNode;
+}) {
   const { t } = useLanguage();
 
   const insights = useMemo(() => {
@@ -71,6 +77,26 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
       ? t("elev.closeloop.pattern.headline", { place: placeLabel, day: dayLabel })
       : t("beh.pattern.empty");
 
+  if (compact) {
+    const body = (
+      <>
+        <p className="hm-pat-h" dir="auto">{headline}</p>
+        {actions}
+      </>
+    );
+    return compact === "inline" ? (
+      <div className="hm-pat inline" data-testid="behaviors-pattern-insights">
+        <span className="hm-pat-k">{t("beh.pattern.title")}</span>
+        {body}
+      </div>
+    ) : (
+      <section className="vt hm-pat" data-testid="behaviors-pattern-insights">
+        <div className="vh"><span className="gi" aria-hidden="true"><Icon name="monitoring" size={16} /></span><h3 className="h3">{t("beh.pattern.title")}</h3></div>
+        {body}
+      </section>
+    );
+  }
+
   const Row = ({
     iconName,
     fill = 0,
@@ -86,7 +112,10 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
     value: string;
     sub: string;
   }) => {
-    const p = PASTEL[tone];
+    // V77: one kind palette — what the parent recorded reads sapphire; the
+    // row's glyph keeps its meaning, the tile no longer carries its own hue.
+    void tone;
+    const p = { soft: "var(--arbor-k-moment-w)", ink: "var(--arbor-k-moment-i)" };
     return (
       <div className="flex items-center gap-3">
         <span
@@ -97,7 +126,7 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
         </span>
         <div className="min-w-0 flex-1 text-start">
           <div className="text-sm font-bold truncate" style={{ color: "var(--arbor-ink)" }} dir="auto">{value}</div>
-          <div className="text-[11px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{label} · {sub}</div>
+          <div className="text-[12px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{label} · {sub}</div>
         </div>
       </div>
     );
@@ -106,8 +135,8 @@ export default function PatternInsights({ logs }: { logs: BehaviorLog[] }) {
   return (
     <div className="rounded-2xl p-5 space-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
       <div className="flex items-center gap-2">
-        <Icon name="monitoring" size={18} style={{ color: "var(--arbor-green-ink)" }} />
-        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("beh.pattern.title")}</span>
+        <Icon name="monitoring" size={18} style={{ color: "var(--arbor-k-moment-i)" }} />
+        <span className="text-xs font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-k-moment-i)" }}>{t("beh.pattern.title")}</span>
       </div>
       <p className="text-base leading-snug" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }} dir="auto">{headline}</p>
       <div className="space-y-3">

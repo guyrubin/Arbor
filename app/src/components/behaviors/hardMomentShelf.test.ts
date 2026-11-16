@@ -31,8 +31,9 @@ const MARKERS = [
   // NEXTLEVEL r1: the HubHero is cut; the capture question is the page's H1.
   { name: "capture", re: /aria-label=\{t\("beh\.captureTitle"\)\}/ },
   { name: "echo", re: /behaviors-pattern-echo/ },
-  { name: "guides", re: /<HardMomentsSection/ },
+  // N-Hard V77: the stage and its rail (the patterns), then stop 3, the closest guides.
   { name: "patterns", re: /data-module="behaviors-patterns"/ },
+  { name: "guides", re: /<HardMomentGuides/ },
 ];
 
 /** null when the order holds; else the first pair that is out of order. */
@@ -52,10 +53,11 @@ function outOfOrder(source: string): string | null {
 describe("TJB-21 — Behaviors section order", () => {
   const source = read("components/tabs/BehaviorsTab.tsx");
 
-  it("renders capture → echo → guides → patterns, with the record linked to Journal", () => {
+  it("renders capture → echo → patterns → guides (N-Hard V77), with the record linked to Journal", () => {
     expect(source).not.toMatch(/<HubHero/);
     expect(outOfOrder(source)).toBeNull();
-    expect(source).toContain('data-testid="behaviors-journal-link"');
+    // N-Hard V77: the record's door is the rail's last row (RowLink stamps the same test id).
+    expect(source).toContain('testId="behaviors-journal-link"');
     expect(source).toContain('requestJournalFilter("hard")');
     expect(source).not.toMatch(/grouped\.map|beh\.activeLogs/);
   });
@@ -74,10 +76,11 @@ describe("TJB-21 — Behaviors section order", () => {
       't("beh.next.title")',
       'aria-label={t("beh.captureTitle")}',
       "behaviors-pattern-echo",
+      // The guides between the stage and the rail: the V77 order puts them last.
+      "<HardMomentGuides phone />",
       'data-module="behaviors-patterns"',
-      "<HardMomentsSection />",
     ].join("\n");
-    expect(outOfOrder(prefix)).toBe("patterns before guides");
+    expect(outOfOrder(prefix)).toBe("guides before patterns");
     expect(prefix).toMatch(/t\("beh\.next\.title"\)/);
   });
 });
@@ -351,16 +354,18 @@ describe("critic r2 — behaviors: guides under the capture, one warm line, no s
     // the hour, the capture question, the echo and the guides; the rail the patterns.
     expect(BEH).toContain('<section data-module="behaviors-capture" data-primary-move="log-behavior" className="hm-capture" aria-label={t("beh.captureTitle")}>');
     expect(BEH).toContain("switcher={<KindSwitch kind=\"hard\" />} action={capture}");
-    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentsSection /></div>');
+    // N-Hard V77: the stage's last-time card, then stop 3's closest guides (the shelf's own state).
+    expect(BEH).toContain("<HardMomentLastTimeCard phone={!desk} />");
+    expect(BEH).toContain('<div data-module="behaviors-hard-moments" className="min-w-0"><HardMomentGuides phone={!desk} /></div>');
     expect(BEH).toContain('<section data-module="behaviors-patterns" className="mstack hm-patterns" aria-label={t("beh.analyze")}>');
     expect(BEH).toContain('<aside className="rlc">{readGuide}{helpedTile}{patterns}</aside>');
     expect(BEH).not.toContain('data-module="behaviors-record"');
-    // DOM order: capture → shelf → patterns (the phone stacks them the same way).
+    // DOM order: capture → patterns (the rail) → shelf (stop 3); the phone stacks them the same way.
     const cap = BEH.indexOf('data-module="behaviors-capture"');
     const shelf = BEH.indexOf('data-module="behaviors-hard-moments"');
     const record = BEH.indexOf('data-module="behaviors-patterns"');
-    expect(cap).toBeLessThan(shelf);
-    expect(shelf).toBeLessThan(record);
+    expect(cap).toBeLessThan(record);
+    expect(record).toBeLessThan(shelf);
     expect(BEH).toContain("<div className=\"mstack\" style={{ gap: 14 }}>{stage}{readGuide}{helpedTile}{patterns}</div>");
   });
   it("P1-NEXTLEVEL critic r2 — one warm moment: while the held 'Last time' row shows, the capture warm line is quiet sans muted text", () => {

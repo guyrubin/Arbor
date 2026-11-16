@@ -107,7 +107,9 @@ describe("COACH-8 — Behaviors capture is an honest launcher (critic r2)", () =
   it("the hub's capture is one button opening the one sheet — no hub field that moves the parent's typing", () => {
     // v10.1: voice and photo moved to the dock (the same sheet, those modes).
     expect(code).toContain('data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}');
-    expect(code).toMatch(/\{guideLead\.any && \(\s*<button type="button" data-testid="behaviors-hard-now" onClick=\{\(\) => openHardMomentNow\(\)\}/);
+    // N-Hard V77: "A hard moment?" is the dock's (same handler, same guide gate); the page keeps one way to log.
+    expect(code).not.toContain('data-testid="behaviors-hard-now"');
+    expect(read("components/companion/CompanionWorkspace.tsx")).toContain('data-testid="launcher-hard-moment" onClick={() => openHardMomentNow()}');
     expect(code).not.toContain('id="behaviors-capture-text"');
     expect(code).not.toMatch(/onChange=\{\(e\) => \{ setBarText\(e\.target\.value\); openFromBar/);
     // NEGATIVE CONTROL (B-INF-13): the shipped r1 trap, put back into the real BehaviorsTab

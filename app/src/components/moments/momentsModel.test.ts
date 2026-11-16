@@ -9,6 +9,7 @@ import {
   MOMENTS_KINDS,
   MOMENTS_RANGES,
   MOMENTS_VIEWS,
+  areaFigure,
   areaMonthCounts,
   barHeightPx,
   filterByAreaMonth,
@@ -240,5 +241,38 @@ describe("isMomentRecord", () => {
     expect(isMomentRecord({ ...base, kind: "practice", value: { type: "practice", activity: "memory" }, source: "kid_practice", origin: "practiceEvents" })).toBe(false);
     expect(isMomentRecord({ ...base, kind: "concern", value: { type: "check", bandId: "band-x" }, origin: "screenings" })).toBe(false);
     expect(isMomentRecord({ ...base, kind: "measurement", value: { type: "measurement", heightCm: 100 }, origin: "growthEntries" })).toBe(false);
+  });
+});
+
+/** N-Moments V77: "<marks> marks on your <moments> moments" reconciles — both read the grid's own set. */
+describe("areaFigure — the band's marks and the moments behind them", () => {
+  const record = [
+    moment(at(2026, 10, 3), ["talking", "feelings"]), // one moment, two marks
+    moment(at(2026, 10, 2), ["moving"]),
+    moment(at(2026, 9, 14), []), // no area: no mark, not a moment behind a mark
+    moment(at(2026, 9, 2), []),
+    moment(at(2026, 8, 20), ["talking"]),
+  ];
+  const buckets = monthBuckets(record, CHILD, NOW, 3);
+
+  it("counts marks and the moments that carry them, so marks are never fewer than moments", () => {
+    const { marks, moments } = areaFigure(buckets);
+    expect(marks).toBe(4);
+    expect(moments).toBe(3);
+    expect(marks).toBeGreaterThanOrEqual(moments);
+    // The marks equal what the grid draws.
+    expect(marks).toBe(areaMonthCounts(buckets).reduce((sum, row) => sum + row.counts.reduce((a, b) => a + b, 0), 0));
+  });
+
+  it("with one area in view, each moment there is one mark", () => {
+    expect(areaFigure(buckets, "talking")).toEqual({ marks: 2, moments: 2 });
+  });
+
+  it("NEGATIVE CONTROL: the old reading (every moment in range) does not reconcile", () => {
+    const everyMoment = buckets.flatMap(b => b.observations).length;
+    const { marks } = areaFigure(buckets);
+    expect(everyMoment).toBe(5);
+    expect(marks).toBe(4);
+    expect(marks).toBeLessThan(everyMoment); // "4 marks on your 5 moments": the pair the band used to print
   });
 });
