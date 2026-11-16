@@ -68,16 +68,16 @@ describe('next Studio games switch', () => {
   });
   it("B-KID-171: switched on, each Bop host tile wears Bebe and GobGob in its own game's film frame; off, it keeps its old game's frame", () => {
     const off = Object.fromEntries(STUDIO_NEXT_HOSTS.map(host => [host, studioCrewCover(host)?.src ?? null]));
-    expect(off['river-rescue']).toBeNull();
+    expect(off['river-rescue']).toBe('/visuals/studio-v2/film/cover-canal-crew2.webp');
     store.set(STUDIO_NEXT_FLAG_KEY, '1'); open('');
     const on = STUDIO_NEXT_HOSTS.map(host => studioCrewCover(host)!);
-    expect(on.map(cover => cover.src.replace('/visuals/studio-v2/film/', ''))).toEqual(['cover-delivery-crew.webp', 'cover-sun-crew.webp', 'cover-oops-crew.webp', 'cover-rover-crew.webp']);
+    expect(on.map(cover => cover.src.replace('/visuals/studio-v2/film/', ''))).toEqual(['cover-delivery-crew2.webp', 'cover-sun-crew2.webp', 'cover-oops-crew2.webp', 'cover-rover-crew2.webp']);
     for (const [i, host] of STUDIO_NEXT_HOSTS.entries()) {
       expect(on[i].src, host).not.toBe(off[host]);
       for (const file of [on[i].src, on[i].src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
     }
-    // Sound Orbit and Hero Band share the beat-court frame on their tile; Sneak keeps its own.
-    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-rhythm-crew.webp');
+    // B-KID-176: the rhythm-garden tile shows Hero Band's stage while it hosts Hero Band; Sneak keeps its own.
+    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-band-crew2.webp');
     expect(studioCrewCover('sneak')?.src).toBe('/visuals/studio-v2/film/cover-sneak-crew.webp');
     for (const maker of STUDIO_MAKERS) expect(studioCrewCover(maker.id), maker.id).toBeNull();
   });
@@ -85,6 +85,8 @@ describe('next Studio games switch', () => {
     open('?heroBand=1');
     expect(studioNextFlagOn()).toBe(false);
     expect(studioNextCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/bop/card-band.webp');
+    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-band-crew2.webp');
+    expect(studioCrewCover('memory')?.src).toBe('/visuals/studio-v2/film/cover-memory-crew2.webp');
     for (const host of STUDIO_NEXT_HOSTS) expect(studioNextCover(host)).toBeNull();
   });
   it('names five tiles after the games they open, in both languages, and only while on', () => {

@@ -162,13 +162,13 @@ describe("Studio V2 neutral identity boundary", () => {
     }
     expect(kidArt("film3d", "world.kid-quest.tile")?.width).toBe(864);
   });
-  it("B-KID-171: every Studio game tile shows Bebe and GobGob in a crew-marked film frame; the game screen keeps the companion cover", () => {
-    // Switch off (this file never opts in): the eight default tiles, Canal Quest excepted (no mastered film).
-    const crewTiles = [...STUDIO_COVER_IDS, "feelings-forest", "calm-builder", "rhythm-garden"];
+  it("B-KID-171/176: every Studio game tile shows Bebe and GobGob on a crew-marked cover of its own game; the game screen keeps the companion cover", () => {
+    // Switch off (this file never opts in): the eight default tiles, Canal Quest included (B-KID-176).
+    const crewTiles = [...STUDIO_COVER_IDS, "feelings-forest", "calm-builder", "rhythm-garden", "river-rescue"];
     const files = new Set<string>();
     for (const id of crewTiles) {
       const crew = studioCrewCover(id)!;
-      expect(crew.src, id).toMatch(/^\/visuals\/studio-v2\/film\/cover-[a-z]+-crew\.webp$/);
+      expect(crew.src, id).toMatch(/^\/visuals\/studio-v2\/film\/cover-[a-z]+-crew2?\.webp$/);
       expect(crew.src480, id).toBe(crew.src.replace(".webp", "-480.webp"));
       expect(webpWidth(path.join(PUBLIC, crew.src)), id).toBe(1536);
       expect(webpWidth(path.join(PUBLIC, crew.src480)), id).toBe(480);
@@ -177,10 +177,12 @@ describe("Studio V2 neutral identity boundary", () => {
     }
     expect(files.size, "one frame per tile").toBe(crewTiles.length);
     for (const id of STUDIO_COVER_IDS) {
-      expect(studioCrewCover(id)!.src, id).toBe(`/visuals/studio-v2/film/cover-${id}-crew.webp`);
+      // B-KID-176: each game's own pieces (crew2); Sneak keeps its courtyard frame.
+      expect(studioCrewCover(id)!.src, id).toBe(`/visuals/studio-v2/film/cover-${id}-${id === "sneak" ? "crew" : "crew2"}.webp`);
       // the child's own hero stands in the game screen's picture, so that one stays crew-free in every theme
       for (const theme of KID_THEME_IDS) expect(kidArt(theme, `studio.cover.${id}`)?.src, `${theme}:${id}`).not.toMatch(/bebe|gobgob|crew/i);
     }
-    for (const other of ["river-rescue", "mend-bowl", "sound-explorer", "toString", ""]) expect(studioCrewCover(other), other).toBeNull();
+    expect(studioCrewCover("river-rescue")?.src).toBe("/visuals/studio-v2/film/cover-canal-crew2.webp");
+    for (const other of ["mend-bowl", "sound-explorer", "toString", ""]) expect(studioCrewCover(other), other).toBeNull();
   });
 });
