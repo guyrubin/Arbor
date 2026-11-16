@@ -36,6 +36,8 @@ export function KidStageFallback({ worldId, storyId, studio = false }: { worldId
       data-testid="kid-stage-fallback"
       className="arbor-play relative grid place-items-center overflow-hidden"
       data-kid-fallback-studio={studio ? "" : undefined}
+      // in the Studio token scope (studioTokens.css), so the pearl is the Studio's own and never the parent blue
+      data-kid-studio={studio ? "" : undefined}
       style={studio
         ? { minBlockSize: "min(720px, 100dvh)", background: "var(--studio-pearl, var(--arbor-paper-deep))" }
         : { minBlockSize: 320, borderRadius: "var(--play-radius)", background: "var(--arbor-paper-deep)" }}

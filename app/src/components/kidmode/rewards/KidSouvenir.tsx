@@ -43,16 +43,19 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
       data-kid-sticker={`${kind}:${refId}`}
       style={{
         display: "inline-grid",
+        // One definite cell, so a portrait picture fills the circle instead of growing the row to its own height.
+        gridTemplate: "minmax(0, 1fr) / minmax(0, 1fr)",
         placeItems: "center",
         inlineSize: size,
         blockSize: size,
         borderRadius: 999,
         padding: Math.max(3, Math.round(size * 0.05)),
-        background: "var(--arbor-paper-elevated)",
+        // A Studio screen sets the --kid-sticker-* tokens (studioTokens.css): a white die-cut edge and a soft shadow.
+        background: "var(--kid-sticker-face, var(--arbor-paper-elevated))",
         // The plain sticker mark is drawn in the border's ink, whatever text colour surrounds it.
-        color: "var(--comic-ink)",
-        border: "2px solid var(--comic-ink)",
-        boxShadow: "var(--comic-pop)",
+        color: "var(--kid-sticker-ink, var(--comic-ink))",
+        border: "2px solid var(--kid-sticker-line, var(--comic-ink))",
+        boxShadow: "var(--kid-sticker-shadow, var(--comic-pop))",
         flexShrink: 0,
       }}
     >
@@ -66,7 +69,7 @@ export function KidSouvenirSticker({ kind, refId, size = 96 }: { kind: SouvenirK
           alt=""
           loading="lazy"
           decoding="async"
-          style={{ inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: picture.objectPosition, borderRadius: 999, maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}
+          style={{ display: "block", inlineSize: "100%", blockSize: "100%", minInlineSize: 0, minBlockSize: 0, objectFit: "cover", objectPosition: picture.objectPosition, borderRadius: 999, maskImage: STICKER_MASK, WebkitMaskImage: STICKER_MASK }}
         />
       ) : (
         <Sticker data-kid-sticker-icon="" size={Math.round(size * 0.58)} aria-hidden="true" />

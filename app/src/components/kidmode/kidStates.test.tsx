@@ -41,6 +41,9 @@ describe("the one kid loading state", () => {
     expect(html).not.toContain("kid-discovery-garden");
     expect(html).toContain("data-kid-fallback-studio");
     expect(html).toContain("var(--studio-pearl, var(--arbor-paper-deep))");
+    expect(html).toContain("data-kid-studio");
+    // a game's own loading inside the Studio is the Studio stage too, never the 320 px storybook box
+    expect(read("studioV2/StudioGame.tsx")).toContain("<KidStageFallback worldId={activityId} studio />");
     const overlay = read("KidModeOverlay.tsx");
     for (const view of ["StudioHome", "StudioWorld", "StudioGame", "StudioCollection", "StudioQuest"]) expect(overlay).toContain(`<Suspense fallback={<KidStageFallback studio />}><${view} `);
   });

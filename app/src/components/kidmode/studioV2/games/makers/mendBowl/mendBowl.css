@@ -131,7 +131,8 @@
 /* ---------- things on the table that answer a touch ---------- */
 .mb .mb-toy, .mb .mb-glaze { position: absolute; z-index: 1; aspect-ratio: 1; min-inline-size: var(--studio-tap); padding: 0; translate: -50% -50%; border: 0; border-radius: 50%; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .mb .mb-toy:focus-visible, .mb .mb-glaze:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 2px; }
-.mb .mb-toy[data-toy=roller] { aspect-ratio: 2 / 1; border-radius: 28px; }
+/* The roller is drawn wide and low; its target keeps that shape but never drops under the tap floor. */
+.mb .mb-toy[data-toy=roller] { aspect-ratio: 2 / 1; min-inline-size: calc(var(--studio-tap) * 2); min-block-size: var(--studio-tap); border-radius: 28px; }
 .mb-world:is([data-phase=gold], [data-phase=finale]) .mb-toy[data-toy=roller] { pointer-events: none; }
 .mb .mb-glaze { min-inline-size: var(--studio-tap); z-index: 3; }
 /* The ClearPatch roller rests by the gold and follows the finger along a crack. */

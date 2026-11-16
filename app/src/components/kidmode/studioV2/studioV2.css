@@ -77,8 +77,10 @@
 .studio-v2__activity-grid .studio-activity-picture__symbol{display:none}
 .studio-v2__activity-grid .studio-v2__activity-copy{padding:10px 12px 14px}
 .studio-v2__activity-grid>.studio-v2__activity strong{font-size:17px;line-height:1.2}
-.studio-v2__activity-grid>.studio-v2__activity small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;margin-block-start:4px}
-.studio-v2__activity-grid .studio-v2__activity-state{position:absolute;inset-block-start:10px;inset-inline-end:10px;inline-size:44px;block-size:44px;background:var(--studio-frost);color:var(--studio-text);box-shadow:0 4px 12px var(--studio-shade)}
+.studio-v2__activity-grid>.studio-v2__activity small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;font-size:13px;line-height:1.3;min-block-size:2.6em;margin-block-start:4px}
+/* a small badge marks the state without covering the picture; the whole tile stays the tap target */
+.studio-v2__activity-grid .studio-v2__activity-state svg{inline-size:18px;block-size:18px}
+.studio-v2__activity-grid .studio-v2__activity-state{position:absolute;inset-block-start:8px;inset-inline-end:8px;inline-size:34px;block-size:34px;background:var(--studio-frost);color:var(--studio-text);box-shadow:0 4px 12px var(--studio-shade)}
 .studio-v2__activity-grid .studio-v2__activity-state[data-kept=true]{background:var(--studio-done);color:var(--studio-done-ink)}
 @media(hover:hover) and (pointer:fine){.studio-v2__activity-grid>.studio-v2__activity:hover,.studio-v2[dir=rtl] .studio-v2__activity-grid>.studio-v2__activity:hover{transform:translateY(-4px);background:var(--studio-surface);box-shadow:var(--studio-lift)}.studio-v2__activity-grid>.studio-v2__activity:hover .studio-activity-picture>img{transform:scale(1.05)}}
 /* an odd last game takes the whole row, as a wide feature tile, so the shelf never ends on a hole */

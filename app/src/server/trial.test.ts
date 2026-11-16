@@ -106,7 +106,34 @@ describe("resolveEntitlement with the trial", () => {
     const e = await resolveEntitlement(storeWith(NOW - 400 * DAY), { uid: "guy-uid", email: "BGuy.Rubin@gmail.com" });
     expect(e.plan).toBe("family");
     expect(e.source).toBe("env");
+    expect(e.provider).toBe("comp");
     expect(accessEnded(e)).toBe(false);
+  });
+
+  it("a comped admin's live web purchase stays visible, so checkout confirmation can finish", async () => {
+    process.env.ARBOR_ADMIN_EMAILS = "bguy.rubin@gmail.com";
+    const paid: EntitlementRecord = {
+      plan: "plus", status: "active", provider: "stripe", willRenew: true,
+      currentPeriodEnd: new Date(NOW + 30 * DAY).toISOString(),
+    };
+    const e = await resolveEntitlement(storeWith(NOW - 400 * DAY, paid), { uid: "guy-uid", email: "bguy.rubin@gmail.com" });
+    // Family comp is the access floor. The webhook's Plus subscription is what
+    // the return poll has to see: provider stripe, the paid period, not the comp.
+    expect(e).toMatchObject({
+      plan: "family", source: "env", provider: "stripe", status: "active", enforced: true, willRenew: true,
+      currentPeriodEnd: paid.currentPeriodEnd,
+    });
+    expect(accessEnded(e)).toBe(false);
+  });
+
+  it("a lapsed web purchase does not replace the comp", async () => {
+    process.env.ARBOR_ADMIN_EMAILS = "bguy.rubin@gmail.com";
+    const lapsed: EntitlementRecord = {
+      plan: "plus", status: "canceled", provider: "stripe", willRenew: false,
+      currentPeriodEnd: "2000-01-01T00:00:00.000Z",
+    };
+    const e = await resolveEntitlement(storeWith(NOW - 400 * DAY, lapsed), { uid: "guy-uid", email: "bguy.rubin@gmail.com" });
+    expect(e).toMatchObject({ plan: "family", source: "env", provider: "comp" });
   });
 
   it("the Family comp list is exempt too", async () => {

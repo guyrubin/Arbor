@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AlignLeft, AlignCenter, AlignRight, Armchair, RectangleHorizontal, LampFloor, Sun, Moon, Eye, Check } from "lucide-react";
+import { PanelLeft, SquareDot, PanelRight, Armchair, RectangleHorizontal, LampFloor, Sun, Moon, Eye, Check } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useLanguage } from "../../../context/LanguageContext";
@@ -11,7 +11,8 @@ import { QUEST_CHOICES, QUEST_STEPS, questChoiceText, studioQuestText, useStudio
 import { StudioSky } from "./StudioHome";
 import "./studioV2.css";
 import "./studioKeepsakes.css";
-const icons = { left: AlignLeft, middle: AlignCenter, right: AlignRight, pillow: Armchair, blanket: RectangleHorizontal, lamp: LampFloor, daylight: Sun, quiet: Moon, look: Eye };
+// A room seen from the front, with the chosen side marked; the labels are physical sides in both languages.
+const icons = { left: PanelLeft, middle: SquareDot, right: PanelRight, pillow: Armchair, blanket: RectangleHorizontal, lamp: LampFloor, daylight: Sun, quiet: Moon, look: Eye };
 export function StudioQuest({ onHome }: { onHome: () => void }) {
   const { childProfile } = useArbor(); const { user } = useAuth();
   return <Quest key={`${user?.uid ?? "local"}:${childProfile.id}`} childId={childProfile.id} onHome={onHome} />;

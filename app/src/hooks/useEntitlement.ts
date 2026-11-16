@@ -197,14 +197,17 @@ export type BillingReturnDeps = {
 export const BILLING_PENDING_KEY = "pw.stillConfirming";
 
 /** The web return confirms a purchased subscription, not access already supplied
- *  by Arbor's no-card trial, a comp, beta, or a native-store subscription.
+ *  by Arbor's no-card trial, an unbilled comp, beta, or a native-store subscription.
  *  RevenueCat Web Billing is exposed by the API as provider `stripe`.
- *  Canceling renewal does not undo a purchase: that subscription remains valid
- *  through its paid period. Missing/expired cancellation dates cannot confirm it. */
+ *  A comp list keeps source `env` so the account stays internal, and copies the
+ *  webhook's provider onto that answer. Provider stripe is the purchase; source
+ *  env alone (provider comp) is not. Canceling renewal does not undo a purchase:
+ *  that subscription remains valid through its paid period. Missing or expired
+ *  cancellation dates cannot confirm it. */
 function confirmsWebPurchase(entitlement: EntitlementInfo): boolean {
   if (
     (entitlement.plan !== "plus" && entitlement.plan !== "family")
-    || entitlement.source !== "store"
+    || (entitlement.source !== "store" && entitlement.source !== "env")
     || entitlement.enforced !== true
     || entitlement.provider !== "stripe"
   ) return false;

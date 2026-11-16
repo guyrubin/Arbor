@@ -150,8 +150,11 @@ Play Billing and do not use this web return path.
 
 The return query only starts verification. Arbor uses the current authenticated
 Firebase account, discards the provider's `app_user_id` query metadata, and waits
-for a store-backed web subscription. App trials, complimentary access, beta,
-native subscriptions, and client fallbacks do not confirm a web purchase. Each
+for a store-backed web subscription. App trials, unbilled complimentary access,
+beta, native subscriptions, and client fallbacks do not confirm a web purchase.
+A comp list still keeps that account internal. When the same account has a live
+web subscription, the entitlement keeps the comp plan and reports the webhook's
+provider and period, so the return can finish. Each
 entitlement read has a four-second bound; the activation poll has a separate
 15-second deadline. An unconfirmed purchase keeps an explicit Retry action,
 which starts another bounded poll without opening a new checkout or charging.

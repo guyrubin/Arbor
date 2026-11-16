@@ -121,13 +121,15 @@ describe("the sticker: existing art, die-cut", () => {
   it("the plain sticker mark is drawn in the border's ink, so it shows on a dark finish card too", () => {
     const plain = renderToStaticMarkup(<KidSouvenirSticker kind="world" refId="memory" />);
     expect(plain).toContain("data-kid-sticker-icon");
-    expect(plain).toContain("color:var(--comic-ink)");
+    expect(plain).toContain("color:var(--kid-sticker-ink, var(--comic-ink))");
   });
   it("round: a CSS mask on the picture and a token border, decorative", () => {
     const html = renderToStaticMarkup(<KidSouvenirSticker kind="book" refId="noahs-ark" />);
     expect(html).toContain('data-kid-sticker="book:noahs-ark"');
     expect(html).toMatch(/mask-image:radial-gradient\(closest-side/);
-    expect(html).toContain("border:2px solid var(--comic-ink)");
+    expect(html).toContain("border:2px solid var(--kid-sticker-line, var(--comic-ink))");
+    // one definite grid cell: a portrait picture can never stretch the circle (the quest sticker did, 16 Nov 2026)
+    expect(html).toContain("grid-template:minmax(0, 1fr) / minmax(0, 1fr)");
     expect(html).toContain('aria-hidden="true"');
     expect(html).not.toMatch(/#[0-9a-f]{3,6}\b/i);
   });
