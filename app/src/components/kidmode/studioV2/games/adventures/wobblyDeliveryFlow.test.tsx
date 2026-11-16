@@ -4,7 +4,10 @@ import { isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
 const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, hush: [] as (() => void)[],
-  tones: { play: vi.fn((_step: number): boolean => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn() }));
+  tones: { play: vi.fn((_step: number): boolean => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn(),
+  // The voice files: off unless a test turns them on, so the shared voice speaks as before.
+  files: false, played: [] as [string, string][], voiceListeners: [] as ((state: { speaking: boolean }) => void)[],
+  unlock: vi.fn(), stopFiles: vi.fn(), disposeFiles: vi.fn(), clipMs: (id: string) => 1000 + 37 * id.length }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
   return { ...actual,
@@ -27,8 +30,18 @@ vi.mock('../../../../../context/ArborContext', () => ({ useArborOptional: () => 
 vi.mock('../../../../../lib/native', () => ({ selectionHaptic: async () => {} }));
 vi.mock('../../../game/GameShell', () => ({ GameShell: () => null, GameFinish: () => null }));
 vi.mock('../../../audio/kidAudio', () => ({ kidSfx: h.sound, kidSay: h.say, useKidReadAloudMuted: () => h.muted, onKidHush: (fn: () => void) => { h.hush.push(fn); return () => {}; } }));
-vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn(), isActive: () => false, voiceState: () => ({ speaking: false }), subscribeVoice: () => () => {} }));
+vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn(), isActive: () => false, voiceState: () => ({ speaking: false }),
+  subscribeVoice: (fn: (state: { speaking: boolean }) => void) => { h.voiceListeners.push(fn); return () => {}; } }));
 vi.mock('./bopTones', () => ({ createBopTones: () => h.tones }));
+// The real voice player over a bank that records what it would play.
+vi.mock('./wobblyDeliveryVoice', async original => {
+  const actual = await original<typeof import('./wobblyDeliveryVoice')>();
+  return { ...actual, createWobblyVoice: (lang: 'en' | 'he') => actual.createWobblyVoice(lang, {
+    load: async () => h.files, unlock: h.unlock, stopVoice: h.stopFiles, dispose: h.disposeFiles,
+    has: () => h.files, durationMs: (id: string) => (h.files ? h.clipMs(id) : 0),
+    play: (id: string, opts?: { mode?: 'cut' | 'queue' }) => { h.played.push([id, opts?.mode ?? '']); return true; },
+  }) };
+});
 import WobblyDelivery from './WobblyDelivery';
 import { GameFinish, GameShell } from '../../../game/GameShell';
 import { StudioPlayHero } from '../../StudioPlayHero';
@@ -38,6 +51,7 @@ import type { Challenge } from './adventureRules';
 import { BopFriend, BopSprite } from './BopArt';
 import { WOBBLY_DELIVERY_COPY, requestLine, type WobblyDeliveryWords } from './wobblyDeliveryCopy';
 import { ASK_CARD_MS, ASK_HOLD_MS, BLOOM_MS, CARRY_MS, CARRY_STEP_MS, DELIVERY_FRIENDS, DELIVERY_ITEMS, DELIVERY_ROUNDS, DELIVERY_TILES, OOPS_MS, THANKS_MS, askMs, requestFor, requestLength, shelfFor, type DeliveryItem } from './wobblyDeliveryRules';
+import { VOICE_DELAY_MS, VOICE_HOLD_MS, requestClips, voicePlan } from './wobblyDeliveryVoice';
 
 type Words = WobblyDeliveryWords;
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
@@ -161,6 +175,7 @@ function shown(tree: unknown): string[] {
 beforeEach(() => {
   vi.useFakeTimers();
   h.slots = []; h.lang = 'en'; h.muted = false; h.hush = [];
+  h.files = false; h.played = []; h.voiceListeners = []; h.unlock.mockClear(); h.stopFiles.mockClear(); h.disposeFiles.mockClear();
   h.tones.play.mockClear(); h.tones.play.mockReturnValue(true); h.tones.stop.mockClear(); h.tones.dispose.mockClear(); h.say.mockClear(); h.sound.mockClear();
   vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
   vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn() });
@@ -540,6 +555,79 @@ describe.each(['en', 'he'] as const)('Wobbly Delivery (%s)', lang => {
       mount(); playUntil(w, wanted); expect(vi.getTimerCount()).toBe(1);
       unmount(); expect(vi.getTimerCount()).toBe(0);
     }
+  });
+
+  it('speaks from the files once they are there: each card turns up as its thing is named, and stays up past the last word', () => {
+    h.files = true;
+    const seed = 11, planned = requestFor('gentle', 0, chance(seed)); seeded(seed);
+    let tree = render();
+    // The files are still on their way when the game opens: the first line comes from the shared voice.
+    vi.advanceTimersByTime(180); expect(h.say.mock.calls).toEqual([['child-a', w.ready, lang]]); expect(h.played).toEqual([]);
+    button(tree, w.start).props.onClick!(); tree = render();
+    expect(h.unlock).toHaveBeenCalledTimes(1); expect(phase(tree)).toBe('ask'); expect(pictures(tree)).toEqual([planned[0], null]);
+    const ids = requestClips(0, planned), plan = voicePlan(ids, h.clipMs)!;
+    vi.advanceTimersByTime(VOICE_DELAY_MS - 1); expect(h.played).toEqual([]);
+    vi.advanceTimersByTime(1); expect(h.played).toEqual([[ids[0], 'cut']]);
+    // The second card waits for its own words, not for the fixed beat.
+    vi.advanceTimersByTime(plan.starts[1] - 1); expect(pictures(render())).toEqual([planned[0], null]);
+    vi.advanceTimersByTime(1); expect(pictures(render())).toEqual(planned); expect(h.played).toEqual([[ids[0], 'cut'], [ids[1], 'queue']]);
+    // Face down only after the last word and a breath, even when that is later than the beat.
+    const up = VOICE_DELAY_MS + plan.endMs + VOICE_HOLD_MS; expect(up).toBeGreaterThan(askMs(2, false));
+    vi.advanceTimersByTime(up - VOICE_DELAY_MS - plan.starts[1] - 1); expect(phase(render())).toBe('ask');
+    vi.advanceTimersByTime(1); tree = render(); expect(phase(tree)).toBe('fetch'); expect(pictures(tree)).toEqual([null, null]);
+    vi.advanceTimersByTime(VOICE_DELAY_MS); expect(h.played.at(-1)).toEqual([`fetch-first-${DELIVERY_FRIENDS[0]}`, 'cut']);
+    // Another thing: "not that one yet", from the files too; the heading's hear-it says it again at once.
+    const spare = shelfFor('gentle', 0).find(item => !planned.includes(item))!;
+    shelfItem(tree, spare).props.onClick!(); tree = render(); expect(status(tree)).toBe(w.notYet);
+    vi.advanceTimersByTime(VOICE_DELAY_MS); expect(h.played.at(-1)).toEqual(['not-yet', 'cut']);
+    const before = h.played.length; h.stopFiles.mockClear();
+    headingNode(tree).props.onHear(); vi.advanceTimersByTime(0);
+    expect(h.stopFiles).toHaveBeenCalled(); expect(h.played.slice(before)).toEqual([['not-yet', 'cut']]);
+    // The shared voice said nothing after the opening line.
+    expect(h.say.mock.calls).toEqual([['child-a', w.ready, lang]]);
+    // The whole game plays through on the files (this child taps at once, so the short prompts never start).
+    tree = playOut(w, undefined, { ask: true, fumble: true });
+    expect(finish(tree)).toBeDefined(); expect(h.say.mock.calls).toEqual([['child-a', w.ready, lang]]);
+    for (const name of DELIVERY_FRIENDS) expect(h.played.some(([id, mode]) => id.startsWith(`${name}-item-`) && mode === 'cut'), name).toBe(true);
+    expect(h.played.every(([id]) => /^(?:line-ready|fetch-(?:next|last|first-\w+)|not-yet|good-asking|\w+-item-[\w]+|then-item-\w+|last-item-\w+)$/.test(id))).toBe(true);
+  });
+
+  it('asks again from the files: the request, then "good asking"', () => {
+    h.files = true; seeded(4);
+    let tree = playUntil(w, 'fetch'); h.played = [];
+    askAgain(tree).props.onClick!(); tree = render();
+    const request = pictures(tree) as DeliveryItem[], ids = requestClips(0, request), plan = voicePlan(ids, h.clipMs)!;
+    vi.advanceTimersByTime(VOICE_DELAY_MS + plan.endMs); expect(h.played).toEqual(ids.map((id, at) => [id, at === 0 ? 'cut' : 'queue']));
+    vi.advanceTimersByTime(VOICE_HOLD_MS); tree = render(); expect(phase(tree)).toBe('fetch'); expect(status(tree)).toBe(w.goodAsking);
+    vi.advanceTimersByTime(VOICE_DELAY_MS); expect(h.played.at(-1)).toEqual(['good-asking', 'cut']);
+    expect(h.say).not.toHaveBeenCalledWith('child-a', requestLine(w, 0, request), lang);
+  });
+
+  it('keeps the files quiet with sound off, on the quiet timing', () => {
+    h.files = true; h.muted = true; seeded(17);
+    const tree = render(); button(tree, w.start).props.onClick!(); render();
+    vi.advanceTimersByTime(askMs(2, true) - 1); expect(phase(render())).toBe('ask');
+    vi.advanceTimersByTime(1); expect(phase(render())).toBe('fetch');
+    expect(finish(playOut(w, undefined, { fumble: true, ask: true }))).toBeDefined();
+    expect(h.played).toEqual([]); expect(h.say).not.toHaveBeenCalled();
+  });
+
+  it('stops the files when the game closes, plays again, or the Kid Mode bar speaks', () => {
+    h.files = true; seeded(6);
+    button(render(), w.start).props.onClick!(); render();
+    vi.advanceTimersByTime(VOICE_DELAY_MS); expect(h.played).toHaveLength(1);
+    // The bar's hear-it uses the shared voice: a line from files stops for it.
+    h.stopFiles.mockClear(); h.voiceListeners.forEach(fn => fn({ speaking: false })); expect(h.stopFiles).not.toHaveBeenCalled();
+    h.voiceListeners.forEach(fn => fn({ speaking: true })); expect(h.stopFiles).toHaveBeenCalled();
+    // Leaving mid-request: the voice stops, nothing more is said, and the player is let go.
+    unmount(); expect(h.disposeFiles).toHaveBeenCalledTimes(1); expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(60_000); expect(h.played).toHaveLength(1);
+    // A new start mid-request: the rest of the old request is never heard, only the new opening line.
+    const tree = mount(), restart = picker(tree).props.onChange as (level: Challenge) => void;
+    button(tree, w.start).props.onClick!(); render();
+    vi.advanceTimersByTime(VOICE_DELAY_MS); expect(h.played).toHaveLength(2);
+    h.stopFiles.mockClear(); restart('gentle'); expect(h.stopFiles).toHaveBeenCalled(); render();
+    vi.advanceTimersByTime(60_000); expect(h.played.slice(2)).toEqual([['line-ready', 'cut']]);
   });
 });
 
