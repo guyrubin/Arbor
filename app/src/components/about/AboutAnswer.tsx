@@ -28,7 +28,7 @@ import { aboutCopy } from "./aboutViewCopy";
  */
 
 /** How many proposals the page itself asks about (stage + rail). */
-export const SHOWN_PENDING = 3;
+export const SHOWN_PENDING = 4;
 /** The sources a fact came from in the parent's own conversation (ChildMemory's set). */
 const CONVERSATION_SOURCES: ReadonlySet<string> = new Set(["chat", "coach", "conversation", "journal"]);
 
@@ -195,10 +195,10 @@ export function RememberedNote({ m, stored, onEdited }: { m: MemoryReviewItem; s
   const isBusy = busy(m.memoryId);
   return (
     <div className="kn" data-testid="about-memory-approved" data-memory-id={m.memoryId}>
-      <span className="about-kn-meta"><Icon name="check" size={14} />{day ? copy.remembered(day) : copy.rememberedUndated} · <span data-testid="memory-expiry-chip">{expiry}</span></span>
+      <span className="when"><Icon name="check" size={14} />{day ? copy.approvedMemory(day) : copy.approvedMemoryUndated} <b data-testid="memory-expiry-chip">{expiry}</b></span>
       {editing
         ? <MemoryEditForm m={stored} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onEdited(); }} />
-        : <Quote className="about-kn-fact">{m.fact}</Quote>}
+        : <Quote className="q about-kn-fact">{m.fact}</Quote>}
       {!editing && (
         <span className="line about-kn-actions">
           <button type="button" className="ed touch-target" data-testid="memory-edit-open" disabled={isBusy} onClick={() => setEditing(true)}><Icon name="edit" size={16} />{t("elev.waveR.mem.edit")}</button>

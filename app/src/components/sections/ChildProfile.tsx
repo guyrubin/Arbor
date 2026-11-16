@@ -9,44 +9,50 @@ import PhysicalGrowthCard from "./PhysicalGrowthCard";
 import { scrubMemoryProposals, toParentWords } from "../../server/parentWordsScrub";
 import { useHashQuery, useHashRouteKey } from "../../hooks/useHashQuery";
 // v3 F-CHILD-3 — the eight areas and the ONE guided conversation.
-import { asAspectId, buildAspects, toldSummary, type AspectId } from "../../lib/aboutAspects";
+import { ASPECT_ICONS, asAspectId, aspectOfKept, buildAspects, isTold, toldSummary, type AspectId } from "../../lib/aboutAspects";
+import { keptItemsFromProfile } from "../../lib/describeChild";
 import AspectCard from "../about/AspectCard";
 import { PendingNote, RememberedNote, SHOWN_PENDING, StageCard, aboutAskedPendingIds, useAboutNotebook } from "../about/AboutAnswer";
 import AboutChildTile from "../about/AboutChildTile";
+import AboutAreaIndex from "../about/AboutAreaIndex";
+import AboutHowToRead from "../about/AboutHowToRead";
+import AboutLastVisit from "../about/AboutLastVisit";
 import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
 import TellArborMore from "../describe/TellArborMore";
 import KeptDescription from "../describe/KeptDescription";
 import CoachDataContract from "../coach/CoachDataContract";
 import { Icon } from "../ui/Icon";
-import { DsRoot, Fig, Guide, LivingForm, MoreLink, Route, Scene, Snap, SnapDots, StartHere, Token, TokenLegend, type GuideStop } from "../../design/primitives";
+import { DsRoot, Fig, Guide, Route, Scene, Snap, StartHere, Token, TokenLegend, type GuideStop } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { aboutCopy } from "../about/aboutViewCopy";
 import "../about/aboutV10.css";
 
 /**
- * v3 F-CHILD-3 → design v10.1 — My child › About (#/profile): Arbor's notebook
- * about the child, and the parent's own words. The N-About boards' route:
- *  1. Answer Arbor — the stage: the notebook's heading, how many notes wait
- *     and how many are remembered (counts of notes, never of the child), and
- *     the next proposal as a card with its thread and Remember / Not this /
- *     Edit (the notebook's ONE approval home, the same write the ledger uses);
- *  2. Waiting, and remembered — "Tell Arbor by voice" / "Write" (the route's
- *     ONE primary move, capture-moment, rendered once in every state), the
- *     next proposals, the newest remembered fact with Edit / Forget and the day
- *     it forgets;
- *  3. What you told Arbor, what the coach sees — the parent's own description
- *     (Edit / Remove / Tell Arbor more), the coach's view with the weekly
- *     consent switch (always here: a consent control never waits on a ledger
- *     read), and the child's tile (Edit details, Create hero, Measurements, the
- *     last visit as one line, Moments and keepsakes);
- *  4. What Arbor knows — the eight areas as one notebook (told words with a
- *     day, or the question Arbor would ask; a proposal waits in its area with
- *     Confirm / No; "Tell more" opens the conversation on that area), the door
- *     to everything Arbor remembers (the ledger, in place) and How Arbor works.
- * `?aspect=<id>` opens the conversation on that area (#/language and
- * #/strengths land here). Nothing on the page grades the child: no share, no
- * fill, no "of 8". Desktop and phone are two compositions of the same objects;
- * ONE tree renders, so each control exists once in the DOM.
+ * v3 F-CHILD-3 → design v10.3 (the My child frame) — My child › About
+ * (#/profile): Arbor's notebook about the child, and the parent's own words.
+ * The N-About boards' route:
+ *  1. The notebook — one header band (kicker, the h1, one line, "Tell Arbor by
+ *     voice" / "Write" — the route's ONE primary move, capture-moment, in every
+ *     state — and one figure: notes waiting, with the remembered count under
+ *     it), then the index: the eight areas as one row of segments, each with
+ *     what was told there (a count of the parent's record, never a share) and
+ *     whether something waits;
+ *  2. That area — the next proposal as a card with its thread and Remember /
+ *     Not this / Edit (the notebook's ONE approval home, the same write the
+ *     ledger uses), the others waiting, then what the parent told Arbor about
+ *     the selected area (their lines with Edit / Remove, the "Still true?"
+ *     prompt, a proposal placed in the area with Confirm / No, Tell more, Open
+ *     the moments). Beside it: how to read the page, what the coach sees (the
+ *     weekly consent switch: a consent control never waits on a ledger read),
+ *     the newest remembered fact (Edit / Forget, the day it forgets) and the
+ *     last visit as one line;
+ *  3. The child — Edit details, Create hero, Measurements, Moments and
+ *     keepsakes, Everything Arbor remembers (the ledger, in place), How Arbor
+ *     works — and the lines that name no area, with the door to tell more.
+ * `?aspect=<id>` opens the conversation on that area and selects it (#/language
+ * and #/strengths land here). Nothing on the page grades the child: no share,
+ * no fill, no "of 8". Desktop and phone are two compositions of the same
+ * objects; ONE tree renders, so each control exists once in the DOM.
  */
 /** B-CAREPRO-38 — the full ledger ("Everything Arbor remembers"), loaded when
  *  the parent opens it (or arrives on a retired #/memory link). */
@@ -57,15 +63,6 @@ const ChildMemoryLedger = React.lazy(() => import("./ChildMemory"));
 const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;
 
 /** Stop 1, "Answer Arbor": the route's first module (desktop: the stage and the rail; phone: the scene and the tell box). */
-function AnswerSection({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="rsec" id="answer" data-module="about-answer">
-      <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-      {children}
-    </section>
-  );
-}
-
 type SheetMode = "write" | "voice";
 type SheetOpen = { aspect: AspectId | null; mode: SheetMode };
 
@@ -78,6 +75,7 @@ export default function ChildProfile() {
   const first = childProfile.name.split(" ")[0] || childProfile.name;
   const [editingProfile, setEditingProfile] = useState(false);
   const [keepsakesOpen, setKeepsakesOpen] = useState(false);
+  const [picked, setPicked] = useState<AspectId | null>(null);
 
   // The query wins: `?aspect=lang` opens the conversation on that area. A tap
   // (or closing) is remembered against the query it was made under, so a new
@@ -118,9 +116,19 @@ export default function ChildProfile() {
     ? t(dated ? "companion.about.toldOne" : "companion.about.toldOneUndated")
     : t(dated ? "companion.about.toldMany" : "companion.about.toldManyUndated", { n: told });
 
+  // v10.3: the index picks ONE area for the panel — the tapped one, else the
+  // area of `?aspect=`, else the first with a proposal waiting, else the first told.
+  const waitingAreas = new Set(aspects.filter((a) => a.pending).map((a) => a.id));
+  const selectedId: AspectId = picked ?? queryAspect ?? aspects.find((a) => a.pending)?.id ?? aspects.find(isTold)?.id ?? aspects[0].id;
+  const selected = aspects.find((a) => a.id === selectedId) ?? aspects[0];
+  // Each of the parent's kept lines has one place: its area's panel, or (no area) the tile in stop 3.
+  const keptAll = keptItemsFromProfile(childProfile);
+  const keptHere = new Set(keptAll.filter((item) => aspectOfKept(item) === selectedId).map((item) => item.words.trim().toLowerCase()));
+  const anyUnplaced = keptAll.some((item) => aspectOfKept(item) === null);
+
   const nb = useAboutNotebook(aspects);
   const stage = nb.waiting[0] ?? null;
-  const railPending = nb.waiting.slice(1, SHOWN_PENDING);
+  const alsoWaiting = nb.waiting.slice(1, SHOWN_PENDING);
   const newest = nb.remembered[0] ?? null;
   const openKeepsakes = () => {
     setKeepsakesOpen(true);
@@ -128,47 +136,70 @@ export default function ChildProfile() {
     setTimeout(() => document.getElementById("memory-keepsakes")?.scrollIntoView({ block: "start" }), 300);
   };
 
-  const hasWaiting = railPending.length > 0 || (!!newest && !memoryReviewError) || nb.inAreasCount > 0;
   const stops: GuideStop[] = desk
     ? [
-        { id: "answer", title: copy.guideAnswer, sub: nb.pending.length ? copy.guideAnswerSub(nb.pending.length) : copy.guideAnswerNone },
-        { id: "waiting", title: copy.guideWaiting },
-        { id: "tell", title: copy.guideTold, sub: copy.guideToldSub },
-        { id: "areas", title: copy.guideKnows, sub: toldLine },
+        { id: "areas", title: copy.guideNotebook, sub: copy.guideNotebookSub },
+        { id: "area", title: copy.guideArea, sub: copy.guideAreaSub },
+        { id: "child", title: first, sub: copy.guideChildSub },
       ]
     : [
-        { id: "answer", title: copy.guideAnswerShort },
-        ...(hasWaiting ? [{ id: "waiting", title: copy.guideWaitingShort }] : []),
-        { id: "areas", title: copy.guideKnows },
+        { id: "areas", title: copy.guideNotebookShort },
+        { id: "area", title: copy.guideAreaShort },
+        { id: "child", title: copy.guideNotesShort },
       ];
 
-  /* ── the objects, composed twice below ─────────────────────────────────── */
+  /* ── stop 1: the header band and the index ─────────────────────────────── */
 
-  const heading = (
-    <>
-      <div className="line between about-kick">
-        <span className="kicker">{t("companion.about.kicker", { name: first })}</span>
-        <StartHere>{copy.startHere}</StartHere>
-      </div>
-      <div className="line between top about-head">
-        <div className="stack about-head-text">
-          {/* No dir on the h1: it keeps text-align:start in the PAGE direction; t() isolates the name. */}
-          <h1 id="about-title" className="hero">{t("companion.about.memory.title", { name: first })}</h1>
-          {desk && <p className="about-sub">{t("companion.about.memory.sub")}</p>}
-        </div>
-        <LivingForm src="/visuals/parent/v2/empty-portrait-480.webp" width={desk ? 112 : 84} height={desk ? 100.9 : 75.7}
-          crop={desk ? { w: 190, h: 126.6, x: -40.4, y: -14.2 } : { w: 142.5, h: 95, x: -30.3, y: -10.7 }} />
-      </div>
-    </>
-  );
-
-  // Counts of notes in the notebook: no tile for a zero.
-  const figs = (nb.pending.length > 0 || nb.approved.length > 0) && (
-    <div className="line about-figs">
-      {nb.pending.length > 0 && <Fig size={desk ? "base" : "md"} n={nb.pending.length} unit={copy.figWaiting} sub={!desk && nb.approved.length > 0 ? `${nb.approved.length} ${copy.figRemembered(nb.approved.length)}` : undefined} />}
-      {(desk || nb.pending.length === 0) && nb.approved.length > 0 && <Fig size="md" n={nb.approved.length} unit={copy.figRemembered(nb.approved.length)} />}
+  const tellButtons = (
+    <div className="line about-tell-btns" data-testid="profile-hub-hero" role="group" aria-label={t("companion.about.title", { name: first })}>
+      <button type="button" className={`btn sm nowrap about-btn-tint touch-target${desk ? "" : " grow"}`} data-testid="about-voice" {...CAPTURE_MOVE} onClick={() => openSheet(null, "voice")}>
+        <Icon name="graphic_eq" size={18} />{t("companion.about.voice")}
+      </button>
+      <button type="button" className={`btn sm ghost nowrap about-btn-card touch-target${desk ? "" : " grow"}`} data-testid="about-write" onClick={() => openSheet(null, "write")}>
+        <Icon name="edit" size={18} />{t("companion.about.write")}
+      </button>
     </div>
   );
+  // A count of notes in the notebook, with its unit in words; no figure for zero.
+  const fig = nb.pending.length > 0
+    ? <Fig size="md" n={nb.pending.length} unit={copy.figWaiting} sub={nb.approved.length > 0 ? copy.figRemembered(nb.approved.length) : undefined} />
+    : nb.approved.length > 0 ? <Fig size="md" n={nb.approved.length} unit={copy.figRemembered(nb.approved.length)} /> : null;
+
+  const band = (
+    <section className="rsec" id="areas" data-module="about-aspects" aria-labelledby="about-title">
+      <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
+      <Scene field="now" orbs={desk ? [{ size: 440, left: -230, bottom: -290, opacity: 0.65 }, { size: 380, right: -190, top: -250, opacity: 0.65, b: true }] : [{ size: 250, left: -150, bottom: -160, opacity: 0.6 }, { size: 220, right: -130, top: -140, opacity: 0.6, b: true }]} className="about-band">
+        <div className={desk ? "mch" : "mch m"}>
+          <div className="mcl">
+            <span className="line between about-kick">
+              <span className="kicker">{t("companion.about.kicker", { name: first })}</span>
+              <StartHere>{copy.startHere}</StartHere>
+            </span>
+            {/* No dir on the h1: it keeps text-align:start in the PAGE direction; t() isolates the name. */}
+            <h1 id="about-title" className="hero">{t("companion.about.memory.title", { name: first })}</h1>
+            <p>{t("companion.about.memory.sub")}</p>
+          </div>
+          <div className="mcr">
+            <div className="mcf">
+              {desk ? <>{tellButtons}{fig}</> : <>{fig}</>}
+            </div>
+            {!desk && tellButtons}
+          </div>
+        </div>
+        <AboutAreaIndex aspects={aspects} selected={selectedId} waiting={waitingAreas} onSelect={setPicked} phone={!desk} />
+        <div className="mcap">
+          <TokenLegend items={[
+            { token: <Token kind="neutral" className="told" size="sm" label={copy.tokenToldOne} />, label: copy.tokenTold },
+            { token: <Token kind="neutral" state="ai" size="sm" label={copy.tokenWaitingOne} />, label: copy.tokenWaiting },
+          ]} />
+          {desk && <span data-testid="about-told-line">{toldLine}</span>}
+        </div>
+      </Scene>
+      {!desk && <span className="small about-told-line" data-testid="about-told-line">{toldLine}</span>}
+    </section>
+  );
+
+  /* ── stop 2: the selected area — what waits, what you told ─────────────── */
 
   const answer = memoryReviewError ? (
     <p className="about-note" role="status" data-testid="about-memory-error">
@@ -178,63 +209,53 @@ export default function ChildProfile() {
   ) : stage ? (
     <StageCard m={stage} stored={nb.storedOf(stage)} index={0} queueLength={nb.waiting.length} compact={!desk} onEdited={retryMemoryReview} />
   ) : (
-    <p className="about-note" data-testid="about-memory-empty">
-      {nb.pending.length > 0 ? t("companion.about.memory.inAreas") : nb.approved.length > 0 ? t("companion.about.memory.allChecked") : t("companion.about.memory.empty")}
-    </p>
+    nb.pending.length > 0
+      ? <p className="about-note" data-testid="about-memory-in-areas">{t("companion.about.memory.inAreas")}</p>
+      : <p className="about-note" data-testid="about-memory-empty">{nb.approved.length > 0 ? t("companion.about.memory.allChecked") : t("companion.about.memory.empty")}</p>
+  );
+  const also = alsoWaiting.length > 0 && (
+    <>
+      <div className="line between about-also"><h3 className="lab">{copy.alsoWaiting}</h3>{!desk && <span className="small">{copy.position(1, alsoWaiting.length)}</span>}</div>
+      {desk
+        ? <div className="about-also-grid">{alsoWaiting.map((m) => <PendingNote key={m.memoryId} m={m} />)}</div>
+        : <Snap label={copy.alsoWaiting} className="about-snap">{alsoWaiting.map((m) => <PendingNote key={m.memoryId} m={m} />)}</Snap>}
+    </>
   );
 
-  const tellBox = (
-    <div className={desk ? "cobj about-tell" : "stack about-tell"} data-testid="profile-hub-hero">
-      <h2 className="about-tell-title">{t("companion.about.title", { name: first })}</h2>
-      <div className="line about-tell-btns">
-        <button type="button" className="btn sm grow nowrap about-btn-tint touch-target" data-testid="about-voice" {...CAPTURE_MOVE} onClick={() => openSheet(null, "voice")}>
-          <Icon name="graphic_eq" size={18} />{t("companion.about.voice")}
-        </button>
-        <button type="button" className={`btn sm ghost nowrap about-btn-card${desk ? "" : " grow"} touch-target`} data-testid="about-write" onClick={() => openSheet(null, "write")}>
-          <Icon name="edit" size={18} />{t("companion.about.write")}
-        </button>
+  const panel = (
+    <div className="mcst about-panel" aria-labelledby="about-area-title">
+      <div className="mcsh">
+        <i className="tg" aria-hidden="true"><Icon name={ASPECT_ICONS[selectedId]} size={20} /></i>
+        <h2 className="tt" id="about-area-title">{t(`companion.about.aspect.${selectedId}`)}</h2>
       </div>
+      <h3 className="lab">{copy.waitingForYou}</h3>
+      {answer}
+      {also}
+      <AspectCard
+        key={selectedId}
+        state={selected}
+        name={first}
+        onTell={(id) => openSheet(id, "write")}
+        onEditDetails={() => setEditingProfile(true)}
+        keptWords={keptHere}
+        kept={<KeptDescription bare testId={`about-kept-${selectedId}`} filter={(item) => aspectOfKept(item) === selectedId} />}
+      />
     </div>
   );
 
-  const waitingNotes = railPending.map((m) => <PendingNote key={m.memoryId} m={m} />);
   const rememberedNote = newest && !memoryReviewError
     ? <RememberedNote m={newest} stored={nb.storedOf(newest)} onEdited={retryMemoryReview} />
     : null;
-  const moreInAreas = nb.inAreasCount > 0 && <p className="about-note small" data-testid="about-memory-in-areas">{t("companion.about.memory.inAreas")}</p>;
-
-  const ledgerDoor = (
-    <MoreLink onClick={toggleLedger} className="about-ledger-door">
-      <span data-testid="profile-remember-check" aria-expanded={ledgerOpen} aria-controls={LEDGER_ID}>{t("companion.about.memory.open")}</span>
-    </MoreLink>
+  const rail = (
+    <>
+      <AboutHowToRead compact={!desk} />
+      <CoachDataContract ledgerUnreadable={memoryReviewError} />
+      {rememberedNote}
+      {desk && <AboutLastVisit className="mbtn about-visit-link" />}
+    </>
   );
 
-  const areasTile = (
-    <section className="vt about-areas" aria-labelledby="about-aspects-title" data-module="about-aspects">
-      {desk && (
-        <div className="vh">
-          <span className="gi" aria-hidden="true"><Icon name="menu_book" size={16} /></span>
-          <h2 className="h3" id="about-aspects-title">{t("companion.about.aspectsTitle")}</h2>
-          <span className="small" data-testid="about-told-line">{toldLine}</span>
-          {ledgerDoor}
-        </div>
-      )}
-      <ul className={desk ? "about-a8 desk" : "about-a8 a8m"} data-testid="about-aspects" role="list">
-        {aspects.map((state) => (
-          <li key={state.id}>
-            <AspectCard state={state} name={first} artSize={desk ? 48 : 36} onTell={(id) => openSheet(id, "write")} onEditDetails={() => setEditingProfile(true)} />
-          </li>
-        ))}
-      </ul>
-      <div className="line between about-areas-foot">
-        <TokenLegend items={[
-          { token: <Token kind="neutral" className="told" size="sm" label={copy.tokenToldOne} />, label: desk ? copy.tokenTold : copy.tokenToldOne },
-          { token: <Token kind="neutral" state="ai" size="sm" label={copy.tokenWaitingOne} />, label: copy.tokenWaiting },
-        ]} />
-        <MoreLink onClick={() => setActiveTab("science")}>{t("nav.view.science")}</MoreLink>
-      </div>
-    </section>
-  );
+  /* ── stop 3: the child, and the lines that name no area ─────────────────── */
 
   // B-GROWTH-05 — Measurements: the parent-logged growthEntries log, the
   // UNCHANGED card, closed by default; the pediatrician packet still reads the
@@ -248,20 +269,20 @@ export default function ChildProfile() {
     </details>
   );
 
-  // Section 3's three tiles: one module, laid out as a row (desktop) or a stack (phone).
-  const toldTiles = (
-    <div className={desk ? "bento about-told-row" : "about-told-stack"} data-module="about-told">
-      <KeptDescription testId="memory-describe" />
-      <CoachDataContract ledgerUnreadable={memoryReviewError} />
-      <AboutChildTile compact={!desk} onEditDetails={() => setEditingProfile(true)} measurements={measurements} onKeepsakes={openKeepsakes} />
-    </div>
-  );
-
   const ledger = ledgerOpen && (
     <div id={LEDGER_ID} data-testid="about-memory-ledger" className="about-memory-ledger" style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
       <React.Suspense fallback={<p role="status" className="small">{t("aria.loading")}</p>}>
         <ChildMemoryLedger hidePendingIds={askedHere} focusFactId={factId} keepsakesOpen={keepsakesOpen} />
       </React.Suspense>
+    </div>
+  );
+
+  const childRow = (
+    <div className={desk ? "bento about-child-row" : "about-told-stack"} data-module="about-told">
+      <AboutChildTile compact={!desk} onEditDetails={() => setEditingProfile(true)} measurements={measurements} onKeepsakes={openKeepsakes}
+        onLedger={toggleLedger} ledgerOpen={ledgerOpen} onHowItWorks={() => setActiveTab("science")} />
+      {/* The door to the ONE guided conversation, and the lines that name no area. */}
+      <KeptDescription testId="memory-describe" filter={(item) => aspectOfKept(item) === null} title={anyUnplaced ? copy.otherTold : undefined} placedNote={copy.keptInAreas} />
     </div>
   );
 
@@ -272,88 +293,25 @@ export default function ChildProfile() {
     </>
   );
 
-  /* ── desktop: stage (8) + rail (4), then rows of tiles ─────────────────── */
-  if (desk) {
-    return (
-      <DsRoot composition="desk" className="ds-about" data-testid="profile-about" aria-labelledby="about-title">
-        <Guide stops={stops} label={copy.onThisPage} />
-        <Route composition="desk">
-          <AnswerSection>
-            <div className="rowa">
-              <div className="stg">
-                <Scene field="child" orbs={[{ size: 440, left: -230, bottom: -290, opacity: 0.65 }, { size: 380, right: -190, top: -250, opacity: 0.65, b: true }]} className="about-scene">
-                  {heading}
-                  {figs}
-                  {answer}
-                </Scene>
-              </div>
-              <div className="rlc" id="waiting">
-                <div className="rhead"><span className="rstop inline" aria-hidden="true">2</span><h2 className="h3">{copy.guideWaiting}</h2></div>
-                {tellBox}
-                {waitingNotes}
-                {rememberedNote}
-                {moreInAreas}
-              </div>
-            </div>
-          </AnswerSection>
-
-          <section className="rsec" id="tell" aria-labelledby="about-told-title">
-            <span className="rstop" aria-hidden="true">3</span>
-            <div className="rhead"><h2 className="h3" id="about-told-title">{copy.toldSection}</h2></div>
-            {toldTiles}
-          </section>
-
-          <section className="rsec" id="areas">
-            <span className="rstop" aria-hidden="true">4</span>
-            {areasTile}
-            {ledger}
-          </section>
-        </Route>
-        {sheets}
-      </DsRoot>
-    );
-  }
-
-  /* ── phone: scene, the one action, snap row, the notebook, the tiles ───── */
   return (
-    <DsRoot composition="phone" className="ds-about" data-testid="profile-about" aria-labelledby="about-title">
-      <Guide stops={stops} mini label={copy.onThisPage} />
-      <Route composition="phone">
-        <AnswerSection>
-          <Scene field="child" orbs={[{ size: 250, left: -150, bottom: -160, opacity: 0.6 }, { size: 220, right: -130, top: -140, opacity: 0.6, b: true }]} className="about-scene">
-            {heading}
-            {figs}
-            {answer}
-          </Scene>
-          {tellBox}
-        </AnswerSection>
-
-        {hasWaiting && (
-          <section className="rsec" id="waiting" aria-labelledby="about-waiting-title">
-            <span className="rstop" aria-hidden="true">2</span>
-            {railPending.length > 0 && (
-              <>
-                <div className="snaphd"><h2 className="h3" id="about-waiting-title">{copy.moreWaiting(railPending.length)}</h2></div>
-                <Snap label={copy.moreWaiting(railPending.length)} className="about-snap">{waitingNotes}</Snap>
-                {railPending.length > 1 && <SnapDots count={railPending.length} />}
-              </>
-            )}
-            {railPending.length === 0 && <h2 className="h3 about-snap-title" id="about-waiting-title">{copy.guideWaiting}</h2>}
-            {rememberedNote}
-            {moreInAreas}
-          </section>
-        )}
-
-        <section className="rsec" id="areas">
-          <span className="rstop" aria-hidden="true">{hasWaiting ? 3 : 2}</span>
-          <div className="rhead">
-            <h2 className="h3" id="about-aspects-title">{t("companion.about.aspectsTitle")}</h2>
-            {ledgerDoor}
-          </div>
-          <span className="small about-told-line" data-testid="about-told-line">{toldLine}</span>
-          {areasTile}
+    <DsRoot composition={composition} className="ds-about" data-testid="profile-about" aria-labelledby="about-title">
+      <Guide stops={stops} mini={!desk} label={copy.onThisPage} />
+      <Route composition={composition}>
+        {band}
+        <section className="rsec" id="area" data-module="about-answer" aria-labelledby="about-area-title">
+          <span className="rstop" aria-hidden="true">2</span>
+          {desk ? (
+            <div className="rowa">
+              <div className="stg">{panel}</div>
+              <div className="rlc">{rail}</div>
+            </div>
+          ) : panel}
+        </section>
+        <section className="rsec" id="child" aria-labelledby="about-child-title">
+          <span className="rstop" aria-hidden="true">3</span>
+          {!desk && rail}
+          {childRow}
           {ledger}
-          {toldTiles}
         </section>
       </Route>
       {sheets}

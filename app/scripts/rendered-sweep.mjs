@@ -433,11 +433,16 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
 
   // B-INF-11: the rendered stamp only — a hidden (display:none, 0×0) stamp is not the screen's
   // move (Speech HE read a 0×0 stamp when the route rendered none).
-  const pmEl = [...document.querySelectorAll("[data-primary-move]")].find((el) => {
+  const shown = (el) => {
     if (!visible(el)) return false;
     const r = rectOf(el);
     return r.width > 1 && r.height > 1;
-  }) ?? null;
+  };
+  // F-TALK-1: on a conversation route (coach/scholar) the place behind the open
+  // Talk panel stays rendered with its own stamps; the screen's move is the
+  // panel's own (the composer, "ask"), so it is read first when the panel is open.
+  const panelMove = [...document.querySelectorAll(".companion-workspace.is-open .companion-conversation [data-primary-move]")].find(shown);
+  const pmEl = panelMove ?? [...document.querySelectorAll("[data-primary-move]")].find(shown) ?? null;
   let primaryMove = null;
   if (pmEl) {
     const r = rectOf(pmEl);
@@ -453,7 +458,11 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       const cs = getComputedStyle(el);
       if (cs.position !== "fixed" || cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) === 0) return false;
       const d = rectOf(el);
-      return d.width > 0 && d.height > 0 && d.top >= vh * 0.4 && d.top < vh && d.left < r.right && d.right > r.left;
+      if (!(d.width > 0 && d.height > 0 && d.top >= vh * 0.4 && d.top < vh && d.left < r.right && d.right > r.left)) return false;
+      // A dock is one the eye can see: at its own centre it is on top (a bar
+      // under a full-screen dialog — the phone's Talk panel — covers nothing).
+      const hit = document.elementFromPoint(d.left + d.width / 2, Math.min(vh - 1, d.top + Math.min(d.height, vh - d.top) / 2));
+      return !!hit && el.contains(hit);
     });
     const foldY = Math.round(Math.min(vh, ...docks.map((el) => rectOf(el).top)));
     primaryMove.foldY = foldY;
@@ -465,7 +474,9 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       const d = rectOf(el);
       return d.top < r.bottom && d.bottom > r.top;
     });
-    const controls = [...pmEl.querySelectorAll("button, a[href], [role=button], input")];
+    // Only rendered controls are probed: a collapsed tray or a hidden file input
+    // has no box (0×0 at the origin), so its "centre" hits whatever is there.
+    const controls = [...pmEl.querySelectorAll("button, a[href], [role=button], input")].filter(shown);
     const probes = (controls.length ? controls : [pmEl]).map((el) => rectOf(el));
     const probeHidden = probes.some((p) => {
       const cx = p.left + p.width / 2;
@@ -1503,14 +1514,15 @@ const STATES = {
       },
     },
     {
-      // r2: About asks the first proposals on the "What Arbor remembers" card
-      // (Remember · Not this); the demo seed's pending facts land there.
+      // r2 → v10.3: About asks the first proposals in Arbor's notebook: the
+      // stage card (Remember · Not this · Edit) leads the selected area's
+      // panel; the demo seed's pending facts land there.
       name: "pending-group",
       run: async (h) => {
         await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)");
         const pending = await h.first("[data-testid=about-memory-pending]", 5_000);
         if (!pending) skip("no pending fact on the server memory ledger");
-        await h.top(await h.need("[data-testid=about-memory]", "the What Arbor remembers card"));
+        await h.top(await h.need("[data-testid=about-memory-pending][data-stage]", "the notebook's stage card (the next proposal)"));
       },
     },
     {

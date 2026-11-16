@@ -19,6 +19,11 @@ const harness=vi.hoisted(() => ({
  appts:[] as unknown[], notes:[] as unknown[],
  // v10: which composition renders (desktop ≥1024 px, else phone).
  desk:false,
+ // v10.3: the area the index selects (as an ?aspect= link would).
+ aspect:null as null|string,
+}));
+vi.mock("../../hooks/useHashQuery",async(orig)=>({...(await orig<typeof import("../../hooks/useHashQuery")>()),
+ useHashQuery:()=>new URLSearchParams(harness.aspect?`aspect=${harness.aspect}`:(typeof window!=="undefined"&&window.location?.hash?.split("?")[1])||""),
 }));
 vi.mock("../../design/useComposition",()=>({useComposition:()=>harness.desk?"desk":"phone"}));
 vi.mock("../../hooks/useChildCollection",()=>({useChildCollection:(_id:string,name:string)=>({items:name==="appointments"?harness.appts:name==="apptFollowUps"?harness.notes:[],loaded:true,confirmed:true,error:false,upsert:vi.fn(),remove:vi.fn()})}));
@@ -58,9 +63,11 @@ function elements(node:React.ReactNode):React.ReactElement<Record<string,any>>[]
  const element=node as React.ReactElement<Record<string,any>>;
  return[element,...React.Children.toArray(element.props.children).flatMap(elements)];
 }
-const cards=()=>elements(ChildProfile()).filter(el=>el.type===AspectCard);
-const card=(id:string)=>cards().find(el=>(el.props.state as AspectState).id===id)!;
-beforeEach(()=>{vi.clearAllMocks();harness.appts=[];harness.notes=[];harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;harness.desk=false;});
+// v10.3: the panel shows the selected area's card; select it, then read the tree.
+const card=(id:string)=>{harness.aspect=id;const el=elements(ChildProfile()).find(e=>e.type===AspectCard&&(e.props.state as AspectState).id===id)!;harness.aspect=null;return el;};
+/** The selected area's block, as rendered HTML. */
+const areaHtml=(id:string)=>{harness.aspect=id;const html=renderToStaticMarkup(<ChildProfile/>);harness.aspect=null;const at=html.indexOf(`data-testid="about-aspect-${id}"`);return at<0?"":html.slice(at,html.indexOf('class="line about-area-acts"',at));};
+beforeEach(()=>{vi.clearAllMocks();harness.appts=[];harness.notes=[];harness.callback=false;harness.locale="en";harness.pending=[];harness.approved=[];harness.hasHero=true;harness.goals=[];harness.challenges=[];harness.factsAsOf=undefined;harness.tell=[];harness.phone=false;harness.desk=false;harness.aspect=null;});
 afterEach(()=>{vi.unstubAllGlobals();});
 
 /* v10.1 re-pin: #/profile is the N-About route — 1 Answer Arbor (the stage:
@@ -102,7 +109,7 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
    harness.approved=[{memoryId:"a9",fact:"Hums a quiet tune",createdAt:"2026-10-05T10:00:00.000Z"}];
    const html=renderToStaticMarkup(<ChildProfile/>);
    const hrefs=[...html.matchAll(/class="gstop[^"]*" href="#([a-z]+)"/g)].map(m=>m[1]);
-   expect(hrefs).toEqual(desk?["answer","waiting","tell","areas"]:["answer","waiting","areas"]);
+   expect(hrefs).toEqual(["areas","area","child"]);
    for(const id of hrefs) expect(html).toContain(`id="${id}"`);
   });
  }
@@ -162,28 +169,30 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
   expect(harness.setState).toHaveBeenLastCalledWith(true);
   expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
- it("the first three proposals no area shows are asked on the page (stage + rail); the rest wait in the ledger",()=>{
+ it("the first four proposals no area shows are asked on the page (stage + also waiting); the rest wait in the ledger",()=>{
   harness.desk=true;
-  harness.pending=["fact a","fact b","fact c","fact d"].map((fact,i)=>({memoryId:`q${i}`,fact,createdAt:`2026-10-0${i+1}T10:00:00.000Z`}));
+  harness.pending=["fact a","fact b","fact c","fact d","fact e"].map((fact,i)=>({memoryId:`q${i}`,fact,createdAt:`2026-10-0${i+1}T10:00:00.000Z`}));
   const html=renderToStaticMarkup(<ChildProfile/>);
-  expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(3);
-  expect(html).not.toContain("Fact d");
-  expect(html).toContain(">1 of 4<");
+  expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(4);
+  expect(html).not.toContain("Fact e");
+  expect(html).toContain(">1 of 5<");
  });
  for(const desk of both){
-  it(`${label(desk)}: eight area rows in the brief's order, and the one door to everything Arbor remembers`,()=>{
+  it(`${label(desk)}: the index holds the eight areas in the brief's order (one selected), and the one door to everything Arbor remembers`,()=>{
    harness.desk=desk;
    const html=renderToStaticMarkup(<ChildProfile/>);
-   expect([...html.matchAll(/data-testid="about-aspect-([a-z]+)" data-aspect="\1"/g)].map(m=>m[1])).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
+   expect([...html.matchAll(/data-testid="about-area-([a-z]+)"/g)].map(m=>m[1]).filter(id=>id!=="index")).toEqual(["temper","lang","social","routine","sleep","senses","school","strengths"]);
+   expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+   expect(html.match(/data-testid="about-aspect-[a-z]+" data-aspect=/g)).toHaveLength(1);
    expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
    expect(html).toContain(companionEn["companion.about.memory.open"]);
-   expect(html.indexOf('id="answer"')).toBeLessThan(html.indexOf('data-testid="about-aspects"'));
+   expect(html.indexOf('data-testid="about-area-index"')).toBeLessThan(html.indexOf('id="area"'));
   });
  }
  it("renders the identity and the area copy in HE, with the language name through its key (law 8)",()=>{
-  harness.locale="he";harness.desk=true;const html=renderToStaticMarkup(<ChildProfile/>);
+  harness.locale="he";harness.desk=true;harness.aspect="lang";const html=renderToStaticMarkup(<ChildProfile/>);
   expect(html).toContain(companionHe["companion.about.detailsEdit"]);
-  expect(html).toContain(companionHe["companion.about.aspectsTitle"]);
+  for(const id of ["temper","lang","sleep","strengths"]) expect(html).toContain(companionHe[`companion.about.aspect.${id}`]);
   const line=html.slice(html.indexOf('data-testid="profile-identity-line"'),html.indexOf("</span>",html.indexOf('data-testid="profile-identity-line"')));
   expect(line).toContain("<bdi dir=\"auto\">Noa</bdi>");
   const roles=html.slice(html.indexOf('data-testid="about-lang-roles"'),html.indexOf("</small>",html.indexOf('data-testid="about-lang-roles"')));
@@ -202,27 +211,31 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
  it("a kept fact is quoted in its area with its day; a proposal waits in its area with Confirm / No",()=>{
   harness.approved=[{memoryId:"a1",fact:"Falls asleep after two stories",createdAt:"2026-10-05T10:00:00.000Z"}];
   harness.pending=[{memoryId:"p1",fact:"Wakes up twice since the move",createdAt:"2026-10-06T10:00:00.000Z"}];
+  harness.aspect="sleep";
   const html=renderToStaticMarkup(<ChildProfile/>);
-  const sleep=html.slice(html.indexOf('data-testid="about-aspect-sleep"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-sleep"')));
+  const sleep=areaHtml("sleep");
   expect(sleep).toContain("Falls asleep after two stories");
   expect(sleep).toContain("Noted · Oct 5, 2026");
   expect(sleep).toContain('data-testid="about-aspect-pending"');
   expect(sleep).toContain(companionEn["companion.about.pending"].trim());
   expect(sleep).toContain("Wakes up twice since the move");
   expect(sleep).toContain('data-testid="about-pending-confirm"');expect(sleep).toContain('data-testid="about-pending-dismiss"');
-  // an ink token for the told fact, a pencil token for the proposal
-  expect(sleep).toMatch(/class="tok md told"/);expect(sleep).toMatch(/class="tok ai md"/);
+  // the index counts the one thing told and says something waits
+  const tile=html.slice(html.indexOf('data-testid="about-area-sleep"'),html.indexOf("</button>",html.indexOf('data-testid="about-area-sleep"')));
+  expect(tile).toMatch(/<b aria-label="[^"]+">1<\/b>/);expect(tile).toContain("Waiting for you");
   // the notebook does not print a fact its area already quotes
   expect(html.split("Falls asleep after two stories").length-1).toBe(1);
   expect(html).not.toContain('data-testid="about-aspect-receipt"');
  });
- it("an untold area asks its question, says Not told yet, and carries no token",()=>{
+ it("an untold area asks its question, says Not told yet, and its segment carries no number",()=>{
   const html=renderToStaticMarkup(<ChildProfile/>);
-  const temper=html.slice(html.indexOf('data-testid="about-aspect-temper"'),html.indexOf("</article>",html.indexOf('data-testid="about-aspect-temper"'))).replace(/&#x27;/g,"'");
+  const temper=areaHtml("temper").replace(/&#x27;/g,"'");
+  const tile=html.slice(html.indexOf('data-testid="about-area-temper"'),html.indexOf("</button>",html.indexOf('data-testid="about-area-temper"')));
+  expect(tile).not.toContain("<b");expect(html).toMatch(/class="mcs[^"]*quiet[^"]*"[^>]*data-testid="about-area-temper"/);
   expect(temper).toContain(companionEn["companion.about.ask.temper"].replace("{name}","Noa"));
   expect(temper).toContain(companionEn["companion.milestones.notTold"]);
-  expect(temper).toContain(companionEn["companion.milestones.tell"]);
-  expect(temper).not.toContain('class="tok');
+  harness.aspect="temper";
+  expect(renderToStaticMarkup(<ChildProfile/>)).toMatch(new RegExp(`data-testid="about-aspect-tell-temper">${companionEn["companion.milestones.tell"]}<`));
  });
  for(const desk of both){
   it(`${label(desk)}: the primary is the ONE 'Tell Arbor by voice' door (capture-moment) in every state; Write opens the same conversation`,()=>{
@@ -243,16 +256,17 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
  it("Tell more opens the conversation on that area; the door opens the ledger in place (B-CAREPRO-38); How Arbor works opens the page",()=>{
   harness.callback=true;harness.desk=true;
   card("sleep").props.onTell("sleep");
-  expect(harness.setState).toHaveBeenLastCalledWith({from:null,open:{aspect:"sleep",mode:"write"}});
-  const tree=elements(ChildProfile());
-  const door=tree.find(el=>el.props["data-testid"]==="profile-remember-check")!;
+  // the card was read with sleep selected through ?aspect=sleep, so the tap is remembered against it
+  expect(harness.setState).toHaveBeenLastCalledWith({from:"sleep",open:{aspect:"sleep",mode:"write"}});
+  const tile=elements(ChildProfile()).find(el=>el.type===AboutChildTile)!;
+  expect(tile.props.ledgerOpen).toBe(false);
+  const door=elements(AboutChildTile(tile.props as React.ComponentProps<typeof AboutChildTile>)).find(el=>el.props["data-testid"]==="profile-remember-check")!;
   expect(door.props["aria-controls"]).toBe("about-memory-ledger");
-  expect(door.props["aria-expanded"]).toBe(false);
-  tree.find(el=>el.props.className==="about-ledger-door")!.props.onClick();
+  tile.props.onLedger();
   expect(harness.setActiveTab).not.toHaveBeenCalled();
   const toggle=harness.setState.mock.calls.at(-1)![0] as (o:boolean)=>boolean;
   expect(toggle(false)).toBe(true);
-  tree.find(el=>typeof el.props.children==="string"&&el.props.children==="nav.view.science"&&el.props.onClick)!.props.onClick();
+  tile.props.onHowItWorks();
   expect(harness.setActiveTab).toHaveBeenCalledWith("science");
  });
  it("?aspect=<id> opens the conversation with that area chosen; an unknown id opens nothing",()=>{
@@ -285,12 +299,12 @@ describe("v10.1 · About: the notebook, the parent's words, the eight areas",()=
  });
  it("Create hero opens the existing edit/creation seam rather than navigating to itself",()=>{
   harness.hasHero=false;
-  const html=renderToStaticMarkup(<AboutChildTile onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}}/>);
+  const html=renderToStaticMarkup(<AboutChildTile onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}} onLedger={()=>{}} ledgerOpen={false} onHowItWorks={()=>{}}/>);
   // this harness's childProfile has no hero render, so asksForHero is true
   expect(html).toContain('data-testid="about-hero-create"');
   harness.callback=true;
   const onEditDetails=vi.fn();
-  elements(AboutChildTile({onEditDetails,measurements:null,onKeepsakes:()=>{}})).find(el=>el.props["data-testid"]==="about-hero-create")!.props.onClick();
+  elements(AboutChildTile({onEditDetails,measurements:null,onKeepsakes:()=>{},onLedger:()=>{},ledgerOpen:false,onHowItWorks:()=>{}})).find(el=>el.props["data-testid"]==="about-hero-create")!.props.onClick();
   expect(onEditDetails).toHaveBeenCalled();expect(harness.setActiveTab).not.toHaveBeenCalled();
  });
  it("no score-shaped figure and no tile for a zero: an empty notebook prints no figure",()=>{
@@ -379,7 +393,7 @@ describe("B-CAREPRO-29 · goals live on Milestones; About derives no focus", () 
 // areas; the day reads in the card's source line ("In your words · {day}").
 describe("B-CAREPRO-33 · the areas date their facts", () => {
   const DAYS = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
-  const schoolCard = (html: string) => html.slice(html.indexOf('data-testid="about-aspect-school"'), html.indexOf("</article>", html.indexOf('data-testid="about-aspect-school"')));
+  const schoolCard = (_html: string) => areaHtml("school");
 
   for (const locale of ["en", "he"] as const) {
     it(`${locale}: a setting dated 120 days ago shows its day and the Still-true prompt`, () => {
@@ -394,7 +408,7 @@ describe("B-CAREPRO-33 · the areas date their facts", () => {
       expect(html).toContain(L["elev.profile.fact.stillTrue"]);
       expect(html).toContain(L["elev.profile.fact.keep"]);
       expect(html).toContain(L["elev.profile.fact.edit"]);
-      expect(html).toMatch(/class="touch-target"[^>]*data-testid="profile-fact-keep-schoolContext"|data-testid="profile-fact-keep-schoolContext"[^>]*class="touch-target/);
+      expect(html).toMatch(/class="[^"]*touch-target"[^>]*data-testid="profile-fact-keep-schoolContext"/);
     });
   }
 
@@ -471,10 +485,13 @@ describe("B-CAREPRO-37 → v10 · My child › About: the newest visit as ONE li
    expect(html).toMatch(/^<button type="button" class="ds-link"/);
   });
  }
- it("it sits in the child's tile, below the notebook and outside its cards",()=>{
+ it("it sits in the rail on a desktop and in the child's row on a phone, outside the notebook's cards",()=>{
   harness.appts=appts; harness.notes=notes; harness.desk=true;
-  const tile=renderToStaticMarkup(<AboutChildTile onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}}/>);
+  const tile=renderToStaticMarkup(<AboutChildTile compact onEditDetails={()=>{}} measurements={null} onKeepsakes={()=>{}} onLedger={()=>{}} ledgerOpen={false} onHowItWorks={()=>{}}/>);
   expect(tile).toContain('data-testid="about-visit"');
+  const desk=renderToStaticMarkup(<ChildProfile/>);
+  expect(desk.match(/data-testid="about-visit"/g)).toHaveLength(1);
+  expect(desk.indexOf('data-testid="about-visit"')).toBeGreaterThan(desk.indexOf('data-testid="coach-contract-panel"'));
   expect(renderToStaticMarkup(<ChildProfile/>)).not.toMatch(/data-testid="about-memory-approved"[^]*data-testid="about-visit"[^]*<\/div>\s*<\/div>\s*<\/div>\s*<div class="rhead"/);
  });
  it("the link opens #/appointments (Visits); without a note there is no line",()=>{

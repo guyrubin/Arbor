@@ -122,3 +122,19 @@
 @media (prefers-reduced-motion: no-preference) {
   .coach-report button { transition: background-color 160ms ease, color 160ms ease; }
 }
+
+/* ── v10.3 (N-Talk boards: one readable flow) ────────────────────────────
+   The answer reads as the board draws it: Arbor's reading in a dashed draft
+   card under its one voice label, the steps as numbered rows ("Try this"),
+   the words to use as a quote card, the doors as outlined pills. Every
+   control, test id and the urgent-help panel stay as they were; this layer
+   only shapes them. */
+.coach-report__opening { padding: 18px 20px; border: 2px dashed color-mix(in srgb, var(--arbor-clay) 45%, transparent); border-radius: 18px; background: var(--arbor-clay-dim); }
+.coach-report__draft { display: inline-flex; align-items: center; gap: 6px; margin-block-end: 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--arbor-clay-deep); }
+.coach-report__opening .coach-report__lead > p:first-child { font-family: var(--font-display); font-size: 22px; line-height: 1.25; font-weight: 500; color: var(--arbor-ink); }
+.coach-report__next { border: 0; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: 0 1px 2px color-mix(in srgb, var(--arbor-ink) 8%, transparent), 0 8px 20px -14px color-mix(in srgb, var(--arbor-ink) 25%, transparent); }
+.coach-report__next .coach-report__steps > li { padding: 12px 14px; border-radius: 14px; background: var(--arbor-lav-soft); }
+.coach-report__next .coach-report__step-number { flex-basis: 32px; block-size: 32px; background: var(--arbor-lav-ink); color: var(--arbor-on-accent); font-family: var(--font-display); font-size: 17px; font-weight: 500; }
+.coach-report__script [data-testid="say-this"][data-presentation="quote"] { padding: 18px 20px; border-radius: 18px; background: var(--arbor-paper-deep); }
+.coach-report__tools button { border-radius: 999px; border-color: var(--arbor-rule-strong); color: var(--arbor-clay-deep); }
+.coach-report__disclosure > button { font-size: 15px; }
