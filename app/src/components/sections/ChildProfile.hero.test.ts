@@ -29,12 +29,12 @@ const aboutCss = readFileSync(path.join(here, "..", "about", "aboutV10.css"), "u
 
 /** The describe box ("Tell Arbor about {name}"), so pins are scoped to it. */
 const hero = (() => {
-  const start = src.indexOf("const tellBox = (");
+  const start = src.indexOf("const tellButtons = (");
   const end = src.indexOf("\n  );", start);
   return src.slice(start, end);
 })();
 /** The stage heading (the route's h1). */
-const heading = src.slice(src.indexOf("const heading = ("), src.indexOf("const figs ="));
+const heading = src.slice(src.indexOf("const band = ("), src.indexOf("/* ── stop 2"));
 
 describe("GP-15 — the hero CTA is the contract's primary move", () => {
   it("the profile contract's primaryMove is capture-moment", () => {
@@ -45,6 +45,8 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
   it("the stamped control is the one 'Tell Arbor by voice' door, in every state; nothing routes away", () => {
     expect(hero).toContain('data-testid="about-voice"');
     expect(hero).toMatch(/\{\.\.\.CAPTURE_MOVE\}\s+onClick=\{\(\) => openSheet\(null, "voice"\)\}/);
+    // v10.3: the buttons sit in the header band, beside the figure
+    expect(heading).toContain("{tellButtons}");
     // one declaration, one spread (framework-check: exactly 1 stamp)
     expect(src).toContain('const CAPTURE_MOVE = { "data-primary-move": "capture-moment" } as const;');
     expect(src.match(/data-primary-move/g)?.length).toBe(1);
@@ -79,9 +81,9 @@ describe("GP-15 — the hero CTA is the contract's primary move", () => {
     expect(src).not.toContain('"elev.profile.remember.notQuite"');
     expect(src).not.toMatch(/pendingQueue\.(slice|map)\(/);
     // B-CAREPRO-38: the door opens the ledger IN PLACE (#/memory retired into About).
-    expect(src).toContain('<MoreLink onClick={toggleLedger} className="about-ledger-door">');
-    expect(src).toContain('data-testid="profile-remember-check"');
-    expect(src.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
+    expect(src).toContain("onLedger={toggleLedger}");
+    expect(childTile).toContain('data-testid="profile-remember-check"');
+    expect((src + childTile).match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
   });
 
   it("NEGATIVE CONTROL: the pre-fix 'Add a family member' CTA is gone from the hero", () => {
@@ -150,16 +152,16 @@ describe("B-SHELL-27 — one face on My Child", () => {
     expect(childTile).toContain("photoURL={picture.url}");
     expect(childTile).not.toMatch(/const \{ hasHero[^}]*\} = useHeroAvatar\(\)/);
   });
-  it("the stage art is a decorative Living Form — never the child's photo", () => {
-    expect(heading).toContain('<LivingForm src="/visuals/parent/v2/empty-portrait-480.webp"');
+  it("the header band carries no picture of the child (the face is in the child row)", () => {
     expect(heading).not.toContain("picture");
+    expect(heading).not.toContain("<Avatar");
   });
 });
 
 describe("NEXTLEVEL critic r1 (profile · design · P1) — one weight for the fact quote in both locales", () => {
   const css = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
   it("the quoted fact is the editorial face at weight 400", () => {
-    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{known\.words\} \/><\/span>/);
+    expect(card).toMatch(/<span className="a8-quote"[^>]*><FreeText text=\{knownHere\.words\} \/><\/span>/);
     expect(aboutCss).toMatch(/\.a8-quote \{[^}]*font-family: var\(--font-editorial\) !important;[^}]*font-weight: 400 !important;/);
   });
   it("on a Hebrew page Latin runs take Instrument Serif first; Hebrew falls through to Frank Ruhl Libre (both HE scopes)", () => {

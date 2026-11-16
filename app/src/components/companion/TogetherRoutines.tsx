@@ -234,7 +234,7 @@ export default function TogetherRoutines({ composition, headingId, primaryMovePr
               <b id={titleId} role="heading" aria-level={3}>{bandName[band]}</b>
               <span className="n">{copy.bandCount(inBand.length)}</span>
             </div>
-            <ul className="dm-g">
+            <ul className={inBand.length === 2 ? "dm-g two" : "dm-g"}>
               {inBand.map((routine) => (
                 fits && fits.routine.id === routine.id
                   ? <li key={routine.id} className="wide">{fitsCard(fits)}</li>

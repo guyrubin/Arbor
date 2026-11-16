@@ -31,7 +31,9 @@ const profile = readFileSync(path.join(SRC, "components/sections/ChildProfile.ts
 // v4 → v10: About's one memory room is Arbor's notebook (the stage, the rail's
 // notes — about/AboutAnswer.tsx — and the door to the ledger on the page).
 const memoryCard = readFileSync(path.join(SRC, "components/about/AboutAnswer.tsx"), "utf8");
-const page = profile + memoryCard;
+// v10.3: the door to everything Arbor remembers sits in the child row.
+const childTile = readFileSync(path.join(SRC, "components/about/AboutChildTile.tsx"), "utf8");
+const page = profile + memoryCard + childTile;
 
 /** Position of a marker in a file, asserted to exist. */
 const at = (src: string, marker: string) => {
@@ -77,7 +79,7 @@ describe("Profile · one door per room", () => {
     expect(profile.match(/<StageCard /g) ?? []).toHaveLength(1);
     expect(page.match(/data-testid="profile-remember-check"/g) ?? []).toHaveLength(1);
     expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(0);
-    expect(profile.match(/<MoreLink onClick=\{toggleLedger\}/g) ?? []).toHaveLength(1);
+    expect(profile.match(/onLedger=\{toggleLedger\}/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain('t("cp.footer.memory")');
     // v3 F-CHILD-3 re-pin: the footer jump strip left #/profile with the old
     // page (About is the describe card, the eight areas and Details), so no

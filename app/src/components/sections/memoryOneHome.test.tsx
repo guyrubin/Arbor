@@ -77,8 +77,8 @@ describe("B-CAREPRO-38 · every door lands on About", () => {
     expect(about).toContain('const [ledgerOpen, toggleLedger] = useLedgerArrival(ledgerAsked, ledgerSection);');
     expect(about).toContain('hashQuery.get("section") ?? (factId ? `fact:${factId}` : null)');
     expect(about).not.toMatch(/\[[^\]]*\bhashQuery\]\)/);
-    // v10: the door is "Everything Arbor remembers" beside the areas; the ledger opens under them.
-    expect(about).toContain('<MoreLink onClick={toggleLedger} className="about-ledger-door">');
+    // v10.3: the door is "Everything Arbor remembers" in the child row; the ledger opens under it.
+    expect(about).toContain("onLedger={toggleLedger}");
     expect(about).toContain("<ChildMemoryLedger hidePendingIds={askedHere} focusFactId={factId} keepsakesOpen={keepsakesOpen} />");
     expect(about).toContain("id={LEDGER_ID}");
   });

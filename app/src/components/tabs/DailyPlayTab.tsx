@@ -341,6 +341,7 @@ function ScopedDailyPlayTab() {
         {dailyPlan && <AgeChip profile={childProfile} />}
       </div>
       <p className="pl-p">{t("play.libSubtitle", { name: firstName })}</p>
+      {phone && pickedBecause && <p className="pl-p" dir="auto"><b className="strong">{goal ? t("elev.goal.profile.title") : copy.chainPicked}</b> · {pickedBecause}</p>}
       {/* The plan card offers "Choose what you're working on" itself when no focus is set; the line shows the focus once one is. */}
       {(goal || !dailyPlan) && <GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} />}
       {/* CI-30: the goal-linked play idea — post-activity observation writes to goalObservations (COPPA-reviewed path). */}
@@ -378,7 +379,8 @@ function ScopedDailyPlayTab() {
     <DsRoot composition={composition} className="play-v10" data-testid="play-screen" dir={uiLang === "he" ? "rtl" : "ltr"}>
       <div className="tg-stack" style={{ gap: phone ? 12 : 16 }}>
         <Guide label={copy.onThisPage} mini={phone} stops={stops} />
-        <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />
+        {/* Size pass: the phone drops the strip; why the idea was picked is one line in its station. */}
+        {!phone && <ChainStrip nodes={chain} composition={composition} label={copy.chainLabel(firstName)} />}
         <ReceiptNoteLine note={playReceipt.note} testId="play-receipt" />
         <Route composition={composition}>
           <RouteSection id="idea" n={1} on>
@@ -417,7 +419,7 @@ function ScopedDailyPlayTab() {
 
           <RouteSection id="courses" n={n("courses")}>
             <div className={phone ? "tg-stack" : "g12"} style={phone ? { gap: 12 } : { alignItems: "start" }}>
-              <section className="vt pl-course" aria-label={copy.playCourse} style={{ gridColumn: "span 6", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
+              <section className="vt pl-course" aria-label={copy.playCourse} style={{ gridColumn: "span 7", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
                 {/* E6: shown only when the course's bands include this child's band. */}
                 {course.bands.includes(childBand) && <AgeChip profile={childProfile} />}
                 <CourseCard
@@ -436,7 +438,7 @@ function ScopedDailyPlayTab() {
                 />
               </section>
               {/* Readiness tracks — goal courses the parent chooses (school / sibling / sleep) */}
-              <section data-module="play-readiness" className="vt pl-course" aria-labelledby="play-readiness-title" style={{ gridColumn: "span 6", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
+              <section data-module="play-readiness" className="vt pl-course" aria-labelledby="play-readiness-title" style={{ gridColumn: "span 5", borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 18px 16px", minWidth: 0 }}>
                 <TomorrowTogether />
                 <div>
                   <h2 className="pl-t" id="play-readiness-title" style={{ margin: 0, fontSize: 19 }}>{t("play.readinessTitle")}</h2>
