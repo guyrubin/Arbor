@@ -22,7 +22,7 @@ import { recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
 import type { LearnRankSignals } from "../../learn/learnLibrary";
-import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 // v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
 // glyphs, order) and the family-ritual door's picture.
 import { courseArea, courseAreaCounts, readArea } from "../../learn/courseAreas";
@@ -242,8 +242,8 @@ export default function Masterclasses() {
   ) : null;
   const practiceKnot = practice && program.model ? (
     <div className="knot sets fy-practice">
-      <span className="by"><Icon name="calendar_month" size={14} />{copy.thisWeeksPractice}</span>
-      <b dir="auto">{copy.practiceLine(program.model.name, program.model.week, practice)}</b>
+      <span className="by"><Icon name="calendar_month" size={15} />{copy.yourProgram}</span>
+      <b dir="auto">{copy.practiceLine(program.model.name, program.model.week)}</b>
     </div>
   ) : null;
   const knots = [youKnot, aiKnot, practiceKnot].filter(Boolean) as React.ReactElement[];
@@ -256,7 +256,6 @@ export default function Masterclasses() {
   const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
   const courseList = catalog.filter((c) => !selectedArea || courseArea(c.id) === selectedArea);
   const shownCourses = allCourses ? courseList : courseList.slice(0, RAIL_COURSES);
-  const readsForAge = ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears).length;
 
   const goProgram = () => openProgramPage(setActiveTab as never);
   const openLibrary = () => requestLearnRead({ source: "foryou-library" });
@@ -265,9 +264,9 @@ export default function Masterclasses() {
   const pickArt = todaysRead ? DOMAIN_ART[readArea(todaysRead.card.category)] : nextCourse ? DOMAIN_ART[courseArea(nextCourse.id) ?? "family"] : null;
 
   const stops: GuideStop[] = [
-    { id: "fy-today", title: copy.guideToday, sub: pickMinutes != null ? copy.guideTodaySub(pickMinutes) : copy.guideTodayNone },
-    { id: "fy-courses", title: copy.guideCourses, sub: copy.guideCoursesSub(catalog.length, firstName) },
-    { id: "fy-programs", title: copy.guidePrograms, sub: program.model ? copy.guideProgramsSub : copy.guideProgramsNone },
+    { id: "fy-today", title: copy.guideToday, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone },
+    { id: "fy-courses", title: copy.guideCourses, sub: copy.guideCoursesSub },
+    { id: "fy-programs", title: copy.guidePrograms, sub: program.model ? copy.guideProgramsSub(program.model.name) : copy.guideProgramsNone },
     { id: "fy-more", title: copy.guideMore, sub: copy.guideMoreSub },
   ];
 
@@ -429,7 +428,7 @@ export default function Masterclasses() {
   // title on a desk; on a phone the block brings its numbered heading.
   const coursesBlock = (
     <div data-module="academy-catalogue" data-testid="academy-courses" className="stack fy-col" style={{ gap: 12 }}>
-      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.guideCoursesSub(catalog.length, firstName)} />}
+      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.guideCoursesSub} />}
       {!desk && ageSwitch && <div className="fy-switchrow">{ageSwitch}</div>}
       {coursesBody}
     </div>
@@ -463,7 +462,7 @@ export default function Masterclasses() {
       <Tile className={desk ? "x6" : undefined} icon="local_library" title={copy.libraryTitle} titleId="fy-library-title">
         <div className="fy-door">
           <AreaForm art={EMPTY_ART.learn} width={desk ? 104 : 84} ratio={0.62} zoom={1.05} />
-          <p dir="auto">{copy.librarySub(readsForAge, firstName)}</p>
+          <p dir="auto">{copy.librarySub(firstName)}</p>
         </div>
         <MoreLink onClick={openLibrary} className="fy-library-open">
           <span data-testid="academy-library-open">{t("elev.learnCare.library.open")}</span>
@@ -515,7 +514,7 @@ export default function Masterclasses() {
 
           <RouteSection id="fy-programs" n={3} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
             <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
-              <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? copy.programsRunningSub : t("elev.program.none.title")} />
+              <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? (desk ? copy.programsRunningSub : undefined) : t("elev.program.none.title")} />
               <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
             </div>
           </RouteSection>

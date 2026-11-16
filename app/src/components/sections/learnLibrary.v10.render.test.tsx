@@ -5,7 +5,7 @@
  *    at most four top-level modules (controls, picked, areas, shelf);
  *  · the guide's four stops match the four numbered sections, same order;
  *  · Reads · Courses, Saved and the search are in the controls;
- *  · Linked from your week lists short reads (the same rule For you used),
+ *  · Linked from your week is the read For you picked today (V77),
  *    and the Saved card says plainly when nothing is saved;
  *  · Choose an area: All plus every Learn shelf, one tap each;
  *  · Browse by area: every area with reads has "All in this area", and the
@@ -93,7 +93,9 @@ describe("Library v10", () => {
       expect(html).toContain(`placeholder="${esc(translate(locale, "learn.search"))}"`);
       expect(html).toContain(`>${esc(copy.libReads)}</button>`);
       expect(html).toContain(`>${esc(translate(locale, "learn.courses"))}</button>`);
-      expect(count(html, /data-testid="learn-linked-read"/g)).toBe(3);
+      // V77: Linked from your week is ONE read, For you's pick of the day.
+      expect(count(html, /data-testid="learn-linked-read"/g)).toBe(1);
+      expect(html).toContain(esc(copy.libOnForYou));
       expect(html).toContain(esc(translate(locale, "learn.emptySaved")));
       for (const c of LEARN_CATEGORIES) expect(html).toContain(`data-shelf="${c.id}"`);
       expect(count(html, new RegExp(esc(copy.libAllInArea), "g"))).toBeGreaterThan(1);

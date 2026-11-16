@@ -191,10 +191,12 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(LEARN).toContain("const gridAll = browsing ? visible.filter");
   });
 
-  it("every read stays one tap away: by area, 'All in this area', and the shelf's own 'All N reads' control", () => {
+  it("every read stays one tap away: by area, 'All in this area', and the shelf's own 'All reads' control (V77: no count)", () => {
     expect(LEARN).toContain('data-testid="learn-shelf-more"');
     expect(LEARN).toContain("aria-expanded={showAllShelf}");
-    expect(LEARN).toContain("copy.libAllReads(inScope.length)");
+    expect(LEARN).toContain("{showAllShelf ? copy.libByArea : copy.libAllReads}");
+    // NEGATIVE CONTROL: the v10.1 counted label is caught.
+    expect("{showAllShelf ? copy.libByArea : copy.libAllReads(inScope.length)}").not.toContain("{showAllShelf ? copy.libByArea : copy.libAllReads}");
     expect(LEARN).toContain("<MoreLink onClick={() => setFilter(cat.id)}>{copy.libAllInArea}</MoreLink>");
     // Opened, the shelf is the whole age-fit list (never capped).
     expect(LEARN).toContain("browsing && !showAllShelf ? browseByArea : flatGrid");

@@ -55,19 +55,18 @@ export function ForYouPrograms({ state, copy, composition, onOpen }: { state: Fo
   const { model, startable, pilotLabel } = state;
   const artW = composition === "desk" ? 112 : 84;
   if (model) {
-    const title = weekTitle(model.skill);
     return (
       <Tile
         className="fy-prog"
         icon={model.programId === "steady-nights" ? "bedtime" : "chat_bubble"}
-        kind="step"
+        kind="plan"
         title={model.name}
         titleId="fy-program-title"
         link={pilotLabel ? <span className="pilot">{pilotLabel}</span> : undefined}
       >
         <div className="line" style={{ gap: 14 }}>
           <AreaForm art={SHELF_ART[model.shelf]} width={artW} ratio={0.7} zoom={1.27} />
-          <Fig n={model.week} unit={copy.programWeeks(model.weeks)} sub={model.status === "paused" ? copy.programPaused : copy.programThisWeek(title)} />
+          <Fig n={model.week} unit={copy.programWeeks(model.weeks)} sub={model.status === "paused" ? copy.programPaused : undefined} />
         </div>
         <ProgramStones rows={model.weekRows} copy={copy} />
         <p className="skill" dir="auto">{model.skill}</p>
@@ -84,7 +83,7 @@ export function ForYouPrograms({ state, copy, composition, onOpen }: { state: Fo
       {startable.map((p) => (
         <section key={p.id} className={`vt fy-choice${composition === "desk" ? " x6" : ""}`} data-testid="foryou-program-choice" aria-labelledby={`fy-choice-${p.id}`}>
           <div className="vh">
-            <GlyphChip icon={p.id === "steady-nights" ? "bedtime" : "chat_bubble"} kind="step" />
+            <GlyphChip icon={p.id === "steady-nights" ? "bedtime" : "chat_bubble"} kind="plan" />
             <h3 className="h3" id={`fy-choice-${p.id}`}>{p.name}</h3>
             {pilotLabel && <span className="pilot">{pilotLabel}</span>}
           </div>

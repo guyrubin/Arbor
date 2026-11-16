@@ -45,7 +45,7 @@ import {
 import { continueText } from "../../lib/i18nElevation/continue";
 import { LEARN_CARDS, learnCardById } from "../../learn/learnCards";
 import { isLearnPilotCard, learnPilotText } from "../../learn/learnPilotRelease";
-import { focusDomainContributed } from "../../learn/todaysPick";
+import { focusDomainContributed, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 import { ContentActionBar, ContentWhyLine } from "../ui/ContentActionBar";
 import { TrustLink } from "../trust/TrustLink";
 import { MasterclassReader, loadDone as loadCourseDone } from "./Masterclasses";
@@ -294,14 +294,23 @@ export default function LearnLibrary() {
   // that meet the open family question first, then the next in rank order),
   // never repeating the two picked reads.
   const linked = pickShortReads(inScope.filter((c) => !featuredIds.has(c.id)), activeFamilyTopic?.title);
+  // V77: Linked from your week is the read For you picked today (the same
+  // todaysLearnPick call, the same signals), else the first short read.
+  const forYouPick = todaysLearnPick(LEARN_CARDS, { ...signals, topicText: activeFamilyTopic?.title ?? null }, {
+    childId: childProfile.id,
+    dayKey: pickDayKey(new Date()),
+    logs: behaviorLogs,
+  });
+  const linkedRead = forYouPick?.card ?? linked.reads[0] ?? null;
+  const linkedNote = forYouPick && !forYouPick.fromSaved && forYouPick.fromConcerns ? forYouPick.fromMoment : null;
   const areaGroups = LEARN_CATEGORIES
     .map((cat) => ({ cat, reads: gridAll.filter((c) => c.category === cat.id) }))
     .filter((g) => g.reads.length > 0);
   const stops: GuideStop[] = [
-    { id: "lib-picked", title: t("learn.pickedTitle", { name: libName }), sub: t("learn.count", { n: featured.length }) },
-    { id: "lib-linked", title: copy.libGuideLinked, sub: copy.libGuideLinkedSub(linked.reads.length) },
-    { id: "lib-areas", title: copy.libGuideAreas, sub: copy.libGuideAreasSub(LEARN_CATEGORIES.length) },
-    { id: "lib-browse", title: copy.libGuideBrowse, sub: copy.libGuideBrowseSub(inScope.length) },
+    { id: "lib-picked", title: t("learn.pickedTitle", { name: libName }), sub: copy.libGuidePickedSub },
+    { id: "lib-linked", title: copy.libGuideLinked, sub: copy.libGuideLinkedSub },
+    { id: "lib-areas", title: copy.libGuideAreas, sub: copy.libGuideAreasSub },
+    { id: "lib-browse", title: copy.libGuideBrowse, sub: copy.libGuideBrowseSub },
   ];
   // Honest why-line: claim only the signals that actually contributed.
   const pickedWhy = (() => {
@@ -438,17 +447,22 @@ export default function LearnLibrary() {
   // 2 · Linked from your week, and what the parent saved.
   const linkedReads = (
     <>
-      {linked.reads.map((c) => (
-        <button key={c.id} type="button" className="crs fy-crs lib-linked" data-testid="learn-linked-read" onClick={() => openCard(c.id)}>
-          <AreaForm art={DOMAIN_ART[readArea(c.category)]} width={60} ratio={0.66} zoom={1.22} />
-          <span className="nm" dir="auto">
-            {pick(he, c.title)}
-            <small>{pick(he, learnCategoryById(c.category).label)} · {t("learn.minutes", { n: c.minutes })}</small>
-            {linked.matched.has(c.id) && <span className="from">{t("elev.learnCare.shortReads.matched")}</span>}
+      {linkedRead && (
+        <button key={linkedRead.id} type="button" className="rdc lib-rdc lib-linked" data-testid="learn-linked-read" onClick={() => openCard(linkedRead.id)}>
+          <AreaForm art={DOMAIN_ART[readArea(linkedRead.category)]} width={120} ratio={0.57} zoom={1.13} />
+          <span className="meta">
+            <span className="lib-on">{forYouPick ? copy.libOnForYou : pick(he, learnCategoryById(linkedRead.category).label)}</span>
+            <span className="line" style={{ gap: 4 }}><Icon name="schedule" size={15} />{t("learn.minutes", { n: linkedRead.minutes })}</span>
           </span>
-          <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+          <span className="ttl" dir="auto">{pick(he, linkedRead.title)}</span>
+          {linkedNote ? (
+            <span className="from" dir="auto">{copy.libFromNote(new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).format(linkedNote.at))}</span>
+          ) : !forYouPick && linked.matched.has(linkedRead.id) ? (
+            <span className="from">{t("elev.learnCare.shortReads.matched")}</span>
+          ) : null}
+          <span className="go"><span className="line" style={{ gap: 4 }}>{t("learn.readCard")}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" /></span></span>
         </button>
-      ))}
+      )}
       <div className="crs lib-savedcard">
         <span className="gi" aria-hidden="true"><Icon name="bookmark" size={16} /></span>
         <span className="nm">
@@ -534,7 +548,7 @@ export default function LearnLibrary() {
       className="ghostb lib-more"
     >
       <Icon name={showAllShelf ? "expand_less" : "expand_more"} size={16} />
-      {showAllShelf ? copy.libByArea : copy.libAllReads(inScope.length)}
+      {showAllShelf ? copy.libByArea : copy.libAllReads}
     </button>
   );
 
@@ -598,7 +612,7 @@ export default function LearnLibrary() {
             <RouteSection id="lib-picked" n={1} on>
               <Row12>
                 {pickedStage}
-                <SideRail id="lib-linked" n={2} title={copy.libGuideLinked} sub={copy.libGuideLinkedSub(linked.reads.length)} titleId="lib-linked-title" className="x4">
+                <SideRail id="lib-linked" n={2} title={copy.libGuideLinked} titleId="lib-linked-title" className="x4">
                   <div className="stack fy-col" data-testid="learn-linked" style={{ gap: 10 }}>{linkedReads}</div>
                 </SideRail>
               </Row12>
@@ -608,7 +622,7 @@ export default function LearnLibrary() {
               <RouteSection id="lib-picked" n={1} on>{pickedStage}</RouteSection>
               <RouteSection id="lib-linked" n={2} stopTop={4} aria-labelledby="lib-linked-title">
                 <div className="stack fy-col" data-testid="learn-linked" style={{ gap: 10 }}>
-                  <RouteHead id="lib-linked-title" title={copy.libGuideLinked} sub={copy.libGuideLinkedSub(linked.reads.length)} />
+                  <RouteHead id="lib-linked-title" title={copy.libGuideLinked} sub={copy.libGuideLinkedSub} />
                   {linkedReads}
                 </div>
               </RouteSection>
@@ -616,12 +630,12 @@ export default function LearnLibrary() {
           )}
           <RouteSection id="lib-areas" n={3} stopTop={desk ? 0 : 4} aria-labelledby="lib-areas-title">
             <div className="stack fy-col" style={{ gap: 12 }}>
-              <RouteHead id="lib-areas-title" title={copy.libGuideAreas} sub={copy.libGuideAreasSub(LEARN_CATEGORIES.length)} />
+              <RouteHead id="lib-areas-title" title={copy.libGuideAreas} sub={copy.libGuideAreasSub} />
               {areaTiles}
             </div>
           </RouteSection>
           <RouteSection id="lib-browse" n={4} stopTop={desk ? 0 : 4} aria-labelledby="lib-browse-title">
-            {desk && <RouteHead id="lib-browse-title" title={t("learn.allReads")} sub={copy.libGuideBrowseSub(inScope.length)} link={shelfToggle} />}
+            {desk && <RouteHead id="lib-browse-title" title={t("learn.allReads")} sub={copy.libGuideBrowseSub} link={shelfToggle} />}
             {shelf}
           </RouteSection>
         </Route>
@@ -813,7 +827,7 @@ function LearnReader({
     >
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm font-bold min-h-[44px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-1.5 text-sm font-bold min-h-[44px] rounded-[10px] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
         style={{ color: "var(--arbor-muted)" }}
       >
         <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />
@@ -831,7 +845,7 @@ function LearnReader({
       >
         <div className="flex items-center gap-3 mb-4">
           <span
-            className="inline-flex items-center justify-center rounded-2xl flex-shrink-0"
+            className="inline-flex items-center justify-center rounded-[18px] flex-shrink-0"
             style={{ background: "var(--arbor-paper-elevated)", color: tone.ink, width: 52, height: 52, boxShadow: "var(--shadow-xs)" }}
           >
             <Icon name={cat.msIcon} size={26} />
@@ -865,12 +879,12 @@ function LearnReader({
         >
           {pick(he, card.title)}
         </h2>
-        <p className="text-[13.5px] mt-2 leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+        <p className="text-[13px] mt-2 leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
           {pick(he, card.hook)}
         </p>
         {isLearnPilotCard(card.id) && (
           <p
-            className="mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed"
+            className="mt-3 rounded-[14px] px-3 py-2 text-xs leading-relaxed"
             dir="auto"
             data-testid="learn-pilot-note"
             style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink-soft)" }}
@@ -993,7 +1007,7 @@ function LearnReader({
         <button
           onClick={onAddToday}
           disabled={todayTaken}
-          className="mt-3 inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 disabled:opacity-70"
+          className="mt-3 inline-flex items-center gap-1.5 font-bold text-[13px] rounded-[14px] px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 disabled:opacity-70"
           style={{
             background: "var(--arbor-paper-elevated)",
             color: tone.ink,
@@ -1072,7 +1086,7 @@ function EmptyState({
         </figure>
       ) : (
         <span
-          className="inline-flex items-center justify-center rounded-2xl w-12 h-12"
+          className="inline-flex items-center justify-center rounded-[18px] w-12 h-12"
           style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
         >
           <Icon name={icon} size={24} />
@@ -1084,7 +1098,7 @@ function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-xl px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
+          className="inline-flex items-center gap-1.5 font-bold text-[13px] rounded-[14px] px-4 py-2.5 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
           style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-clay-deep)", border: "1px solid var(--arbor-clay-border)" }}
         >
           {action.label}

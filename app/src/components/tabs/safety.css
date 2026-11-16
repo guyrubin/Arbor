@@ -2,7 +2,10 @@
    the display face at the board's size; production's cards, paths and numbers
    are unchanged. */
 .ds .safety-head { display: flex; flex-direction: column; gap: 4px; }
-.ds .safety-head .hero { font-size: 46px; line-height: 1.05; margin: 0; }
-.ds-phone .safety-head .hero { font-size: 32px; }
+.ds .safety-head .hero { font-size: 32px; line-height: 1.1; margin: 0; }
+.ds-phone .safety-head .hero { font-size: 24px; }
 .ds .safety-sub { margin: 0; font-size: 17px; color: var(--ink-soft); }
 .ds [data-testid="safety-crisis-script"] { font-size: 17px; }
+/* V77: one kind palette. The section badges (shared IconBadge, inline pastel)
+   take the sapphire tile every Safety board uses; radius on the 10/14/18 scale. */
+.ds.safety-page .inline-flex.rounded-2xl.flex-shrink-0 { background: var(--tint-2) !important; color: var(--sapphire-deep) !important; border-radius: 14px; }
