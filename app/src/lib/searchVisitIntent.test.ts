@@ -1,4 +1,7 @@
-/** B-SHELL-37: visits stay findable through the current destinations, not a new Help route. */
+/** B-SHELL-37: visits stay findable through the current destinations, not a new Help route.
+ * v10 (design system v10.1): "Visits" is the name of Care's first pill
+ * (#/consult), so the visit words open it; Appointments is a view inside Visits
+ * and keeps its own name ("appointments" finds it by title). */
 import { describe, expect, it } from "vitest";
 import { getSearchIndex, normalizeSearchText, searchCatalog } from "./searchIndex";
 import { placeForTab } from "./companionPlaces";
@@ -26,8 +29,8 @@ function priorIds(query: string, limit = 1000): string[] {
 }
 
 const intents = [
-  ["visit", "appointments"], ["visits", "appointments"], ["  VISIT  ", "appointments"],
-  ["ביקור", "appointments"], ["בִּיקוּר", "appointments"], ["ביקורים", "appointments"], ["בִּיקוּרִים", "appointments"], ["ביקורימ", "appointments"],
+  ["visit", "consult"], ["visits", "consult"], ["  VISIT  ", "consult"],
+  ["ביקור", "consult"], ["בִּיקוּר", "consult"], ["ביקורים", "consult"], ["בִּיקוּרִים", "consult"], ["ביקורימ", "consult"],
   [translate("en", "elev.consult.h1"), "consult"], [translate("he", "elev.consult.h1"), "consult"],
   ["  PRÉPARE FOR A VISIT  ", "consult"], ["מִתְכּוֹנְנִים לַפְּגִישָׁה", "consult"],
 ] as const;
@@ -38,7 +41,8 @@ describe("B-SHELL-37 · explicit visit intent in the accepted three-place archit
     const destination = getSearchIndex().find(row => row.id === `route:${tab}`)!;
     expect(destination).toBeDefined();
     expect(result[0]).toBe(destination);
-    expect(result[0].title).toEqual({ en: translate("en", `nav.tab.${tab}`), he: translate("he", `nav.tab.${tab}`) });
+    // The row is shown by the Visits pill's own name (one name per thing).
+    expect(result[0].title).toEqual({ en: translate("en", "nav.pill.visits"), he: translate("he", "nav.pill.visits") });
     const place = placeForTab(tab);
     expect(result[0].sub).toEqual({ en: place.en, he: place.he });
     expect(resolveRouteId(`#/${result[0].tab}`)).toBe(tab);

@@ -2677,7 +2677,7 @@ export const en: Dict = {
   // brief · Trusted sharing · Appointments). nav.tab.handoff names #/handoff,
   // the care summary builder, in the row and in search; the short pill names
   // leave nav.tab.safety / school-brief / sharing as the long names.
-  "nav.tab.handoff": "Care summary",
+  "nav.tab.handoff": "Visit summary",
   "nav.pill.safety": "Safety",
   "nav.pill.school-brief": "School brief",
   "nav.pill.sharing": "Trusted sharing",
@@ -5217,7 +5217,7 @@ export const he: Dict = {
   "nav.pill.profile.named": "על {name}",
   "nav.pills.aria": "{place}: אזורים",
   // v3 FEAT-09 — שורת הטיפול המלאה: התייעצות · בטיחות · סיכום לצוות המטפל · תקציר לגן/בית הספר · שיתוף מהימן · פגישות.
-  "nav.tab.handoff": "סיכום לצוות המטפל",
+  "nav.tab.handoff": "סיכום לביקור",
   "nav.pill.safety": "בטיחות",
   "nav.pill.school-brief": "תקציר לגן/בית הספר",
   "nav.pill.sharing": "שיתוף מהימן",

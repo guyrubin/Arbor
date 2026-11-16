@@ -260,7 +260,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "sharing", label: "Trusted Sharing", msIcon: "share" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },
       { tab: "safety", label: "Safety & Escalation", msIcon: "gpp_maybe" },
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
     ],
     // Hub (Consult) + Safety (the load-bearing escalation surface). School Brief,
     // Trusted Sharing and Appointments are the hub's contextual tools (folded out
@@ -276,7 +276,7 @@ export const SECTIONS: NavSection[] = [
       { tab: "safety", label: "Safety", msIcon: "gpp_maybe", labelKey: "nav.pill.safety" },
     ],
     tools: [
-      { tab: "handoff", label: "Care summary", msIcon: "description" },
+      { tab: "handoff", label: "Visit summary", msIcon: "description" },
       { tab: "school-brief", label: "School brief", msIcon: "backpack", labelKey: "nav.pill.school-brief" },
       { tab: "sharing", label: "Trusted sharing", msIcon: "share", labelKey: "nav.pill.sharing" },
       { tab: "appointments", label: "Appointments", msIcon: "calendar_month" },

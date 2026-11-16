@@ -98,14 +98,14 @@ describe("navigation IA", () => {
     const ORDER = ["consult", "safety", "handoff", "school-brief", "sharing", "appointments"];
     const labelOf = (lang: "en" | "he", it: (typeof row)[number]) => translate(lang, it.labelKey ?? "nav.tab." + it.tab);
 
-    it("is Consult · Safety · Care summary · School brief · Trusted sharing · Appointments", () => {
+    it("is Consult · Safety · Visit summary · School brief · Trusted sharing · Appointments", () => {
       expect(row.map((i) => i.tab)).toEqual(ORDER);
       expect(row[1].tab).toBe("safety");
-      expect(row.map((i) => labelOf("en", i))).toEqual(["Consult", "Safety", "Care summary", "School brief", "Trusted sharing", "Appointments"]);
+      expect(row.map((i) => labelOf("en", i))).toEqual(["Consult", "Safety", "Visit summary", "School brief", "Trusted sharing", "Appointments"]);
     });
 
     it("reads the same order in Hebrew, every label Hebrew with no Latin word", () => {
-      expect(row.map((i) => labelOf("he", i))).toEqual(["התייעצות", "בטיחות", "סיכום לצוות המטפל", "תקציר לגן/בית הספר", "שיתוף מהימן", "פגישות"]);
+      expect(row.map((i) => labelOf("he", i))).toEqual(["התייעצות", "בטיחות", "סיכום לביקור", "תקציר לגן/בית הספר", "שיתוף מהימן", "פגישות"]);
       for (const it of row) expect(/[A-Za-z]/.test(labelOf("he", it)), it.tab).toBe(false);
     });
 

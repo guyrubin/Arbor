@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { placeForTab } from "./companionPlaces";
 import { translate } from "./i18n";
-import { SECTIONS } from "./navigation";
+import { HOME_PILLS, SECTIONS } from "./navigation";
 import { HASH_ALIASES, RETIRED_ROUTES, ROUTE_IDS, SUB_ROUTES, resolveRouteId, type ActiveTab } from "./routes";
 import { getSearchIndex, normalizeSearchText, UNSEARCHABLE_ROUTES, type LocalizedPair, type SearchEntry } from "./searchIndex";
 import { LEARN_CARDS } from "../learn/learnCards";
@@ -49,6 +49,22 @@ function legacyRouteRows(): SearchEntry[] {
   return rows;
 }
 
+/** v10 one name per thing (design system v10.1): a route that is a pill is
+ * shown by its pill's name (the home pill by its place), and its legacy title
+ * stays a title alias, so every legacy title still matches exactly. */
+function v10PillTitle(tab: ActiveTab): LocalizedPair | null {
+  for (const pills of Object.values(HOME_PILLS)) {
+    const pill = pills.find((p) => p.tab === tab);
+    if (pill) return pill.labelKey ? label(pill.labelKey) : pair(placeForTab(tab).en, placeForTab(tab).he);
+  }
+  return null;
+}
+function withV10Naming(row: SearchEntry): SearchEntry {
+  const title = v10PillTitle(row.tab);
+  if (!title) return row;
+  return { ...row, title, normTitles: [...new Set([title.en, title.he, row.title.en, row.title.he].map(normalizeSearchText))].filter(Boolean) };
+}
+
 const routes = getSearchIndex().filter((row) => row.kind === "route");
 const byTab = new Map(routes.map((row) => [row.tab, row]));
 const legacy = legacyRouteRows();
@@ -65,9 +81,18 @@ describe("B-SHELL-37 · current-place search subtitles", () => {
     for (const row of routes) expect(row.sub[lang], row.id).toBe(placeForTab(row.tab)[lang]);
   });
 
-  it("keeps every route id, destination, order, title and searchable field unchanged", () => {
-    expect(routes.map(withoutSubtitle)).toEqual(legacy.map(withoutSubtitle));
+  it("keeps every route id, destination, order and searchable field; pill routes show their pill's name", () => {
+    expect(routes.map(withoutSubtitle)).toEqual(legacy.map(withV10Naming).map(withoutSubtitle));
     expect(UNSEARCHABLE_ROUTES).toEqual(excluded);
+    // Every legacy title still matches exactly: matching only gains names.
+    for (const old of legacy) for (const t of old.normTitles) expect(byTab.get(old.tab)!.normTitles, old.id).toContain(t);
+  });
+
+  it("NEGATIVE CONTROL: without the v10 naming the Visits pill would still read Consult", () => {
+    const consult = legacy.find((row) => row.tab === "consult")!;
+    expect(consult.title.en).toBe(translate("en", "nav.tab.consult"));
+    expect(byTab.get("consult")!.title).toEqual(label("nav.pill.visits"));
+    expect(byTab.get("consult")!.title.en).not.toBe(consult.title.en);
   });
 
   const hashGroups: [string, [string, ActiveTab][]][] = [
