@@ -292,8 +292,9 @@ export default function SmartRemindersPanel() {
 
 // ── Hour picker (a real <select>, drawn as the board's "Start: 9pm") ─────────
 function HourSelect({ id, label, value, uiLang, onChange }: { id: string; label: string; value: number; uiLang: "en" | "he"; onChange: (h: number) => void }) {
+  // The select covers the whole 44 px field (transparent), so the drawn "Start: 9pm" is the touch target.
   return <label className="nx-sel grow" htmlFor={id}>
-    <span><small>{label}</small>
+    <span><small>{label}</small><span className="nx-sel-v" aria-hidden="true">{formatHour(value, uiLang)}</span>
       <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={id} aria-label={`${label}: ${formatHour(value, uiLang)}`}>
         {HOUR_OPTIONS.map((h) => <option key={h} value={h}>{formatHour(h, uiLang)}</option>)}
       </select>

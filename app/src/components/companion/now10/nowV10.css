@@ -94,6 +94,7 @@
 .ds.now-v10 { display: flex; flex-direction: column; gap: 18px; padding-inline-start: 34px; min-width: 0; }
 .ds.now-v10.ds-phone { gap: 12px; padding-inline-start: 24px; }
 .ds.now-v10.ds-phone > .guide.mini { margin-inline-start: -24px; }
+.ds.now-v10 .guide.mini .gstop { min-height: 44px; }
 .ds.now-v10 .guide { flex-wrap: nowrap; min-width: 0; }
 .ds.now-v10.ds-desk .guide .gline { flex: 1; min-width: 12px; height: 2px; background: repeating-linear-gradient(90deg, var(--pencil) 0 4px, transparent 4px 9px); }
 
@@ -194,8 +195,8 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 /* The rail stacks its steps from the top; a notice row folds its answers under its name in the narrow column. */
 .ds .nw-rail .nw-seq .nw-step { flex: none; }
 .ds .nw-rail .now-notice-item-main, .ds-phone .now-notice-item-main { flex-wrap: wrap; }
-.ds .nw-rail .now-notice-item-name { flex: 1 1 140px; }
-.ds .nw-rail .now-notice-answers { flex: 1 1 100%; justify-content: flex-start; padding-inline-start: 48px; }
+.ds .nw-rail .now-notice-item-name, .ds-phone .nw-step .now-notice-item-name { flex: 1 1 140px; }
+.ds .nw-rail .now-notice-answers, .ds-phone .nw-step .now-notice-answers { flex: 1 1 100%; justify-content: flex-start; padding-inline-start: 48px; }
 
 /* The question chip: its line wraps; the empty state is a real two-line button. */
 .ds .nw-qc { max-width: 100%; box-sizing: border-box; }
@@ -214,3 +215,5 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 .ds .nw-plan-steps { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.35; color: var(--ink); }
 .ds .nw-plan-steps li { display: flex; gap: 6px; }
 .ds .nw-plan-steps .num { color: var(--ink-soft); font-weight: 600 !important; font-variant-numeric: lining-nums; }
+.ds-phone .nw-stage-head h1.kicker { font-size: 12px; letter-spacing: .06em; }
+.ds .nw-arc-legend > .ds-link { margin-inline-start: auto; }

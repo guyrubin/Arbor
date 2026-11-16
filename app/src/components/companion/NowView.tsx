@@ -565,10 +565,12 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const n = (stopId: string) => stops.findIndex(s => s.id === stopId) + 1;
 
   // The stage: the kicker is the screen's one h1, then the arc with the lead's face, the lead, its why, the question.
+  // One door to Your day at a glance: beside the head on desktop, at the stage's foot on the phone.
+  const dayGlance = <MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>;
   const stageInner = <>
     <div className="line between nw-stage-head">
       <span className="gsec"><h1 className="kicker" data-testid="now-kicker">{copy.title(name)}</h1><StartHere>{v10.startHere}</StartHere></span>
-      <MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>
+      {desk && dayGlance}
       <p className="nw-stage-sub">{copy.subtitle}</p>
     </div>
     <NowStageContext.Provider value={stage}>{leadChain}</NowStageContext.Provider>
@@ -577,6 +579,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     <div className="nw-meta nw-arc-legend">
       {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" /><span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span></span>}
       <span><i className="nw-qh" aria-hidden="true" />{v10.quietFrom(quietFrom)}</span>
+      {!desk && dayGlance}
     </div>
   </>;
   const stageScene = <Scene field="now" className={desk ? "x8 nw-stage" : "nw-stage"}
