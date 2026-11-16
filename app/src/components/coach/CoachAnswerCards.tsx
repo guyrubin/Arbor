@@ -583,6 +583,8 @@ export default function CoachAnswerCards({
 
       {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
+          {/* v10 (COPY-RULES): Arbor wrote this text — its one voice label. */}
+          <span className="coach-report__draft"><Icon name="edit" size={14} />{t("coach.report.draftLabel")}</span>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
       )}
