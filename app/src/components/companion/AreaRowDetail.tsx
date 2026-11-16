@@ -51,6 +51,13 @@ const WHY_KEYS: Readonly<Record<DomainId, string>> = {
   family: "companion.devMap.why.family",
 };
 
+/** The skills an open area lists to mark (its current band and the parent's own rows). Pure. */
+export function areaRowIds(milestones: readonly Milestone[], domain: DomainId, currentBandMonths: number): Set<string> {
+  const byShelf = groupMilestonesByShelf([...milestones]);
+  return new Set(shelvesOfDomain(domain).flatMap((shelf) =>
+    shelfBands(byShelf[shelf], currentBandMonths).filter((b) => b.current || b.months === -1).flatMap((b) => b.items.map((m) => m.id))));
+}
+
 export interface AreaWatch {
   milestoneId: string;
   /** The saved re-check date from the Development Check, if any. */
@@ -106,20 +113,24 @@ export default function AreaRowDetail({
   // write keeps the parent's words and says so.
   const [adding, setAdding] = useState<"idle" | "pending" | "failed">("idle");
   const byShelf = useMemo(() => groupMilestonesByShelf(milestones), [milestones]);
+  const isSeen = (m: Milestone) => m.observationStatus === "yes" || (!m.observationStatus && m.checked === true);
   const shelves = shelvesOfDomain(domain);
   const watched = watch ? shelves.flatMap((shelf) => byShelf[shelf]).find((m) => m.id === watch.milestoneId) ?? null : null;
   const sections = shelves.map((shelf) => {
     const bands = shelfBands(byShelf[shelf], currentBandMonths);
     const pick = (keep: (b: (typeof bands)[number]) => boolean) =>
       bands.filter(keep).flatMap((b) => b.items).filter((m) => m.id !== watched?.id);
+    // A skill already marked Seen it is on the area's dated line above; it is
+    // not asked again here but stays one tap away under Your earlier answers.
+    const seenNow = onOpenObservation ? pick((b) => b.current).filter(isSeen) : [];
     return {
       shelf,
-      now: pick((b) => b.current),
+      now: pick((b) => b.current).filter((m) => !seenNow.includes(m)),
       own: pick((b) => b.months === -1),
       next: pick((b) => b.later),
       // Earlier answers stay findable without re-asking every earlier skill.
-      earlier: pick((b) => !b.current && !b.later && b.months !== -1)
-        .filter((m) => !!m.observationStatus || m.checked === true),
+      earlier: [...seenNow, ...pick((b) => !b.current && !b.later && b.months !== -1)
+        .filter((m) => !!m.observationStatus || m.checked === true)],
     };
   });
   const title = (m: Milestone) => milestoneText(m, "title", t, { gender });

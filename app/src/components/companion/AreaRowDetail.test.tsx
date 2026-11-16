@@ -260,6 +260,18 @@ describe("v3 F-CHILD-1 — AreaRowDetail", () => {
     expect(onOpenObservation).toHaveBeenCalledWith(NOW[0].id);
   });
 
+  it("V77: a skill already Seen is not asked again (it is on the dated line); it stays one tap away under earlier answers", () => {
+    const [a] = NOW;
+    const onOpenObservation = vi.fn();
+    const milestones = catalogue().map((m) => m.id === a.id ? { ...m, checked: true, observationStatus: "yes" as const } : m);
+    const html = render({ milestones, onOpenObservation });
+    expect(ids(html)).toEqual(NOW.slice(1).map((m) => m.id));
+    expect(html.match(new RegExp(esc(a.title), "g"))).toHaveLength(1);
+    expect(html.slice(html.indexOf('data-testid="area-detail-earlier-answers"'))).toContain(esc(a.title));
+    // Negative control: with no door to open it, the Seen row stays where it can be changed.
+    expect(ids(render({ milestones }))).toEqual(NOW.map((m) => m.id));
+  });
+
   it("the three doors call their callbacks", () => {
     const onCheck = vi.fn(), onExplore = vi.fn(), onOpenMoments = vi.fn();
     render({ onCheck, onExplore, onOpenMoments });

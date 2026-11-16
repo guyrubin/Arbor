@@ -19,10 +19,11 @@ import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { closeNoticeDetail, openNoticeDetail, readNoticeTarget } from "../../lib/noticeNavigation";
 import { celebrateFirstOnce } from "../milestones/celebrateFirst";
 import type { Composition } from "../../design/useComposition";
-import AreaRowDetail from "./AreaRowDetail";
+import AreaRowDetail, { areaRowIds } from "./AreaRowDetail";
+import { onAreaLine } from "./AreaTimeline";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
 import DevelopmentMap from "./DevelopmentMap";
-import NoticeNext, { NoticePickCard, useNoticePicks } from "./NoticeNext";
+import NoticeNext, { splitPicks, NoticePickCard, useNoticePicks } from "./NoticeNext";
 import NoticeObjectDetail from "./NoticeObjectDetail";
 import { CUSTOM_MILESTONE_DOMAIN, areaFromQuery, watchDomain } from "./milestonesModel";
 
@@ -171,7 +172,10 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
       lastCheckAt={lastCheckAt}
     />
   );
-  const moment = last[openDomain];
+  // The newest moment is quoted unless it is only a Seen it already drawn on
+  // the area's dated line (the same skill once, not twice).
+  const lastSeen = last[openDomain];
+  const moment = lastSeen && !onAreaLine(lastSeen, milestones, openDomain, Date.now()) ? lastSeen : undefined;
   const area = (
     <>
       <AreaRowDetail
@@ -199,9 +203,11 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
       />}
     </>
   );
-  // Arbor's first pick is "Arbor suggests" (the rail); the rest are What to notice next.
+  // "Arbor suggests" (the rail) is Arbor's pick in the open area, else its
+  // first pick; What to notice next is the picks in the OTHER areas only.
   const notice = useNoticePicks(childProfile.id, milestones, comparisonMonths);
-  const [first, ...rest] = notice.picks;
+  const listed = useMemo(() => areaRowIds(milestones, openDomain, currentBandMonths), [milestones, openDomain, currentBandMonths]);
+  const { first, rest } = splitPicks(notice.picks, openDomain, listed);
   const suggest = first ? <NoticePickCard pick={first} gender={gender} suggested onAnswer={answer} onHold={notice.hold} /> : null;
   const next = <NoticeNext picks={rest} gender={gender} onAnswer={answer} onHold={notice.hold} />;
   return <>{children({ map, check, area, suggest, next, openDomain })}</>;

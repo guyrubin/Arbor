@@ -33,7 +33,7 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import DevelopmentMap from "./DevelopmentMap";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
-import AreaTimeline, { daysBetween, timelineCalendar } from "./AreaTimeline";
+import AreaTimeline, { daysBetween, onAreaLine, timelineCalendar } from "./AreaTimeline";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
@@ -269,6 +269,16 @@ describe("v10.1 — AreaTimeline, the open area's dated line (calendar-true)", (
     expect(empty).not.toContain("area-timeline-leaf");
     expect(empty).not.toContain("area-timeline-stats");
     expect(empty).not.toContain("ms-tl-cards");
+  });
+  it("a bare Seen it already on the line is not quoted again; a keepsake (the parent's words) still is", () => {
+    const ms = twoSeen();
+    const by = groupMilestonesByShelf(catalogue());
+    const entry = (type: "milestone" | "keepsake", id: string) => ({ id: "o1", at: "2026-06-10T10:00:00.000Z", domains: ["talking"], source: "parent_typed",
+      value: type === "milestone" ? { type, milestoneId: id, title: "x" } : { type, milestoneId: id, note: "x" } }) as unknown as Parameters<typeof onAreaLine>[0];
+    expect(onAreaLine(entry("milestone", by.words[0].id), ms, "talking", NOW)).toBe(true);
+    expect(onAreaLine(entry("keepsake", by.words[0].id), ms, "talking", NOW)).toBe(false);
+    // Negative control: a Seen it that is not on this area's line is still quoted.
+    expect(onAreaLine(entry("milestone", by.moving[0].id), ms, "talking", NOW)).toBe(false);
   });
   it("on a phone the same leaves are a dated list, each with the days since the one before", () => {
     const html = line({ composition: "phone", milestones: twoSeen() });

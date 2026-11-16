@@ -44,6 +44,18 @@ export function useNoticePicks(childId: string, milestones: readonly Milestone[]
   return { picks, hold };
 }
 
+/**
+ * Arbor suggests: the pick in the open area, else the first pick, and never a
+ * skill the open area already lists to mark (it would show twice). What to
+ * notice next: the picks in the other areas only (never the open one, which
+ * the page already shows). Pure.
+ */
+export function splitPicks(picks: readonly NoticePick[], openDomain: DomainId | null, listed: ReadonlySet<string> = new Set()): { first: NoticePick | undefined; rest: NoticePick[] } {
+  const own = picks.find((p) => p.domain === openDomain);
+  const first = own ? (listed.has(own.milestone.id) ? undefined : own) : picks[0];
+  return { first, rest: picks.filter((p) => p !== first && p.domain !== openDomain) };
+}
+
 export interface NoticePickCardProps {
   pick: NoticePick;
   gender?: string | null;

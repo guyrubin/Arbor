@@ -6,6 +6,7 @@ import type { DomainId } from "../../lib/domains/registry";
 import { milestoneText } from "../../lib/milestoneData";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
 import { shelvesOfDomain } from "../../lib/shelves/registry";
+import type { Observation } from "../../lib/observations";
 import type { Milestone } from "../../types";
 import { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
 import { milestonesV10Copy } from "./milestonesV10Copy";
@@ -52,6 +53,12 @@ export function areaLeaves(milestones: readonly Milestone[], domain: DomainId, n
     })
     .sort((a, b) => Date.parse(a.observationUpdatedAt!) - Date.parse(b.observationUpdatedAt!));
   return seen.slice(-MAX_LEAVES);
+}
+
+/** True when an entry is only a Seen it the area's dated line already draws. Pure. */
+export function onAreaLine(entry: Observation, milestones: readonly Milestone[], domain: DomainId, nowMs: number): boolean {
+  const v = entry.value;
+  return v.type === "milestone" && areaLeaves(milestones, domain, nowMs).some((m) => m.id === v.milestoneId);
 }
 
 /** Local midnight of a moment. */
