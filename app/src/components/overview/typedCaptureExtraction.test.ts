@@ -42,7 +42,8 @@ describe("AI-CAP-3 — the hard-moments launcher reaches the one typed extractio
   const extract = /const extractFromTyped = async[\s\S]*?\n  };/.exec(modal)?.[0] ?? "";
 
   it("the hub launches the sheet and owns no second form, extraction or draft setters", () => {
-    expect(behaviors).toContain('onText={() => openCaptureSheet({ mode: "text" })}');
+    // v10.1: one log button on the page; the dock carries voice and photo.
+    expect(behaviors).toContain('data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}');
     expect(behaviors).not.toMatch(/openFromBar|extractFromTyped|setNewLog|<form|handleAddLog/);
     expect(extract).toBeTruthy();
     expect(extract).toContain('setSource("ai-draft")');

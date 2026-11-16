@@ -276,7 +276,7 @@ describe("critic r1 — the journal's primary move is the capture tiles", async 
     // own three modules are the top level). F-CHILD-2 re-pin: #/timeline is
     // Moments (no Story wrapper, no density toggle handed down).
     expect(TIMELINE).toContain("<JournalTab primaryMoveProps={primaryMove} />");
-    expect(TIMELINE).toMatch(/moments \? \(\s*<MomentsBody primaryMoveProps=\{primaryMove\}/);
+    expect(TIMELINE).toMatch(/moments \? \(\s*<MomentsBody primaryMoveProps=\{primaryMove\} toolbarModule=\{toolbarModule\} viewModule=\{viewModule\} sectionModules=\{sectionModules\}/);
     expect(TIMELINE).not.toContain("timeline-stream");
     // P5-LOOP c2 r1: on ?view=all the stamp rides "All shelves", the page's FIRST item;
     // the tiles carry none (they follow the thread below lg)

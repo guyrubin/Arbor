@@ -31,13 +31,14 @@ describe("JournalTab v2 — the grid is the journal's top", () => {
 
 describe("the ONE stamp literal and the contract change together", () => {
   it("TimelineTab stamps open-shelf on #/journal; the contract says the same", () => {
-    // F-CHILD-2 re-pin: #/timeline is Moments, so the other branch of the one
-    // literal is capture-moment (Keep a moment), not the retired switch-density.
-    expect(strip(src("tabs/TimelineTab.tsx"))).toContain('{ "data-primary-move": moments ? "capture-moment" : "open-shelf" }');
-    expect(contractFor("timeline" as ActiveTab)!.primaryMove).toBe("capture-moment");
+    // F-CHILD-2 re-pin: #/timeline is Moments. v10.1 re-pin: capture lives in
+    // the shell's dock, so the other branch of the one literal is choosing a view.
+    expect(strip(src("tabs/TimelineTab.tsx"))).toContain('{ "data-primary-move": moments ? "choose-moments-view" : "open-shelf" }');
+    expect(contractFor("timeline" as ActiveTab)!.primaryMove).toBe("choose-moments-view");
     const c = contractFor("journal" as ActiveTab)!;
     expect(c.primaryMove).toBe("open-shelf");
-    expect(c.moduleBudget).toBe(3);
+    // v10.1: the shared leaf stamps Moments' five blocks (the journal renders three).
+    expect(c.moduleBudget).toBe(5);
     expect(c.job).toBe("See {name} shelf by shelf, and what to try next.");
     expect(c.threadWrite).toBe("behaviorLogs");
   });

@@ -54,6 +54,8 @@ export function navigationTargets(code: string): Set<string> {
     /setActiveTab\(\s*["']([a-z][a-z0-9-]*)["']/g,
     /\btab:\s*["']([a-z][a-z0-9-]*)["']\s*(?:as const)?/g,
     /\bonFollow=\{\(\) => setActiveTab\(["']([a-z][a-z0-9-]*)["']\)/g,
+    // goToRoute is navigation too (a route with its query, e.g. the journal's Moments door).
+    /\bgoToRoute\(\s*["']([a-z][a-z0-9-]*)["']/g,
   ]) {
     for (const m of src.matchAll(re)) out.add(m[1]);
   }
