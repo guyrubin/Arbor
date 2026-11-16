@@ -190,18 +190,10 @@ export default function Masterclasses() {
   // re-derived flag to `todaysLearnPick` (learn/todaysPick.ts).
   // B-SHELL-NEW-2j: the parent's own note only on the logs branch (saved outranks it).
   const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;
-  const pickMomentLead = (() => {
-    if (!pickMoment) return "";
-    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
-    const at0 = new Date(pickMoment.at); at0.setHours(0, 0, 0, 0);
-    const days = Math.round((day0.getTime() - at0.getTime()) / 86_400_000);
-    if (days <= 0) return t("elev.learnCare.pick.moment.today");
-    if (days === 1) return t("elev.learnCare.pick.moment.yesterday");
-    const locale = uiLang === "he" ? "he-IL" : "en-GB";
-    return days <= 6
-      ? t("elev.learnCare.pick.moment.weekday", { day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(pickMoment.at) })
-      : t("elev.learnCare.pick.moment.date", { day: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(pickMoment.at) });
-  })();
+  // V77: the parent's knot reads "You wrote · Fri 6 Nov" (the boards' day-first short date).
+  const pickMomentLead = pickMoment
+    ? copy.youWrote(new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }).format(pickMoment.at))
+    : "";
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
@@ -263,12 +255,13 @@ export default function Masterclasses() {
   const pickTitle = todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : nextCourse ? (he ? nextCourse.titleHe : nextCourse.title) : null;
   const pickArt = todaysRead ? DOMAIN_ART[readArea(todaysRead.card.category)] : nextCourse ? DOMAIN_ART[courseArea(nextCourse.id) ?? "family"] : null;
 
-  const stops: GuideStop[] = [
-    { id: "fy-today", title: copy.guideToday, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone },
-    { id: "fy-courses", title: copy.guideCourses, sub: copy.guideCoursesSub },
-    { id: "fy-programs", title: copy.guidePrograms, sub: program.model ? copy.guideProgramsSub(program.model.name) : copy.guideProgramsNone },
-    { id: "fy-more", title: copy.guideMore, sub: copy.guideMoreSub },
-  ];
+  // V77: the desk reads pick, courses (the rail), programs, more; the phone
+  // reads pick, programs, courses, more, with the boards' one-word stops.
+  const stopToday: GuideStop = { id: "fy-today", title: desk ? copy.guideToday : copy.stopPick, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone };
+  const stopCourses: GuideStop = { id: "fy-courses", title: desk ? copy.guideCourses : copy.stopCourses, sub: copy.guideCoursesSub };
+  const stopPrograms: GuideStop = { id: "fy-programs", title: desk ? copy.guidePrograms : copy.stopPrograms, sub: program.model ? copy.guideProgramsSub(program.model.name) : copy.guideProgramsNone };
+  const stopMore: GuideStop = { id: "fy-more", title: desk ? copy.guideMore : copy.stopMore, sub: copy.guideMoreSub };
+  const stops: GuideStop[] = desk ? [stopToday, stopCourses, stopPrograms, stopMore] : [stopToday, stopPrograms, stopCourses, stopMore];
 
   // ── 1 · For today: the pick, tied to what the parent wrote ──────────────
   const pickScene = (
@@ -284,7 +277,7 @@ export default function Masterclasses() {
       <div className="line between" style={{ flexWrap: "wrap", gap: 8 }}>
         <span className="gsec">
           {pickMinutes != null && (
-            <span className="kicker" data-testid="academy-pick-minutes">{todaysRead ? copy.pickKicker(pickMinutes) : copy.pickKickerCourse(pickMinutes)}</span>
+            <span className="kicker" data-testid="academy-pick-minutes">{todaysRead ? (desk ? copy.pickKicker(pickMinutes) : copy.pickKickerShort(pickMinutes)) : copy.pickKickerCourse(pickMinutes)}</span>
           )}
           <StartHere>{copy.startHere}</StartHere>
         </span>
@@ -299,7 +292,7 @@ export default function Masterclasses() {
           {desk && todaysRead && <p className="fy-pick-hook" dir="auto">{he ? todaysRead.card.hook.he : todaysRead.card.hook.en}</p>}
           {!pickTitle && <p className="fy-pick-hook">{t("elev.hero.academy.sub")}</p>}
         </div>
-        {pickArt && <AreaForm art={pickArt} width={desk ? 210 : 112} ratio={0.57} zoom={1.13} />}
+        {pickArt && <AreaForm art={pickArt} width={desk ? 210 : 116} ratio={0.57} zoom={1.13} />}
       </div>
       {knots.length > 0 && (
         <div className="thread fy-thread" style={{ gridTemplateColumns: threadCols }}>
@@ -399,11 +392,12 @@ export default function Masterclasses() {
               </span>
             </span>
             <span className="go">
-              {isCardDone ? <><Icon name="check" size={15} />{t("master.done")}</> : <>{t("master.read")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>}
+              {isCardDone ? <><Icon name="check" size={15} />{t("master.done")}</> : <><span className="fy-go-t">{t("master.read")}</span><Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>}
             </span>
           </button>
         );
       })}
+      {!desk && <p className="small fy-legend">{copy.pipsLegend}</p>}
       {courseList.length > RAIL_COURSES && (
         <MoreLink onClick={() => setAllCourses((v) => !v)}>{allCourses ? copy.fewerCourses : copy.allCourses(courseList.length)}</MoreLink>
       )}
@@ -428,7 +422,7 @@ export default function Masterclasses() {
   // title on a desk; on a phone the block brings its numbered heading.
   const coursesBlock = (
     <div data-module="academy-catalogue" data-testid="academy-courses" className="stack fy-col" style={{ gap: 12 }}>
-      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.guideCoursesSub} />}
+      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.coursesForAgeShort(catalog.length, firstName)} />}
       {!desk && ageSwitch && <div className="fy-switchrow">{ageSwitch}</div>}
       {coursesBody}
     </div>
@@ -481,6 +475,16 @@ export default function Masterclasses() {
     </>
   );
 
+  // Your programs: section 3 on a desk, section 2 on a phone (the boards' order).
+  const programsSection = (
+    <RouteSection id="fy-programs" n={desk ? 3 : 2} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
+      <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
+        <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? (desk ? copy.programsRunningSub : undefined) : t("elev.program.none.title")} />
+        <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
+      </div>
+    </RouteSection>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px]">
       <DsRoot composition={composition} className="stack fy-col fy-page" style={{ gap: desk ? 22 : 14 }} data-testid="foryou-page">
@@ -506,18 +510,13 @@ export default function Masterclasses() {
               <RouteSection id="fy-today" n={1} on>
                 {pickScene}
               </RouteSection>
-              <RouteSection id="fy-courses" n={2} stopTop={4} aria-labelledby="fy-courses-title">
+              {programsSection}
+              <RouteSection id="fy-courses" n={3} stopTop={4} aria-labelledby="fy-courses-title">
                 {coursesBlock}
               </RouteSection>
             </>
           )}
-
-          <RouteSection id="fy-programs" n={3} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
-            <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
-              <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? (desk ? copy.programsRunningSub : undefined) : t("elev.program.none.title")} />
-              <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
-            </div>
-          </RouteSection>
+          {desk && programsSection}
 
           <RouteSection id="fy-more" n={4} stopTop={desk ? 0 : 4} aria-labelledby="fy-more-title">
             <div data-module="academy-more" data-module-demoted className="stack fy-col" style={{ gap: 12 }}>

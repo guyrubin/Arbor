@@ -161,15 +161,23 @@ describe("For you · the composition", () => {
         harness.composition = composition;
         const html = render();
         const copy = FOR_YOU_COPY[locale];
-        const ids = ["fy-today", "fy-courses", "fy-programs", "fy-more"];
+        // V77: the desk reads pick, courses, programs, more; the phone reads
+        // pick, programs, courses, more (N-ForYou-M), with one-word stops.
+        const ids = composition === "desk" ? ["fy-today", "fy-courses", "fy-programs", "fy-more"] : ["fy-today", "fy-programs", "fy-courses", "fy-more"];
         let last = -1;
+        let lastHref = -1;
         for (const id of ids) {
-          expect(html).toContain(`href="#${id}"`);
+          const href = html.indexOf(`href="#${id}"`);
+          expect(href, `stop ${id}`).toBeGreaterThan(lastHref);
+          lastHref = href;
           const at = html.indexOf(`id="${id}"`);
           expect(at, id).toBeGreaterThan(last);
           last = at;
         }
-        for (const name of [copy.guideToday, copy.guideCourses, copy.guidePrograms, copy.guideMore]) expect(html).toContain(esc(name));
+        const names = composition === "desk"
+          ? [copy.guideToday, copy.guideCourses, copy.guidePrograms, copy.guideMore]
+          : [copy.stopPick, copy.stopPrograms, copy.stopCourses, copy.stopMore];
+        for (const name of names) expect(html).toContain(esc(name));
       });
     }
 

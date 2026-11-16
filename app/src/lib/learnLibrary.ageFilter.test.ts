@@ -197,7 +197,8 @@ describe("R12 · the default shelf is short, and every control says what it does
     expect(LEARN).toContain("{showAllShelf ? copy.libByArea : copy.libAllReads}");
     // NEGATIVE CONTROL: the v10.1 counted label is caught.
     expect("{showAllShelf ? copy.libByArea : copy.libAllReads(inScope.length)}").not.toContain("{showAllShelf ? copy.libByArea : copy.libAllReads}");
-    expect(LEARN).toContain("<MoreLink onClick={() => setFilter(cat.id)}>{copy.libAllInArea}</MoreLink>");
+    // V77: the desk says "All in this area"; the phone's area head says "All".
+    expect(LEARN).toContain("<MoreLink onClick={() => setFilter(cat.id)}>{desk ? copy.libAllInArea : t(\"learn.all\")}</MoreLink>");
     // Opened, the shelf is the whole age-fit list (never capped).
     expect(LEARN).toContain("browsing && !showAllShelf ? browseByArea : flatGrid");
   });

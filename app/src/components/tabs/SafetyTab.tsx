@@ -7,7 +7,6 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { track } from "../../lib/analytics";
-import { fmtDay } from "../../lib/formatDate";
 import {
   FIND_A_HELPLINE_URL,
   HELPLINE_DIRECTORY,
@@ -43,6 +42,13 @@ const dialable = (phone: string) => phone.replace(/[^\d+]/g, "");
 // SHARED recipe, not on four call sites, so a fifth field cannot miss it.
 const inputCls = "rounded-[10px] px-3 py-2 min-h-11 text-sm focus:outline-none";
 const inputStyle: React.CSSProperties = { background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" };
+
+/** V77: the boards' day-first short date ("1 Oct 2026"), EN and HE. */
+function dayFirst(value: string | number | Date, uiLang: string): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(d);
+}
 
 export default function SafetyTab() {
   const { childProfile, requestConsultPrefill, setActiveTab } = useArbor();
@@ -268,7 +274,7 @@ export default function SafetyTab() {
         )}
         {/* B-CAREPRO-NEW-1m: the B-07 review date, visible — trust the parent can see. */}
         <p data-testid="safety-numbers-checked" className="t-xs" style={{ color: "var(--arbor-muted)" }}>
-          {t("elev.safety.numbersChecked", { date: fmtDay(HELPLINES_REVIEWED_ON, uiLang) })}
+          {t("elev.safety.numbersChecked", { date: dayFirst(`${HELPLINES_REVIEWED_ON}T12:00:00`, uiLang) })}
         </p>
       </div>
 
@@ -374,7 +380,7 @@ export default function SafetyTab() {
           }
         >
           <p className="text-sm" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.safety.review.last")} <strong>{lastReviewed ? fmtDay(lastReviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
+            {t("elev.safety.review.last")} <strong>{lastReviewed ? dayFirst(lastReviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
           </p>
           {reviewStale && (
             <div className="text-xs rounded-[14px] px-3 py-2 mt-3" style={{ background: "var(--arbor-yellow-soft)", color: "var(--arbor-yellow-ink)" }}>

@@ -323,7 +323,11 @@ describe("W2-CAREPRO r1 — both answers above the fold; the CTA says who answer
 describe("B-CAREPRO-NEW-1m / 1n — the crisis card names the child, shows the review date, and the family's own first call", () => {
   it("1m: the numbers-checked line reads HELPLINES_REVIEWED_ON (no literal date) in EN + HE", () => {
     expect(tabSource).toContain('data-testid="safety-numbers-checked"');
-    expect(tabSource).toContain("fmtDay(HELPLINES_REVIEWED_ON, uiLang)");
+    // V77: the boards' day-first short date ("1 Oct 2026"), still read from the constant.
+    expect(tabSource).toContain("dayFirst(`${HELPLINES_REVIEWED_ON}T12:00:00`, uiLang)");
+    expect(tabSource).toContain('{ day: "numeric", month: "short", year: "numeric" }');
+    // NEGATIVE CONTROL: a literal date in the call is caught.
+    expect('dayFirst("2026-10-01", uiLang)').not.toContain("HELPLINES_REVIEWED_ON");
     expect(tabSource).not.toMatch(/Numbers checked \d/);
     expect(safetyEnRecord["elev.safety.numbersChecked" as keyof typeof safetyEnRecord]).toContain("{date}");
     expect(safetyHeRecord["elev.safety.numbersChecked" as keyof typeof safetyHeRecord]).toContain("{date}");
