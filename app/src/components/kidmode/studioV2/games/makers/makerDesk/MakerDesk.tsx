@@ -387,7 +387,7 @@ export default function MakerDesk() {
       {party >= 3 && <span className="md-keepsake" aria-hidden="true"><span className="md-keepsake__flash" /><span className="md-keepsake__card"><img {...pic(DESK_KIT.room)} /><img className="md-keepsake__bench" {...pic(DESK_KIT.bench)} /></span></span>}
     </div>
     {stickers('onRoom')}
-    {shown && byKind.get(shown) && <div className="md-show" role="dialog" aria-label={w.kinds[shown]} onClick={e => { if (e.target === e.currentTarget) setShown(null); }}>
+    {shown && byKind.get(shown) && <div className="md-show" role="group" aria-label={w.kinds[shown]} onClick={e => { if (e.target === e.currentTarget) setShown(null); }}>
       <div className="md-show__card">
         <div className="md-large" dir={lang === 'he' ? 'rtl' : 'ltr'}><CreationPreview creation={byKind.get(shown)!} childId={childId} /></div>
         <button type="button" ref={showClose} className="md-key md-key--word" data-show-close="" onClick={() => { void selectionHaptic(); setShown(null); }}>{w.showClose}</button>

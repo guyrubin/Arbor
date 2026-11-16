@@ -5,19 +5,19 @@
  * by the game between them (beyond the glass) or over them (in the hall).
  * Characters come from the Studio's shared kit library only. Measurements are
  * fractions of the picture, taken from the image itself. */
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 import type { Vec } from './iceAgeFriendRules';
 
-const MAKERS = '/visuals/studio-v2/makers/';
+const MAKERS = STUDIO_MAKERS_ROOT;
 export interface KitPicture { src: string; src480: string; width: number; height: number; /** The kit file it was made from (for the art manifest). */ source: string }
 const made = (stem: string, width: number, height: number, source: string): KitPicture => ({ src: `${MAKERS}${stem}.webp`, src480: `${MAKERS}${stem}-480.webp`, width, height, source });
 
 /** The hall: `bop/scene-band` with the valley masked out of its five glass openings (transparent there). */
-export const HALL_PICTURE = made('ice-age-friend-hall', 1024, 683, 'app/public/visuals/studio-v2/bop/scene-band.webp');
+export const HALL_PICTURE = made('ice-age-friend-hall', 1024, 683, 'studio-v2/bop/scene-band.webp');
 /** The steppe beyond the glass: the same picture, its valley recoloured to an Ice Age winter (snow, dry grass, cold air). */
-export const STEPPE_PICTURE = made('ice-age-friend-steppe', 1024, 683, 'app/public/visuals/studio-v2/bop/scene-band.webp');
+export const STEPPE_PICTURE = made('ice-age-friend-steppe', 1024, 683, 'studio-v2/bop/scene-band.webp');
 /** The knit cushion the grass rests on: a shipped Bop prop. */
-export const CUSHION_PICTURE: KitPicture = { src: studioBopArt('item-cushion'), src480: studioBopArt('item-cushion-480'), width: 252, height: 150, source: 'app/public/visuals/studio-v2/bop/item-cushion.webp' };
+export const CUSHION_PICTURE: KitPicture = { src: studioBopArt('item-cushion'), src480: studioBopArt('item-cushion-480'), width: 252, height: 150, source: 'studio-v2/bop/item-cushion.webp' };
 
 /** The crew who stand in the hall looking up at the giant, seen from behind, in mission wardrobe (this is an
  * expedition): the shared kit library's `kit-*-mission-back` figures. One Bebe, one GobGob, one of each friend

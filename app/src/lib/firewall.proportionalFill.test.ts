@@ -54,6 +54,7 @@ const NOT_CHILD_RECORD: Entry[] = [
   { file: "components/practice/MimicMatch.tsx", match: "${pct}%", why: "live match meter inside the kid game, never stored" },
   { file: "components/kidmode/studioV2/games/PuzzlePlanet.tsx", match: "width: `${size * 100}%`", why: "full-image crop geometry behind one puzzle fragment: size is the fixed 2/3 grid dimension, not child progress or a stored record" },
   { file: "components/kidmode/studioV2/games/adventures/RiverRescue.tsx", match: "width: `${80 / map.size}%`", why: "the moving boat's footprint is one grid tile; map.size is the authored board geometry, never a child's performance or record" },
+  { file: "components/kidmode/studioV2/games/makers/stitchGarden/StitchFriends.tsx", match: "width: `${l.w * 100}%`", why: "where each light of the WaitRing sits on the kit picture: l.w is a measured fraction of that image, fixed art geometry, not the child's progress or a stored record" },
 ];
 
 const SOURCES = walk(COMPONENTS)

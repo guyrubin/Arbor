@@ -299,7 +299,7 @@ describe('Weather Maker: weather, life and sound follow the year', () => {
   it('names every kit picture it shows, with its size and the kit file it came from', () => {
     for (const art of SEASON_DIAL_ART) {
       expect(art.src).toMatch(/^\/visuals\/studio-v2\/(bop|makers)\/[a-z0-9-]+\.webp$/); expect(art.width).toBeGreaterThan(0); expect(art.height).toBeGreaterThan(0);
-      expect(art.source).toMatch(/^(app\/public\/visuals\/studio-v2\/bop\/|kit\/v30\/)/); expect(art.edit.length).toBeGreaterThan(3);
+      expect(art.source).toMatch(/^(studio-v2\/bop\/|kit\/v30\/)/); expect(art.edit.length).toBeGreaterThan(3);
       // A picture that shows a child of the kit is the shared library's own file and says so in its name;
       // nothing this activity cut itself (season-dial-*) shows one.
       const child = /bebe|gobgob|crew/.test(art.src);

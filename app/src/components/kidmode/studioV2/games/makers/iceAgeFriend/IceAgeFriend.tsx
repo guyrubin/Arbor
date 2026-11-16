@@ -159,7 +159,7 @@ export default function IceAgeFriend() {
             <button type="button" className="iaf-round" aria-label={w.zoomIn} disabled={zoom >= ZOOM_MAX - 0.01} onClick={() => engine.current?.zoomBy(1.5)}><Plus size={24} aria-hidden="true" /></button>
             <button type="button" className="iaf-round" aria-label={w.whole} disabled={zoom <= ZOOM_MIN + 0.01} onClick={() => engine.current?.whole()}><Maximize2 size={21} aria-hidden="true" /></button>
           </div>}
-          {tag && <div ref={tagRef} className="iaf-tag" data-iaf-tag={tag} data-side={end} data-at={tall ? 'top' : 'bottom'} dir={lang === 'he' ? 'rtl' : 'ltr'} role="dialog" aria-modal="false" aria-labelledby="iaf-tag-title" tabIndex={-1} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closeTag(); } }}>
+          {tag && <div ref={tagRef} className="iaf-tag" data-iaf-tag={tag} data-side={end} data-at={tall ? 'top' : 'bottom'} dir={lang === 'he' ? 'rtl' : 'ltr'} role="group" aria-labelledby="iaf-tag-title" tabIndex={-1} onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); closeTag(); } }}>
             <span className="iaf-tag__tool" aria-hidden="true">{tag === 'final' ? <Check size={22} strokeWidth={3} /> : <ToolIcon size={22} />}</span>
             <div className="iaf-tag__words">
               <h3 id="iaf-tag-title" className="iaf-tag__title">{fact ? fact.title : w.finalTitle}</h3>

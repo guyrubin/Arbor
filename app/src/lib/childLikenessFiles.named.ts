@@ -5,7 +5,8 @@
  * backlog row that owns its removal. childLikenessFiles.guard.test.ts holds
  * the tree to EXACTLY this list: a new file in a likeness family fails until
  * it is named here with its owner row; a named file that is gone fails until
- * its line is deleted, so the list only shrinks; and a named file whose bytes
+ * its line is deleted, so the list only shrinks (the one dated exception is
+ * the last group, added on the guardian's explicit approval); and a named file whose bytes
  * no longer match the sha256 pinned beside it fails until the new picture is
  * reviewed (a tile redrawn as another child is still a child's likeness).
  * JSON is hashed with LF line ends, so a Windows checkout reads the same.
@@ -169,6 +170,44 @@ export const NAMED_LIKENESS_FILES: readonly LikenessGroup[] = [
       "app/public/visuals/cards/web/story-the-two-paths-through-the-meadow-480.webp": "d802fbd5ba2cd250f9b93c8c6d4ca0e4fd2c6c17a42b12f59ca8d40f82447784",
       "app/public/visuals/cards/web/story-the-tyrant-and-the-town-1024.webp": "97767e87826ede01fd3177bc35b83700594298495079846847526e794479d6ba",
       "app/public/visuals/cards/web/story-the-tyrant-and-the-town-480.webp": "1f60decc21a133d7759cf6232a626793b8fdb54c291026d9408344d662766a1c",
+    },
+  },
+  {
+    owner: "B-GAME-40, removal by Guy (BD-32, third permission)",
+    why: "Bebe and GobGob, the two kit characters drawn from Guy's children, inside the Kids Studio maker activities. Guy, their guardian, approved this on 16 Nov 2026 for the production app and this public repository, until he revokes it (his dated decision of 16 Nov 2026; BD-32). Each file is the kit's own finished render, cropped or cut out, never redrawn or regenerated: the shared kit-bebe-* and kit-gobgob-* figures and faces, and the two channel key-art posters in Clay Theatre. Any maker image that shows either child carries bebe, gobgob or crew in its name",
+    files: {
+      "app/public/visuals/studio-v2/makers/clay-theatre-crew-poster-bop-480.webp": "fab0fb63b7755c0aab1e73098c68aad0e17d1bcb042711fada4a2f54db9dd332",
+      "app/public/visuals/studio-v2/makers/clay-theatre-crew-poster-bop.webp": "9a3124f58f30860bcdd19f10e960946c714ebddf3b8e69bc6f238fefd0f2a4c0",
+      "app/public/visuals/studio-v2/makers/clay-theatre-crew-poster-crew-480.webp": "7387848b91d3062e154119a14f6082b9af2e29efcd1962d89056ac1e68446c39",
+      "app/public/visuals/studio-v2/makers/clay-theatre-crew-poster-crew.webp": "172216e2f50deca9068445475761b3bff872e952100b9be43118cbd8e1465181",
+      "app/public/visuals/studio-v2/makers/kit-bebe-back-480.webp": "a5c7449eb6331e1833e68004bf61bdddea44cc6b9409038fdbaf2dd3590c30bf",
+      "app/public/visuals/studio-v2/makers/kit-bebe-back.webp": "cee0e52001396cff687a5b1ddc35f2bbe02bf5bafef7f0a9ab29356e2b8ae423",
+      "app/public/visuals/studio-v2/makers/kit-bebe-face-curious-480.webp": "07ed0421aa5fc55031c9b7245fd6cbe25f549cf0f17d3e8e35dc942b2d1718c2",
+      "app/public/visuals/studio-v2/makers/kit-bebe-face-curious.webp": "48f3aba998b8202a29bd1235b07914d2a71aa5eec0b5ba42732076305eb01734",
+      "app/public/visuals/studio-v2/makers/kit-bebe-face-smile-480.webp": "81b6c55e41cf11458d8977d5e89fce7384527f211754794e7dad983e0b40d8bd",
+      "app/public/visuals/studio-v2/makers/kit-bebe-face-smile.webp": "ed58f199d49c90c4c0412c121b992eca414688f07c826bf1467f2d0183d33171",
+      "app/public/visuals/studio-v2/makers/kit-bebe-front-480.webp": "e284919c91e89f33fa365e65a51b500dd10342a31530a10c116c34187fcdf4bf",
+      "app/public/visuals/studio-v2/makers/kit-bebe-front.webp": "46087150e662de240112778d633d8fce4e4381e7a32ec1411da0bbf0e4e21439",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-back-480.webp": "46a2b9ddb3f9ab4227034b2c0270723ed4d9520a6ff43c1fba2832f45763b5dd",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-back.webp": "a98e0beeb2d89948474032abfe5d8065158dbbab8657d0022e527d2cf1402cd7",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-front-480.webp": "f1cc11c05a576807e982f7c322edb55cfb5171922084350d571882249a8b7d92",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-front.webp": "fe5d11aa4a288c0040619a4d980481ec006b1b2cf1ee6c51d259471d5bf066e8",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-side-480.webp": "b754a18ea52d3e1940887685ab36fbd9638f7a0560b3c3679a11d9c2842aaa0d",
+      "app/public/visuals/studio-v2/makers/kit-bebe-mission-side.webp": "816e512270d2e47019cffd0e80fbbd989db4f9d5d3601730750b718810628895",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-back-480.webp": "ea155af3554de4aab8a119377270d5732f2b594bba9d9b9e0840370305a13c31",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-back.webp": "62105503699d7876a74a728ccd456300d09f92565db02cc7a9285b6b77b7df9a",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-curious-480.webp": "28c5a0b59a546f41a77cee2355aeaa3f57574d3f30ea5d9dca52e8747883cc93",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-curious.webp": "ecad2b87b363495951ef588a245a5ce204e6f09083a923780a682f09144b9fad",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-delighted-480.webp": "685438f49eee6647752f7f552e72e89aa9b9a36d1581057de9c5bd78148387c5",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-delighted.webp": "e8d81946819754fe98eabe37c319751bc4e571e101d072951c3a25a8b6b007bc",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-patient-480.webp": "9cb41b4c596c39b91ee63c8d8103acdb4ed4faffe80eaf9d8900ed64238ad0af",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-face-patient.webp": "3827be40d49fce2591f4283651e1aeb15db198c3a396e9233fc457fcfb6accb3",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-back-480.webp": "89375dfd58940d0e59627a86d2d118bb1bf51d47aa0328d0e1526d2b8138555c",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-back.webp": "0700dea8f9fe8ad8be0cf141ef8086b78c6802a888e59085f9ff97aa90b93fcb",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-front-480.webp": "a0f885d24ef915a535c37cc3ac02b7886e3abdfd2c6b8313d85b0f13eae9a501",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-front.webp": "60954aa718be06e25f177fc43a578e06b7beee4981de8260360890e60f7fc444",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-side-480.webp": "b641ccba9dbe4558cadc2207c458b3a2a98750d04821ff1917d71f6009cfbfc3",
+      "app/public/visuals/studio-v2/makers/kit-gobgob-mission-side.webp": "733f1092a11d15c3b6387953b5592b1bd4c5bb4d2e11652f16957c76987a7cc9",
     },
   },
 ];

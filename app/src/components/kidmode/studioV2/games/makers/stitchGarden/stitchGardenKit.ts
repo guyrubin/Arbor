@@ -4,10 +4,11 @@
  * sources. Nothing is generated: each is a shipped kit image or a crop or
  * cut-out of a kit board made with kit/tools/kitcut.py. Strings and numbers
  * only: the cover and the kept-cloth preview import this too. */
-const BOP = '/visuals/studio-v2/bop/';
-const CUT = '/visuals/studio-v2/makers/';
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
+const BOP = STUDIO_BOP_ROOT;
+const CUT = STUDIO_MAKERS_ROOT;
 export interface KitPicture { readonly src: string; readonly src480: string | null; readonly width: number; readonly height: number; readonly from: string }
-const shipped = (stem: string, width: number, height: number, small = false): KitPicture => ({ src: `${BOP}${stem}.webp`, src480: small ? `${BOP}${stem}-480.webp` : null, width, height, from: `app/public/visuals/studio-v2/bop/${stem}.webp` });
+const shipped = (stem: string, width: number, height: number, small = false): KitPicture => ({ src: `${BOP}${stem}.webp`, src480: small ? `${BOP}${stem}-480.webp` : null, width, height, from: `studio-v2/bop/${stem}.webp` });
 
 /** A round thing photographed from straight above, measured in its own
  * pixels: where its centre is, and the radius the drawing lines it up by. */

@@ -2,12 +2,12 @@
  * place. The room is the shipped Mirror Quarter rotunda; the audience and the
  * two posters are cut from the v30 kit boards with `kitcut.py` (no picture is
  * drawn or generated here). `from` names the kit source each was cut from. */
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 
-const MAKERS_ROOT = '/visuals/studio-v2/makers/';
+const MAKERS_ROOT = STUDIO_MAKERS_ROOT;
 export interface KitPicture { src: string; src480: string; width: number; height: number; from: string }
 const cut = (stem: string, width: number, height: number, from: string): KitPicture => ({ src: `${MAKERS_ROOT}${stem}.webp`, src480: `${MAKERS_ROOT}${stem}-480.webp`, width, height, from });
-const shipped = (stem: string, width: number, height: number): KitPicture => ({ src: studioBopArt(stem), src480: studioBopArt(`${stem}-480`), width, height, from: `app/public/visuals/studio-v2/bop/${stem}.webp` });
+const shipped = (stem: string, width: number, height: number): KitPicture => ({ src: studioBopArt(stem), src480: studioBopArt(`${stem}-480`), width, height, from: `studio-v2/bop/${stem}.webp` });
 
 /** The glass rotunda of the Mirror Quarter, its round stage empty. */
 export const KIT_ROOM = shipped('scene-band', 1024, 683);

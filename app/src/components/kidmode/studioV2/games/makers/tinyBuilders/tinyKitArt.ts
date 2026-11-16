@@ -5,7 +5,8 @@
  * was painted blank in the file (the game draws its lens view there).
  * Characters come from the shipped kit art (Aya) and the shared kit library
  * (Bebe, `kit-bebe-*`) only. */
-const BOP = '/visuals/studio-v2/bop/', MAKERS = '/visuals/studio-v2/makers/';
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
+const BOP = STUDIO_BOP_ROOT, MAKERS = STUDIO_MAKERS_ROOT;
 export interface KitArt { src: string; src480: string; width: number; height: number; /** The kit file it was cut from. */ source: string }
 const art = (root: string, stem: string, width: number, height: number, source: string): KitArt => ({ src: `${root}${stem}.webp`, src480: `${root}${stem}-480.webp`, width, height, source });
 

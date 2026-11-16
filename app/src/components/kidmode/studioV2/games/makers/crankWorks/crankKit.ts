@@ -1,10 +1,10 @@
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 
 /* How Things Move: every picture the activity shows, in one place. Each entry
    is one file, its pixel size and the kit source it was cut from. The stage
    and the tool are this activity's own cuts; the companion comes from the
    Studio's shared art (never a private copy of a character). */
-const MAKERS = '/visuals/studio-v2/makers/';
+const MAKERS = STUDIO_MAKERS_ROOT;
 export interface KitPicture { readonly src: string; readonly width: number; readonly height: number; readonly source: string }
 
 /** The TrailBench, deployed, in the Wonderworks pavilion. No character in it. */

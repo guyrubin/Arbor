@@ -3,9 +3,10 @@
  * deployed, its lid screen up) and shipped kit props and companions. Every
  * picture is ONE constant here: its path, its pixel size and the kit file it
  * comes from. Strings and numbers only: the cover imports this too. */
-const BOP = '/visuals/studio-v2/bop/';
-const V30 = '/visuals/studio-v2/v30/';
-const MADE = '/visuals/studio-v2/makers/';
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT, STUDIO_V30_ROOT } from '../../../../../../lib/kidThemeManifest';
+const BOP = STUDIO_BOP_ROOT;
+const V30 = STUDIO_V30_ROOT;
+const MADE = STUDIO_MAKERS_ROOT;
 export interface KitPicture { readonly src: string; readonly src480: string | null; readonly width: number; readonly height: number; readonly source: string }
 const bop = (stem: string, width: number, height: number, small = false): KitPicture => ({ src: `${BOP}${stem}.webp`, src480: small ? `${BOP}${stem}-480.webp` : null, width, height, source: `shipped app art: bop/${stem}` });
 

@@ -5,15 +5,16 @@
  * terrace render (`bop/scene-sun`), re-graded season by season with the same
  * camera, so they cross-fade pixel over pixel. Strings and numbers only: the
  * cover imports this too. */
-const BOP = '/visuals/studio-v2/bop/';
-const MADE = '/visuals/studio-v2/makers/';
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
+const BOP = STUDIO_BOP_ROOT;
+const MADE = STUDIO_MAKERS_ROOT;
 export interface KitPicture {
   readonly src: string; readonly src480: string | null; readonly width: number; readonly height: number;
   /** The kit file this picture is, or was derived from, and what was done to it. */
   readonly source: string; readonly edit: string;
 }
-const shipped = (stem: string, width: number, height: number, small: boolean): KitPicture => ({ src: `${BOP}${stem}.webp`, src480: small ? `${BOP}${stem}-480.webp` : null, width, height, source: `app/public/visuals/studio-v2/bop/${stem}.webp`, edit: 'as shipped' });
-const derived = (stem: string, edit: string): KitPicture => ({ src: `${MADE}${stem}.webp`, src480: `${MADE}${stem}-480.webp`, width: 1024, height: 1024, source: 'app/public/visuals/studio-v2/bop/scene-sun.webp', edit });
+const shipped = (stem: string, width: number, height: number, small: boolean): KitPicture => ({ src: `${BOP}${stem}.webp`, src480: small ? `${BOP}${stem}-480.webp` : null, width, height, source: `studio-v2/bop/${stem}.webp`, edit: 'as shipped' });
+const derived = (stem: string, edit: string): KitPicture => ({ src: `${MADE}${stem}.webp`, src480: `${MADE}${stem}-480.webp`, width: 1024, height: 1024, source: 'studio-v2/bop/scene-sun.webp', edit });
 
 /** The terrace view at its moments of the year, in order round the dial.
  * `at` is the point of the year the picture is true for; between two the

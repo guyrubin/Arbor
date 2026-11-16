@@ -8,20 +8,21 @@
  * Characters come from the Studio's shared kit library (`kit-*`), never from
  * a private copy: none of this activity's own files shows Bebe or GobGob.
  * Strings and numbers only. */
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 export interface KitArt { src: string; w: number; h: number; from: string }
-const MAKERS = '/visuals/studio-v2/makers/', BOP = '/visuals/studio-v2/bop/';
+const MAKERS = STUDIO_MAKERS_ROOT, BOP = STUDIO_BOP_ROOT;
 const own = (stem: string, w: number, h: number, from: string): KitArt => ({ src: `${MAKERS}paper-boat-${stem}.webp`, w, h, from });
-const bop = (stem: string, w: number, h: number): KitArt => ({ src: `${BOP}${stem}.webp`, w, h, from: `app/public/visuals/studio-v2/bop/${stem}.webp` });
+const bop = (stem: string, w: number, h: number): KitArt => ({ src: `${BOP}${stem}.webp`, w, h, from: `studio-v2/bop/${stem}.webp` });
 
 const BRIGHT_VALE = 'kit/v30/env-bright-vale.png', GLASS_GROVE = 'kit/v30/env-glass-grove-skybridge-sunset.png', WONDERWORKS = 'kit/v30/env-wonderworks-hub-vista.png';
-const BASIN = 'app/public/visuals/studio-v2/v30/portal-feelings.webp', KEY_ART = 'kit/v30/17-bop-key-art.png';
+const BASIN = 'studio-v2/v30/portal-feelings.webp', KEY_ART = 'kit/v30/17-bop-key-art.png';
 
 /** A standing slice: its art (drawn across both pages, 2 px to the book px),
  * the page depth of its hinge, and its height off the page (book px). */
 export interface KitSlice { id: string; art: KitArt; y: number; h: number }
 const slice = (id: string, art: KitArt, y: number): KitSlice => ({ id, art, y, h: art.h / 2 });
 
-export const KIT_ROOM = own('reading-room', 930, 680, 'app/public/visuals/studio-v2/v30/portal-stories.webp');
+export const KIT_ROOM = own('reading-room', 930, 680, 'studio-v2/v30/portal-stories.webp');
 export const KIT_TABLE = bop('scene-table', 1024, 1024);
 /** The four page prints (1000 × 580, both pages). */
 export const KIT_PAGES: readonly KitArt[] = [

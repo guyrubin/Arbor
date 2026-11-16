@@ -1,3 +1,4 @@
+import { STUDIO_BOP_ROOT, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 import { BOUNCERS, LOGS, NOOK_X, PATH_H, ROOF, STONES, STONE_X, STREAM, TUNNEL, WORLD_H, WORLD_W } from './foxTrailRules';
 
 /** Pep's Trail art: every picture the trail shows, as one table. Nothing here
@@ -5,7 +6,7 @@ import { BOUNCERS, LOGS, NOOK_X, PATH_H, ROOF, STONES, STONE_X, STREAM, TUNNEL, 
  * the shipped Bop sprites; the trail's own plates were cropped from shipped
  * valley pictures and graded to dusk and to the lit night (the scripts and the
  * originals stay outside the repo). `from` names the kit source of each file. */
-const BOP = '/visuals/studio-v2/bop/', MADE = '/visuals/studio-v2/makers/';
+const BOP = STUDIO_BOP_ROOT, MADE = STUDIO_MAKERS_ROOT;
 export interface KitArt { src: string; w: number; h: number; from: string }
 const made = (stem: string, w: number, h: number, from: string): KitArt => ({ src: `${MADE}${stem}.webp`, w, h, from });
 const bop = (stem: string, w: number, h: number): KitArt => ({ src: `${BOP}${stem}.webp`, w, h, from: `shipped bop/${stem}` });

@@ -6,16 +6,16 @@
  * board. Nothing here is drawn or generated for this game.
  * (The bowl itself has no kit picture seen from above: it is shaded in code,
  * lit from the upper left like the table. See BowlArt.tsx.) */
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 import type { BowlGlaze } from './mendBowlRules';
 
 export interface KitPicture { src: string; w: number; h: number; from: string }
-const MAKERS = '/visuals/studio-v2/makers/';
-const shipped = (stem: string, w: number, h: number): KitPicture => ({ src: studioBopArt(stem), w, h, from: `app/public/visuals/studio-v2/bop/${stem}.webp (shipped)` });
-const dish = (stem: string): KitPicture => ({ src: `${MAKERS}${stem}.webp`, w: 219, h: 219, from: 'app/public/visuals/studio-v2/bop/oops-hub.webp (shipped; kit board v30/23, T09), felt centre re-tinted' });
+const MAKERS = STUDIO_MAKERS_ROOT;
+const shipped = (stem: string, w: number, h: number): KitPicture => ({ src: studioBopArt(stem), w, h, from: `studio-v2/bop/${stem}.webp (shipped)` });
+const dish = (stem: string): KitPicture => ({ src: `${MAKERS}${stem}.webp`, w: 219, h: 219, from: 'studio-v2/bop/oops-hub.webp (shipped; kit board v30/23, T09), felt centre re-tinted' });
 
 /** The Wonderworks workshop table, seen from directly above: the shipped kit table with its own floor carried on below it, so a tall stage has floor in front of the table. */
-export const KIT_TABLE = { src: `${MAKERS}mend-bowl-table.webp`, small: `${MAKERS}mend-bowl-table-480.webp`, w: 1024, h: 1324, from: 'app/public/visuals/studio-v2/bop/scene-table.webp (shipped), floor extended 300 px downward from its own last rows', centre: { x: 511.5, y: 513 }, linen: 385.5 } as const;
+export const KIT_TABLE = { src: `${MAKERS}mend-bowl-table.webp`, small: `${MAKERS}mend-bowl-table-480.webp`, w: 1024, h: 1324, from: 'studio-v2/bop/scene-table.webp (shipped), floor extended 300 px downward from its own last rows', centre: { x: 511.5, y: 513 }, linen: 385.5 } as const;
 /** One small ceramic dish of glaze per colour, and the dish of gold. */
 export const KIT_GLAZE: Record<BowlGlaze, KitPicture> = {
   celadon: dish('mend-bowl-glaze-celadon'), indigo: dish('mend-bowl-glaze-indigo'), rose: dish('mend-bowl-glaze-rose'), cream: dish('mend-bowl-glaze-cream'),

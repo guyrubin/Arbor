@@ -5,12 +5,12 @@
  * can, and sticker prints of the kit's own props and of the companions' faces
  * (the companions come from the shared `kit-*` library).
  * Strings and numbers only. */
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { studioBopArt, STUDIO_MAKERS_ROOT } from '../../../../../../lib/kidThemeManifest';
 import type { BottleSticker } from './bottleLabRules';
 
 export interface KitPicture { src: string; src480: string; width: number; height: number; source: string }
 const bop = (stem: string, width: number, height: number, twin = false): KitPicture =>
-  ({ src: studioBopArt(stem), src480: studioBopArt(twin ? `${stem}-480` : stem), width, height, source: `app/public/visuals/studio-v2/bop/${stem}.webp` });
+  ({ src: studioBopArt(stem), src480: studioBopArt(twin ? `${stem}-480` : stem), width, height, source: `studio-v2/bop/${stem}.webp` });
 
 /** The room behind the bottle, and where it sits in the 360 by 440 still
  * life. One picture edited from two shipped kit pictures: the arched pavilion
@@ -19,8 +19,8 @@ const bop = (stem: string, width: number, height: number, twin = false): KitPict
  * pale-wood table and linen top (`scene-table`, laid down in the room's
  * perspective) in front. The bottle, the lamp and Aya stand on that table. */
 export const KIT_ROOM = {
-  src: '/visuals/studio-v2/makers/bottle-lab-bench.webp', src480: '/visuals/studio-v2/makers/bottle-lab-bench-480.webp', width: 1536, height: 1024,
-  source: 'app/public/visuals/studio-v2/bop/scene-delivery.webp + app/public/visuals/studio-v2/bop/scene-table.webp',
+  src: `${STUDIO_MAKERS_ROOT}bottle-lab-bench.webp`, src480: `${STUDIO_MAKERS_ROOT}bottle-lab-bench-480.webp`, width: 1536, height: 1024,
+  source: 'studio-v2/bop/scene-delivery.webp + studio-v2/bop/scene-table.webp',
   place: { x: -270, y: -92, width: 900, height: 600 },
 } as const;
 /** The far edge of the table top, in scene units: beyond it is the room. */
@@ -30,7 +30,7 @@ export const KIT_LAMP = bop('item-lamp', 245, 300);
 export const KIT_CAN = bop('item-can', 278, 205);
 /** Characters come from the Studio's one shared kit library (never a private copy). */
 const lib = (stem: string, width: number, height: number, source: string): KitPicture =>
-  ({ src: `/visuals/studio-v2/makers/${stem}.webp`, src480: `/visuals/studio-v2/makers/${stem}-480.webp`, width, height, source: `app/public/visuals/studio-v2/makers/${stem}.webp (kit ${source})` });
+  ({ src: `${STUDIO_MAKERS_ROOT}${stem}.webp`, src480: `${STUDIO_MAKERS_ROOT}${stem}-480.webp`, width, height, source: `studio-v2/makers/${stem}.webp (kit ${source})` });
 /** Aya standing (front) and walking (side, facing right as stored). */
 export const KIT_AYA = { front: lib('kit-aya-front', 408, 768, 'v30/05-aya.png'), side: lib('kit-aya-side', 373, 768, 'v30/05-aya.png') } as const;
 

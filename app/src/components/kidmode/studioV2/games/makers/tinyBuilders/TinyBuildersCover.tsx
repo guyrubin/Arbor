@@ -1,3 +1,4 @@
+import { STUDIO_BOP_ROOT } from '../../../../../../lib/kidThemeManifest';
 import PhageArt, { fibreTips } from './PhageArt';
 import { Turntable } from './TinyScenes';
 import { ART_ROOM, ART_TRAILBENCH } from './tinyKitArt';
@@ -7,7 +8,7 @@ import { ART_ROOM, ART_TRAILBENCH } from './tinyKitArt';
  * looking on. Fills its box; one subject that reads at 80 px (tile, sticker)
  * and in the tall card window. The room, the TrailBench and Aya are the kit's
  * own pictures; only the model and its turntable are drawn. */
-const AYA = '/visuals/studio-v2/bop/aya-idle.webp';
+const AYA = `${STUDIO_BOP_ROOT}aya-idle.webp`;
 export default function TinyBuildersCover({ size = 'tile' }: { size?: 'tile' | 'card' }) {
   // The card window is wide (its crop keeps only the middle band), the tile
   // square: the card draws the model smaller and a little off-centre, so the
