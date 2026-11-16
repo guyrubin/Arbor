@@ -52,6 +52,7 @@ const NOT_CHILD_RECORD: Entry[] = [
   { file: "components/tabs/RoutinesTab.tsx", match: "<ProgressBar", why: "today's routine steps — a parent task list, reset daily" },
   { file: "components/practice/EarlyReadingTrack.tsx", match: "coverage * 100", why: "live trace coverage of the stroke being drawn (kid register), never stored" },
   { file: "components/practice/MimicMatch.tsx", match: "${pct}%", why: "live match meter inside the kid game, never stored" },
+  { file: "components/plans/v10/ActionPlanStage.tsx", match: "width: `${right - left}%`", why: "a phase bracket under the plan trail spans its steps' positions on the road: authored plan geometry (how many steps the adult planned), never progress, a child record or a share" },
   { file: "components/kidmode/studioV2/games/PuzzlePlanet.tsx", match: "width: `${size * 100}%`", why: "full-image crop geometry behind one puzzle fragment: size is the fixed 2/3 grid dimension, not child progress or a stored record" },
   { file: "components/kidmode/studioV2/games/adventures/RiverRescue.tsx", match: "width: `${80 / map.size}%`", why: "the moving boat's footprint is one grid tile; map.size is the authored board geometry, never a child's performance or record" },
   { file: "components/kidmode/studioV2/games/makers/stitchGarden/StitchFriends.tsx", match: "width: `${l.w * 100}%`", why: "where each light of the WaitRing sits on the kit picture: l.w is a measured fraction of that image, fixed art geometry, not the child's progress or a stored record" },

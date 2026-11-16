@@ -155,7 +155,7 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
   const SURFACES: Array<[string, RegExp]> = [
     ["components/coach/CoachAnswerCards.tsx", /<SayThis[\s\S]{0,200}?contract\.parentScript/],
     ["components/behaviors/HardMomentsSection.tsx", /hm\.section\.sayThis"\s*\?\s*\([\s\S]{0,200}?<SayThis/],
-    ["components/tabs/PlansTab.tsx", /<SayThis text=\{sc\.say\}/],
+    ["components/plans/v10/PlanScripts.tsx", /<SayThis text=\{say\}/],
     ["components/journal/JournalMomentDetails.tsx", /<SayThis text=\{inlineCoRegulationScripts\[log\.id\]\.explanation\}/],
   ];
   for (const [rel, re] of SURFACES) {
@@ -164,8 +164,9 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
     });
   }
 
-  it("PlansTab no longer hand-rolls the quoted script", () => {
+  it("Plans no longer hand-rolls the quoted script", () => {
     expect(strip(read("components/tabs/PlansTab.tsx"))).not.toMatch(/“\{sc\.say\}”/);
+    expect(strip(read("components/plans/v10/PlanScripts.tsx"))).not.toMatch(/“\{say\}”/);
   });
 
   // Scoped on purpose: LanguageLabTab / MilestonesTab still carry Growth-lane

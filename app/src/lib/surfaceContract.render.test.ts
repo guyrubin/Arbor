@@ -479,15 +479,19 @@ describe("B-ASKJB-19 — Story density to its budget", () => {
 describe("B-ASKJB-28 — Plans folds RoutinesCard into one quiet row", () => {
   const plans = stripJsComments(read("src/components/tabs/PlansTab.tsx"));
 
-  it("Plans stamps exactly plans-create and plans-active (2 blocks when a plan exists)", () => {
+  // v10.1: the home stamps the three numbered sections it renders (your plans,
+  // the whole plan, start another plan) — within the route's moduleBudget of 3.
+  it("Plans stamps exactly plans-yours, plans-whole and plans-start", () => {
     const stamps = [...plans.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1]);
-    expect(stamps).toEqual(["plans-create", "plans-active"]);
+    expect(stamps).toEqual(["plans-yours", "plans-whole", "plans-start"]);
+    expect(stamps.length).toBeLessThanOrEqual(contractFor("plans" as ActiveTab)!.moduleBudget);
     expect(plans).not.toContain("plans-routines\"");
   });
 
-  it("the routines row sits below plans-active and opens the same RoutinesCard", () => {
+  it("the routines row lives in Start another plan and opens the same RoutinesCard", () => {
     const row = plans.indexOf('data-testid="plans-routines-row"');
-    expect(row).toBeGreaterThan(plans.indexOf('data-module="plans-active"'));
+    expect(row).toBeGreaterThan(-1);
+    expect(plans.indexOf("routines={routinesRow}")).toBeGreaterThan(plans.indexOf('data-module="plans-start"'));
     expect(plans.indexOf("<RoutinesCard />", row)).toBeGreaterThan(row);
     expect((plans.match(/<RoutinesCard \/>/g) || []).length).toBe(1);
     expect(plans).toContain('t("elev.plans.routines.row", { n: routineCount })');

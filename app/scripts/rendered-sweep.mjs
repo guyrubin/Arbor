@@ -1234,7 +1234,7 @@ const STATES = {
     {
       name: "active-plan",
       run: async (h) => {
-        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-active]", 5_000);
+        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-yours]", 5_000);
         if (!card) skip("no active plan in the seeded record");
         await h.top(card);
       },

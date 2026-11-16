@@ -15,7 +15,7 @@
  * outside the pattern's bounds or an unknown box item is REFUSED (the server
  * route and the composer both call `validatePlanComposition` first).
  */
-import type { BookLine, Page, PlanBook, PlanStep, Slot } from "../types";
+import type { BookLabel, BookLine, Page, PlanBook, PlanStep, Slot } from "../types";
 import type { PatternDef, PatternFramePage, PlanMenuItem } from "./patterns";
 
 /** The parent's choices for one child (also the persisted document's core —
@@ -127,6 +127,12 @@ export function defaultPlanComposition(def: PatternDef, ids: { bookId: string; a
 const fill = (text: string, vars: Record<string, string>) => text.replace(/\{(minutes|time)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
 
 /** A menu line with `{minutes}` and `{time}` filled for this composition. */
+/** A menu item's parent line (adult words) with the chosen minutes and time of day. */
+export function fillParentLine(line: BookLabel, c: Pick<PlanComposition, "minutes" | "time">): BookLabel {
+  const t = isPlanTime(c.time) ? TIME_WORDS[c.time] : TIME_WORDS.evening;
+  return { en: fill(line.en, { minutes: String(c.minutes), time: t.en }), he: fill(line.he, { minutes: String(c.minutes), time: t.he.m }) };
+}
+
 export function fillStepLine(line: BookLine, c: Pick<PlanComposition, "minutes" | "time">): BookLine {
   const t = isPlanTime(c.time) ? TIME_WORDS[c.time] : TIME_WORDS.evening;
   return {
@@ -211,9 +217,7 @@ export function composePlanBook(def: PatternDef, c: PlanComposition): PlanBook {
       }
       return { en: `${own.text.en} (your own step: "${own.sourceText}", phrased by Arbor and approved by you)`, he: `${own.text.he.m} (השלב שלכם: "${own.sourceText}", נוסח על ידי Arbor ואושר על ידיכם)` };
     }
-    const item = def.menu.find((m) => m.id === s.menuId)!;
-    const t = isPlanTime(c.time) ? TIME_WORDS[c.time] : TIME_WORDS.evening;
-    return { en: fill(item.parentLine.en, { minutes: String(c.minutes), time: t.en }), he: fill(item.parentLine.he, { minutes: String(c.minutes), time: t.he.m }) };
+    return fillParentLine(def.menu.find((m) => m.id === s.menuId)!.parentLine, c);
   });
   return {
     kind: "plan",

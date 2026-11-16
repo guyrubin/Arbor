@@ -276,11 +276,12 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
     it(`[${lang}] the plan card renders Day n + the step + I'll try it, and the weekly check-in on day 7`, async () => {
       const React = (await import("react")).default;
       const { renderToStaticMarkup } = await import("react-dom/server");
-      const { default: PlanTrackCard } = await import("../plans/PlanTrackCard");
+      const { ActionPlanStage: PlanTrackCard } = await import("../plans/v10/ActionPlanStage");
       const { todaysPlanStep } = await import("../../lib/plans");
       const noop = () => {};
       const r = (plan: typeof basePlan & { weeklyChecks?: { at: string; answer: "yes" | "little" | "not_yet" }[] }, now: number) =>
         renderToStaticMarkup(React.createElement(PlanTrackCard, {
+          composition: "desk",
           plan, step: todaysPlanStep(plan, [], TODAY_KEY), today: null, lang, now,
           onTryIt: noop, onUndo: noop, onCheck: noop, onAdjust: noop,
         }));
@@ -299,7 +300,8 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
       expect(html).toContain('data-testid="plan-will-ask"');
       // Day 6: no check-in yet. No percentage anywhere.
       expect(r(basePlan, NOW - 86_400_000)).not.toContain('data-testid="plan-weekly-check"');
-      expect(html).not.toMatch(/\d\s*%/);
+      // (Inline style positions — the trail's token placement — are geometry, not figures.)
+      expect(html.replace(/ style="[^"]*"/g, "")).not.toMatch(/\d\s*%/);
       // Every control ≥44 px.
       for (const b of html.match(/<button\b[^>]*>/g) ?? []) expect(b).toMatch(/min-h-11/);
       // "Not yet" twice → the adjust door.
@@ -311,7 +313,7 @@ describe("B-ASKJB-26 — a plan-sourced step through accept → Today → outcom
   }
 
   it("the adjust seed carries the title and step outcomes only, in the parent's language", async () => {
-    const { planAdjustSeed } = await import("../plans/PlanTrackCard");
+    const { planAdjustSeed } = await import("../plans/planTrack");
     const en = planAdjustSeed("en", "Calmer exits", [{ step: "Give a two-minute warning.", outcome: "not_today" }]);
     expect(en).toContain("Calmer exits");
     expect(en).toContain("Give a two-minute warning.");
