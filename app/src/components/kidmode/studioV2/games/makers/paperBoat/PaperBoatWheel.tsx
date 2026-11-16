@@ -1,12 +1,11 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { RotateCcw, RotateCw } from 'lucide-react';
 import { STORM_BAND, WHEEL_LIMIT, WHEEL_STEP, clampWheel, pointerAngle, wheelDrag } from './paperBoatRules';
 import { WheelDisc, fade, mix, mk } from './PaperBoatArt';
 
-/** The boat's wheel: a pale-wood toy wheel on a white ceramic stand, on the
- * table in front of the book. Drag around its centre to turn it (a finger on
- * it also holds it against the wind), or use the two buttons, or the arrow
- * keys when it has focus. It is a physical object, so it is the same way round
+/** The boat's wheel: a pale-wood toy wheel on a white ceramic stand, in the
+ * dock under the book. Drag around its centre to turn it (a finger on it also
+ * holds it against the wind), or use the two buttons the dock puts beside it,
+ * or the arrow keys when it has focus. It is a physical object, so it is the same way round
  * in both languages: clockwise is clockwise. The marks over it are interface:
  * a ring in the signal colour marks where to turn to, teal marks steady. */
 export interface PaperWheelProps {
@@ -25,8 +24,6 @@ export interface PaperWheelProps {
   aim: number | null;
   label: string;
   valueText: string;
-  leftLabel: string;
-  rightLabel: string;
   onTurn: (angle: number) => void;
   onHold: (held: boolean) => void;
 }
@@ -39,7 +36,7 @@ const arc = (r: number, from: number, to: number) => {
 };
 const SEGMENTS = 5;
 
-export function PaperWheel({ angle, nudge = 0, enabled, tucked, marks, steady, calm, aim, label, valueText, leftLabel, rightLabel, onTurn, onHold }: PaperWheelProps) {
+export function PaperWheel({ angle, nudge = 0, enabled, tucked, marks, steady, calm, aim, label, valueText, onTurn, onHold }: PaperWheelProps) {
   const surface = useRef<SVGSVGElement>(null);
   const uid = useId().replace(/[^a-zA-Z0-9-]/g, '');
   const angleRef = useRef(angle); angleRef.current = angle;
@@ -79,9 +76,8 @@ export function PaperWheel({ angle, nudge = 0, enabled, tucked, marks, steady, c
   const shown = angle + nudge;
   const gathered = Math.round(Math.max(0, Math.min(1, calm)) * SEGMENTS);
 
-  return <div className="pb-wheel-row" dir="ltr" data-tucked={tucked}>
-    <button type="button" className="pb-steer" data-pb-steer="left" aria-label={leftLabel} disabled={!enabled} onClick={() => onTurn(clampWheel(angle - WHEEL_STEP))}><RotateCcw size={26} aria-hidden="true" /></button>
-    <div className="pb-wheel" role="slider" tabIndex={enabled ? 0 : -1} aria-label={label} aria-valuemin={-WHEEL_LIMIT} aria-valuemax={WHEEL_LIMIT} aria-valuenow={Math.round(angle)} aria-valuetext={valueText} aria-disabled={!enabled} data-pb-wheel="" data-steady={steady} onKeyDown={key}>
+  return (
+    <div className="pb-wheel" role="slider" tabIndex={enabled ? 0 : -1} aria-label={label} aria-valuemin={-WHEEL_LIMIT} aria-valuemax={WHEEL_LIMIT} aria-valuenow={Math.round(angle)} aria-valuetext={valueText} aria-disabled={!enabled} data-pb-wheel="" data-steady={steady} data-tucked={tucked} dir="ltr" onKeyDown={key}>
       <svg ref={surface} className="pb-wheel__svg" viewBox={`0 0 ${WHEEL_BOX.w} ${WHEEL_BOX.h}`} aria-hidden="true" focusable="false" data-pb-wheel-disc="" onPointerDown={down}>
         <defs>
           <linearGradient id={`${uid}-base`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: mk('white') }} /><stop offset="1" style={{ stopColor: mix('snow', 60, 'chalk') }} /></linearGradient>
@@ -109,6 +105,5 @@ export function PaperWheel({ angle, nudge = 0, enabled, tucked, marks, steady, c
         <path d="M30 141 C 36 139 44 138 52 138 L 168 138" style={{ fill: 'none', stroke: mk('white'), strokeWidth: 1.6, strokeLinecap: 'round' }} />
       </svg>
     </div>
-    <button type="button" className="pb-steer" data-pb-steer="right" aria-label={rightLabel} disabled={!enabled} onClick={() => onTurn(clampWheel(angle + WHEEL_STEP))}><RotateCw size={26} aria-hidden="true" /></button>
-  </div>;
+  );
 }

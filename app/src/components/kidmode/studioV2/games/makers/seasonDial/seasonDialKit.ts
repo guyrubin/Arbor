@@ -29,34 +29,35 @@ export const SEASON_VIEWS: readonly SeasonView[] = [
   { id: 'view-thaw', at: 0.955, picture: derived('season-dial-view-thaw', 'winter grade melting: bare boughs, snow left along the parapet’s foot, wet floor') },
 ];
 
-/** What the dial is mounted on: the kit's round pale-wood table with the teal ring, seen from above. */
-export const DIAL_PLINTH: KitPicture = shipped('scene-table', 1024, 1024, true);
-
 /** A figure from the Studio's shared kit library (cut once for every maker from the kit boards; never a private copy). */
-const library = (stem: string, width: number, height: number, board: string): KitPicture => ({ src: `${MADE}${stem}.webp`, src480: `${MADE}${stem}-480.webp`, width, height, source: `kit/v30/${board}`, edit: 'shared library cut-out' });
-/** The crew, dressed for the weather they come out in. These three are the
- * shared library's own files; the two that show a child carry the child's
- * name in their stem, as the likeness register requires. */
-export const CREW_PICTURES = {
-  /** Aya in spring, her LeafLab on its sling. */
-  ayaLeafLab: library('kit-aya-mission-front', 398, 768, '05-aya.png'),
-  /** GobGob in the yellow hooded jacket, out in the spring rain. */
-  gobgobRain: library('kit-gobgob-mission-front', 325, 768, '02-gobgob-identity-wardrobes.png'),
-  /** Bebe in the navy hooded jacket, beside the snow friend. */
-  bebeSnow: library('kit-bebe-front', 285, 768, '01-bebe-identity-wardrobes.png'),
+const library = (stem: string, width: number, height: number, board: string): KitPicture => ({ src: `${MADE}${stem}.webp`, src480: `${MADE}${stem}-480.webp`, width, height, source: `kit/${board}`, edit: 'shared library cut-out' });
+/** Who comes out onto the terrace, each doing the season's own thing, all in
+ * the mission wardrobe (one wardrobe for the whole activity). `faces` is the
+ * way the figure looks in its file: 1 right, -1 left, 0 at the viewer. */
+export interface CastPicture extends KitPicture { readonly faces: 1 | 0 | -1; /** Its height beside a standing child (Bebe is 1). */ readonly tall: number }
+const cast = (picture: KitPicture, faces: 1 | 0 | -1, tall: number): CastPicture => ({ ...picture, faces, tall });
+export const CAST_PICTURES = {
+  /** Aya in spring, a potted seedling in her paws, LeafLab on its sling. */
+  ayaSpring: cast(library('kit-aya-holding-plant', 450, 768, 'v30/16-wonder-crew-key-art.png'), 0, 0.8),
+  /** Aya in winter, LeafLab on its sling, watching the snow. */
+  ayaWinter: cast(library('kit-aya-mission-front', 398, 768, 'v30/05-aya.png'), 0, 0.8),
+  /** Chock in the summer shade. */
+  chockSummer: cast(library('kit-chock-mission-side', 768, 601, 'v30/03-chock.png'), -1, 0.64),
+  /** Pep nosing through the autumn leaves. */
+  pepAutumn: cast(library('kit-pep-mission-sniffing', 600, 624, 'v30/16-wonder-crew-key-art.png'), 1, 0.52),
+  /** GobGob in the yellow jacket, pointing at the spring rain. */
+  gobgobRain: cast(library('kit-gobgob-mission-pointing', 438, 768, 'v30/16-wonder-crew-key-art.png'), 1, 0.84),
+  /** Bebe beside the snow friend. */
+  bebeSnow: cast(library('kit-bebe-mission-front', 281, 768, 'v30/01-bebe-identity-wardrobes.png'), 0, 1),
 } as const;
 /** The files of this activity in which a child of the kit is visible (for the likeness register). */
-export const SEASON_DIAL_CHILD_FILES: readonly string[] = [CREW_PICTURES.gobgobRain.src, CREW_PICTURES.bebeSnow.src];
-
-/** The companions on the terrace (the kit's own renders, as shipped). */
-export const FRIEND_PICTURES = {
-  ayaIdle: shipped('aya-idle', 440, 440, false), ayaHappy: shipped('aya-happy', 440, 440, false),
-  chockIdle: shipped('chock-idle', 440, 440, false), chockHappy: shipped('chock-happy', 440, 440, false),
-  pepIdle: shipped('pep-idle', 440, 440, false), pepHappy: shipped('pep-happy', 440, 440, false),
-} as const;
-/** Kit props used as they are. */
-export const WATERING_CAN = shipped('item-can', 278, 205, false);
-export const FELT_FLOWER = shipped('flower-open', 293, 440, false);
+export const SEASON_DIAL_CHILD_FILES: readonly string[] = [CAST_PICTURES.gobgobRain.src, CAST_PICTURES.bebeSnow.src];
+/** Aya's seedling in its three steps (chapter two): the kit's own planter. */
+export const PLANTER_PICTURES: readonly KitPicture[] = [
+  library('kit-prop-planter-bud', 258, 400, 'v30/23-bop-props-T08-T10.png'), library('kit-prop-planter-budding', 262, 400, 'v30/23-bop-props-T08-T10.png'), library('kit-prop-planter-bloom', 282, 426, 'v30/23-bop-props-T08-T10.png'),
+];
+/** The companion on the cover (the kit's own render, as shipped). */
+export const FRIEND_PICTURES = { ayaIdle: shipped('aya-idle', 440, 440, false) } as const;
 
 /** Every picture this activity shows, for the art manifest. */
-export const SEASON_DIAL_ART: readonly KitPicture[] = [...SEASON_VIEWS.map(v => v.picture), DIAL_PLINTH, ...Object.values(FRIEND_PICTURES), ...Object.values(CREW_PICTURES), WATERING_CAN, FELT_FLOWER];
+export const SEASON_DIAL_ART: readonly KitPicture[] = [...SEASON_VIEWS.map(v => v.picture), ...Object.values(CAST_PICTURES), ...PLANTER_PICTURES, ...Object.values(FRIEND_PICTURES)];

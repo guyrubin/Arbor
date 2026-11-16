@@ -1,81 +1,51 @@
-import { memo, type CSSProperties } from 'react';
+import { memo } from 'react';
 import { CLOTH_R, HOOP_CX, HOOP_CY } from './stitchGardenStitches';
 import type { VisitorKind } from './stitchGardenCritters';
-import { AYA_GLAD, AYA_WATCHING, BUD, GOBGOB_CURIOUS, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, PINCUSHION, WAITRING, WATERING_CAN, type KitPicture } from './stitchGardenKit';
+import { FERN, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, PINCUSHION, WAITRING, type KitPicture } from './stitchGardenKit';
 import { CritterArt, KitProp } from './StitchArt';
 
-/** Who and what is on Aya's table around the hoop. All of it is kit art (Aya,
- * her watering can, the bud that would not hurry, the knit pincushion) placed
- * in the hoop drawing's own units; the visitors are worked in thread. Each
- * piece is a toy: the game lays a real button over it. */
+/** What lies round the hoop on Aya's table, in the hoop drawing's own units:
+ * the fern (the kit's, from above), the knit pincushion the needle rests in,
+ * her LeafLab, and the small visitors worked in thread. Each is a toy: the
+ * game lays a real button over it. GobGob's WaitRing rides in the HUD. */
 
 const boxOf = (picture: KitPicture, x: number, y: number, w: number) => ({ x, y, w, h: w * picture.height / picture.width });
-/** Where each thing stands (the picture's box, in drawing units). */
+/** Where each thing lies (the picture's box, in drawing units). */
 export const PLACES = {
-  aya: boxOf(AYA_WATCHING, -20, 334, 118),
-  wateringCan: boxOf(WATERING_CAN, -3, 3, 80),
-  bud: boxOf(BUD[0], 392, 2, 44),
   pincushion: boxOf(PINCUSHION, 366, 380, 62),
-  leafLab: LEAFLAB ? { x: 60, y: 404, w: 44, h: 44 * LEAFLAB.crop.h / LEAFLAB.crop.w } : null,
+  leafLab: LEAFLAB ? { x: 2, y: 392, w: 52, h: 52 * LEAFLAB.crop.h / LEAFLAB.crop.w } : null,
   screw: { x: HOOP_CX + 15, y: -4, w: 36, h: 36 },
 } as const;
-/** Aya's own outline inside her square picture: the part a finger aims for. */
-export const AYA_BODY = { x: PLACES.aya.x + PLACES.aya.w * 0.3, y: PLACES.aya.y + 4, w: PLACES.aya.w * 0.4, h: PLACES.aya.h - 4 };
+/** The fern stands at one of the two far corners, half off the edge of the picture. */
+export const fernPlace = (side: 1 | -1) => boxOf(FERN, side > 0 ? 356 : -66, -44, 150);
 /** The middle line of the hoop's wood, where the ladybird walks. */
 export const RING_R = CLOTH_R + 12;
 /** Under the clasp at the top of the hoop: where the ladybird lives. */
 export const BUG_HOME = -90, BUG_PEEK = -60;
 
-const shade = (pct: number) => `color-mix(in srgb, var(--mk-shadow) ${pct}%, transparent)`;
-
-/** Aya watches the work; when a flower is whole she is glad, and hops. */
-export const Aya = memo(function Aya({ glad, hop }: { glad: boolean; hop: number }) {
-  const b = PLACES.aya;
-  return <g className="sg-aya" data-glad={glad} data-hop={hop ? hop % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }} pointerEvents="none">
-    <ellipse cx={b.x + b.w / 2 + 3} cy={b.y + b.h - 3} rx={b.w * 0.2} ry="4.5" style={{ fill: shade(26) }} />
-    <g className="sg-aya__breath" style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }}>
-      <image className="sg-aya__pose" data-on={!glad} href={AYA_WATCHING.src} x={b.x} y={b.y} width={b.w} height={b.h} />
-      <image className="sg-aya__pose" data-on={glad} href={AYA_GLAD.src} x={b.x} y={b.y} width={b.w} height={b.h} />
+/** The fern: its fronds stir in the air from the window, and rustle when touched. */
+export const Fern = memo(function Fern({ side, rustle }: { side: 1 | -1; rustle: number }) {
+  const b = fernPlace(side), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  return <g className="sg-fern" data-rustle={rustle ? rustle % 2 : undefined} pointerEvents="none">
+    <g className="sg-fern__sway" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+      <image href={FERN.src} x={b.x} y={b.y} width={b.w} height={b.h} transform={side > 0 ? undefined : `translate(${cx * 2} 0) scale(-1 1)`} />
     </g>
   </g>;
 });
 
-const DROPS: readonly { dx: number; dy: number; delay: number }[] = [
-  { dx: 30, dy: 44, delay: 120 }, { dx: 44, dy: 58, delay: 200 }, { dx: 24, dy: 60, delay: 280 }, { dx: 52, dy: 46, delay: 340 }, { dx: 38, dy: 70, delay: 420 }, { dx: 58, dy: 64, delay: 500 },
-];
-/** The watering can tips and a few drops fall towards the cloth. `pour` counts the pours. */
-export const WateringCan = memo(function WateringCan({ pour }: { pour: number }) {
-  const b = PLACES.wateringCan, rose = { x: b.x + b.w * 0.93, y: b.y + b.h * 0.2 };
-  return <g pointerEvents="none">
-    <g className="sg-can" data-pour={pour ? pour % 2 : undefined} style={{ transformOrigin: `${b.x + b.w * 0.45}px ${b.y + b.h}px` }}><KitProp picture={WATERING_CAN} x={b.x} y={b.y} width={b.w} /></g>
-    {pour > 0 && <g key={pour} className="sg-drops">
-      {DROPS.map((d, i) => <ellipse key={i} cx={rose.x} cy={rose.y} rx="1.9" ry="2.6" style={{ fill: 'color-mix(in srgb, var(--mk-sky) 80%, var(--mk-white))', '--sg-dx': `${d.dx}px`, '--sg-dy': `${d.dy}px`, animationDelay: `${d.delay}ms` } as CSSProperties} />)}
-    </g>}
-  </g>;
-});
-
-/** The bud in its pot: three kit pictures on one canvas. It opens when it is ready, not before. */
-export const Bud = memo(function Bud({ stage, nudge }: { stage: 0 | 1 | 2; nudge: number }) {
-  const b = PLACES.bud;
-  return <g className="sg-bud" data-stage={stage} data-nudge={nudge ? nudge % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }} pointerEvents="none">
-    <ellipse cx={b.x + b.w / 2 + 3} cy={b.y + b.h - 2} rx={b.w * 0.42} ry="4" style={{ fill: shade(24) }} />
-    {BUD.map((picture, i) => { const k = b.w / BUD[0].width, w = picture.width * k, h = picture.height * k;
-      return <image key={i} className="sg-bud__day" data-on={i === stage} href={picture.src} x={b.x + b.w / 2 - w / 2} y={b.y + b.h - h} width={w} height={h} />; })}
-  </g>;
-});
-
 /** The knit round the needle rests in. */
-export const Pincushion = memo(function Pincushion() {
+export const Pincushion = memo(function Pincushion({ ping }: { ping: number }) {
   const b = PLACES.pincushion;
-  return <KitProp className="sg-pin" picture={PINCUSHION} x={b.x} y={b.y} width={b.w} />;
+  return <g className="sg-pin" data-ping={ping ? ping % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h / 2}px` }}><KitProp picture={PINCUSHION} x={b.x} y={b.y} width={b.w} /></g>;
 });
 
-/** Aya's LeafLab, when the shared library has it. */
+/** Aya's LeafLab: the puck that reads water, light and warmth. */
 export const LeafLab = memo(function LeafLab({ ping }: { ping: number }) {
   const b = PLACES.leafLab;
   if (!b || !LEAFLAB) return null;
   const c = LEAFLAB.crop;
   return <g className="sg-lab" data-ping={ping ? ping % 2 : undefined} style={{ transformOrigin: `${b.x + b.w / 2}px ${b.y + b.h}px` }} pointerEvents="none">
+    <ellipse cx={b.x + b.w / 2 + 3} cy={b.y + b.h - 4} rx={b.w * 0.44} ry={b.h * 0.2} style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 26%, transparent)' }} />
     <svg x={b.x} y={b.y} width={b.w} height={b.h} viewBox={`${c.x} ${c.y} ${c.w} ${c.h}`}><image href={LEAFLAB.src} width={LEAFLAB.width} height={LEAFLAB.height} /></svg>
   </g>;
 });
@@ -100,10 +70,11 @@ export const Ladybird = memo(function Ladybird({ pose }: { pose: BugPose }) {
   </g>;
 });
 
-/** The showing hand: it comes from the chosen pattern card, taps one cross and
- * goes, so a child who cannot read sees the first move. Chrome, not scene: a
- * white hand with a graphite line, and a signal ring where it taps. It never
- * takes a touch. `step`: 1 at the card, 2 on its way, 3 pressing, 4 leaving. */
+/** The showing hand: it comes from the chosen seed packet, taps the open mark
+ * and goes, so a child who cannot read sees the first move; while a flower
+ * waits for its first pull it taps the cloth. Chrome, not scene: a white hand
+ * with a graphite line, and a signal ring where it taps. It never takes a
+ * touch. `step`: 1 at the packet, 2 on its way, 3 pressing, 4 leaving. */
 export function HintHand({ step, from, to }: { step: 0 | 1 | 2 | 3 | 4; from: { x: number; y: number }; to: { x: number; y: number } }) {
   if (step === 0) return null;
   const at = step === 1 ? from : to;
@@ -117,21 +88,21 @@ export function HintHand({ step, from, to }: { step: 0 | 1 | 2 | 3 | 4; from: { 
   </span>;
 }
 
-/** GobGob waits with the bud. His WaitRing (the kit's own picture of it, with
- * a shade over each light that is not on yet) fills while the needle works, one
- * light at a time;
- * when the flower is whole he is glad. Shown once the shared library has his
- * two faces. */
-export const GOBGOB_HERE = !!GOBGOB_WAITING && !!GOBGOB_GLAD;
-export function GobGobWaiting({ mood, lights, nudge }: { mood: 'waiting' | 'glad' | 'curious'; lights: number; nudge: number }) {
-  if (!GOBGOB_WAITING || !GOBGOB_GLAD) return null;
-  const faces: [string, KitPicture | null][] = [['waiting', GOBGOB_WAITING], ['glad', GOBGOB_GLAD], ['curious', GOBGOB_CURIOUS ?? GOBGOB_WAITING]];
-  const shown = mood === 'curious' && !GOBGOB_CURIOUS ? 'waiting' : mood;
-  return <span className="sg-gob" data-mood={shown} data-nudge={nudge ? nudge % 2 : undefined} aria-hidden="true">
-    <span className="sg-gob__face">{faces.map(([name, picture]) => picture && <img key={name} data-on={name === shown} src={picture.src480 ?? picture.src} alt="" draggable={false} />)}</span>
-    <span className="sg-waitring" data-lights={lights}>
-      <img src={WAITRING.src480 ?? WAITRING.src} alt="" draggable={false} />
-      {WAITRING.lights.map((l, i) => <i key={i} data-lit={i < lights} style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%`, width: `${l.w * 100}%`, height: `${l.h * 100}%` }} />)}
-    </span>
+/** GobGob's WaitRing, the patient-progress band: the kit's own picture of it,
+ * with a shade over each light that is not on yet. One more light for each
+ * pull of the thread; in the set-piece its loop closes. */
+export function WaitRing({ lights }: { lights: number }) {
+  return <span className="sg-waitring" data-lights={lights} aria-hidden="true">
+    <img src={WAITRING.src480 ?? WAITRING.src} alt="" draggable={false} />
+    {WAITRING.lights.map((l, i) => <i key={i} data-lit={i < lights} style={{ left: `${l.x * 100}%`, top: `${l.y * 100}%`, width: `${l.w * 100}%`, height: `${l.h * 100}%` }} />)}
   </span>;
+}
+/** GobGob beside his ring, for the set-piece. Shown once the shared library has his faces. */
+export const GOBGOB_HERE = !!GOBGOB_WAITING && !!GOBGOB_GLAD;
+export function GobGobRing({ lights }: { lights: number }) {
+  const face = lights >= 4 ? GOBGOB_GLAD : GOBGOB_WAITING;
+  return <div className="sg-ringcard" data-sg-ring={lights}>
+    {face && <span className="sg-ringcard__face"><img src={face.src480 ?? face.src} alt="" draggable={false} /></span>}
+    <WaitRing lights={lights} />
+  </div>;
 }

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BOTTOM_DEAD_CENTRE, DETENTS, FEED, HAND_TURN_GOAL, KEY_STEP, LINKAGE, LOAD, MACHINES, MACHINE_PARTS, MAX_HAND_OMEGA, PUSH_OMEGA, SPEED_OMEGA, START, TAU, TOP_DEAD_CENTRE, TRACE_BINS, WAVE_LENGTH,
-  advance, angleDelta, badgesOf, canFinish, canSelect, carrySelection, clampOmega, crankPin, cueFor, detentSteps, detentsCrossed, easeMotor, follow, hiddenByCase, liftSlope, loadTurn, lookedInside, metPart,
-  partsMet, pistonLift, pointerAngle, push, releaseSpeed, rodLean, rodLength, sawMachine, spinEnergy, startOn, strokeFraction, strokeOf, strokePlace, sweepBins, swing, topCentresCrossed,
-  traceBin, turnedByHand, waveReach, wrapAngle, wristPin, writeInk, type Linkage, type Spin,
+  ALL_PARTS, BEAT_ANGLES, BLOOMS, BOTTOM_DEAD_CENTRE, CALM_PUSH, CAM, CAM_LAG, CHAPTERS, CHAPTER_STEPS, DETENTS, ENAMELS, FLOW_START, HAND_TURN_GOAL, KEY_STEP, LENS_PARTS, LINKAGE, LOAD, MAX_HAND_OMEGA,
+  PUSH_OMEGA, SHOW_START_GOAL, SPEED_OMEGA, TAU, TOP_DEAD_CENTRE, TUNES, WAVE_LAG, WAVE_LINK, WAVE_RODS, WAVE_STEP,
+  advance, angleDelta, beatsCrossed, bloomOpen, builtOf, camAngle, camCentre, camContact, camLift, chaptersDone, clampOmega, crankPin, detentSteps, detentsCrossed, easeMotor, flowReduce, follow, liftSlope, loadTurn,
+  nearestPart, partsLeft, pistonLift, planOf, pointerAngle, push, releaseSpeed, rodLean, rodLength, spinEnergy, stepOf, strokeFraction, strokeOf, strokePlace, swing, topCentresCrossed,
+  waveAngle, waveFraction, waveLift, wrapAngle, wristPin,
+  type Flow, type FlowEvent, type Linkage, type Spin,
 } from './crankWorksRules';
 
 const FULL_CYCLE = Array.from({ length: 3601 }, (_, i) => i / 3600 * TAU);
@@ -176,107 +178,150 @@ describe('angles and turning by hand', () => {
   });
 });
 
-describe('the parts and the case', () => {
-  it('the case hides the inside and leaves the wheel and the top of the stroke in sight', () => {
-    expect(MACHINE_PARTS.engine.filter(p => hiddenByCase('engine', p))).toEqual(['crank', 'rod', 'piston', 'cylinder']);
-    expect(MACHINE_PARTS.toy.filter(p => hiddenByCase('toy', p))).toEqual(['crank', 'rod']);
-    expect(MACHINE_PARTS.writer.filter(p => hiddenByCase('writer', p))).toEqual(['crank', 'rod']);
-    expect(hiddenByCase('engine', 'wheel')).toBe(false); expect(hiddenByCase('toy', 'bloom')).toBe(false); expect(hiddenByCase('toy', 'handle')).toBe(false); expect(hiddenByCase('writer', 'tracer')).toBe(false);
-    // Every machine is the same idea: each has the crank and the rod.
-    for (const m of MACHINES) { expect(MACHINE_PARTS[m]).toContain('crank'); expect(MACHINE_PARTS[m]).toContain('rod'); }
+describe('the cam lifts the flower exactly', () => {
+  it('the disc goes round its shaft at the set distance and always touches the flat follower', () => {
+    for (const a of FULL_CYCLE) {
+      const c = camCentre(a), touch = camContact(a);
+      expect(Math.hypot(c.x, c.y)).toBeCloseTo(CAM.e, 9);
+      // The follower's face is level: the disc's top is one radius above its centre, straight up.
+      expect(touch.x).toBeCloseTo(c.x, 9);
+      expect(c.y - touch.y).toBeCloseTo(CAM.R, 9);
+      expect(camLift(a)).toBeCloseTo(-touch.y, 9);
+    }
   });
-  it('parts are met only with the case open, and only parts of the machine in view', () => {
-    expect(canSelect('engine', 'piston', false)).toBe(false);
-    expect(canSelect('engine', 'piston', true)).toBe(true);
-    expect(canSelect('engine', 'bloom', true)).toBe(false); expect(canSelect('writer', 'tracer', true)).toBe(true);
-    expect(canSelect('toy', 'handle', true)).toBe(true);
-    expect(canSelect('toy', null, true)).toBe(false);
-  });
-  it('switching machine keeps the crank or rod selected and lets go of the rest', () => {
-    expect(carrySelection('crank', 'toy')).toBe('crank'); expect(carrySelection('rod', 'engine')).toBe('rod');
-    expect(carrySelection('piston', 'toy')).toBeNull(); expect(carrySelection('bloom', 'engine')).toBeNull(); expect(carrySelection(null, 'toy')).toBeNull();
-    expect(carrySelection('wheel', 'writer')).toBe('wheel'); expect(carrySelection('rod', 'writer')).toBe('rod');
+  it('lifts by twice the offset each turn and opens the flower with the lift', () => {
+    expect(camLift(0)).toBeCloseTo(CAM.R + CAM.e, 9);
+    expect(camLift(Math.PI)).toBeCloseTo(CAM.R - CAM.e, 9);
+    expect(bloomOpen(0)).toBeCloseTo(1, 9); expect(bloomOpen(Math.PI)).toBeCloseTo(0, 9);
+    for (const a of FULL_CYCLE) { expect(bloomOpen(a)).toBeGreaterThanOrEqual(-1e-9); expect(bloomOpen(a)).toBeLessThanOrEqual(1 + 1e-9); expect(camLift(a + TAU)).toBeCloseTo(camLift(a), 9); }
+    expect(CAM.R).toBeGreaterThan(CAM.e); // a real disc: the shaft is inside it
   });
 });
 
-describe('the gentle arc to Done', () => {
-  it('lights three badges, then needs both machines', () => {
-    let e = START;
-    expect(badgesOf(e)).toEqual({ turned: false, inside: false, parts: false });
-    expect(cueFor(e, false, 'engine')).toBe('turn');
-    e = turnedByHand(e, HAND_TURN_GOAL / 2); expect(badgesOf(e).turned).toBe(false);
-    e = turnedByHand(e, -HAND_TURN_GOAL / 2); expect(badgesOf(e).turned).toBe(true);
-    expect(cueFor(e, false, 'engine')).toBe('look');
-    e = lookedInside(e); expect(cueFor(e, true, 'engine')).toBe('meet');
-    for (const p of MACHINE_PARTS.engine.slice(0, 4)) e = metPart(e, p);
-    expect(cueFor(e, true, 'engine')).toBe('more');
-    e = metPart(metPart(e, 'cylinder'), 'cylinder');
-    expect(e.met.filter(p => p === 'cylinder')).toHaveLength(1);
-    expect(badgesOf(e)).toEqual({ turned: true, inside: true, parts: true });
-    expect(canFinish(e)).toBe(false);
-    expect(cueFor(e, true, 'engine')).toBe('other');
-    e = sawMachine(e, 'toy'); expect(canFinish(e)).toBe(true); expect(cueFor(e, true, 'toy')).toBe('ready');
+describe('one wheel, everything in its turn', () => {
+  it('the flower tops out a set part of a turn after the piston, and the beads one after another', () => {
+    expect(bloomOpen(camAngle(CAM_LAG))).toBeCloseTo(1, 9);
+    for (let i = 0; i < WAVE_RODS; i++) {
+      const top = WAVE_LAG + i * WAVE_STEP;
+      expect(wrapAngle(waveAngle(i, top))).toBeCloseTo(0, 9);
+      expect(waveFraction(i, top)).toBeCloseTo(1, 9);
+      expect(waveLift(i, top)).toBeCloseTo(WAVE_LINK.l + WAVE_LINK.r, 9);
+      expect(waveFraction(i, top + Math.PI)).toBeCloseTo(0, 9);
+    }
+    // The order in one turn: piston, flower, the six beads, and the bell with the last bead.
+    const angles = BEAT_ANGLES.map(b => b.at);
+    expect([...angles].sort((a, b) => a - b)).toEqual(angles);
+    expect(Math.max(...angles)).toBeLessThan(TAU);
+    expect(CAM_LAG).toBeLessThan(WAVE_LAG);
   });
-  it('the crank and rod met in one machine count in the other', () => {
-    expect(partsMet(['handle', 'bloom'])).toBe(false);
-    expect(partsMet(['crank', 'rod', 'handle', 'bloom'])).toBe(true);
-    expect(partsMet(['crank', 'rod', 'wheel', 'tracer'])).toBe(true);
-    expect(partsMet(['crank', 'rod', 'wheel', 'piston'])).toBe(false);
+  it('every bead rod is a true slider-crank: its rod never stretches', () => {
+    for (let i = 0; i < WAVE_RODS; i++) for (const a of FULL_CYCLE.filter((_, k) => k % 60 === 0)) expect(rodLength(waveAngle(i, a), WAVE_LINK)).toBeCloseTo(WAVE_LINK.l, 9);
+    expect(WAVE_LINK.l).toBeGreaterThan(WAVE_LINK.r * 2);
   });
-  it('seeing both machines without the badges is not enough', () => {
-    expect(canFinish(sawMachine(START, 'toy'))).toBe(false);
-    expect(canFinish(sawMachine(sawMachine(START, 'toy'), 'writer'))).toBe(false);
-  });
-  it('any two of the three machines show the idea twice, wherever the visit began', () => {
-    let e = startOn('writer');
-    expect(e.seen).toEqual(['writer']); expect(cueFor(e, false, 'writer')).toBe('turn');
-    e = lookedInside(turnedByHand(e, HAND_TURN_GOAL));
-    for (const p of MACHINE_PARTS.writer) e = metPart(e, p);
-    expect(canFinish(e)).toBe(false); expect(cueFor(e, true, 'writer')).toBe('other');
-    e = sawMachine(e, 'engine');
-    expect(canFinish(e)).toBe(true); expect(cueFor(e, true, 'engine')).toBe('ready');
-    expect(START.seen).toEqual(['engine']);
+  it('one whole turn passes every beat once, in order, whichever way it goes', () => {
+    const forward = beatsCrossed(-0.01, TAU - 0.01);
+    expect(forward.map(b => b.kind)).toEqual(['pistonTop', 'bloomTop', 'beadTop', 'beadTop', 'beadTop', 'beadTop', 'beadTop', 'beadTop', 'bellRing']);
+    expect(forward.filter(b => b.kind === 'beadTop').map(b => b.index)).toEqual([0, 1, 2, 3, 4, 5]);
+    const back = beatsCrossed(TAU - 0.01, -0.01);
+    expect(back.map(b => b.kind)).toEqual([...forward.map(b => b.kind)].reverse());
+    expect(beatsCrossed(1, 1)).toEqual([]);
+    expect(beatsCrossed(0.01, 0.02)).toEqual([]);
+    expect(beatsCrossed(7 * TAU - 0.1, 7 * TAU + 0.1).map(b => b.kind)).toEqual(['pistonTop']);
+    // A fling of many turns in one frame never piles up more than one turn of sound.
+    expect(beatsCrossed(0.5, 0.5 + TAU * 5).length).toBe(BEAT_ANGLES.length);
   });
 });
 
-describe('the motion traces', () => {
-  it('marks the slices of the circle the crank pin swept', () => {
-    expect(traceBin(0)).toBe(0); expect(traceBin(TAU - 1e-9)).toBe(TRACE_BINS - 1); expect(traceBin(-0.01)).toBe(TRACE_BINS - 1);
-    const quarter = sweepBins([], 0, TAU / 4);
-    expect(quarter.filter(Boolean).length).toBeGreaterThanOrEqual(TRACE_BINS / 4);
-    expect(quarter.filter(Boolean).length).toBeLessThanOrEqual(TRACE_BINS / 4 + 1);
-    expect(sweepBins([], 1, 1 + 10 * TAU).every(Boolean)).toBe(true);
-    expect(sweepBins([], 0.5, 0.2).filter(Boolean).length).toBeGreaterThan(1);
+const play = (flow: Flow, ...events: FlowEvent[]) => events.reduce(flowReduce, flow);
+const turn: FlowEvent = { type: 'turned', amount: TAU };
+describe('the arc: three chapters that grow, then the whole machine', () => {
+  it('walks the whole arc one small step at a time', () => {
+    let flow = FLOW_START;
+    const seen: string[] = [];
+    const say = () => seen.push(`${flow.chapter}:${stepOf(flow)}`);
+    say(); flow = play(flow, turn); say();
+    for (const part of LENS_PARTS.pistonCh) flow = play(flow, { type: 'met', part });
+    say(); flow = play(flow, { type: 'tested' }); say();
+    expect(builtOf(flow)).toEqual({ flower: false, beads: false, bell: false });
+    flow = play(flow, { type: 'placed' }); say(); expect(builtOf(flow).flower).toBe(true);
+    flow = play(flow, turn); say();
+    for (const part of LENS_PARTS.flowerCh) flow = play(flow, { type: 'met', part });
+    say(); flow = play(flow, { type: 'placed' }, turn); say(); expect(builtOf(flow)).toEqual({ flower: true, beads: true, bell: false });
+    flow = play(flow, { type: 'met', part: 'smallCranks' }); say();
+    flow = play(flow, { type: 'placed' }); say(); expect(builtOf(flow).bell).toBe(true);
+    flow = play(flow, { type: 'turned', amount: SHOW_START_GOAL }); say();
+    expect(flow.over).toBe(false);
+    flow = play(flow, { type: 'shown' });
+    expect(flow.over).toBe(true);
+    expect(seen).toEqual([
+      'pistonCh:turnIt', 'pistonCh:lookIn', 'pistonCh:testJoint', 'flowerCh:pickUp', 'flowerCh:turnIt', 'flowerCh:lookIn',
+      'waveCh:pickUp', 'waveCh:lookIn', 'finaleCh:pickUp', 'finaleCh:turnIt', 'finaleCh:bigShow',
+    ]);
+    expect(chaptersDone(flow)).toEqual({ pistonCh: true, flowerCh: true, waveCh: true, finaleCh: true });
+    expect(flowReduce(flow, turn)).toBe(flow);
+  });
+  it('only what the step asks for moves it on; nothing else is ever a miss', () => {
+    const start = FLOW_START;
+    for (const event of [{ type: 'tested' }, { type: 'placed' }, { type: 'shown' }, { type: 'turned', amount: 0 }] as FlowEvent[]) expect(flowReduce(start, event)).toBe(start);
+    const looking = play(start, turn);
+    expect(flowReduce(looking, turn)).toBe(looking);
+    expect(flowReduce(looking, { type: 'tested' })).toBe(looking);
+    // The same part twice is one part; the look ends only when every part of this machine is named.
+    const one = play(looking, { type: 'met', part: 'rodBar' }, { type: 'met', part: 'rodBar' });
+    expect(one.met).toEqual(['rodBar']); expect(stepOf(one)).toBe('lookIn'); expect(partsLeft(one)).toEqual(['crankArm', 'pistonHead']);
+  });
+  it('a whole turn may be made of small pieces, either way round', () => {
+    let flow = FLOW_START;
+    for (let i = 0; i < 23; i++) flow = flowReduce(flow, { type: 'turned', amount: i % 2 ? -KEY_STEP : KEY_STEP });
+    expect(stepOf(flow)).toBe('turnIt'); expect(flow.hand).toBeCloseTo(23 * KEY_STEP, 9);
+    flow = flowReduce(flow, { type: 'turned', amount: KEY_STEP });
+    expect(stepOf(flow)).toBe('lookIn'); expect(flow.hand).toBe(0);
+    expect(HAND_TURN_GOAL).toBeCloseTo(TAU, 12);
+    // With motion reduced, four gentle pushes are one whole turn.
+    expect(play(FLOW_START, ...Array.from({ length: 4 }, (): FlowEvent => ({ type: 'turned', amount: CALM_PUSH }))).step).toBe(1);
+  });
+  it('a part of an earlier machine can be named later without disturbing the step in play', () => {
+    const picking = play(FLOW_START, turn, { type: 'met', part: 'crankArm' }, { type: 'met', part: 'rodBar' }, { type: 'met', part: 'pistonHead' }, { type: 'tested' });
+    expect(stepOf(picking)).toBe('pickUp');
+    const early = flowReduce(picking, { type: 'met', part: 'camDisc' });
+    expect(stepOf(early)).toBe('pickUp'); expect(early.met).toContain('camDisc');
+    // The cam was already named: the flower's look then needs only the follower.
+    const looking = play(early, { type: 'placed' }, turn);
+    expect(partsLeft(looking)).toEqual(['follower']);
+    expect(play(looking, { type: 'met', part: 'follower' }).chapter).toBe('waveCh');
+  });
+  it('every chapter has steps, and every hidden part belongs to one chapter', () => {
+    for (const chapter of CHAPTERS) expect(CHAPTER_STEPS[chapter].length).toBe(3);
+    expect(new Set(ALL_PARTS).size).toBe(ALL_PARTS.length);
+    expect(ALL_PARTS.length).toBe(6);
+    expect(chaptersDone(FLOW_START)).toEqual({ pistonCh: false, flowerCh: false, waveCh: false, finaleCh: false });
   });
 });
 
-describe('the wave writer', () => {
-  it('the glass slides one wave for every turn, however fast the wheel goes', () => {
-    expect(FEED * TAU).toBeCloseTo(WAVE_LENGTH, 12);
-    expect(waveReach(2, 2)).toBe(0);
-    expect(waveReach(2, 2 + TAU)).toBeCloseTo(WAVE_LENGTH, 12);
-    expect(waveReach(2 + TAU, 2)).toBeCloseTo(-WAVE_LENGTH, 12); // turned back, the line is on the other side of the pen
-    // The line is the lift written against the angle: one wave on, the same height again.
-    for (const at of [0.4, 2.2, 5]) expect(pistonLift(at + TAU)).toBeCloseTo(pistonLift(at), 9);
+describe('the lens names the part it rests on', () => {
+  const anchors = [{ part: 'crankArm', x: 0, y: 0 }, { part: 'rodBar', x: 0, y: -40 }, { part: 'pistonHead', x: 0, y: -90 }] as const;
+  it('picks the nearest part within reach, or none', () => {
+    expect(nearestPart({ x: 3, y: -4 }, anchors, 20)).toBe('crankArm');
+    expect(nearestPart({ x: 2, y: -30 }, anchors, 20)).toBe('rodBar');
+    expect(nearestPart({ x: 60, y: -90 }, anchors, 20)).toBeNull();
+    expect(nearestPart({ x: 0, y: -90 }, [], 20)).toBeNull();
   });
-  it('the pen paints its ink over the stretch it passes, joining and covering', () => {
-    let marks = writeInk([], 0, 1, 0);
-    expect(marks).toEqual([{ from: 0, to: 1, ink: 0 }]);
-    marks = writeInk(marks, 1, 2.5, 0);
-    expect(marks).toEqual([{ from: 0, to: 2.5, ink: 0 }]);
-    marks = writeInk(marks, 2.5, 4, 1);
-    expect(marks).toEqual([{ from: 0, to: 2.5, ink: 0 }, { from: 2.5, to: 4, ink: 1 }]);
-    // Turning back in a new ink repaints the middle and leaves both ends.
-    marks = writeInk(marks, 3, 1, 2);
-    expect(marks).toEqual([{ from: 0, to: 1, ink: 0 }, { from: 1, to: 3, ink: 2 }, { from: 3, to: 4, ink: 1 }]);
-    // Going over a stretch again in its own ink changes nothing.
-    expect(writeInk(marks, 1.2, 2.8, 2)).toEqual(marks);
-    expect(writeInk(marks, 2, 2, 1)).toEqual(marks);
-    for (let i = 1; i < marks.length; i++) expect(marks[i].from).toBeGreaterThanOrEqual(marks[i - 1].to);
-  });
-  it('remembers only the line near the pen', () => {
-    let marks = writeInk([], 0, 1, 0, 10);
-    marks = writeInk(marks, 1, 30, 0, 10);
-    expect(marks).toEqual([{ from: 20, to: 30, ink: 0 }]);
+});
+
+describe('play again is not the same again', () => {
+  it('a seed always gives the same visit, and visits differ', () => {
+    expect(planOf(7)).toEqual(planOf(7));
+    const plans = Array.from({ length: 40 }, (_, i) => planOf(i + 1));
+    expect(new Set(plans.map(p => p.enamel)).size).toBe(ENAMELS);
+    expect(new Set(plans.map(p => p.bloom)).size).toBe(BLOOMS);
+    expect(new Set(plans.map(p => p.beads.join(''))).size).toBeGreaterThan(10);
+    expect(new Set(plans.map(p => p.tune.join(''))).size).toBe(TUNES.length);
+    for (const p of plans) {
+      expect([...p.beads].sort()).toEqual([0, 1, 2, 3, 4, 5]);
+      expect(p.tune.length).toBe(WAVE_RODS);
+      // The wheel rests with the piston low, so the first turn lifts it.
+      expect(strokeFraction(p.rest)).toBeLessThan(0.3);
+    }
+    for (const tune of TUNES) expect(tune.length).toBe(WAVE_RODS);
   });
 });

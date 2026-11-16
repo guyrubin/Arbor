@@ -1,10 +1,13 @@
 import type { CSSProperties } from 'react';
 
-/** The Paper Boat's own drawn objects: the folded paper boat, the wooden wheel
- * and the hand that shows a first move. Everything else in the book is cut
- * from kit pictures (paperBoatKit.ts). These three are lit like the reading
- * room: daylight from the upper left, soft shade to the lower right. Colour
- * only through the makers' palette (--mk-*) and the Studio tokens. */
+/** The Paper Boat's own drawn objects: the folded paper boat (flat, for the
+ * book's cover and the Studio tile; in the book it is folded in real 3D, see
+ * PaperBoatScenes), the paper lanterns, the paper waves, the wooden wheel and
+ * the hand that shows a first move, and the printed water's ripple textures.
+ * The scenery is cut from kit pictures (paperBoatKit.ts). Everything here is
+ * lit like the reading room: daylight from the upper left, soft shade to the
+ * lower right. Colour only through the makers' palette (--mk-*) and the
+ * Studio tokens. */
 
 export const mk = (name: string) => `var(--mk-${name})`;
 /** `a` mixed with `b` (`pct` of `a`). */
@@ -105,3 +108,76 @@ export function HintHand({ press }: { press: number }) {
 /** Paper fibre: a fixed-seed noise tile, printed faintly over every page. No
  * colour literal: the noise is tinted by matrix numbers. */
 export const PAPER_GRAIN = `url("data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="3" seed="11" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .32  0 0 0 0 .25  0 0 0 0 .16  1.1 0 0 0 -.52"/></filter><rect width="180" height="180" filter="url(#n)"/></svg>')}")`;
+
+/** A paper lantern: a pleated paper drum in a thin copper frame. On its crook
+ * it hangs from a folded paper arm that stands in the water, over a channel;
+ * afloat it sits on the water on a little paper raft. `lit` 0 … 1 warms it.
+ * Drawn in a 60 × 80 box (on its crook) or a 30 × 36 box (afloat). */
+export function LanternArt({ uid, mode, lit, swing = 0 }: { uid: string; mode: 'onCrook' | 'afloat'; lit: number; swing?: number }) {
+  const g = (name: string) => `url(#${uid}-${name})`;
+  const warm = Math.round(Math.max(0, Math.min(1, lit)) * 100);
+  const paper = `color-mix(in srgb, ${mk('sun')} ${warm}%, ${mix('paper', 80, 'amber')})`;
+  const deep = `color-mix(in srgb, ${mk('amber')} ${warm}%, ${mix('paper-shade', 70, 'rust')})`;
+  const drum = <g>
+    <rect x="-9.5" y="0" width="19" height="24" rx="5.5" fill={g('drum')} />
+    {[-5.4, -1.8, 1.8, 5.4].map(x => <path key={x} d={`M${x} 1.6 V22.4`} style={{ fill: 'none', stroke: fade('rust', 34), strokeWidth: 0.8 }} />)}
+    <ellipse cx="-2" cy="11" rx="3.4" ry="7" style={{ fill: fade('white', 20 + warm * 0.5) }} />
+    <rect x="-7" y="-2.6" width="14" height="4" rx="1.6" style={{ fill: mix('rust', 70, 'wood-dark') }} />
+    <rect x="-7" y="22.6" width="14" height="3.6" rx="1.6" style={{ fill: mix('rust', 70, 'wood-dark') }} />
+    <rect x="-6" y="-2.2" width="12" height="1.1" rx=".5" style={{ fill: fade('white', 46) }} />
+  </g>;
+  const defs = <defs>
+    <linearGradient id={`${uid}-drum`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" style={{ stopColor: paper }} /><stop offset="1" style={{ stopColor: deep }} /></linearGradient>
+    <linearGradient id={`${uid}-arm`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" style={{ stopColor: mk('white') }} /><stop offset="1" style={{ stopColor: mk('paper-shade') }} /></linearGradient>
+  </defs>;
+  if (mode === 'afloat') return <svg viewBox="0 0 30 36" width="100%" height="100%" aria-hidden="true" focusable="false" style={{ display: 'block', overflow: 'visible' }}>
+    {defs}
+    <ellipse cx="15" cy="33" rx="13" ry="3" style={{ fill: mix('white', 80, 'paper-shade') }} />
+    <ellipse cx="15" cy="32.4" rx="13" ry="2.6" style={{ fill: 'none', stroke: fade('white', 80), strokeWidth: 0.8 }} />
+    <g transform="translate(15 6)">{drum}</g>
+  </svg>;
+  return <svg viewBox="0 0 60 80" width="100%" height="100%" aria-hidden="true" focusable="false" style={{ display: 'block', overflow: 'visible' }}>
+    {defs}
+    {/* the paper crook: a folded strip that stands on its tab and bends over the channel */}
+    <path d="M47 80 L47 26 C 47 10 38 5 28 6 L28 10 C 36 9.4 42.4 13 42.4 26 L42.4 80 Z" fill={g('arm')} />
+    <path d="M47 80 L47 26 C 47 10 38 5 28 6" style={{ fill: 'none', stroke: fade('shadow', 30), strokeWidth: 0.8 }} />
+    <rect x="38" y="76" width="14" height="4" rx="1" style={{ fill: mk('white') }} />
+    <g transform={`rotate(${swing.toFixed(2)} 28 8)`}>
+      <path d="M28 8 V20" style={{ fill: 'none', stroke: mix('rust', 60, 'wood-dark'), strokeWidth: 1.1 }} />
+      <g transform="translate(28 22)">{drum}</g>
+      <path d="M28 48 V54 M26.6 54 h2.8" style={{ fill: 'none', stroke: mix('poppy', 60, 'rust'), strokeWidth: 1.2, strokeLinecap: 'round' }} />
+    </g>
+  </svg>;
+}
+
+/** One row of paper waves across a page: scallops cut from blue-grey paper,
+ * a white cut edge along the crests. `phase` slides the scallops so the rows
+ * do not line up. 250 wide; the box sets the height. */
+export function WaveArt({ uid, shade, phase = 0 }: { uid: string; shade: number; phase?: number }) {
+  const step = 31.25, start = -step + (phase % 1) * step;
+  let d = `M${start} 26`;
+  for (let x = start; x < 260; x += step) d += ` Q ${x + step / 2} ${-6} ${x + step} 26`;
+  const tone = Math.round(Math.max(0, Math.min(1, shade)) * 100);
+  const top = `color-mix(in srgb, ${mk('sky-pale')} ${tone}%, ${mix('storm-grey', 50, 'sea')})`, low = `color-mix(in srgb, ${mk('sea')} ${tone}%, ${mix('slate', 60, 'teal-deep')})`;
+  return <svg viewBox="0 0 250 40" width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true" focusable="false" style={{ display: 'block', overflow: 'hidden' }}>
+    <defs><linearGradient id={`${uid}-w`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: top }} /><stop offset="1" style={{ stopColor: low }} /></linearGradient></defs>
+    <path d={`${d} V40 H${start} Z`} fill={`url(#${uid}-w)`} />
+    <path d={d} style={{ fill: 'none', stroke: fade('white', 88), strokeWidth: 1.6 }} />
+    <path d={d} transform="translate(0 5)" style={{ fill: 'none', stroke: fade('white', 26), strokeWidth: 1 }} />
+  </svg>;
+}
+
+/** A paper rainbow, for the one who taps every cloud. 200 × 100. */
+export function RainbowArt() {
+  const bands = ['poppy', 'amber', 'sun', 'spring', 'sky', 'violet'];
+  return <svg viewBox="0 0 200 100" width="100%" height="100%" aria-hidden="true" focusable="false" style={{ display: 'block', overflow: 'visible' }}>
+    {bands.map((tone, i) => <path key={tone} d={`M${8 + i * 7} 100 A ${92 - i * 7} ${92 - i * 7} 0 0 1 ${192 - i * 7} 100`} style={{ fill: 'none', stroke: mix(tone, 78, 'white'), strokeWidth: 7.4 }} />)}
+    <path d="M4.4 100 A 95.6 95.6 0 0 1 195.6 100" style={{ fill: 'none', stroke: mk('white'), strokeWidth: 1.4 }} />
+  </svg>;
+}
+
+/** The printed water's light and shade: fixed-seed noise stretched along the
+ * current, as bright streaks and as deep ones. Tinted by matrix numbers. */
+const ripple = (seed: number, tint: string, gain: string) => `url("data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="360" height="180"><filter id="n" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".011 .085" numOctaves="2" seed="${seed}" stitchTiles="stitch"/><feColorMatrix values="${tint} ${gain}"/></filter><rect width="360" height="180" filter="url(#n)"/></svg>`)}")`;
+export const WATER_LIGHT = ripple(4, '0 0 0 0 1  0 0 0 0 1  0 0 0 0 1', '3.4 0 0 0 -1.9');
+export const WATER_DEEP = ripple(9, '0 0 0 0 .03  0 0 0 0 .16  0 0 0 0 .26', '-3 0 0 0 1.22');
