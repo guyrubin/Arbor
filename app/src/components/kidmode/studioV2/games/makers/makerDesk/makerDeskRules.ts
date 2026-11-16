@@ -168,7 +168,7 @@ function answer(command: string, ctx: TerminalContext): Omit<RunResult, 'readAs'
     ]);
     case 'ls': return done([{ kind: 'listing', names: ['about.txt', 'secret.txt', 'things/'] }]);
     case 'ls things': return done(things.length ? [{ kind: 'listing', names: things.map(kind => THING_FILES[kind]) }] : [{ kind: 'out', text: w.thingsEmptyTerm, tone: 'soft' }]);
-    case 'cat about.txt': return done(w.about.map(text => ({ kind: 'out', text })));
+    case 'cat about.txt': return done(w.about.map((text): TermLine => ({ kind: 'out', text })));
     case 'cat secret.txt': {
       const turn = Number.isFinite(ctx.riddle) ? Math.abs(Math.trunc(ctx.riddle)) % w.riddles.length : 0;
       const [ask, reply] = w.riddles[turn];

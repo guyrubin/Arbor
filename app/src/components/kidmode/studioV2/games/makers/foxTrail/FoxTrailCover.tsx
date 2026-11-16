@@ -9,7 +9,7 @@ const RUN: FoxPose = {
   head: -0.06, earNear: -0.32, earFar: -0.3, tailBase: 0.08, tailTip: 0.16,
 };
 const blades = Array.from({ length: 34 }, (_, i) => {
-  const x = -10 + i * 13 + ((i * 37) % 9), h = 26 + ((i * 53) % 30), lean = (x - 166) / 520 + 0.22 * Math.sign(x - 166) * Math.max(0, 1 - Math.abs(x - 166) / 90);
+  const x = -10 + i * 13 + ((i * 37) % 9), h = 26 + ((i * 53) % 30), lean = (x - 140) / 520 + 0.22 * Math.sign(x - 140) * Math.max(0, 1 - Math.abs(x - 140) / 90);
   return { x, h, lean };
 });
 
@@ -49,8 +49,8 @@ export default function FoxTrailCover({ size = 'tile' }: { size?: 'tile' | 'card
     <path d="M-10 238 C 80 228, 160 240, 240 234 C 300 230, 360 238, 410 234 L410 246 C 360 250, 300 242, 240 246 C 160 252, 80 240, -10 250 Z" style={{ fill: 'color-mix(in srgb, var(--mk-clay) 50%, var(--mk-umber))' }} />
     <path d="M-10 238 C 80 228, 160 240, 240 234 C 300 230, 360 238, 410 234" style={{ fill: 'none', stroke: 'color-mix(in srgb, var(--mk-amber) 55%, var(--mk-clay))', strokeWidth: 2.5 }} />
     {/* the fox, leaping */}
-    <ellipse cx="160" cy="244" rx="46" ry="5" style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 35%, transparent)' }} />
-    <g transform="translate(166 218) scale(1.1)"><FoxFigure pose={RUN} carried={2} /></g>
+    <ellipse cx="136" cy="244" rx="44" ry="5" style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 35%, transparent)' }} />
+    <g transform="translate(140 216) scale(1.02)"><FoxFigure pose={RUN} carried={2} /></g>
     {/* the grass bends away from it */}
     <g>
       {blades.map((b, i) => <path key={i} d={`M${b.x - 3} 302 Q ${b.x + Math.sin(b.lean * 0.5) * b.h * 0.6} ${302 - b.h * 0.55} ${b.x + Math.sin(b.lean) * b.h * 1.6} ${302 - Math.cos(b.lean) * b.h * 1.6} Q ${b.x + 3 + Math.sin(b.lean * 0.5) * b.h * 0.6} ${302 - b.h * 0.55} ${b.x + 3} 302 Z`} style={{ fill: i % 3 === 0 ? 'color-mix(in srgb, var(--mk-amber) 48%, var(--mk-moss))' : i % 3 === 1 ? 'color-mix(in srgb, var(--mk-moss) 70%, var(--mk-umber))' : 'color-mix(in srgb, var(--mk-plum) 60%, var(--mk-leaf-deep))' }} />)}
