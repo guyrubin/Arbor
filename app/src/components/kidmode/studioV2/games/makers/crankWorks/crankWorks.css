@@ -1,184 +1,26 @@
-/* How Things Move: the TrailBench in the Wonderworks pavilion is the stage and
-   takes the screen; the machine stands on it. The chrome wears the Studio's
-   v30 register (pearl and white surfaces, graphite type, teal for done and
-   chosen, the signal colour only as a mark for what comes next) and sits in
-   one row above and one dock below. The scene never mirrors in Hebrew: the
-   wheel turns clockwise and the parts keep their places; only the chrome
-   follows the reading direction. Scene effects alone take the makers' palette. */
-.adventure.ck { display: block; padding: clamp(8px, 1.4vw, 16px); }
-.ck-bench { --ck-ink: var(--studio-graphite); --ck-soft: var(--studio-graphite-soft); --ck-cyan: color-mix(in srgb, var(--mk-sea) 62%, var(--mk-sky)); display: flex; flex-direction: column; gap: 8px; block-size: var(--ck-fit, calc(100svh - 150px)); min-block-size: 400px; color: var(--ck-ink); }
-.ck-bench .adventure-toolbar { margin: 0; flex-wrap: nowrap; gap: 8px; }
-.ck-bench .adventure-prompt { margin: 0; flex: 1 1 auto; min-inline-size: 0; }
-.ck-say { display: flex; align-items: stretch; gap: 8px; }
-.arbor-play .ck-bench .adventure-heading { font-size: 18px !important; line-height: 1.25; letter-spacing: 0; padding: 8px 14px; min-block-size: 62px; display: flex; align-items: center; box-shadow: 0 6px 18px var(--studio-shade); border: 1px solid var(--studio-line); }
-.ck-cue { display: block; font-weight: 900; }
-.ck-said { display: block; font-size: 15px; font-weight: 700; color: var(--ck-soft); }
-.ck-said strong { color: var(--ck-ink); font-weight: 900; }
-
-/* Piston / Flower / Wave: one switch, the chosen machine ringed in teal. */
-.ck-switch { display: flex; flex: 1 1 auto; min-inline-size: 0; gap: 3px; padding: 3px; border-radius: 999px; background: var(--studio-mist); }
-.ck-switch button { position: relative; flex: 1 1 0; min-inline-size: 0; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-block-size: 44px; padding: 0 5px; border: 0; border-radius: 999px; background: transparent; color: var(--ck-soft); font: 800 13.5px/1 var(--studio-font); transition: background-color .2s var(--studio-ease-soft), color .2s var(--studio-ease-soft), transform .18s var(--studio-ease-spring); }
-.ck-switch button > svg { flex: none; inline-size: 17px; block-size: 17px; }
-.ck-switch button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ck-switch button:active { transform: scale(.95); }
-.ck-switch button[aria-pressed='true'] { background: var(--studio-surface); color: var(--ck-ink); box-shadow: inset 0 0 0 2px var(--studio-teal-ink), 0 2px 6px var(--studio-shade); }
-.ck-switch button[aria-pressed='true'] > svg { color: var(--studio-teal-ink); }
-.ck-switch button[data-next='true']::after, .ck-btn[data-next='true']::after { content: ''; position: absolute; inset-block-start: 5px; inset-inline-end: 7px; inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--studio-signal); box-shadow: 0 0 0 2px var(--studio-surface); animation: ck-cue 1.6s ease-in-out infinite; }
-
-/* Three marks that fill in; no numbers anywhere. A filled mark carries a tick. */
-.ck-badges { display: flex; flex: none; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.ck-badge { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.ck-badge__mark { display: grid; place-items: center; inline-size: 27px; block-size: 27px; border-radius: 50%; border: 1.5px dashed color-mix(in srgb, var(--studio-graphite) 36%, transparent); color: var(--ck-soft); background: var(--studio-surface); transition: background-color .25s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
-.ck-badge[data-next='true'] .ck-badge__mark { border: 2px solid var(--studio-signal); color: var(--ck-ink); }
-.ck-badge[data-lit='true'] .ck-badge__mark { border: 0; color: var(--studio-done-ink); background: var(--studio-done); }
-.ck-badge[data-pop='true'] .ck-badge__mark { animation: ck-pop .7s var(--studio-ease-spring); }
-.ck-badge__name { display: none; font: 800 11px/1.15 var(--studio-font); color: var(--ck-soft); text-align: center; max-inline-size: 84px; }
-
-/* All done: the one graphite button, beside the words. */
-.ck-done { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-block-size: var(--studio-tap); min-inline-size: var(--studio-tap); padding: 0 16px; border: 0; border-radius: var(--studio-radius-control); background: var(--studio-action); color: var(--studio-action-ink); font: 900 16px/1.1 var(--studio-font); box-shadow: var(--studio-lift); animation: ck-arrive .5s var(--studio-ease-spring); transition: transform .18s var(--studio-ease-spring); }
-.ck-done:active { transform: scale(.95); }
-.ck-done:disabled { opacity: .55; }
-
-/* The stage: the kit picture under the drawing, in the drawing's own units.
-   A finger on it turns the wheel, never the page. */
-.ck-stage { position: relative; flex: 1 1 0; min-block-size: 0; border-radius: var(--studio-radius-card); overflow: hidden; background: var(--studio-pearl); box-shadow: inset 0 0 0 1px var(--studio-line), 0 10px 26px var(--studio-shade); touch-action: none; user-select: none; -webkit-user-select: none; isolation: isolate; }
-.ck-stage > .ck-backdrop { position: absolute; z-index: 0; inset: auto; left: -75%; bottom: 0; inline-size: 250%; max-inline-size: none; max-width: none; block-size: auto; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-.ck-svg { position: relative; z-index: 1; display: block; inline-size: 100%; block-size: 100%; overflow: visible; cursor: grab; -webkit-tap-highlight-color: transparent; }
-.ck-svg:active { cursor: grabbing; }
-.ck-svg text { font-family: var(--studio-font); }
-.ck-svg image { pointer-events: none; }
-.ck-grab, .ck-tag__hit { fill: transparent; }
-.ck-wheel-focus { outline: none; }
-.ck-focus-ring { fill: none; stroke: var(--studio-teal-ink); stroke-width: 3; stroke-dasharray: 10 7; }
-.ck-part { transition: opacity .25s var(--studio-ease-soft); }
-.ck-bench[data-open='true'] .ck-part, .ck-tag { cursor: pointer; }
-.ck-part[data-dim='true'], .ck-pin[data-dim='true'] { opacity: .58; }
-.ck-led { opacity: .4; transition: opacity .3s var(--studio-ease-soft); }
-.ck-led[data-live='true'] { opacity: 1; }
-.ck-glass > path:nth-child(2) { animation: ck-glint 7.5s ease-in-out infinite; }
-.ck-friend { cursor: pointer; }
-.ck-friend { animation: ck-breathe 3.6s ease-in-out infinite; }
-[data-crank-toy] { cursor: pointer; }
-.ck-pod { fill: none; stroke-width: 3; }
-.ck-pod--amber { stroke: var(--mk-amber); }
-.ck-pod--cyan { stroke: var(--ck-cyan); }
-
-/* A part's name on a pearl tag, its line following the part. */
-.ck-tag { transition: opacity .2s var(--studio-ease-soft); }
-.ck-tag[data-dim='true'] { opacity: .74 !important; }
-.ck-tag__leader { fill: none; stroke: var(--studio-graphite-soft); stroke-width: 1.4; stroke-linecap: round; }
-.ck-tag__dot { fill: var(--studio-surface); stroke: var(--studio-signal); stroke-width: 2.2; }
-.ck-tag[data-met='true'] .ck-tag__dot { fill: var(--studio-teal); stroke: var(--studio-surface); stroke-width: 1.6; }
-.ck-tag__shade { fill: var(--studio-shade); }
-.ck-tag__card { fill: var(--studio-surface); stroke: var(--studio-line); stroke-width: 1; }
-.ck-tag[data-chosen='true'] .ck-tag__card { fill: var(--studio-teal-soft); stroke: var(--studio-teal-ink); stroke-width: 2.4; }
-.ck-tag[data-focus='true'] .ck-tag__card { stroke: var(--studio-teal-ink); stroke-width: 3; stroke-dasharray: 6 4; }
-.ck-tag__mark { fill: none; stroke: color-mix(in srgb, var(--studio-graphite) 36%, transparent); stroke-width: 1.3; stroke-dasharray: 2.4 2.4; }
-.ck-tag[data-met='true'] .ck-tag__mark { fill: var(--studio-done); stroke: none; }
-.ck-tag__tick { fill: none; stroke: var(--studio-done-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.ck-tag__text { fill: var(--studio-graphite); font-size: 14.5px; font-weight: 900; }
-
-/* The showing hand, and the two motions drawn side by side. */
-.ck-hand { pointer-events: none; }
-.ck-hand__skin { fill: var(--studio-surface); stroke: var(--studio-graphite-soft); stroke-width: 1.3; stroke-linejoin: round; }
-.ck-hand__shade { fill: var(--studio-shade); }
-.ck-hand__crease { fill: none; stroke: var(--studio-line); stroke-width: 1.3; stroke-linecap: round; }
-.ck-hand__arc { fill: none; stroke: var(--studio-signal); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 7; }
-.ck-hand__touch { fill: none; stroke: var(--studio-signal); stroke-width: 2.6; }
-.ck-insight, .ck-trace, .ck-anchor, .ck-tags text { pointer-events: none; }
-.ck-insight__round { fill: none; stroke: var(--mk-orange); stroke-width: 4.5; stroke-linecap: round; }
-.ck-insight__line { fill: none; stroke: var(--mk-water); stroke-width: 4.5; stroke-linecap: round; }
-.ck-insight__head { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
-.ck-insight__head--round { stroke: var(--mk-orange); }
-.ck-insight__head--line { stroke: var(--mk-water); }
-.ck-insight__bead { stroke: var(--mk-white); stroke-width: 2.6; }
-.ck-insight__bead--round { fill: var(--mk-orange); }
-.ck-insight__bead--line { fill: var(--mk-water); }
-.ck-trace__circle { fill: none; stroke: var(--mk-amber); stroke-width: 2.6; stroke-dasharray: 1.5 5; stroke-linecap: round; }
-.ck-trace__line { fill: none; stroke: var(--ck-cyan); stroke-width: 3; stroke-dasharray: 3 5; stroke-linecap: round; }
-.ck-trace__dot { fill: var(--mk-amber); stroke: var(--mk-white); stroke-width: 1.4; }
-.ck-trace__dot--line { fill: var(--ck-cyan); }
-
-/* The writer's pen lights, on the stage where the pen is. */
-.ck-inks { position: absolute; z-index: 2; inset-block-start: 8px; left: 8px; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--studio-frost); box-shadow: 0 4px 14px var(--studio-shade); }
-.ck-inks button { display: grid; place-items: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: 50%; background: transparent; transition: transform .18s var(--studio-ease-spring); }
-.ck-inks button:active { transform: scale(.9); }
-.ck-inks button > i { inline-size: 26px; block-size: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--studio-surface), 0 0 0 1px var(--studio-line); }
-.ck-inks button[aria-pressed='true'] { background: var(--studio-surface); box-shadow: inset 0 0 0 2.5px var(--studio-teal-ink); }
-.ck-inks button[aria-pressed='true'] > i { inline-size: 22px; block-size: 22px; }
-
-/* The parts as buttons: beside the stage on a wide screen; on a small one the
-   name tags on the machine are the buttons a finger uses, and these stay for
-   the keyboard (out of sight, still in the tab order). */
-.ck-chips { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.ck-chip { display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--ck-ink); font: 800 14px/1 var(--studio-font); transition: transform .18s var(--studio-ease-spring); }
-.ck-chip:active { transform: scale(.95); }
-.ck-chip[aria-pressed='true'] { border-color: var(--studio-teal-ink); background: var(--studio-teal-soft); box-shadow: inset 0 0 0 1.5px var(--studio-teal-ink); }
-.ck-chip > svg { color: var(--studio-teal-ink); }
-
-/* Turn (or, while it runs, the speed lever), Play/Pause, Look inside: one dock a thumb can reach. */
-.adventure-actions.ck-dock { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: stretch; flex-wrap: nowrap; }
-.ck-btn, .adventure-actions .ck-btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-block-size: var(--studio-tap); padding: 6px 6px; border-radius: var(--studio-radius-control); border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--ck-ink); font: 800 13.5px/1.1 var(--studio-font); box-shadow: 0 3px 10px var(--studio-shade); transition: transform .18s var(--studio-ease-spring), background-color .2s var(--studio-ease-soft); }
-.ck-btn > span { text-align: center; }
-.ck-btn:active:not(:disabled) { transform: scale(.95); }
-.ck-btn[aria-pressed='true'] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); box-shadow: inset 0 0 0 1.5px var(--studio-teal-ink); }
-.ck-btn[aria-pressed='true'] > svg { color: var(--studio-teal-ink); }
-.ck-btn[data-next='true'] { border-color: var(--studio-signal); box-shadow: inset 0 0 0 1.5px var(--studio-signal), 0 3px 10px var(--studio-shade); }
-.ck-btn[data-nudge='true'] { animation: ck-nudge .7s var(--studio-ease-soft) 2; }
-.ck-lever { --i: 0; position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 3px; border-radius: var(--studio-radius-control); background: var(--studio-mist); animation: ck-arrive .3s var(--studio-ease-spring); }
-.ck-lever[data-speed='steady'] { --i: 1; }
-.ck-lever[data-speed='quick'] { --i: 2; }
-.ck-lever__knob { position: absolute; inset-block: 3px; left: 3px; inline-size: calc((100% - 6px) / 3); border-radius: 9px; background: var(--studio-surface); box-shadow: inset 0 0 0 2px var(--studio-teal-ink), 0 2px 6px var(--studio-shade); transform: translateX(calc(var(--i) * 100%)); transition: transform .3s var(--studio-ease-spring); pointer-events: none; }
-.ck[dir='rtl'] .ck-lever__knob { left: auto; right: 3px; transform: translateX(calc(var(--i) * -100%)); }
-.adventure-actions .ck-lever button { position: relative; display: grid; place-items: center; min-block-size: calc(var(--studio-tap) - 6px); padding: 0; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: var(--ck-soft); }
-.adventure-actions .ck-lever button[aria-pressed='true'] { color: var(--studio-teal-ink); }
-.ck-lever button > span { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
-.ck-bench[data-finale='true'] .ck-dock, .ck-bench[data-finale='true'] .ck-bar { opacity: .5; pointer-events: none; transition: opacity .3s var(--studio-ease-soft); }
-
-.ck-bench button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
-
-@keyframes ck-arrive { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes ck-pop { 0% { transform: scale(.6); } 45% { transform: scale(1.32); } 100% { transform: scale(1); } }
-@keyframes ck-nudge { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } 60% { transform: translateY(1px); } }
-@keyframes ck-cue { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
-@keyframes ck-breathe { 0%, 100% { translate: 0 0; } 50% { translate: 0 -1.6px; } }
-@keyframes ck-glint { 0%, 78%, 100% { transform: translateX(0); opacity: 1; } 86% { transform: translateX(46px); opacity: .5; } 94% { transform: translateX(0); opacity: 1; } }
-
-/* Wide and landscape: the stage on one side, the words and controls beside it. */
-@media (min-width: 800px) and (min-aspect-ratio: 1/1) {
-  .ck-bench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto auto 1fr auto; gap: 12px 20px; }
-  .ck-bench > .ck-bar { grid-column: 2; grid-row: 1; flex-direction: column; align-items: stretch; gap: 12px; }
-  .ck-bench > .ck-say { grid-column: 2; grid-row: 2; flex-direction: column; }
-  .ck-bench > .ck-stage { grid-column: 1; grid-row: 1 / -1; }
-  .ck-bench > .ck-chips { grid-column: 2; grid-row: 3; position: static; inline-size: auto; block-size: auto; overflow: visible; clip-path: none; white-space: normal; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
-  .ck-bench > .ck-dock { grid-column: 2; grid-row: 4; }
-  .arbor-play .ck-bench .adventure-heading { font-size: 20px !important; min-block-size: 96px; padding: 12px 16px; }
-  .ck-said { font-size: 16px; }
-  .ck-badges { justify-content: space-between; gap: 8px; }
-  .ck-badge { flex: 1 1 0; }
-  .ck-badge__mark { inline-size: 36px; block-size: 36px; }
-  .ck-badge__name { display: block; }
-  .ck-done { align-self: stretch; }
-  .adventure-actions.ck-dock { grid-template-columns: 1fr; }
-  .ck-btn, .adventure-actions .ck-btn { flex-direction: row; justify-content: flex-start; gap: 10px; padding-inline: 16px; font-size: 16px; }
-  .ck-lever button > span { position: static; inline-size: auto; block-size: auto; overflow: visible; clip-path: none; font: 800 13px/1 var(--studio-font); }
-  .adventure-actions .ck-lever button { grid-auto-flow: row; gap: 2px; align-content: center; }
-}
-@media (min-width: 640px) and (max-aspect-ratio: 1/1) {
-  .arbor-play .ck-bench .adventure-heading { font-size: 21px !important; min-block-size: 72px; }
-  .ck-said { font-size: 18px; }
-  .ck-switch button { font-size: 16px; min-block-size: 50px; }
-  .ck-badge__mark { inline-size: 38px; block-size: 38px; }
-  .ck-btn, .adventure-actions .ck-btn { flex-direction: row; gap: 10px; font-size: 17px; }
-}
-@media (max-width: 360px) {
-  .ck-switch button > svg { display: none; }
-  .ck-badge__mark { inline-size: 26px; block-size: 26px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ck-bench *, .ck-bench *::before, .ck-bench *::after { transition: none !important; animation: none !important; }
-}
-@media (forced-colors: active) {
-  .ck-chip[aria-pressed='true'], .ck-switch button[aria-pressed='true'], .ck-lever button[aria-pressed='true'], .ck-btn[aria-pressed='true'], .ck-inks button[aria-pressed='true'] { outline: 3px solid Highlight; }
-  .ck-badge[data-lit='true'] .ck-badge__mark { border: 3px solid Highlight; }
-}
+@import "../../../studioTokens.css";
+/* How Things Move. The picture is one canvas (crankPaint.ts) inside the shared
+   play stage; this sheet holds only what sits on it: the canvas box, the
+   keyboard handles laid over the things they stand for, and the ProofLens's
+   name tag. Chrome is the v30 register (frost, graphite, teal for chosen);
+   scene colour lives in the canvas and comes from the makers' palette. */
+.ck-world { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: default; outline: none; }
+.ck-world[data-grab=wheel], .ck-world[data-grab=lens], .ck-world[data-grab=part] { cursor: grabbing; }
+.ck-canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; }
+/* Keyboard handles: invisible, never in the way of a finger, each exactly over its thing. */
+.ck-handle { position: absolute; inset-block-start: 0; inset-inline-start: 0; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: inherit; pointer-events: none; opacity: 0; translate: -50% -50%; }
+.ck-handle:focus-visible { opacity: 1; outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; box-shadow: 0 0 0 6px color-mix(in srgb, var(--studio-surface) 80%, transparent); }
+.ck-handle[data-kind=wheel]:focus-visible { outline: none; box-shadow: none; }
+/* The lens's tag: the name of the part it rests on, on frosted glass. */
+.ck-tagbox { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.ck-tag { position: absolute; inset-block-start: 0; inset-inline-start: 0; z-index: 6; inline-size: max-content; max-inline-size: min(78cqi, 300px); margin: 0; padding: 9px 16px 10px; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--studio-surface) 86%, transparent); border-radius: 18px; background: color-mix(in srgb, var(--studio-surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25); box-shadow: 0 10px 28px color-mix(in srgb, var(--studio-graphite) 22%, transparent);
+  color: var(--studio-graphite); font: 700 14.5px/1.3 var(--studio-font); text-align: center; text-wrap: balance; opacity: 0; transition: opacity .18s var(--studio-ease-soft); }
+.ck-tag[data-show=true] { opacity: 1; }
+.ck-tag p { display: grid; gap: 2px; margin: 0; font: inherit; color: inherit; }
+.ck-tag strong { display: block; color: var(--studio-teal-ink); font: 900 18px/1.15 var(--studio-font); }
+.ck-tag[data-new=true] strong { animation: ck-tag-pop .42s var(--studio-ease-spring) both; }
+@keyframes ck-tag-pop { from { scale: .7; opacity: 0; } to { scale: 1; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ck-tag, .ck-tag strong { transition: none; animation: none; } }
+@media (forced-colors: active) { .ck-tag { border: 2px solid CanvasText; background: Canvas; -webkit-backdrop-filter: none; backdrop-filter: none; } }

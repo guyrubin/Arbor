@@ -1,243 +1,348 @@
+/** Clay Theatre's rules: stop-motion time, the show from film can to
+ * premiere, the film the projector makes from the child's six poses, and the
+ * stage layout. Everything is pure, so a whole sitting is played here. */
 import { describe, expect, it } from 'vitest';
-import { BODY_KEYFRAMES, BODY_VERTICES, LEAF_VERTICES, PART_KEYS, boil, leafPoints, lerpShape, seeded } from './clayShapes';
 import {
-  CUES, FPS, FROG_D, FROG_HOPS, HOP_STOPS, REELS, REEL_SECONDS, REACH_START, REACH_TOUCH, SPLASH_T, allWatched, bubbles, captionAt, chooseReel, cuesCrossed,
-  droplets, foamRings, frameAt, frogFilm, frogPosition, hopLanding, hopsLanded, lastFrame, momentOf, pause, play, reelsFor, ribbonSegments, rocketFilm,
-  seek, seekFrame, setDirection, splashCrown, startTransport, stepFrame, stepHop, tick, timeOf, toStart, whalePose, type Transport,
-  AYA_X1, BLOOMED_T, FRESH_HANDS, MAX_PRINTS, PORTHOLE_SLOTS, SEED_T, SPROUT_T, STAR_SETS, ayaFilm, cuesPassed, portholeSlotAt, pressPrint, rocketKey, setPorthole, showFor, starSwing,
+  CHAPTERS, CLAY_IDS, CREW, FPS, GEL_IDS, GROUND, MAX_PRINTS, PREMIERE, PULL_ENOUGH, PULL_REACH, ROOM, SET_W, SHOTS, STEPS, STORIES, STORY_IDS, TUNES, TUNE_IDS, TWOS,
+  carriedPose, chaptersDone, chooseStory, clayLine, coloured, crewMood, directDone, directJobs, drawingAt, drawingPose, filmBeats, filmDone, filmDrawings, filmFrames, frameOfKey, heroOf, keyNear,
+  knead, lumpPose, movedEnough, newShow, nextAct, nextKnead, nextPull, placeBuddy, premiereAt, premiereSeconds, pressPrint, pull, pullAmount, pullsDone, setGel, setTune, shapeDone, shoot,
+  showLook, stageLayout, startPose, storiesFor, toAnimate, toDirect, toPremiere, toPx, toSet, unshoot,
+  type Field, type Show,
 } from './clayTheatreRules';
+import { BUDDY_ACTS, FULL_PULLS, HEROES, PULL_IDS, heroDrop, type Pose } from './clayBody';
 
-/** Plays a reel the way the rAF loop does, with uneven frame times. */
-function run(s: Transport, seconds: number, dt = 1 / 60): Transport {
-  let next = s, left = seconds;
-  while (left > 1e-9 && next.playing) { const d = Math.min(dt, left); next = tick(next, d); left -= d; }
-  return next;
+const FIELD: Field = { x0: 20, x1: 380, y0: 20, y1: GROUND };
+const pose = (x: number, y: number, extra: Partial<Pose> = {}): Pose => ({ x, y, rot: 0, sx: 1, sy: 1, flip: 1, ...extra });
+/** A show with the hero shaped and coloured, ready for the camera. */
+function shaped(story = STORY_IDS[0], seed = 3): Show {
+  let show = chooseStory(newShow(seed), story);
+  show = knead(knead(show, 'blue'), 'yellow');
+  for (const id of PULL_IDS) show = pull(show, id);
+  return show;
+}
+/** Six shots along a jump, taken through the same rules the camera uses. */
+function filmed(story = STORY_IDS[0], seed = 3): Show {
+  let show = toAnimate(shaped(story, seed));
+  const hero = heroOf(show), start = startPose(show);
+  const path: [number, number][] = [[0, 0], [30, -40], [60, -80], [90, -90], [120, -50], [150, 0]];
+  path.forEach(([dx, dy], i) => { show = shoot(show, i === 0 ? start : carriedPose(hero, show.keys[show.keys.length - 1], start.x + dx * start.flip, start.y + dy, FIELD)); });
+  return show;
 }
 
-describe('time is cut into stop-motion frames', () => {
-  it('frame = floor(t·12), held inside the reel', () => {
-    expect(FPS).toBe(12);
-    expect(frameAt(0)).toBe(0); expect(frameAt(1 / 12 - 1e-4)).toBe(0); expect(frameAt(1 / 12)).toBe(1); expect(frameAt(0.25)).toBe(3);
-    expect(frameAt(timeOf(57))).toBe(57);
-    expect(frameAt(100, 'rocket')).toBe(lastFrame('rocket')); expect(frameAt(-3, 'jump')).toBe(0);
-    expect(lastFrame('rocket')).toBe(96); expect(lastFrame('jump')).toBe(108); expect(lastFrame('ayaSeed')).toBe(108); expect(lastFrame('frog')).toBe(132);
+describe('stop-motion time: twelve frames a second, every drawing held for two', () => {
+  it('is on twos', () => { expect(FPS).toBe(12); expect(TWOS).toBe(2); expect(SHOTS).toBe(6); });
+  it('lays three in-betweens between two of the child’s poses', () => {
+    expect(filmDrawings(0)).toBe(0); expect(filmDrawings(1)).toBe(1); expect(filmDrawings(2)).toBe(STEPS + 1);
+    expect(filmDrawings(SHOTS)).toBe((SHOTS - 1) * STEPS + 1);
+    expect(filmFrames(SHOTS)).toBe(filmDrawings(SHOTS) * TWOS);
+    // Six poses run for three and a half seconds.
+    expect(filmFrames(SHOTS) / FPS).toBe(3.5);
   });
-  it('every frame number round-trips through its time', () => {
-    for (const reel of REELS) for (let f = 0; f <= lastFrame(reel); f++) expect(frameAt(timeOf(f), reel)).toBe(f);
-  });
-});
-
-describe('Whale into Rocket is one body with real in-betweens', () => {
-  it('all body keyframes have the same vertex count, in the same order', () => {
-    const counts = Object.values(BODY_KEYFRAMES).map(k => k.length);
-    expect(counts).toEqual([BODY_VERTICES, BODY_VERTICES, BODY_VERTICES]);
-    for (const leaf of [...PART_KEYS.whale.flukes, ...PART_KEYS.rocket.flukes]) expect(leafPoints(leaf)).toHaveLength(LEAF_VERTICES);
-    expect(() => lerpShape(BODY_KEYFRAMES.whale, BODY_KEYFRAMES.whale.slice(1), 0.5)).toThrow();
-  });
-  it('an in-between is a true vertex-by-vertex blend, not either end', () => {
-    const half = lerpShape(BODY_KEYFRAMES.lump, BODY_KEYFRAMES.rocket, 0.5);
-    half.forEach((p, i) => {
-      expect(p[0]).toBeCloseTo((BODY_KEYFRAMES.lump[i][0] + BODY_KEYFRAMES.rocket[i][0]) / 2, 9);
-      expect(p[1]).toBeCloseTo((BODY_KEYFRAMES.lump[i][1] + BODY_KEYFRAMES.rocket[i][1]) / 2, 9);
-    });
-  });
-  it('the clay moves through whale → lump → rocket and the parts travel with it', () => {
-    const whale = rocketFilm(1), lump = rocketFilm(3.2), mid = rocketFilm(4.2), rocket = rocketFilm(5.5), gone = rocketFilm(8);
-    expect(whale.morph).toBe(0); expect(lump.morph).toBe(1); expect(rocket.morph).toBe(2);
-    expect(mid.morph).toBeGreaterThan(1); expect(mid.morph).toBeLessThan(2);
-    expect(whale.parts.eye.pupil).toBeGreaterThan(4); expect(rocket.parts.eye.ring).toBeCloseTo(15); expect(rocket.parts.eye.pupil).toBe(0);
-    expect(lump.parts.dent).toBe(1); expect(whale.parts.spout.s).toBe(1); expect(rocket.parts.spout.s).toBe(0);
-    expect(mid.parts.flukes[0].w).toBeGreaterThan(PART_KEYS.lump.flukes[0].w);
-    expect(whale.rot).toBe(0); expect(rocket.rot).toBe(-90);
-    expect(rocket.flame).toBeGreaterThan(0); expect(whale.flame).toBe(0);
-    expect(gone.cy).toBeLessThan(-150); // out of the top of the stage
-  });
-  it('the boil is ±0.6 units and seeded by the frame: the same frame looks the same', () => {
-    const a = boil(BODY_KEYFRAMES.whale, 17, 1), b = boil(BODY_KEYFRAMES.whale, 17, 1), c = boil(BODY_KEYFRAMES.whale, 18, 1);
-    expect(a).toEqual(b); expect(a).not.toEqual(c);
-    a.forEach((p, i) => { expect(Math.abs(p[0] - BODY_KEYFRAMES.whale[i][0])).toBeLessThanOrEqual(0.6); expect(Math.abs(p[1] - BODY_KEYFRAMES.whale[i][1])).toBeLessThanOrEqual(0.6); });
-    expect(seeded(3, 4)).toBe(seeded(3, 4)); expect(seeded(3, 4)).not.toBe(seeded(4, 3));
-  });
-  it('countdown puffs appear at the countdown and are gone before it', () => {
-    expect(rocketFilm(4.9).puffs).toHaveLength(0);
-    expect(rocketFilm(5.1).puffs).toHaveLength(1);
-    expect(rocketFilm(5.9).puffs.length).toBe(3);
+  it('shows the same drawing on both frames of a pair, and the child’s own pose on its frame', () => {
+    for (let f = 0; f < filmFrames(SHOTS); f += 2) expect(drawingAt(f, SHOTS)).toBe(drawingAt(f + 1, SHOTS));
+    for (let key = 0; key < SHOTS; key++) { expect(drawingAt(frameOfKey(key), SHOTS)).toBe(key * STEPS); expect(keyNear(frameOfKey(key), SHOTS)).toBe(key); }
+    expect(drawingAt(9999, SHOTS)).toBe(filmDrawings(SHOTS) - 1); expect(drawingAt(-5, SHOTS)).toBe(0);
   });
 });
 
-describe("The Whale's Jump is closed-form in t", () => {
-  it('whalePose is continuous through breach and splash', () => {
-    for (const at of [2.2, 3.2, SPLASH_T]) {
-      const a = whalePose(at - 1e-4), b = whalePose(at + 1e-4);
-      expect(Math.abs(a.x - b.x)).toBeLessThan(0.5); expect(Math.abs(a.y - b.y)).toBeLessThan(0.5); expect(Math.abs(a.rot - b.rot)).toBeLessThan(1.5);
-    }
-    expect(whalePose(3.9).y).toBeLessThan(-100); // the top of the arc, high above the water
-    expect(whalePose(1).y).toBeGreaterThan(0);   // underwater at first
+describe('the film cans', () => {
+  it('holds four films, each with its own hero and its own friend', () => {
+    expect(STORY_IDS).toHaveLength(4);
+    expect(new Set(STORY_IDS.map(id => STORIES[id].hero)).size).toBe(4);
+    expect(new Set(STORY_IDS.map(id => STORIES[id].buddy)).size).toBe(4);
+    for (const id of STORY_IDS) { expect(STORIES[id].clay[0]).not.toBe(STORIES[id].clay[1]); expect(HEROES[STORIES[id].hero]).toBeDefined(); }
   });
-  it('droplets: none before the whale leaves the water; the same t gives the same droplets whatever came before', () => {
-    expect(droplets(0)).toEqual([]); expect(droplets(3.2)).toEqual([]);
-    expect(droplets(3.5).length).toBeGreaterThan(0);
-    const direct = droplets(4.9);
-    // A history: forward through the whole film, then backwards, then back to 4.9.
-    for (let f = 0; f <= lastFrame('jump'); f++) droplets(timeOf(f));
-    for (let f = lastFrame('jump'); f >= 0; f--) droplets(timeOf(f));
-    expect(droplets(4.9)).toEqual(direct);
-    expect(direct.length).toBeGreaterThan(10);
+  it('offers all four every time, in an order that belongs to the round', () => {
+    const orders = new Set<string>();
+    for (let seed = 1; seed < 40; seed++) { const offered = storiesFor(seed); expect([...offered].sort()).toEqual([...STORY_IDS].sort()); orders.add(offered.join()); }
+    expect(orders.size).toBeGreaterThan(1);
+    expect(storiesFor(12)).toEqual(storiesFor(12));
   });
-  it('every droplet exists only between its birth and its landing, and lands on the water', () => {
-    for (let f = 0; f <= lastFrame('jump'); f++) for (const d of droplets(timeOf(f))) expect(d.y).toBeLessThanOrEqual(0.001);
-    expect(droplets(8)).toEqual([]);
-  });
-  it('splash, foam rings and bubbles all un-happen backwards', () => {
-    expect(splashCrown(SPLASH_T - 0.01)).toBe(0); expect(splashCrown(SPLASH_T + 0.22)).toBeCloseTo(1); expect(splashCrown(6)).toBe(0);
-    expect(foamRings(4.5)).toHaveLength(1); expect(foamRings(3)).toEqual([]); expect(foamRings(5.4).length).toBeGreaterThanOrEqual(3);
-    expect(bubbles(1)).toEqual(bubbles(1)); expect(bubbles(1).length).toBeGreaterThan(0);
-    for (const b of bubbles(5.5)) expect(b.y).toBeGreaterThan(4);
+  it('dresses each round differently, and the same round the same way', () => {
+    expect(showLook(5)).toEqual(showLook(5));
+    const looks = Array.from({ length: 30 }, (_, i) => showLook(i + 1));
+    for (const look of looks) { expect([...look.lumps].sort()).toEqual([...CLAY_IDS].sort()); expect([1, -1]).toContain(look.side); expect(look.hour).toBeGreaterThanOrEqual(0); expect(look.hour).toBeLessThan(3); }
+    expect(new Set(looks.map(l => l.lumps.join())).size).toBeGreaterThan(5);
+    expect(new Set(looks.map(l => l.side)).size).toBe(2);
+    expect(new Set(looks.map(l => l.hour)).size).toBe(3);
   });
 });
 
-describe('Halfway Frog: each hop is half of what is left', () => {
-  it('frogPosition(hop) = 1 − (½)^hop, exactly', () => {
-    expect([0, 1, 2, 3, 7].map(frogPosition)).toEqual([0, 0.5, 0.75, 0.875, 1 - 1 / 128]);
-    expect(frogPosition(FROG_HOPS)).toBeLessThan(1);
+describe('chapter 1: shape and colour', () => {
+  it('starts at the cans and waits there for a can', () => {
+    const show = newShow(1);
+    expect(show.chapter).toBe('cans'); expect(knead(show, 'red')).toBe(show); expect(pull(show, 'front')).toBe(show);
+    expect(chooseStory(show, 'frogPond')).toMatchObject({ chapter: 'shape', story: 'frogPond' });
   });
-  it('the ribbon segments are exactly ½, ¼, ⅛ … and add up to what was covered', () => {
-    const segs = ribbonSegments();
-    expect(segs.map(s => s.length)).toEqual([1 / 2, 1 / 4, 1 / 8, 1 / 16, 1 / 32, 1 / 64, 1 / 128]);
-    segs.forEach((s, i) => { expect(s.to - s.from).toBe(s.length); if (i) expect(s.from).toBe(segs[i - 1].to); });
-    expect(segs.reduce((sum, s) => sum + s.length, 0)).toBe(frogPosition(FROG_HOPS));
+  it('kneads the body first, then the trim, then each in turn', () => {
+    let show = chooseStory(newShow(1), 'whaleJump');
+    expect(nextKnead(show)).toBe('body');
+    show = knead(show, 'blue'); expect(show.body).toBe('blue'); expect(coloured(show)).toBe(false); expect(nextKnead(show)).toBe('trim');
+    show = knead(show, 'yellow'); expect(show.trim).toBe('yellow'); expect(coloured(show)).toBe(true);
+    show = knead(show, 'red'); expect(show).toMatchObject({ body: 'red', trim: 'yellow' });
+    show = knead(show, 'green'); expect(show).toMatchObject({ body: 'red', trim: 'green' });
   });
-  it('after seven hops the frog is very close and still not there; then it reaches out', () => {
-    const rest = frogFilm(hopLanding(FROG_HOPS) + 0.1);
-    expect(hopsLanded(hopLanding(FROG_HOPS) + 0.1)).toBe(7);
-    expect(rest.gap).toBeCloseTo(FROG_D / 128, 9); expect(rest.gap).toBeGreaterThan(0);
-    expect(rest.arm).toBe(0); expect(frogFilm(REACH_TOUCH).touched).toBe(true); expect(frogFilm(REACH_TOUCH).arm).toBe(1);
-    expect(captionAt('frog', REACH_START - 0.1)).toBe('closer'); expect(captionAt('frog', REACH_START)).toBe('reach');
+  it('does not knead the same clay in twice: the show comes back unchanged, never an error', () => {
+    let show = knead(chooseStory(newShow(1), 'whaleJump'), 'blue');
+    expect(knead(show, 'blue')).toBe(show);
+    show = knead(show, 'yellow');
+    expect(knead(show, 'yellow')).toBe(show);
   });
-  it('mid-hop the frog is in the air between two exact positions', () => {
-    const f = frogFilm(hopLanding(1) - 0.2);
-    expect(f.lift).toBeGreaterThan(0); expect(f.progress).toBeGreaterThan(0); expect(f.progress).toBeLessThan(0.5);
+  it('pulls the three parts of the hero out of the lump, in any order', () => {
+    let show = knead(knead(chooseStory(newShow(1), 'moonRocket'), 'red'), 'yellow');
+    expect(nextPull(show)).toBe('front'); expect(shapeDone(show)).toBe(false);
+    show = pull(show, 'top'); expect(pullsDone(show)).toBe(1); expect(nextPull(show)).toBe('front');
+    expect(pull(show, 'top')).toBe(show);
+    show = pull(pull(show, 'back'), 'front');
+    expect(nextPull(show)).toBeNull(); expect(shapeDone(show)).toBe(true);
   });
-});
-
-describe('cues are edge-triggered while playing, silent while scrubbing', () => {
-  it('a cue sounds once when crossed forward, once when crossed backward', () => {
-    expect(cuesCrossed(CUES.rocket, 2.4, 2.5, true)).toEqual(['bloop']);
-    expect(cuesCrossed(CUES.rocket, 2.5, 2.6, true)).toEqual([]);
-    expect(cuesCrossed(CUES.rocket, 2.5, 2.4, true)).toEqual(['bloop']);
-    expect(cuesCrossed(CUES.rocket, 6.3, 6.1, true)).toEqual(['whoosh']);
+  it('needs both the colour and the shape before the camera comes out', () => {
+    let show = chooseStory(newShow(1), 'whaleJump');
+    for (const id of PULL_IDS) show = pull(show, id);
+    expect(shapeDone(show)).toBe(false); expect(toAnimate(show)).toBe(show);
+    show = knead(knead(show, 'blue'), 'red');
+    expect(toAnimate(show).chapter).toBe('animate');
   });
-  it('scrubbing, a held frame and a big jump are silent', () => {
-    expect(cuesCrossed(CUES.rocket, 2.4, 2.5, false)).toEqual([]);
-    expect(cuesCrossed(CUES.rocket, 2.45, 2.45, true)).toEqual([]);
-    expect(cuesCrossed(CUES.rocket, 0, 8, true)).toEqual([]);
+  it('reads a drag along the handle as a pull, and nothing for a drag the other way', () => {
+    expect(pullAmount([1, 0], [PULL_REACH, 0])).toBe(1);
+    expect(pullAmount([1, 0], [PULL_REACH / 2, 30])).toBeCloseTo(0.5);
+    expect(pullAmount([1, 0], [-40, 0])).toBe(0);
+    expect(pullAmount([0, -2], [0, -PULL_REACH * 3])).toBeLessThanOrEqual(1.15);
+    expect(PULL_ENOUGH).toBeGreaterThan(0.3); expect(PULL_ENOUGH).toBeLessThan(0.8);
   });
-  it('a whole play-through sounds each cue exactly once, in order, forwards and backwards', () => {
-    for (const reel of REELS) {
-      let s = play(startTransport(reel)); const heard: string[] = [];
-      while (s.playing) { const next = tick(s, 1 / 60); heard.push(...cuesCrossed(CUES[reel], s.t, next.t, s.playing)); s = next; }
-      expect(heard).toEqual(CUES[reel].map(c => c.kind));
-      s = play(setDirection(s, true)); const back: string[] = [];
-      while (s.playing) { const next = tick(s, 1 / 45); back.push(...cuesCrossed(CUES[reel], s.t, next.t, s.playing)); s = next; }
-      expect(back).toEqual([...CUES[reel]].reverse().map(c => c.kind));
+  it('keeps a thumbprint in the clay’s own coordinates, the newest few only', () => {
+    let show = shaped();
+    for (let i = 0; i < 9; i++) show = pressPrint(show, [i * 20 - 80, i * 5 - 20]);
+    expect(show.prints).toHaveLength(MAX_PRINTS);
+    for (const print of show.prints) { expect(Math.abs(print.x)).toBeLessThanOrEqual(70); expect(Math.abs(print.y)).toBeLessThanOrEqual(34); }
+    const again = pressPrint(show, [show.prints[0].x + 2, show.prints[0].y]);
+    expect(again.prints).toHaveLength(MAX_PRINTS);
+  });
+  it('seats the lump and the finished hero on the stage floor', () => {
+    for (const story of STORY_IDS) {
+      const raw = chooseStory(newShow(4), story), lump = lumpPose(raw), done = shaped(story, 4), start = startPose(done), hero = heroOf(done);
+      expect(lump.y + heroDrop(hero, raw.pulls, lump)).toBeCloseTo(GROUND, 5);
+      expect(start.y + heroDrop(hero, FULL_PULLS, start)).toBeCloseTo(GROUND, 5);
+      expect(start.x).toBeGreaterThan(40); expect(start.x).toBeLessThan(SET_W - 40);
     }
   });
 });
 
-describe('the projector', () => {
-  it('plays to the end, stops, and marks the reel watched', () => {
-    let s = play(startTransport('rocket'));
-    s = run(s, 4); expect(s.playing).toBe(true); expect(s.watched).toEqual([]);
-    s = run(s, 5); expect(s.playing).toBe(false); expect(s.t).toBe(REEL_SECONDS.rocket); expect(s.watched).toEqual(['rocket']);
-    expect(play(s).t).toBe(0); // from the end, Play starts over
+describe('chapter 2: animate', () => {
+  it('always takes the first frame, and after that only a pose that changed', () => {
+    let show = toAnimate(shaped());
+    const start = startPose(show);
+    show = shoot(show, start); expect(show.keys).toHaveLength(1);
+    expect(shoot(show, start)).toBe(show);
+    expect(shoot(show, { ...start, x: start.x + 3 })).toBe(show);
+    expect(shoot(show, { ...start, x: start.x + 20 }).keys).toHaveLength(2);
+    expect(shoot(show, { ...start, sx: 1.14, sy: 0.8 }).keys).toHaveLength(2);
   });
-  it('pause freezes the frame on screen', () => {
-    const s = pause(run(play(startTransport('jump')), 2.33));
-    expect(s.playing).toBe(false); expect(s.t).toBe(timeOf(frameAt(2.33)));
-    expect(tick(s, 1)).toBe(s);
+  it('stops at six frames, and can give the last one back', () => {
+    const show = filmed();
+    expect(show.keys).toHaveLength(SHOTS); expect(filmDone(show)).toBe(true);
+    expect(shoot(show, pose(10, 10))).toBe(show);
+    const undone = unshoot(show);
+    expect(undone.keys).toHaveLength(SHOTS - 1); expect(filmDone(undone)).toBe(false); expect(toDirect(undone)).toBe(undone);
+    expect(unshoot(toAnimate(shaped()))).toEqual(toAnimate(shaped()));
   });
-  it('backwards plays down to the start; scrubbing to the last frame also counts as watched', () => {
-    let s = play(setDirection(seek(startTransport('jump'), 6), true));
-    s = run(s, 10); expect(s.t).toBe(0); expect(s.playing).toBe(false); expect(s.watched).toEqual([]);
-    s = seekFrame(s, lastFrame('jump')); expect(s.watched).toEqual(['jump']);
-    expect(stepFrame(toStart(s), -1).t).toBe(0); expect(stepFrame(s, 1).t).toBe(REEL_SECONDS.jump);
+  it('lets the clay answer how it is carried: it faces the way it goes and leans into a climb', () => {
+    const from = pose(200, 200);
+    const right = carriedPose('whale', from, 260, 150, FIELD), left = carriedPose('whale', from, 140, 150, FIELD);
+    expect(right.flip).toBe(1); expect(left.flip).toBe(-1);
+    expect(right.rot).toBeLessThan(0);                                   // nose up on the way up
+    expect(carriedPose('whale', from, 260, 230, FIELD).rot).toBeGreaterThan(0);
+    expect(right.sx).toBeGreaterThan(1); expect(right.sy).toBeLessThan(1); // a long step stretches it
+    // The rocket points where it flies; straight up is no turn at all.
+    const high = pose(200, 120);
+    expect(carriedPose('rocket', high, 200, 60, FIELD).rot).toBeCloseTo(0);
+    expect(carriedPose('rocket', high, 280, 120, FIELD).rot).toBeCloseTo(90);
+    expect(carriedPose('rocket', high, 120, 120, FIELD).rot).toBeCloseTo(-90);
+    expect(carriedPose('rocket', high, 120, 120, FIELD).flip).toBe(1);
+    // The frog never turns round; it squats on the ground and stretches in the air.
+    expect(carriedPose('frog', from, 120, 100, FIELD).flip).toBe(1);
+    expect(carriedPose('frog', from, 240, 60, FIELD).sy).toBeGreaterThan(1);
   });
-  it('watched reels stay watched across reels; the curtain needs every offered reel', () => {
-    let s = seekFrame(startTransport('rocket'), 999);
-    s = chooseReel(s, 'jump'); expect(s.t).toBe(0); expect(s.watched).toEqual(['rocket']);
-    expect(allWatched(s, reelsFor('preschool'))).toBe(false);
-    s = seekFrame(s, 999); expect(allWatched(s, reelsFor('preschool'))).toBe(false);
-    s = seekFrame(chooseReel(s, 'ayaSeed'), 999); expect(allWatched(s, reelsFor('preschool'))).toBe(true); expect(allWatched(s, reelsFor('school'))).toBe(false);
+  it('keeps the hero on the set and never under the floor', () => {
+    for (const hero of ['whale', 'rocket', 'frog', 'snail'] as const) {
+      const from = pose(200, 150), down = carriedPose(hero, from, 900, 900, FIELD), up = carriedPose(hero, from, -900, -900, FIELD);
+      expect(down.x).toBe(FIELD.x1); expect(up.x).toBe(FIELD.x0); expect(up.y).toBe(FIELD.y0);
+      expect(down.y + heroDrop(hero, FULL_PULLS, { ...down, rot: 0, sx: 1, sy: 1 })).toBeLessThanOrEqual(GROUND + 1e-6);
+    }
   });
-  it('the frog steps one hop at a time, both ways', () => {
-    let s = startTransport('frog');
-    for (let hop = 1; hop <= FROG_HOPS; hop++) { s = stepHop(s, 1); expect(hopsLanded(s.t)).toBe(hop); expect(momentOf('frog', s.t)).toEqual({ kind: 'hop', index: hop, total: FROG_HOPS }); }
-    s = stepHop(s, 1); expect(frogFilm(s.t).touched).toBe(true);
-    s = stepHop(s, 1); expect(s.watched).toEqual(['frog']);
-    s = stepHop(stepHop(s, -1), -1); expect(hopsLanded(s.t)).toBe(7);
-    expect(HOP_STOPS[0]).toBe(0); expect(stepHop(startTransport('frog'), -1).t).toBe(0);
-  });
-  it('the strip names its moment', () => {
-    expect(momentOf('rocket', 0)).toEqual({ kind: 'moment', index: 1, total: 8 });
-    expect(momentOf('rocket', 8)).toEqual({ kind: 'moment', index: 8, total: 8 });
-    expect(momentOf('frog', 0)).toEqual({ kind: 'start' }); expect(momentOf('frog', REACH_START)).toEqual({ kind: 'reach' });
-  });
-  it('the halving puzzle is offered to school-age children', () => {
-    expect(reelsFor('school')).toEqual(['rocket', 'jump', 'ayaSeed', 'frog']); expect(reelsFor('preschool')).toEqual(['rocket', 'jump', 'ayaSeed']);
-  });
-});
-
-describe("Aya's Flower is closed-form in t", () => {
-  it('Aya hops in, plants one seed, waits, and the flower opens petal by petal', () => {
-    expect(ayaFilm(0).x).toBeLessThan(60); expect(ayaFilm(2).x).toBe(AYA_X1); expect(ayaFilm(2).lift).toBe(0);
-    expect(ayaFilm(0.6).lift).toBeGreaterThan(10);
-    expect(ayaFilm(SEED_T - 0.2).seed.o).toBe(1); expect(ayaFilm(SEED_T + 0.3).seed.o).toBe(0);
-    const waiting = ayaFilm(4), grown = ayaFilm(BLOOMED_T + 0.2);
-    expect(waiting.droop).toBe(1); expect(waiting.stem).toBe(0); expect(waiting.drops.length).toBeGreaterThan(0);
-    expect(ayaFilm(SPROUT_T + 0.5).stem).toBeGreaterThan(0); expect(ayaFilm(SPROUT_T + 0.5).petals.every(p => p === 0)).toBe(true);
-    expect(grown.petals).toEqual([1, 1, 1, 1, 1]); expect(grown.glad).toBe(true); expect(grown.droop).toBeLessThan(0.05);
-    expect(ayaFilm(9).drops).toEqual([]); expect(ayaFilm(9).cloud.o).toBe(0);
-  });
-  it('the same t gives the same frame whatever came before, and rain exists only while it falls', () => {
-    const direct = ayaFilm(3.9);
-    for (let f = 0; f <= lastFrame('ayaSeed'); f++) ayaFilm(timeOf(f));
-    for (let f = lastFrame('ayaSeed'); f >= 0; f--) ayaFilm(timeOf(f));
-    expect(ayaFilm(3.9)).toEqual(direct);
-    for (let f = 0; f <= lastFrame('ayaSeed'); f++) for (const d of ayaFilm(timeOf(f)).drops) { expect(d.y).toBeGreaterThan(90); expect(d.y).toBeLessThan(216); }
-  });
-  it('its cues sound once each, forwards and backwards, and carry their step', () => {
-    const steps = CUES.ayaSeed.filter(c => c.kind === 'boing').map(c => c.step);
-    expect(steps).toEqual([0, 1, 2, 4, 5]);
-    expect(cuesPassed(CUES.frog, 0.9, 1.1, true)[0]).toMatchObject({ kind: 'boing', step: 0 });
-    expect(CUES.frog.filter(c => c.kind === 'boing').map(c => c.step)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  it('a pressed pose is squashed, and counts as a change', () => {
+    const from = pose(200, 200), pressed = carriedPose('frog', from, 200, 200, FIELD, true), plain = carriedPose('frog', from, 200, 200, FIELD);
+    expect(pressed.sy).toBeLessThan(plain.sy); expect(pressed.sx).toBeGreaterThan(plain.sx);
+    expect(movedEnough(plain, pressed)).toBe(true); expect(movedEnough(plain, plain)).toBe(false);
   });
 });
 
-describe("the child's lasting choices and tonight's show are bounded and pure", () => {
-  it('the porthole goes to the nearest of three places and the film moves it there', () => {
-    expect(PORTHOLE_SLOTS).toHaveLength(3);
-    expect(PORTHOLE_SLOTS.map(portholeSlotAt)).toEqual([0, 1, 2]); expect(portholeSlotAt(200)).toBe(0); expect(portholeSlotAt(-200)).toBe(2);
-    expect(setPorthole(FRESH_HANDS, 99).porthole).toBe(2); expect(setPorthole(FRESH_HANDS, -3).porthole).toBe(0); expect(setPorthole(FRESH_HANDS, 0)).toBe(FRESH_HANDS);
-    const low = setPorthole(FRESH_HANDS, 2);
-    expect(rocketKey(low).eye.x).toBe(PORTHOLE_SLOTS[2]); expect(rocketFilm(5.5, low).parts.eye.x).toBe(PORTHOLE_SLOTS[2]);
-    // The whale and the lump are untouched by where the porthole will go; the in-between travels toward it.
-    expect(rocketFilm(1, low)).toEqual(rocketFilm(1)); expect(rocketFilm(3.2, low)).toEqual(rocketFilm(3.2));
-    expect(rocketFilm(4.2, low).parts.eye.x).toBeLessThan(rocketFilm(4.2).parts.eye.x);
-    expect(rocketFilm(4.2, low)).toEqual(rocketFilm(4.2, setPorthole(setPorthole(FRESH_HANDS, 1), 2)));
+describe('the film the projector makes from six poses', () => {
+  const show = filmed(), keys = show.keys, last = filmDrawings(keys.length) - 1;
+  it('shows the child’s own pose, untouched, on every fourth drawing', () => {
+    keys.forEach((key, i) => expect(drawingPose(keys, i * STEPS)).toBe(key));
+    expect(drawingPose(keys, -3)).toBe(keys[0]); expect(drawingPose(keys, 999)).toBe(keys[keys.length - 1]);
+    expect(drawingPose([], 0)).toBeNull(); expect(drawingPose([keys[0]], 7)).toBe(keys[0]);
   });
-  it('thumbprints are held inside the body and only the three newest are kept', () => {
-    let h = FRESH_HANDS;
-    for (const p of [[500, 500], [-30, 4], [20, -10], [44, 12]] as const) h = pressPrint(h, p);
-    expect(h.prints).toHaveLength(MAX_PRINTS);
-    for (const p of h.prints) { expect(Math.abs(p.x)).toBeLessThanOrEqual(62); expect(Math.abs(p.y)).toBeLessThanOrEqual(26); }
-    expect(pressPrint(h, [44, 12]).prints).toHaveLength(MAX_PRINTS); // the same spot again replaces its print
-    expect(pressPrint(FRESH_HANDS, [10, 3])).toEqual(pressPrint(FRESH_HANDS, [10, 3]));
-    expect(FRESH_HANDS.prints).toHaveLength(0);
+  it('lays real in-betweens between them: every drawing moves on from the one before', () => {
+    for (let d = 1; d <= last; d++) {
+      const a = drawingPose(keys, d - 1)!, b = drawingPose(keys, d)!;
+      expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(0.5);
+      const seg = Math.min(keys.length - 2, Math.floor(d / STEPS)), lo = Math.min(keys[seg].x, keys[seg + 1].x) - 12, hi = Math.max(keys[seg].x, keys[seg + 1].x) + 12;
+      expect(b.x).toBeGreaterThanOrEqual(lo); expect(b.x).toBeLessThanOrEqual(hi);
+    }
   });
-  it('each replay is a different show; the first is always the same', () => {
-    expect(showFor(0)).toEqual({ stars: 0, moon: 0, bloom: 0, sky: 0 });
-    expect(showFor(1)).not.toEqual(showFor(0)); expect(showFor(2)).not.toEqual(showFor(1)); expect(showFor(3)).toEqual(showFor(0)); expect(showFor(-4)).toEqual(showFor(0));
-    for (const set of STAR_SETS) { expect(set).toHaveLength(5); for (const s of set) { expect(s.x).toBeGreaterThan(30); expect(s.x).toBeLessThan(370); } }
-    expect(starSwing(2, 1)).toHaveLength(5); expect(starSwing(2, 1)).toEqual(starSwing(2, 1));
+  it('never carries the hero below the lower of the two poses it is between', () => {
+    for (let d = 0; d <= last; d++) { const seg = Math.min(keys.length - 2, Math.floor(d / STEPS)); expect(drawingPose(keys, d)!.y).toBeLessThanOrEqual(Math.max(keys[seg].y, keys[seg + 1].y) + 1e-9); }
   });
+  it('is the same film forwards, backwards and at random: a drawing depends only on its number', () => {
+    const forward = Array.from({ length: last + 1 }, (_, d) => drawingPose(keys, d));
+    const backward = Array.from({ length: last + 1 }, (_, i) => drawingPose(keys, last - i)).reverse();
+    expect(backward).toEqual(forward);
+    for (const d of [last, 0, 7, 3, last - 1]) expect(drawingPose(keys, d)).toEqual(forward[d]);
+  });
+  it('finds the moments an audience answers: the top of the jump and the longest step', () => {
+    const beats = filmBeats(keys), top = keys.reduce((best, key, i) => (key.y < keys[best].y ? i : best), 0);
+    expect(beats.apex).toBe(top * STEPS);
+    expect(beats.leap).toBeGreaterThanOrEqual(0); expect(beats.leap).toBeLessThan(filmDrawings(keys.length));
+  });
+});
+
+describe('chapter 3: direct', () => {
+  it('opens only when the film is whole', () => {
+    expect(toDirect(toAnimate(shaped()))).toMatchObject({ chapter: 'animate' });
+    expect(toDirect(filmed()).chapter).toBe('direct');
+  });
+  it('brings the friend onto the set where it is dropped, kept inside the set', () => {
+    let show = toDirect(filmed());
+    expect(directDone(show)).toBe(false); expect(toPremiere(show)).toBe(show);
+    show = placeBuddy(show, [-500, 900], FIELD);
+    expect(show.buddy!.at[0]).toBe(FIELD.x0 + 20); expect(show.buddy!.at[1]).toBe(GROUND - 18); expect(show.buddy!.act).toBe(BUDDY_ACTS[0]);
+    show = placeBuddy(show, [210, 120], FIELD);
+    expect(show.buddy!.at).toEqual([210, 120]);
+    expect(directDone(show)).toBe(true);
+  });
+  it('gives the friend its next act on a tap, round and round, and keeps the act when it is moved', () => {
+    let show = placeBuddy(toDirect(filmed()), [200, 100], FIELD);
+    const seen = [show.buddy!.act];
+    for (let i = 0; i < BUDDY_ACTS.length; i++) { show = nextAct(show); seen.push(show.buddy!.act); }
+    expect(seen.slice(0, BUDDY_ACTS.length)).toEqual([...BUDDY_ACTS]); expect(seen[BUDDY_ACTS.length]).toBe(BUDDY_ACTS[0]);
+    show = nextAct(show);
+    expect(placeBuddy(show, [100, 100], FIELD).buddy!.act).toBe(show.buddy!.act);
+    expect(nextAct(toDirect(filmed())).buddy).toBeNull();
+  });
+  it('puts a gel on the lamp, takes it off again, and picks a tune', () => {
+    let show = toDirect(filmed());
+    expect(directJobs(show)).toEqual({ friend: false, light: false, tune: false });
+    show = setGel(show, 'roseGel'); expect(show.gel).toBe('roseGel');
+    show = setGel(show, 'blueGel'); expect(show.gel).toBe('blueGel');
+    expect(setGel(show, 'blueGel').gel).toBe('clearGel');
+    show = setTune(show, 'tuneB');
+    expect(directJobs(placeBuddy(show, [200, 100], FIELD))).toEqual({ friend: true, light: true, tune: true });
+    expect(GEL_IDS).toHaveLength(3); expect(TUNE_IDS).toHaveLength(3);
+    for (const id of TUNE_IDS) { expect(TUNES[id]).toHaveLength(8); for (const step of TUNES[id]) { expect(step).toBeGreaterThanOrEqual(0); expect(step).toBeLessThan(20); } }
+  });
+  it('light and tune are the director’s choice: the premiere needs only the friend', () => {
+    const show = placeBuddy(toDirect(filmed()), [200, 100], FIELD);
+    expect(toPremiere(show).chapter).toBe('premiere');
+  });
+});
+
+describe('a whole show, from the can to the premiere', () => {
+  it.each(STORY_IDS)('%s: every chapter opens in turn and none can be skipped', story => {
+    let show = chooseStory(newShow(9), story);
+    expect(chaptersDone(show)).toEqual({ shape: false, animate: false, direct: false });
+    expect(toAnimate(show)).toBe(show); expect(toDirect(show)).toBe(show); expect(toPremiere(show)).toBe(show);
+    show = filmed(story, 9);
+    expect(chaptersDone(show)).toEqual({ shape: true, animate: false, direct: false });
+    expect(toPremiere(show)).toBe(show);
+    show = toDirect(show);
+    expect(chaptersDone(show)).toEqual({ shape: true, animate: true, direct: false });
+    show = toPremiere(placeBuddy(show, STORIES[story].buddyHome, FIELD));
+    expect(show.chapter).toBe('premiere'); expect(chaptersDone(show)).toEqual({ shape: true, animate: true, direct: true });
+    // Nothing about how the child played is kept: only what the film is made of.
+    expect(Object.keys(show).sort()).toEqual(['body', 'buddy', 'chapter', 'gel', 'keys', 'kneads', 'prints', 'pulls', 'seed', 'story', 'trim', 'tune']);
+  });
+  it('has three chapters', () => { expect(CHAPTERS).toEqual(['shape', 'animate', 'direct']); });
+});
+
+describe('the premiere', () => {
+  const show = filmed(), keys = show.keys, frames = filmFrames(SHOTS), total = premiereSeconds(SHOTS);
+  it('runs its phases in order: lights down, the film, a breath, the film again up close, lights up, applause', () => {
+    const order: string[] = [];
+    for (let t = 0; t <= total + 0.5; t += 0.05) { const phase = premiereAt(t, SHOTS).phase; if (order[order.length - 1] !== phase) order.push(phase); }
+    expect(order).toEqual(['dim', 'roll', 'hold', 'encore', 'lights', 'applause', 'over']);
+    expect(total).toBeGreaterThan(9); expect(total).toBeLessThan(15);
+  });
+  it('shows every frame of the film, twice, at twelve a second', () => {
+    for (const phase of ['roll', 'encore'] as const) {
+      const start = phase === 'roll' ? PREMIERE.dim : PREMIERE.dim + frames / FPS + PREMIERE.hold, seen = new Set<number>();
+      for (let f = 0; f < frames; f++) { const moment = premiereAt(start + (f + 0.5) / FPS, SHOTS); expect(moment.phase).toBe(phase); seen.add(moment.frame); }
+      expect(seen.size).toBe(frames);
+    }
+  });
+  it('is dark while the film runs and light again for the applause', () => {
+    expect(premiereAt(0, SHOTS).dark).toBe(0);
+    expect(premiereAt(PREMIERE.dim + 1, SHOTS)).toMatchObject({ dark: 1, beam: 1, push: 0 });
+    expect(premiereAt(PREMIERE.dim + frames / FPS + PREMIERE.hold + 1, SHOTS).push).toBe(1);
+    expect(premiereAt(total - 1, SHOTS)).toMatchObject({ phase: 'applause', dark: 0, beam: 0 });
+  });
+  it('the crew watch, start at the top of the jump, turn to each other, and cheer at the end', () => {
+    const beats = filmBeats(keys), atApex = premiereAt(PREMIERE.dim + ((beats.apex + 1) * TWOS + 0.5) / FPS, SHOTS);
+    expect(CREW.some((_, i) => crewMood(i, atApex, keys) === 'gasping')).toBe(true);
+    const hold = premiereAt(PREMIERE.dim + frames / FPS + 0.2, SHOTS);
+    expect(CREW.every((_, i) => crewMood(i, hold, keys) === 'turning')).toBe(true);
+    const clap = premiereAt(total - 1, SHOTS);
+    expect(CREW.every((_, i) => crewMood(i, clap, keys) === 'cheering')).toBe(true);
+    expect(CREW.every((_, i) => crewMood(i, premiereAt(0.2, SHOTS), keys) === 'watching')).toBe(true);
+    const moods = new Set<string>();
+    for (let t = 0; t <= total; t += 0.05) CREW.forEach((_, i) => moods.add(crewMood(i, premiereAt(t, SHOTS), keys)));
+    expect([...moods].sort()).toEqual(['cheering', 'gasping', 'leaning', 'turning', 'watching']);
+  });
+});
+
+describe('the stage for a room of any size', () => {
+  const SIZES: [string, number, number][] = [['phone', 390, 768], ['phone on its side', 844, 314], ['tablet', 1024, 692], ['desktop', 1280, 724], ['small phone', 320, 520], ['wide desktop', 1920, 1000]];
+  it.each(SIZES)('%s: the room covers the stage and the hero stands on the round dais', (_name, w, h) => {
+    const L = stageLayout(w, h);
+    expect(L.portrait).toBe(h >= w);
+    expect(L.room.x).toBeLessThanOrEqual(0.5); expect(L.room.y).toBeLessThanOrEqual(0.5);
+    expect(L.room.x + L.room.w).toBeGreaterThanOrEqual(w - 0.5); expect(L.room.y + L.room.h).toBeGreaterThanOrEqual(h - 0.5);
+    // The set's floor line is the dais's own centre line in the picture, and the set's middle is the dais's middle.
+    const [gx, gy] = toPx(L, [SET_W / 2, GROUND]);
+    expect(gy).toBeCloseTo(L.room.y + ROOM.daisY * L.room.h, 3); expect(gx).toBeCloseTo(L.room.x + ROOM.daisX * L.room.w, 3);
+    expect(gx).toBeCloseTo(w / 2, 3);
+    // The hero is never tiny: a 200-unit animal is at least a fifth of the shorter side.
+    expect(200 * L.unit).toBeGreaterThan(Math.min(w, h) * 0.2);
+    expect(toSet(L, toPx(L, [123, 45]))[0]).toBeCloseTo(123); expect(toSet(L, toPx(L, [123, 45]))[1]).toBeCloseTo(45);
+  });
+  it.each(SIZES)('%s: the field, the cloth and every bench thing are on the stage', (_name, w, h) => {
+    const L = stageLayout(w, h);
+    expect(L.field.x1 - L.field.x0).toBeGreaterThan(200); expect(L.field.y1 - L.field.y0).toBeGreaterThan(90);
+    const [fx0] = toPx(L, [L.field.x0, 0]), [fx1] = toPx(L, [L.field.x1, 0]);
+    expect(fx0).toBeGreaterThanOrEqual(0); expect(fx1).toBeLessThanOrEqual(w);
+    const [cx0, cy0] = toPx(L, [L.cloth.x, L.cloth.y]), [cx1, cy1] = toPx(L, [L.cloth.x + L.cloth.w, L.cloth.y + L.cloth.h]);
+    expect(cx0).toBeGreaterThanOrEqual(-1); expect(cx1).toBeLessThanOrEqual(w + 1); expect(cy0).toBeGreaterThanOrEqual(0); expect(cy1).toBeLessThan(h);
+    for (const box of [L.rug, L.lens, L.strip, L.cans, L.gels, L.tiles, L.friend, L.screen]) {
+      expect(box.w).toBeGreaterThan(20); expect(box.h).toBeGreaterThan(16);
+      expect(box.x).toBeGreaterThanOrEqual(-1); expect(box.x + box.w).toBeLessThanOrEqual(w + 1); expect(box.y).toBeGreaterThanOrEqual(0); expect(box.y + box.h).toBeLessThanOrEqual(h + 1);
+    }
+    // The film plays large: the screen is most of a phone's width, and at least a third of any stage's area's shorter side.
+    expect(L.screen.w).toBeGreaterThan(Math.min(w * 0.5, h * 0.8)); if (L.portrait) expect(L.screen.w).toBeGreaterThan(w * 0.9);
+  });
+  it.each(SIZES)('%s: every story’s hero starts inside the field', (_name, w, h) => {
+    const L = stageLayout(w, h);
+    for (const story of STORY_IDS) for (const seed of [1, 2, 3, 4]) {
+      const start = startPose(shaped(story, seed));
+      expect(start.x).toBeGreaterThanOrEqual(L.field.x0); expect(start.x).toBeLessThanOrEqual(L.field.x1);
+    }
+  });
+  it('survives a stage that has no size yet', () => {
+    const L = stageLayout(0, 0);
+    expect(Number.isFinite(L.unit)).toBe(true); expect(L.unit).toBeGreaterThan(0);
+  });
+});
+
+describe('words', () => {
+  it('fills numbered blanks', () => { expect(clayLine('frame {0} of {1}', 2, 6)).toBe('frame 2 of 6'); expect(clayLine('Film can: {0}', 'x')).toBe('Film can: x'); expect(clayLine('{0}{1}', 'a')).toBe('a'); });
 });

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from './iceAgeFriendRules';
 import {
-  DAYS, DAY_WEATHER, ENTER_SECONDS, FEED, FEED_SECONDS, FINALE, FINALE_ANSWERS, FINALE_CALL, FINALE_SECONDS, GESTURE_SECONDS, GHOST, MEET, SNOW_GONE, TURN_SECONDS,
-  arcPoint, brushSnow, comesAnyway, enterAt, feedAt, feedPose, finaleLift, foundNotes, gestureAt, ghostAt, ghostDue, ghostKnockAt, growSnow, leanFor, lidFor, meetStep, moodLift,
-  moodStep, nextStep, overshoot, pickDay, regrow, rumbleFor, scaleNote, seedSnow, snowLeft, turnAt, type GestureId,
+  FEED, FEED_SECONDS, FINALE, FINALE_SECONDS, GESTURE_SECONDS, GHOST, MEET, SNOW_GONE,
+  arcPoint, brushSnow, feedAt, feedPose, finaleLift, foundNotes, gestureAt, ghostAt, ghostKnockAt, leanFor, lidFor, meetStep, moodLift,
+  moodStep, nextStep, overshoot, rumbleFor, scaleNote, seedSnow, snowLeft, type GestureId,
 } from './mammothPlayRules';
 
 describe('one scale for every sound', () => {
@@ -74,23 +74,11 @@ describe('snow on its back', () => {
     expect(brushSnow(SNOW_GONE * 1.2, 0.5).amount).toBe(0);
     expect(brushSnow(0, 1)).toEqual({ amount: 0, shed: 0 });
   });
-  it('snow settles again only while it is falling', () => {
-    expect(growSnow(0.2, 1 / 60, 0)).toBe(0.2);
-    expect(growSnow(0.2, 1 / 60, 1)).toBeGreaterThan(0.2);
-    let amount = 0;
-    for (let i = 0; i < 60 * 120; i++) amount = growSnow(amount, 1 / 60, 1);
-    expect(amount).toBe(1);
-  });
 });
 
 describe('the hint hand', () => {
-  it('shows only after a quiet spell, only until the child has done it, and never over a card', () => {
-    expect(ghostDue(GHOST.first - 0.1, 0, false, false)).toBe(false);
-    expect(ghostDue(GHOST.first + 0.1, 0, false, false)).toBe(true);
-    expect(ghostDue(GHOST.again - 0.1, 1, false, false)).toBe(false);
-    expect(ghostDue(GHOST.again + 0.1, 1, false, false)).toBe(true);
-    expect(GHOST.again).toBeGreaterThanOrEqual(5); expect(GHOST.again).toBeLessThanOrEqual(7);
-    expect(ghostDue(99, 3, true, false)).toBe(false); expect(ghostDue(99, 3, false, true)).toBe(false);
+  it('a lesson is short', () => {
+    expect(GHOST.seconds).toBeGreaterThan(1.5); expect(GHOST.seconds).toBeLessThan(3.5);
   });
   it('the stroke fades in, presses, travels the whole back, lifts and fades', () => {
     expect(ghostAt(0).alpha).toBe(0); expect(ghostAt(1).alpha).toBe(0); expect(ghostAt(0.5).alpha).toBe(1);
@@ -116,18 +104,6 @@ describe('meeting at the glass', () => {
     expect(seconds).toBeGreaterThan(0.5); expect(seconds).toBeLessThan(1.5);
     expect(MEET.tap * 2).toBeGreaterThanOrEqual(1);
   });
-  it('it comes in anyway for a child who only watches', () => {
-    expect(comesAnyway(MEET.patience - 1)).toBe(false); expect(comesAnyway(MEET.patience)).toBe(true);
-  });
-  it('stepping through: the breath covers the wall at the moment it changes sides, then clears', () => {
-    expect(enterAt(0)).toMatchObject({ inside: false, bloom: 0, done: false });
-    const end = enterAt(ENTER_SECONDS);
-    expect(end.inside).toBe(true); expect(end.done).toBe(true); expect(end.bloom).toBeCloseTo(0); expect(end.settle).toBeCloseTo(0);
-    let swap = -1;
-    for (let t = 0; t <= ENTER_SECONDS; t += 1 / 120) { const at = enterAt(t); expect(at.bloom).toBeGreaterThanOrEqual(0); expect(at.bloom).toBeLessThanOrEqual(1); if (at.inside && swap < 0) swap = t; }
-    expect(enterAt(swap).bloom).toBeGreaterThan(0.97); expect(enterAt(swap - 1 / 120).bloom).toBeGreaterThan(0.97);
-    expect(ENTER_SECONDS).toBeLessThanOrEqual(2.5);
-  });
 });
 
 describe('a bunch of grass', () => {
@@ -145,16 +121,13 @@ describe('a bunch of grass', () => {
     expect(Math.max(...jaws)).toBeGreaterThan(0.3); expect(jaws.filter((j, i) => i > 0 && j > jaws[i - 1]).length).toBeGreaterThan(5);
     expect(feedPose(FEED_SECONDS - 0.01)).toEqual({ curl: 0, jaw: 0, reach: 0 }); expect(feedPose(99)).toEqual({ curl: 0, jaw: 0, reach: 0 });
   });
-  it('a thrown bunch starts and lands exactly, arcing up between; a cropped tuft grows back', () => {
+  it('a thrown bunch starts and lands exactly, arcing up between', () => {
     expect(arcPoint([0, 0], [100, 40], 0, 60)).toEqual([0, 0]); expect(arcPoint([0, 0], [100, 40], 1, 60)).toEqual([100, 40]);
     expect(arcPoint([0, 0], [100, 40], 0.5, 60)[1]).toBeCloseTo(20 - 60);
-    let grown = 0;
-    for (let i = 0; i < 60 * 7.2; i++) grown = regrow(grown, 1 / 60);
-    expect(grown).toBe(1); expect(regrow(0.5, 0)).toBe(0.5);
   });
 });
 
-describe('gestures, the turn and the finale', () => {
+describe('gestures and the call', () => {
   it('every gesture begins and ends at rest and moves in between', () => {
     for (const id of Object.keys(GESTURE_SECONDS) as GestureId[]) {
       const rest = gestureAt(id, GESTURE_SECONDS[id]);
@@ -166,47 +139,22 @@ describe('gestures, the turn and the finale', () => {
       expect(GESTURE_SECONDS[id]).toBeLessThanOrEqual(2.6);
     }
   });
-  it('each discovery shows what its words are about', () => {
-    const peak = (id: GestureId, key: 'ear' | 'nod' | 'rise' | 'swing') => { let m = 0; for (let t = 0; t < GESTURE_SECONDS[id]; t += 1 / 60) m = Math.max(m, Math.abs(gestureAt(id, t)[key])); return m; };
-    expect(peak('ears', 'ear')).toBeGreaterThan(0.3);      // the small ear flaps
-    expect(peak('tusks', 'nod')).toBeGreaterThan(0.05);    // the head sweeps
-    expect(peak('trunk', 'swing')).toBeGreaterThan(0.2);   // the tip reaches
+  it('each gesture shows the thing it is about', () => {
+    const peak = (id: GestureId, key: 'ear' | 'nod' | 'rise' | 'swing' | 'tail') => { let m = 0; for (let t = 0; t < GESTURE_SECONDS[id]; t += 1 / 60) m = Math.max(m, Math.abs(gestureAt(id, t)[key])); return m; };
+    expect(peak('ears', 'ear')).toBeGreaterThan(0.3);      // the small ear flaps: the secret
+    expect(peak('tusks', 'nod')).toBeGreaterThan(0.05);    // the head sweeps, as tusks swept snow
     expect(peak('hump', 'rise')).toBeGreaterThan(5);       // it stands tall
     expect(peak('tickle', 'ear')).toBeGreaterThan(0.3);
+    expect(peak('tailSwish', 'tail')).toBeGreaterThan(0.2);
   });
   it('overshoot dips first, passes its mark and settles on it', () => {
     expect(overshoot(0)).toBeCloseTo(0); expect(overshoot(1)).toBeCloseTo(1); expect(overshoot(0.09)).toBeLessThan(0);
     expect(Math.max(...Array.from({ length: 100 }, (_, i) => overshoot(i / 100)))).toBeGreaterThan(1.02);
   });
-  it('the turn sinks, swings round with the sides swapping at the narrowest moment, lands and settles', () => {
-    expect(turnAt(0)).toMatchObject({ face: 1, hop: 0, swapped: false, landed: false });
-    expect(turnAt(TURN_SECONDS)).toMatchObject({ face: 1, hop: 0, swapped: true, landed: true });
-    expect(turnAt(TURN_SECONDS).squash).toBeCloseTo(0);
-    let narrow = 1, swapAt = -1, top = 0;
-    for (let t = 0; t <= TURN_SECONDS; t += 1 / 240) { const at = turnAt(t); if (at.face < narrow) narrow = at.face; if (at.swapped && swapAt < 0) swapAt = t; top = Math.max(top, at.hop); expect(at.face).toBeGreaterThan(0); expect(at.face).toBeLessThanOrEqual(1); }
-    expect(narrow).toBeLessThan(0.1); expect(turnAt(swapAt).face).toBeLessThan(0.1); expect(top).toBeGreaterThan(0.95);
-    expect(TURN_SECONDS).toBeLessThan(1.2);
-  });
-  it('the finale lifts the trunk, holds while it calls and the herd answers, and lowers it: a couple of seconds, no more', () => {
+  it('the call lifts the trunk, holds it high, and lowers it: a few seconds, no more', () => {
     expect(finaleLift(-1, false)).toBe(0); expect(finaleLift(FINALE_SECONDS, false)).toBe(0);
     expect(finaleLift(FINALE.rise + 0.1, false)).toBe(1); expect(finaleLift(FINALE.rise + 0.1, true)).toBe(1); expect(finaleLift(0.01, true)).toBe(1);
-    expect(FINALE_CALL).toBeLessThan(FINALE.rise);
-    for (const answer of FINALE_ANSWERS) { expect(answer).toBeGreaterThan(FINALE_CALL + 0.5); expect(answer).toBeLessThan(FINALE.rise + FINALE.hold); }
     expect(FINALE.rise + FINALE.hold).toBeGreaterThanOrEqual(1.5); expect(FINALE.rise + FINALE.hold).toBeLessThanOrEqual(2.6);
     for (let t = 0; t < FINALE_SECONDS; t += 1 / 60) { expect(finaleLift(t, false)).toBeGreaterThanOrEqual(0); expect(finaleLift(t, false)).toBeLessThan(1.2); }
-  });
-});
-
-describe('the day', () => {
-  it('playing again never brings the same day twice running', () => {
-    const random = seeded(11);
-    let last = pickDay(random, null);
-    const seen = new Set([last]);
-    for (let i = 0; i < 60; i++) { const next = pickDay(random, last); expect(next).not.toBe(last); expect(DAYS).toContain(next); seen.add(next); last = next; }
-    expect(seen.size).toBe(DAYS.length);
-    expect(pickDay(() => 0.9999, 'goldenHour')).not.toBe('goldenHour');
-  });
-  it('every day keeps the snowfall capped and has snow to brush', () => {
-    for (const day of DAYS) { const w = DAY_WEATHER[day]; expect(w.flakes).toBeLessThanOrEqual(60); expect(w.flakes).toBeGreaterThan(0); expect(w.cover).toBeGreaterThan(0.3); expect(Math.abs(w.wind)).toBeLessThan(0.3); }
   });
 });

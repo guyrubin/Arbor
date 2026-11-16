@@ -1,72 +1,65 @@
-import { studioBopArt } from '../../../../../../lib/kidThemeManifest';
+import { STUDIO_V30_ROOT, studioBopArt, studioMakerArt } from '../../../../../../lib/kidThemeManifest';
 
 /** Wind-up Racer kit art: every picture the game shows, one constant each.
  *
  * All of it is the kit's own art. Shipped Studio pictures come through the
- * kid art manifest (`studioBopArt`); pictures cut from the kit boards for the
- * makers sit beside them in the `makers` folder. Nothing here is generated.
- * `KIT_SOURCES` lists every cut picture with its pixel size and the kit file
- * it was cut from (for the art manifest). */
-const kit = (stem: string) => studioBopArt(stem);
-/** A picture in the makers folder (same root as the kit folder). */
-const made = (stem: string) => studioBopArt(stem).replace('/bop/', '/makers/');
+ * kid art manifest; pictures cut from the kit boards for this game sit in the
+ * makers folder as `windup-race-*`. Nothing here is generated. `KIT_SOURCES`
+ * lists every cut picture with its pixel size and the kit file it was cut
+ * from (for the art manifest). No picture here shows a child. */
 
-/* ---------- cut from the kit boards ---------- */
+/** A picture and how it stands in the world: `w` × `h` are its pixels, `foot`
+ * the pixel that touches the floor (or the middle, for a thing lying flat),
+ * and `tall` (or `wide`) its size in world units (one unit is Rover's length). */
+export interface KitSprite { src: string; w: number; h: number; footX: number; footY: number; wide: number }
+const sprite = (src: string, w: number, h: number, footX: number, footY: number, wide: number): KitSprite => ({ src, w, h, footX, footY, wide });
 
-/** Rover, three-quarter side view, nose to the right (board 22, the Rover strip).
- * The shared library's `kit-prop-rover-side` replaces this cut when it lands. */
-export const ROVER_ART = made('windup-race-rover');
-/** ROVER_ART's pixel size, the point on its bottom edge under the middle of
- * the car, the top of the start button the key stands on, and its two eyes. */
-export const ROVER_FRAME = { w: 595, h: 424, footX: 297, footY: 412, buttonX: 300, buttonY: 30, eyes: [[445, 222], [533, 205]] } as const;
+/* ---------- cut from the kit boards for this game ---------- */
+
+/** Rover, three-quarter view from the front, nose to the right (board 22, the
+ * Rover Delivery strip), re-cut at four times the board's size. `button` is
+ * the top of its start button, where the wind-up key stands; `eyes` its two
+ * lamps; `wheels` the hub of each near wheel (centre, then half its width and height as drawn). */
+export const ROVER_FRONT = sprite(studioMakerArt('windup-race-rover-front'), 640, 458, 310, 432, 1.27);
+/** The same render seen as Rover's back: the visor is painted over with the
+ * shell's own cream and the play mark is taken off the button, nothing else.
+ * It lets a chase camera follow Rover from behind. Stored like the front (the
+ * tail to the right); the world flips it. */
+export const ROVER_REAR = sprite(studioMakerArt('windup-race-rover-rear'), 640, 458, 310, 432, 1.27);
+export const ROVER_MARKS = { buttonX: 324, buttonY: 60, eyes: [[484, 242, 30], [579, 221, 20]], wheels: [[60, 327, 31, 52], [252, 351, 43, 60]] } as const;
+
+export const KIT_SOURCES: readonly { art: string; width: number; height: number; source: string }[] = [
+  { art: 'makers/windup-race-rover-front.webp', width: 640, height: 458, source: 'kit/v30/22-bop-props-T05-T07.png (T07 strip, the rover at the left; cut out, callout dot retouched off the button)' },
+  { art: 'makers/windup-race-rover-rear.webp', width: 640, height: 458, source: 'kit/v30/22-bop-props-T05-T07.png (the same cut; visor and play mark painted over with the surrounding shell)' },
+];
 
 /* ---------- the shared kit library (cut once for every maker; never a private copy) ---------- */
 
 /** Pep from the side, everyday collar. He faces left in the picture. */
-export const PEP_SIDE_ART = made('kit-pep-side');
-/** GobGob, delighted: he pops up to cheer when the last flower opens. A kit
- * render of a real child, used as cut (the file is the library's, named and
- * registered there). Set to null to play without him. */
-export const CHEER_ART: string | null = made('kit-gobgob-face-delighted');
-
-/** GobGob's two instruments, in the kit's own hardware. The PulsePod (amber
- * pause, cyan ready) is the Go control; the WaitRing (the patient-progress
- * band) is the ring of lights that fills as the spring winds. Their pictures
- * are the library's (`kit-tool-*`); until those are published the Go button
- * shows its glyph and the ring is drawn. Point each at its library stem with
- * `made('kit-tool-…')` when it lands. */
-export const PULSEPOD_ART: string | null = null;
-export const WAITRING_ART: string | null = null;
-
-export const KIT_SOURCES: readonly { art: string; width: number; height: number; source: string }[] = [
-  { art: 'makers/windup-race-rover.webp', width: 595, height: 424, source: 'kit/v30/22-bop-props-T05-T07.png (T07 strip, the rover at the left)' },
+export const PEP_SIDE = sprite(studioMakerArt('kit-pep-side'), 733, 768, 380, 760, 2.5);
+export const PLANTERS: readonly KitSprite[] = [
+  sprite(studioMakerArt('kit-prop-planter-bud'), 258, 400, 129, 392, 1.25),
+  sprite(studioMakerArt('kit-prop-planter-budding'), 262, 400, 131, 392, 1.25),
+  sprite(studioMakerArt('kit-prop-planter-bloom'), 282, 426, 141, 418, 1.35),
 ];
+/** Shared library pictures this game shows (cut by the librarian, listed in the kit library). */
+export const LIBRARY_ART: readonly string[] = ['makers/kit-pep-side.webp', 'makers/kit-prop-planter-bud.webp', 'makers/kit-prop-planter-budding.webp', 'makers/kit-prop-planter-bloom.webp', 'makers/kit-pep-playful.webp'];
 
 /* ---------- shipped kit art, used as it is ---------- */
 
-/** The gallery wall: the wall band of the pavilion room, repeated, every other one mirrored. */
-export const WALL_ART = kit('scene-delivery');
-/** How much of WALL_ART's height is wall (the rest is its own floor, covered by ours). */
-export const WALL_SHARE = 0.672;
-/** The gallery floor: the kit floor from above, foreshortened to the camera. */
-export const FLOOR_ART = kit('scene-floor');
-export const PEP_IDLE_ART = kit('pep-idle');
-export const PEP_HAPPY_ART = kit('pep-happy');
-export const FLOWER_FOLDED_ART = kit('flower-folded');
-export const FLOWER_OPEN_ART = kit('flower-open');
-export const BLOOM_ART = kit('rover-bloom-open');
-export const BALL_ART = kit('rover-bloom-folded');
-export const CUSHION_ART = kit('item-cushion');
-export const SIGN_ART = kit('rover-sign');
-export const RUG_ART = kit('rest-rug');
-export const CAN_ART = kit('item-can');
-export const LAMP_ART = kit('item-lamp');
-export const PETAL_ARTS = ['petal-coral', 'petal-amber', 'petal-teal', 'petal-violet', 'petal-blue'].map(kit);
-export const PAD_ARTS = ['pad-teal', 'pad-amber', 'pad-cream', 'pad-blue', 'pad-navy', 'pad-white'].map(kit);
-export const TILE_ARTS = ['tile-blue', 'tile-pink', 'tile-yellow'].map(kit);
-
-/** Shared library pictures this game shows (cut by the librarian, listed in the kit library). */
-export const LIBRARY_ART: readonly string[] = ['makers/kit-pep-side.webp', 'makers/kit-gobgob-face-delighted.webp'];
+/** Horizon Valley, far away: the sky, the mountain and the glass domes behind everything. */
+export const VALLEY = { src: `${STUDIO_V30_ROOT}valley-wide.webp`, w: 1536, h: 1024, horizon: 0.508 } as const;
+/** The pavilion room, for the cover. */
+export const ROOM_ART = studioBopArt('scene-delivery');
+export const PEP_SIT = sprite(studioBopArt('pep-idle'), 440, 440, 215, 428, 2.2);
+export const PEP_BOW = sprite(studioBopArt('pep-happy'), 440, 440, 220, 420, 2.5);
+export const FLOWER_FOLDED = sprite(studioBopArt('flower-folded'), 293, 440, 146, 428, 1.25);
+export const FLOWER_OPEN = sprite(studioBopArt('flower-open'), 293, 440, 146, 428, 1.25);
+export const CUSHION = sprite(studioBopArt('item-cushion'), 252, 150, 126, 132, 2.5);
+/** Seen from straight above: these lie flat on the floor, drawn through the camera. */
+export const RUG_TOP = sprite(studioBopArt('rover-rug'), 260, 259, 130, 130, 3.4);
+export const SIGN_TOP = sprite(studioBopArt('rover-sign'), 223, 223, 111, 111, 1.7);
+export const PETALS: readonly KitSprite[] = ['petal-coral', 'petal-amber', 'petal-teal', 'petal-violet', 'petal-blue'].map(stem => sprite(studioBopArt(stem), 180, 300, 90, 150, 0.22));
 
 /** Every picture a play can show, for a warm cache before the first run. */
-export const KIT_ART: readonly string[] = [ROVER_ART, PEP_SIDE_ART, ...(CHEER_ART ? [CHEER_ART] : []), WALL_ART, FLOOR_ART, PEP_IDLE_ART, PEP_HAPPY_ART, FLOWER_FOLDED_ART, FLOWER_OPEN_ART, BLOOM_ART, BALL_ART, CUSHION_ART, SIGN_ART, RUG_ART, CAN_ART, LAMP_ART, ...PETAL_ARTS, ...PAD_ARTS, ...TILE_ARTS];
+export const KIT_ART: readonly KitSprite[] = [ROVER_FRONT, ROVER_REAR, PEP_SIDE, PEP_SIT, PEP_BOW, FLOWER_FOLDED, FLOWER_OPEN, CUSHION, RUG_TOP, SIGN_TOP, ...PLANTERS, ...PETALS];

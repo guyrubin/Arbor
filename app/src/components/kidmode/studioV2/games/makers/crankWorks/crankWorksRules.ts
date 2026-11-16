@@ -1,6 +1,6 @@
 /** How Things Move rules. Pure: no React, no timers, no randomness, no DOM.
  *
- * One idea, shown three times: a slider-crank. A crank of radius `r` turns about a
+ * One idea, built up three times on one bench: a slider-crank. A crank of radius `r` turns about a
  * fixed shaft; a rigid rod of length `l` joins the crank pin to a wrist pin
  * that can only slide along one straight vertical line. One angle, `theta`,
  * places every part, so nothing can ever come apart or stretch.
@@ -19,17 +19,20 @@
  *   stretches; pins have no play).
  * - The engine is drawn single-cylinder and upright, with the cylinder axis
  *   passing through the shaft (an in-line slider-crank).
- * - The slide carries a load (the piston, the flower, the pen) that weighs on
- *   the crank exactly as a weight on that slide would: its turning effect is
- *   the slope of the lift, d(lift)/dθ. A wheel let go of by the hand is slowed
- *   by a simple drag and rocks to rest with the load at the bottom. The drag
- *   is an easing for the child's hand, not a model of bearing friction; the
- *   motor ignores the load and holds its speed.
- * - The lifter's flower rides straight up and down on its stem (the slider)
- *   and is fully open exactly at the top of the stroke.
- * - The wave writer's glass is geared to the crank: it slides the same
- *   distance for every turn, however fast the wheel goes, so the line the pen
- *   leaves is the lift written out against the angle.
+ * - The slide carries a load (the piston) that weighs on the crank exactly as
+ *   a weight on that slide would: its turning effect is the slope of the lift,
+ *   d(lift)/dθ. A wheel let go of by the hand is slowed by a simple drag and
+ *   rocks to rest with the load at the bottom. The drag is an easing for the
+ *   child's hand, not a model of bearing friction; the motor ignores the load
+ *   and holds its speed.
+ * - The flower's cam is a round disc set off-centre on its shaft (an
+ *   eccentric) under a flat-faced follower, so the stem's height is exactly
+ *   R + e·cos of the cam's angle. The flower opens with the height.
+ * - The bead rods are six small slider-cranks. Belts of equal pulleys turn
+ *   every shaft once for each turn of the big wheel; the cam and each small
+ *   crank are fixed on their shafts a set part of a turn later than the one
+ *   before, which is all that makes the flower follow the piston and the
+ *   beads ripple. Belts never slip or stretch.
  */
 
 export const TAU = Math.PI * 2;
@@ -221,126 +224,202 @@ export function releaseSpeed(samples: readonly TurnSample[], now: number, window
   return clampOmega((last.theta - first.theta) / span);
 }
 
-/* ----------------------------------------------------------------- parts */
-/** The glass piston, the bloom lifter and the wave writer. */
-export type MachineId = 'engine' | 'toy' | 'writer';
-export const MACHINES: readonly MachineId[] = ['engine', 'toy', 'writer'];
-export type PartId = 'wheel' | 'crank' | 'rod' | 'piston' | 'cylinder' | 'handle' | 'bloom' | 'tracer';
-export const MACHINE_PARTS: Readonly<Record<MachineId, readonly PartId[]>> = {
-  engine: ['wheel', 'crank', 'rod', 'piston', 'cylinder'],
-  toy: ['handle', 'crank', 'rod', 'bloom'],
-  writer: ['wheel', 'crank', 'rod', 'tracer'],
-};
-/** Parts the frosted glass hides while it is closed. The wheel (or handle) and
- * the piston's top rod (or the flower, or the pen) stay in sight. */
-const BEHIND_CASE: Readonly<Record<MachineId, readonly PartId[]>> = {
-  engine: ['crank', 'rod', 'piston', 'cylinder'],
-  toy: ['crank', 'rod'],
-  writer: ['crank', 'rod'],
-};
-export function hiddenByCase(machine: MachineId, part: PartId): boolean {
-  return BEHIND_CASE[machine].includes(part);
+
+/* ------------------------------------------------------------ the cam */
+/** A round disc of radius `R`, fixed `e` off-centre on its shaft. */
+export interface Cam { readonly R: number; readonly e: number }
+export const CAM: Cam = { R: 22, e: 12 };
+/** The centre of the cam disc, relative to its shaft (y down): it goes round
+ * the shaft exactly as a crank pin of radius `e` would. */
+export function camCentre(angle: number, { e }: Cam = CAM): Point {
+  return { x: e * Math.sin(angle), y: -e * Math.cos(angle) };
 }
-/** A part can be met (tapped, named) only with the case open. */
-export function canSelect(machine: MachineId, part: PartId | null | undefined, open: boolean): part is PartId {
-  return open && !!part && MACHINE_PARTS[machine].includes(part);
+/** How far above the shaft the flat follower rides: the top of the disc. */
+export function camLift(angle: number, { R, e }: Cam = CAM): number {
+  return R + e * Math.cos(angle);
 }
-/** Switching machine keeps a selected part that the other machine also has
- * (the crank, the rod): they are the same idea. */
-export function carrySelection(part: PartId | null, machine: MachineId): PartId | null {
-  return part && MACHINE_PARTS[machine].includes(part) ? part : null;
+/** Where the disc touches the follower's flat face: straight above its centre. */
+export function camContact(angle: number, cam: Cam = CAM): Point {
+  return { x: cam.e * Math.sin(angle), y: -camLift(angle, cam) };
+}
+/** How open the flower is: shut (0) at the bottom of the lift, open (1) at the top. */
+export function bloomOpen(angle: number, cam: Cam = CAM): number {
+  return (camLift(angle, cam) - (cam.R - cam.e)) / (2 * cam.e);
+}
+
+/* ----------------------------------------------------- one shaft, in turn */
+/** The cam is fixed on its shaft this far behind the big crank. */
+export const CAM_LAG = TAU * 0.2;
+/** Six bead rods, each a small slider-crank. */
+export const WAVE_RODS = 6;
+export const WAVE_LINK: Linkage = { r: 13, l: 36 };
+/** The first small crank is this far behind the big crank; each neighbour a tenth of a turn more. */
+export const WAVE_LAG = TAU * 0.35;
+export const WAVE_STEP = TAU / 10;
+/** The cam's own angle when the big crank is at `theta`. */
+export const camAngle = (theta: number) => theta - CAM_LAG;
+/** Rod `i`'s own crank angle when the big crank is at `theta`. */
+export const waveAngle = (i: number, theta: number) => theta - WAVE_LAG - i * WAVE_STEP;
+/** How far above its shaft bead rod `i`'s wrist pin is. */
+export const waveLift = (i: number, theta: number) => pistonLift(waveAngle(i, theta), WAVE_LINK);
+/** Where rod `i` is in its stroke: 0 at the bottom, 1 at the top. */
+export const waveFraction = (i: number, theta: number) => strokeFraction(waveAngle(i, theta), WAVE_LINK);
+
+/** Something reaching the top of its travel: one beat of the machine's tune. */
+export type BeatKind = 'pistonTop' | 'bloomTop' | 'beadTop' | 'bellRing';
+export interface Beat { readonly kind: BeatKind; readonly index: number; readonly at: number }
+/** The angle (in one turn) at which each thing tops out. The last bead rings the bell. */
+export const BEAT_ANGLES: readonly Beat[] = [
+  { kind: 'pistonTop', index: 0, at: 0 },
+  { kind: 'bloomTop', index: 0, at: CAM_LAG },
+  ...Array.from({ length: WAVE_RODS }, (_, i): Beat => ({ kind: 'beadTop', index: i, at: WAVE_LAG + i * WAVE_STEP })),
+  { kind: 'bellRing', index: 0, at: WAVE_LAG + (WAVE_RODS - 1) * WAVE_STEP },
+];
+/** The beats passed between two unwrapped angles, either way round, in the
+ * order they were passed (at most one turn's worth). */
+export function beatsCrossed(from: number, to: number): Beat[] {
+  if (from === to) return [];
+  const lo = Math.min(from, to), hi = Math.min(Math.max(from, to), lo + TAU), out: { beat: Beat; angle: number }[] = [];
+  for (const beat of BEAT_ANGLES) {
+    const first = Math.floor((lo - beat.at) / TAU) + 1;
+    for (let k = first; beat.at + k * TAU <= hi; k++) out.push({ beat, angle: beat.at + k * TAU });
+  }
+  out.sort((a, b) => a.angle - b.angle);
+  if (to < from) out.reverse();
+  return out.map(o => o.beat);
 }
 
 /* -------------------------------------------------------------- the arc */
-/** Hand turning that counts as "turned it by hand": one whole turn. */
+/** Three chapters that grow, then the whole machine at once. */
+export type Chapter = 'pistonCh' | 'flowerCh' | 'waveCh' | 'finaleCh';
+export const CHAPTERS: readonly Chapter[] = ['pistonCh', 'flowerCh', 'waveCh', 'finaleCh'];
+/** What a chapter asks, one small thing at a time. */
+export type Step = 'turnIt' | 'lookIn' | 'testJoint' | 'pickUp' | 'bigShow';
+export const CHAPTER_STEPS: Readonly<Record<Chapter, readonly Step[]>> = {
+  pistonCh: ['turnIt', 'lookIn', 'testJoint'],
+  flowerCh: ['pickUp', 'turnIt', 'lookIn'],
+  waveCh: ['pickUp', 'turnIt', 'lookIn'],
+  finaleCh: ['pickUp', 'turnIt', 'bigShow'],
+};
+/** The hidden parts the ProofLens can name, by chapter. */
+export type PartId = 'crankArm' | 'rodBar' | 'pistonHead' | 'camDisc' | 'follower' | 'smallCranks';
+export const LENS_PARTS: Readonly<Record<Chapter, readonly PartId[]>> = {
+  pistonCh: ['crankArm', 'rodBar', 'pistonHead'],
+  flowerCh: ['camDisc', 'follower'],
+  waveCh: ['smallCranks'],
+  finaleCh: [],
+};
+export const ALL_PARTS: readonly PartId[] = CHAPTERS.flatMap(c => LENS_PARTS[c]);
+/** Hand turning that completes a "turn it" step: one whole turn. The last
+ * chapter only needs a good start: the machine takes it from there. */
 export const HAND_TURN_GOAL = TAU;
-export interface Explore {
+export const SHOW_START_GOAL = TAU / 3;
+export interface Flow {
+  readonly chapter: Chapter;
+  /** Index into the chapter's steps. */
+  readonly step: number;
+  /** Hand turning counted toward the step in play (radians). */
   readonly hand: number;
-  readonly inside: boolean;
+  /** Every part the lens has named so far, in order. */
   readonly met: readonly PartId[];
-  readonly seen: readonly MachineId[];
+  /** The whole arc is done: time for the finish. */
+  readonly over: boolean;
 }
-export const START: Explore = { hand: 0, inside: false, met: [], seen: ['engine'] };
-/** A visit that opens on another machine (play again is not the same again). */
-export const startOn = (machine: MachineId): Explore => ({ ...START, seen: [machine] });
-/** The idea has to be seen twice before Done: any two machines. */
-export const MACHINES_TO_SEE = 2;
-export const turnedByHand = (e: Explore, amount: number): Explore => amount === 0 ? e : { ...e, hand: e.hand + Math.abs(amount) };
-export const lookedInside = (e: Explore): Explore => e.inside ? e : { ...e, inside: true };
-export const metPart = (e: Explore, part: PartId): Explore => e.met.includes(part) ? e : { ...e, met: [...e.met, part] };
-export const sawMachine = (e: Explore, machine: MachineId): Explore => e.seen.includes(machine) ? e : { ...e, seen: [...e.seen, machine] };
-/** "Met the parts": every part of one machine. The crank and rod met in one
- * machine count in the other, because they are the same parts. */
-export function partsMet(met: readonly PartId[]): boolean {
-  return MACHINES.some(m => MACHINE_PARTS[m].every(p => met.includes(p)));
+export const FLOW_START: Flow = { chapter: 'pistonCh', step: 0, hand: 0, met: [], over: false };
+export const stepOf = (flow: Flow): Step => CHAPTER_STEPS[flow.chapter][flow.step];
+export type FlowEvent =
+  | { readonly type: 'turned'; readonly amount: number }
+  | { readonly type: 'met'; readonly part: PartId }
+  | { readonly type: 'tested' }
+  | { readonly type: 'placed' }
+  | { readonly type: 'shown' };
+function nextStep(flow: Flow): Flow {
+  const steps = CHAPTER_STEPS[flow.chapter];
+  if (flow.step + 1 < steps.length) return { ...flow, step: flow.step + 1, hand: 0 };
+  const at = CHAPTERS.indexOf(flow.chapter);
+  if (at + 1 < CHAPTERS.length) return { ...flow, chapter: CHAPTERS[at + 1], step: 0, hand: 0 };
+  return { ...flow, hand: 0, over: true };
 }
-export interface Badges { readonly turned: boolean; readonly inside: boolean; readonly parts: boolean }
-export function badgesOf(e: Explore): Badges {
-  // A whole turn made of small steps may fall a rounding error short of 2π.
-  return { turned: e.hand >= HAND_TURN_GOAL - 1e-6, inside: e.inside, parts: partsMet(e.met) };
+/** The parts of the chapter in play that the lens has still to name. */
+export function partsLeft(flow: Flow): PartId[] {
+  return LENS_PARTS[flow.chapter].filter(p => !flow.met.includes(p));
 }
-/** Done appears once all three badges are lit and two machines were seen. */
-export function canFinish(e: Explore): boolean {
-  const b = badgesOf(e);
-  return b.turned && b.inside && b.parts && MACHINES.filter(m => e.seen.includes(m)).length >= MACHINES_TO_SEE;
+/** One thing happened. Only what the step in play asks for moves the arc on;
+ * anything else leaves it exactly as it was (never a miss, never a penalty). */
+export function flowReduce(flow: Flow, event: FlowEvent): Flow {
+  if (flow.over) return flow;
+  const step = stepOf(flow);
+  if (event.type === 'turned') {
+    if (step !== 'turnIt' || !(Math.abs(event.amount) > 0)) return flow;
+    const hand = flow.hand + Math.abs(event.amount);
+    // A whole turn made of small steps may fall a rounding error short of 2π.
+    const goal = (flow.chapter === 'finaleCh' ? SHOW_START_GOAL : HAND_TURN_GOAL) - 1e-6;
+    return hand >= goal ? nextStep(flow) : { ...flow, hand };
+  }
+  if (event.type === 'met') {
+    if (flow.met.includes(event.part) || !ALL_PARTS.includes(event.part)) return flow;
+    // A part of an earlier machine may be named at any time; only this chapter's parts finish a look.
+    const met = [...flow.met, event.part], next = { ...flow, met };
+    return step === 'lookIn' && partsLeft(next).length === 0 ? nextStep(next) : next;
+  }
+  if (event.type === 'tested') return step === 'testJoint' ? nextStep(flow) : flow;
+  if (event.type === 'placed') return step === 'pickUp' ? nextStep(flow) : flow;
+  return step === 'bigShow' ? nextStep(flow) : flow;
 }
-export type Cue = 'turn' | 'look' | 'meet' | 'more' | 'other' | 'ready';
-/** The next small step, never a judgement. */
-export function cueFor(e: Explore, open: boolean, machine: MachineId): Cue {
-  if (canFinish(e)) return 'ready';
-  const b = badgesOf(e);
-  if (!b.turned && !b.inside) return 'turn';
-  if (!open && !b.parts) return 'look';
-  if (!b.parts) return e.met.length ? 'more' : 'meet';
-  if (!b.turned) return 'turn';
-  return e.seen.some(m => m !== machine) ? 'ready' : 'other';
+/** Which stations are joined to the big wheel: each is built by its own pick-up. */
+export interface Built { readonly flower: boolean; readonly beads: boolean; readonly bell: boolean }
+export function builtOf(flow: Flow): Built {
+  const at = CHAPTERS.indexOf(flow.chapter), placed = (chapter: Chapter) => at > CHAPTERS.indexOf(chapter) || (flow.chapter === chapter && flow.step > 0);
+  return { flower: placed('flowerCh'), beads: placed('waveCh'), bell: placed('finaleCh') || flow.over };
+}
+/** Chapters wholly done: the quest strip's pips. Things done, never a measure. */
+export function chaptersDone(flow: Flow): Readonly<Record<Chapter, boolean>> {
+  const at = flow.over ? CHAPTERS.length : CHAPTERS.indexOf(flow.chapter);
+  return { pistonCh: at > 0, flowerCh: at > 1, waveCh: at > 2, finaleCh: at > 3 };
 }
 
-/* ------------------------------------------------------------- traces */
-export const TRACE_BINS = 72;
-/** The slice of the crank circle a crank angle lies in. */
-export const traceBin = (theta: number) => Math.floor(wrapAngle(theta) / TAU * TRACE_BINS) % TRACE_BINS;
-/** Mark every slice swept between two unwrapped angles (at most one turn). */
-export function sweepBins(bins: readonly boolean[], from: number, to: number): boolean[] {
-  const next = bins.length === TRACE_BINS ? [...bins] : Array<boolean>(TRACE_BINS).fill(false);
-  const span = Math.min(Math.abs(to - from), TAU);
-  // Half-slice steps, so a sample never lands only on slice edges.
-  const steps = Math.max(1, Math.ceil(span / (TAU / TRACE_BINS) * 2));
-  const dir = to >= from ? 1 : -1;
-  for (let i = 0; i <= steps; i++) next[traceBin(from + dir * span * i / steps)] = true;
-  return next;
+/* ------------------------------------------------------------- the lens */
+/** How long the lens rests over a part before it names it (seconds). */
+export const LENS_DWELL = 0.32;
+export interface Anchor { readonly part: PartId; readonly x: number; readonly y: number }
+/** The part whose anchor lies nearest the middle of the lens, within reach. */
+export function nearestPart(lens: Point, anchors: readonly Anchor[], reach: number): PartId | null {
+  let best: PartId | null = null, bestD = reach;
+  for (const a of anchors) {
+    const d = Math.hypot(a.x - lens.x, a.y - lens.y);
+    if (d <= bestD) { bestD = d; best = a.part; }
+  }
+  return best;
 }
 
-/* --------------------------------------------------------- the wave writer */
-/** How far the writer's glass slides for each radian of the crank: one turn
- * of the wheel is one wave, this many drawing units long. */
-export const WAVE_LENGTH = 60;
-export const FEED = WAVE_LENGTH / TAU;
-/** How far along the glass (from the pen, the way the glass slides) the line
- * written at angle `at` sits, now that the crank is at `now`. */
-export const waveReach = (at: number, now: number) => FEED * (now - at);
-/** A stretch of line: from one unwrapped angle to another, in one ink. */
-export interface Ink { readonly from: number; readonly to: number; readonly ink: number }
-/** The pen moved from one angle to another: it paints its ink over that
- * stretch, covering whatever was written there. Stretches stay sorted, never
- * overlap, and neighbours in one ink join up. Only a set stretch (the last argument, in radians) either side
- * of the pen are remembered. */
-export function writeInk(marks: readonly Ink[], from: number, to: number, ink: number, keep = TAU * 24): Ink[] {
-  const lo = Math.min(from, to), hi = Math.max(from, to);
-  if (!(hi > lo)) return [...marks];
-  const out: Ink[] = [];
-  for (const m of marks) {
-    if (m.to <= lo || m.from >= hi) { out.push(m); continue; }
-    if (m.from < lo) out.push({ from: m.from, to: lo, ink: m.ink });
-    if (m.to > hi) out.push({ from: hi, to: m.to, ink: m.ink });
-  }
-  out.push({ from: lo, to: hi, ink });
-  out.sort((a, b) => a.from - b.from);
-  const joined: Ink[] = [];
-  for (const m of out) {
-    const last = joined[joined.length - 1];
-    if (last && last.ink === m.ink && m.from - last.to < 1e-9) joined[joined.length - 1] = { from: last.from, to: m.to, ink: m.ink };
-    else joined.push(m);
-  }
-  return joined.filter(m => m.to > to - keep && m.from < to + keep).map(m => ({ from: Math.max(m.from, to - keep), to: Math.min(m.to, to + keep), ink: m.ink }));
+/* -------------------------------------------------------------- variety */
+/** What changes from one visit to the next: the enamel, the flower, the
+ * order of the bead colours, the tune the beads play and where the wheel rests. */
+export interface Plan {
+  readonly enamel: number;
+  readonly bloom: number;
+  readonly beads: readonly number[];
+  readonly tune: readonly number[];
+  readonly rest: number;
+}
+export const ENAMELS = 3, BLOOMS = 4;
+/** Tunes for the six beads, as steps of the scale: all end on the way up to the bell. */
+export const TUNES: readonly (readonly number[])[] = [
+  [0, 1, 2, 3, 4, 5],
+  [0, 2, 1, 3, 2, 4],
+  [2, 0, 2, 3, 5, 4],
+  [0, 2, 4, 2, 4, 5],
+];
+/** The same seed always gives the same visit (so a test can pin one). */
+export function planOf(seed: number): Plan {
+  let state = (Math.floor(Math.abs(seed)) >>> 0) || 1;
+  const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+  for (let i = 0; i < 4; i++) random();
+  const enamel = Math.floor(random() * ENAMELS), bloom = Math.floor(random() * BLOOMS);
+  const beads = Array.from({ length: WAVE_RODS }, (_, i) => i);
+  for (let i = beads.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [beads[i], beads[j]] = [beads[j], beads[i]]; }
+  const tune = TUNES[Math.floor(random() * TUNES.length)];
+  // The wheel rests near the bottom of the stroke, a little to one side or the other.
+  const rest = Math.PI + (random() - 0.5) * 1.6;
+  return { enamel, bloom, beads, tune, rest };
 }

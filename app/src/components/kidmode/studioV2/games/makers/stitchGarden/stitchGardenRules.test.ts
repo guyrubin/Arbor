@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { STITCH_GARDEN_COPY } from './stitchGardenCopy';
 import { TEXTILE_CELLS, TEXTILE_FLOWERS, TEXTILE_MAX_MOTIFS, freeCells, plant, reopenTextile, storyLines, textileOf, unpick, validTextile, type TextileMotif } from './stitchGardenRules';
 import { ART_H, ART_W, CLOTH_R, HOOP_CX, HOOP_CY, STITCH_MS, UNPICK_MS, cellCentre, motifStitches, prng, seedFor, stitchesFor } from './stitchGardenStitches';
-import { ARRIVE_MS, BEAT_STITCHES, HOME_MS, PARKED_NEEDLE, TIE_MS, landsAt, needleAt, planMs, walkTo, type NeedlePlan } from './stitchGardenMotion';
+import { ARRIVE_MS, BEAT_STITCHES, HOLD_MS, HOME_MS, PARKED_NEEDLE, PASS_MIN_MS, TIE_MS, heldPose, landsAt, needleAt, passSpan, planMs, walkTo, type NeedlePlan } from './stitchGardenMotion';
+import { CHAPTERS, FLOWER_LIKES, MAT_OVER_HOOP, MIN_TOUCH, PULLS, WANTS, chapterAfter, hoopCentre, layoutStage, openCells, passEnds, planRound, ringLights, stagePoint, suits, wantAt, type Box } from './stitchGardenPlay';
 import { SCALE, degree, stitchNote, threadRoot } from './stitchGardenAudio';
 import { critterStitches } from './stitchGardenCritters';
-import { BUD, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, TABLE, WAITRING } from './stitchGardenKit';
+import { BUD, FERN, GOBGOB_GLAD, GOBGOB_WAITING, LEAFLAB, TABLE, WAITRING } from './stitchGardenKit';
 import { TEXTILE_CLOTHS, TEXTILE_THREADS } from './stitchGardenRules';
 
 const fill = (n: number) => { let m: TextileMotif[] = []; for (let i = 0; i < n; i++) m = plant(m, TEXTILE_FLOWERS[i % 5], i, i % 5)!; return m; };
@@ -77,7 +78,10 @@ describe('the hem story', () => {
   it('keeps every cue to eight words or fewer, in both languages', () => {
     for (const lang of ['en', 'he'] as const) {
       const w = STITCH_GARDEN_COPY[lang];
-      for (const cue of [w.cueStart, w.cueStitching.replace('{flower}', w.flowers.sunflower), w.cueMore, w.cueFull, w.cueLifting]) expect(cue.trim().split(/\s+/).length, cue).toBeLessThanOrEqual(8);
+      const cues = Object.entries(w).filter(([key, value]) => key.startsWith('cue') && typeof value === 'string').map(([, value]) => (value as string).replace('{flower}', w.flowers.sunflower));
+      expect(cues.length).toBeGreaterThanOrEqual(10);
+      for (const cue of [...cues, w.hello, w.growsLine, ...Object.values(w.suitsLine), ...w.ayaSays, ...w.captions, ...w.chapterDone]) expect(cue.trim().split(/\s+/).length, cue).toBeLessThanOrEqual(8);
+      expect(w.chapters).toHaveLength(3);
       expect(w.threads).toHaveLength(TEXTILE_THREADS);
     }
   });
@@ -300,7 +304,159 @@ describe('the table', () => {
     expect(WAITRING.lights).toHaveLength(4);
     for (const l of WAITRING.lights) { expect(l.x + l.w).toBeLessThanOrEqual(1); expect(l.y + l.h).toBeLessThanOrEqual(1); }
     // No picture that shows a child goes without his name in its file name.
-    for (const picture of [TABLE, ...BUD, WAITRING, LEAFLAB]) if (picture) expect(picture.src).not.toMatch(/face|front|side|back/);
+    for (const picture of [TABLE, ...BUD, WAITRING, LEAFLAB, FERN]) if (picture) expect(picture.src).not.toMatch(/face|front|side|back|bebe|gobgob|crew/);
+    expect(FERN.src).toMatch(/^\/visuals\/studio-v2\/bop\/rover-planter\.webp$/);
     for (const picture of [GOBGOB_WAITING, GOBGOB_GLAD]) if (picture) { expect(picture.src).toMatch(/\/kit-gobgob-/); expect(picture.from).toMatch(/gobgob/); }
+  });
+});
+
+describe('the round: three chapters, drawn from a seed', () => {
+  const seeds = [1, 2, 3, 7, 11, 42, 99, 12345, 777777, 2147483646];
+  it('plans the same round for the same seed, and not the same round every time', () => {
+    for (const seed of seeds) expect(planRound(seed, 2)).toEqual(planRound(seed, 2));
+    expect(new Set(seeds.map(seed => JSON.stringify(planRound(seed).row))).size).toBeGreaterThan(3);
+    expect(new Set(seeds.map(seed => planRound(seed).firstCell)).size).toBe(2);
+    // The cloth comes round in turn from one sitting to the next.
+    expect(new Set([0, 1, 2].map(sitting => planRound(5, sitting).cloth)).size).toBe(3);
+  });
+  it('gives chapter one a middle mark, and chapter two three spots of one outer row: sun, water and shade, once each', () => {
+    for (const seed of seeds) {
+      const plan = planRound(seed);
+      expect([5, 6]).toContain(plan.firstCell);
+      expect(plan.row).toHaveLength(3);
+      expect(new Set(plan.row.map(s => Math.floor(s.cell / 4))).size).toBe(1);
+      expect([0, 2]).toContain(Math.floor(plan.row[0].cell / 4));
+      expect([...plan.row.map(s => s.want)].sort()).toEqual([...WANTS].sort());
+      expect(plan.row.map(s => s.cell)).not.toContain(plan.firstCell);
+      expect(TEXTILE_FLOWERS).toContain(plan.flower);
+      expect(plan.thread).toBeGreaterThanOrEqual(0); expect(plan.thread).toBeLessThan(TEXTILE_THREADS);
+      expect(plan.packetTurns).toHaveLength(6);
+      for (const turn of plan.packetTurns) expect(Math.abs(turn)).toBeLessThanOrEqual(7);
+    }
+  });
+  it('opens one mark, then the row, then the whole cloth, and only ever moves on', () => {
+    const plan = planRound(42);
+    let motifs: TextileMotif[] = [], chapter = 0;
+    expect(openCells(plan, chapter, freeCells(motifs))).toEqual([plan.firstCell]);
+    motifs = plant(motifs, 'daisy', plan.firstCell, 0)!; chapter = chapterAfter(plan, chapter, motifs);
+    expect(chapter).toBe(1);
+    expect(openCells(plan, chapter, freeCells(motifs))).toEqual(plan.row.map(s => s.cell));
+    motifs = plant(motifs, 'tulip', plan.row[0].cell, 1)!; chapter = chapterAfter(plan, chapter, motifs);
+    expect(chapter).toBe(1);
+    expect(openCells(plan, chapter, freeCells(motifs))).toEqual(plan.row.slice(1).map(s => s.cell));
+    motifs = plant(plant(motifs, 'poppy', plan.row[1].cell, 2)!, 'bluebell', plan.row[2].cell, 3)!; chapter = chapterAfter(plan, chapter, motifs);
+    expect(chapter).toBe(CHAPTERS.length - 1);
+    expect(openCells(plan, chapter, freeCells(motifs))).toHaveLength(TEXTILE_CELLS - 4);
+    // Unpicking never sends the child back a chapter, and the cloth stays free.
+    motifs = unpick(unpick(unpick(motifs)));
+    expect(chapterAfter(plan, chapter, motifs)).toBe(2);
+    expect(openCells(plan, 2, freeCells(motifs))).toHaveLength(TEXTILE_CELLS - 1);
+    // Four flowers by the end of chapter two leaves room for four more in the border.
+    expect(TEXTILE_MAX_MOTIFS - 4).toBe(4);
+  });
+  it('makes a match a flourish, never a rule: every flower likes something, and each may go on every spot', () => {
+    const plan = planRound(7);
+    for (const flower of TEXTILE_FLOWERS) {
+      expect(WANTS).toContain(FLOWER_LIKES[flower]);
+      for (const spot of plan.row) { expect(plant([], flower, spot.cell, 0)).not.toBeNull(); expect(suits(plan, flower, spot.cell)).toBe(FLOWER_LIKES[flower] === spot.want); }
+      expect(suits(plan, flower, plan.firstCell)).toBe(false);
+    }
+    for (const want of WANTS) expect(TEXTILE_FLOWERS.some(f => FLOWER_LIKES[f] === want), want).toBe(true);
+    expect(wantAt(plan, plan.firstCell)).toBeNull();
+    for (const lang of ['en', 'he'] as const) for (const want of WANTS) { expect(STITCH_GARDEN_COPY[lang].wantNames[want]).toBeTruthy(); expect(STITCH_GARDEN_COPY[lang].likes[want]).toBeTruthy(); expect(STITCH_GARDEN_COPY[lang].suitsLine[want]).toBeTruthy(); }
+  });
+});
+
+describe('pulling the thread', () => {
+  it('sews every flower in four pulls, each a fair share of the work, ending on the whole flower', () => {
+    for (const flower of TEXTILE_FLOWERS) for (let cell = 0; cell < TEXTILE_CELLS; cell++) {
+      const stitches = stitchesFor(flower, cell), ends = passEnds(stitches);
+      expect(ends, flower).toHaveLength(PULLS);
+      expect(ends[ends.length - 1]).toBe(stitches.length);
+      let from = 0;
+      for (const end of ends) { expect(end - from, `${flower}:${cell}`).toBeGreaterThanOrEqual(3); expect(end - from, `${flower}:${cell}`).toBeLessThanOrEqual(stitches.length * 0.42); from = end; }
+    }
+    expect(passEnds([])).toEqual([]);
+    expect(passEnds([{ part: 'stem' }, { part: 'leaf' }])).toEqual([1, 2]);
+  });
+  it('ends a pull where the needlework changes when a change is near', () => {
+    const stitches = stitchesFor('tulip', 5), ends = passEnds(stitches);
+    const changes = stitches.map((s, i) => (i > 0 && s.part !== stitches[i - 1].part ? i : -1)).filter(i => i > 0);
+    expect(ends.slice(0, -1).filter(end => changes.includes(end)).length).toBeGreaterThanOrEqual(1);
+  });
+  it('lights one more light of the WaitRing for each pull', () => {
+    expect([0, 1, 2, 3, 4].map(done => ringLights(done, 4))).toEqual([0, 1, 2, 3, 4]);
+    expect(ringLights(0, 0)).toBe(0); expect(ringLights(9, 4)).toBe(4);
+  });
+  it('lays only its own stitches in one pull, then lifts and holds the thread over the work', () => {
+    const stitches = stitchesFor('poppy', 6), ends = passEnds(stitches);
+    const plan: NeedlePlan = { mode: 'stitch', stitches, from: PARKED_NEEDLE, startCount: ends[0], first: ends[0], last: ends[1], tieOff: false };
+    const span = passSpan(plan);
+    expect(span).toMatchObject({ lo: ends[0], hi: ends[1] });
+    expect((span.hi - span.lo) * span.per).toBeGreaterThanOrEqual(PASS_MIN_MS - 1);
+    expect(needleAt(plan, 0).count).toBe(ends[0]);
+    expect(needleAt(plan, ARRIVE_MS + 1).count).toBe(ends[0] + 1);
+    const landed = needleAt(plan, landsAt(plan) + 1);
+    expect(landed.count).toBe(ends[1]); expect(landed.phase).toBe('hold');
+    const end = needleAt(plan, planMs(plan) + 1);
+    expect(end.phase).toBe('done'); expect(end.count).toBe(ends[1]);
+    expect(planMs(plan)).toBeCloseTo(landsAt(plan) + HOLD_MS, 5);
+    // It waits where it stopped, lifted, the thread still running from its last stitch.
+    expect(end.pose).toEqual(heldPose(plan));
+    expect(end.pose.anchor).not.toBeNull(); expect(end.pose.z).toBeGreaterThan(0.5);
+    const lastStitch = stitches[ends[1] - 1];
+    expect(Math.hypot(end.pose.x - (lastStitch.knot ? lastStitch.x1 : lastStitch.x2), end.pose.y - (lastStitch.knot ? lastStitch.y1 : lastStitch.y2))).toBeLessThan(14);
+    for (let t = 0; t < planMs(plan); t += 23) { const f = needleAt(plan, t); expect(f.count).toBeGreaterThanOrEqual(ends[0]); expect(f.count).toBeLessThanOrEqual(ends[1]); }
+  });
+  it('ties off and goes home after the last pull, and the four pulls together lay every stitch once', () => {
+    const stitches = stitchesFor('daisy', 2), ends = passEnds(stitches);
+    let from = PARKED_NEEDLE, count = 0;
+    ends.forEach((last, i) => {
+      const first = i === 0 ? 0 : ends[i - 1], tieOff = i === ends.length - 1;
+      const plan: NeedlePlan = { mode: 'stitch', stitches, from, startCount: first, first, last, tieOff };
+      const end = needleAt(plan, planMs(plan) + 1);
+      expect(end.count).toBe(last); expect(end.count).toBeGreaterThan(count); count = end.count;
+      if (tieOff) { expect(end.pose).toEqual(PARKED_NEEDLE); expect(planMs(plan)).toBeGreaterThan(landsAt(plan) + TIE_MS); }
+      from = end.pose;
+    });
+    expect(count).toBe(stitches.length);
+  });
+});
+
+describe('the table, laid out for any stage', () => {
+  const stages: [number, number, string][] = [[390, 768, 'phone'], [360, 564, 'small phone'], [844, 314, 'phone on its side'], [1024, 692, 'tablet'], [820, 1104, 'tablet upright'], [1280, 724, 'desktop'], [1920, 1004, 'wide desktop']];
+  const inside = (box: Box, w: number, h: number, slack = 1) => box.x >= -slack && box.y >= -slack && box.x + box.w <= w + slack && box.y + box.h <= h + slack;
+  const apart = (a: Box, b: Box) => a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1;
+  it('keeps the hoop and every picker on the stage, big enough for a small finger', () => {
+    for (const [w, h, name] of stages) {
+      const l = layoutStage(w, h, planRound(3).packetTurns);
+      expect(l.tall, name).toBe(h > w * 1.08);
+      const circle = { x: l.hoop.x + (HOOP_CX - CLOTH_R - 22) * l.k, y: l.hoop.y + (HOOP_CY - CLOTH_R - 22) * l.k, w: (CLOTH_R + 22) * 2 * l.k, h: (CLOTH_R + 22) * 2 * l.k };
+      expect(inside(circle, w, h, 2), `${name} hoop`).toBe(true);
+      expect(circle.w, `${name} hoop size`).toBeGreaterThanOrEqual(Math.min(w, h) * 0.5);
+      expect(l.packets).toHaveLength(5); expect(l.spools).toHaveLength(5);
+      for (const box of [...l.packets, ...l.spools, l.cloths, l.basket]) {
+        expect(inside(box, w, h), `${name} picker on stage`).toBe(true);
+        expect(apart(box, circle), `${name} picker clear of the hoop`).toBe(true);
+      }
+      for (const box of [...l.packets, l.cloths]) { expect(box.w, name).toBeGreaterThanOrEqual(MIN_TOUCH); expect(box.h, name).toBeGreaterThanOrEqual(MIN_TOUCH); }
+      for (const box of l.spools) { expect(box.w, name).toBeGreaterThanOrEqual(MIN_TOUCH * 0.9); expect(box.h, name).toBeGreaterThanOrEqual(MIN_TOUCH); expect(inside(box, l.basket.x + l.basket.w, l.basket.y + l.basket.h)).toBe(true); }
+      for (let i = 1; i < 5; i++) expect(l.spools[i].x, name).toBeGreaterThanOrEqual(l.spools[i - 1].x + l.spools[i - 1].w - 0.5);
+      for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) expect(apart(l.packets[i], l.packets[j]), `${name} packets ${i} ${j}`).toBe(true);
+      for (const packet of l.packets) for (const spool of l.spools) expect(apart(packet, spool), `${name} rows`).toBe(true);
+      expect(apart(l.cloths, l.basket), name).toBe(true);
+      // The linen mat is centred under the hoop and a little bigger than it, so its teal edge shows all round the wood.
+      expect(l.table.cx).toBeCloseTo(circle.x + circle.w / 2, 3); expect(l.table.cy).toBeCloseTo(circle.y + circle.h / 2, 3);
+      expect(l.table.ring).toBeCloseTo(circle.w / 2 * MAT_OVER_HOOP, 3);
+    }
+  });
+  it('puts the hoop above the sewing things on a tall stage and beside them on a wide one', () => {
+    const tall = layoutStage(390, 768), wide = layoutStage(1280, 724);
+    expect(tall.packets[0].y).toBeGreaterThan(tall.hoop.y + (HOOP_CY + CLOTH_R) * tall.k);
+    expect(wide.packets[0].x).toBeGreaterThan(wide.hoop.x + (HOOP_CX + CLOTH_R) * wide.k);
+    expect(hoopCentre(tall).x).toBeCloseTo(0.5, 2);
+    expect(hoopCentre(wide).x).toBeLessThan(0.45);
+    const p = stagePoint(wide, HOOP_CX, HOOP_CY);
+    expect(p).toEqual(hoopCentre(wide)); expect(p.y).toBeGreaterThan(0.3); expect(p.y).toBeLessThan(0.7);
   });
 });
