@@ -7,8 +7,6 @@ import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
 import { groupMilestonesByShelf, shelfBands } from "../../lib/milestones/shelfMap";
 import { shelfLabel, shelvesOfDomain } from "../../lib/shelves/registry";
-import { DOMAIN_ART } from "../../lib/parentArt";
-import { DOMAIN_VARS } from "../../lib/tokens";
 import type { Milestone } from "../../types";
 import { Icon } from "../ui/Icon";
 import { Receipt } from "../ui/Receipt";
@@ -38,8 +36,9 @@ import "./developmentMap.css";
  *
  * v3 F-CHILD-4 (MOB-02): in the phone sheet the tile it opened from has no
  * room to quote the area's newest moment, so the sheet opens on it (the
- * mock's open area): the day and the parent's own words, ruled in the
- * area's ink. Inline under a row the row already quotes it, so it is absent.
+ * mock's open area): the day and the parent's own words, on a neutral rule.
+ * v10.1: no area picture and no area ink on Milestones (one accent, glyph and
+ * name tell the areas apart).
  */
 const WHY_KEYS: Readonly<Record<DomainId, string>> = {
   talking: "companion.devMap.why.talking",
@@ -192,7 +191,7 @@ export default function AreaRowDetail({
   return (
     <div className="area-detail" id={id} data-testid="area-detail" data-domain={domain} dir={uiLang === "he" ? "rtl" : "ltr"}>
       {lastMoment && (
-        <p className="area-detail-last" data-testid="area-detail-last" style={{ borderInlineStartColor: DOMAIN_VARS[domain].ink }}>
+        <p className="area-detail-last" data-testid="area-detail-last">
           <span className="area-detail-last-when">
             {t("companion.milestones.lastMoment")}
             {" · "}
@@ -203,7 +202,6 @@ export default function AreaRowDetail({
       )}
       <div className="area-detail-intro">
         <p className="area-detail-why">{t(WHY_KEYS[domain])}</p>
-        <img className="area-detail-art" {...DOMAIN_ART[domain]} sizes="112px" alt="" aria-hidden="true" loading="lazy" decoding="async" />
       </div>
       {!confirmed && <p role="status" className="notice-object-note">{noticeCopy.unconfirmed}</p>}
       {watched && (

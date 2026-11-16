@@ -11,13 +11,12 @@ import { Icon } from "../ui/Icon";
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
 import { PencilChip } from "../../design/primitives";
 import { milestonesV10Copy } from "./milestonesV10Copy";
-import { domainToneStyle } from "./domainTone";
 
 /**
  * v10.1 — "What to notice next" on the milestone map: up to three skills of
  * the child's current band, one per area, from the shared selector
  * (lib/milestones/selectByShelf, never ahead of band, never a shelf answered
- * today). Each card is tinted by its area and carries the ONE answer control
+ * today). Each card is a neutral surface named by its area's glyph and name, and carries the ONE answer control
  * (SegmentedAnswers, resting neutral). A card the parent answers stays in
  * place for the visit with its answer pressed, so nothing jumps under a tap.
  * The answer writes through the page's one seam (the same as an opened area).
@@ -69,7 +68,7 @@ export default function NoticeNext({ childId, milestones, comparisonMonths, gend
       {picks.map(({ m, domain }, index) => {
         const title = milestoneText(m, "title", t, { gender });
         return (
-          <li key={m.id} className="nx ar" style={domainToneStyle(domain)} data-testid="ms-next-card" data-milestone={m.id}>
+          <li key={m.id} className="nx" data-testid="ms-next-card" data-milestone={m.id}>
             <div className="nh">
               <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[domain]} size={15} /></span>
               <span className="nk">{domainName(domain, t)}</span>

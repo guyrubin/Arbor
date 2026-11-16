@@ -15,8 +15,8 @@ import { portraitDiscussionPrompt } from "./portraitModel";
 import { PORTRAIT_COPY } from "./portraitCopy";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { Icon } from "../ui/Icon";
-import { domainToneStyle, seenTotals } from "./domainTone";
 import MilestoneAreas from "./MilestoneAreas";
+import { seenTotals } from "./milestonesModel";
 import MilestonesViewSwitch from "./MilestonesViewSwitch";
 import { milestonesV10Copy } from "./milestonesV10Copy";
 import PortraitCards from "./PortraitCards";
@@ -111,7 +111,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
           const cards = <PortraitCards sources={record.sources} onEditGoal={() => setGoalOwner(childProfile.id)} />;
           const thenAndNow = <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />;
           const areaCard = (
-            <div className="area ar" style={domainToneStyle(openDomain)} data-testid="ms-open-area">
+            <div className="area" data-testid="ms-open-area">
               <div className="ah">
                 <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[openDomain]} size={17} /></span>
                 <div className="ms-ah-text">

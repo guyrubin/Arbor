@@ -1,12 +1,11 @@
 /* v10.1 — an open area's body on My child › Milestones (AreaRowDetail),
    inside the open-area card of the milestone map (components/companion/
    milestonesV10.css draws the map, the cards and the card around this).
-   An area's colour names its AREA (the VIS-02 domain tokens, set inline from
-   DOMAIN_VARS), never the child's state. Logical properties only; every
-   target sets its own 44 px floor. */
+   Neutral surfaces only (no area colour, no area picture). Logical
+   properties only; every target sets its own 44 px floor. */
 
 /* The area's newest moment, at the head of the open area: the parent's
-   words, ruled in the AREA's ink. */
+   words, on a neutral rule. */
 .area-detail-last { margin: 0; padding-inline-start: 10px; border-inline-start: 2px solid var(--arbor-rule-strong); font-family: var(--font-editorial); font-size: 15px; line-height: 1.4; color: var(--arbor-ink); overflow-wrap: anywhere; }
 .area-detail-last-when { display: block; margin-block-end: 2px; font-family: var(--font-sans); font-size: 12px; color: var(--arbor-muted); }
 
@@ -50,8 +49,4 @@
 
 .area-detail button:focus-visible, .area-detail summary:focus-visible, .area-detail input:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 
-/* Living Forms appears once in the expanded area, never on every skill row. */
-.area-detail-intro { display: flex; align-items: center; gap: 16px; }
-.area-detail-intro .area-detail-why { flex: 1; min-inline-size: 0; }
-.area-detail-art { flex: none; inline-size: 112px; block-size: 112px; object-fit: contain; }
-@media (max-width: 540px) { .area-detail-art { inline-size: 88px; block-size: 88px; } }
+

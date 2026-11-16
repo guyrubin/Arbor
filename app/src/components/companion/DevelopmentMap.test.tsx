@@ -186,14 +186,25 @@ describe("v10.1 — DevelopmentMap territories", () => {
     const html = render({ openDomain: "hands", onToggle });
     expect(html).toContain('data-testid="dev-map-tile" data-domain="hands" data-tone="quiet" aria-pressed="true"');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(html).toMatch(/class="ter ar [^"]*\bsel\b[^"]*"[^>]*data-domain="hands"/);
+    expect(html).toMatch(/class="ter[^"]*\bsel\b[^"]*"[^>]*data-domain="hands"/);
     for (const d of DOMAIN_IDS) state.buttons.find(b => b["data-testid"] === "dev-map-tile" && b["data-domain"] === d)!.onClick!();
     expect(onToggle.mock.calls.map(c => c[0])).toEqual([...DOMAIN_IDS]);
   });
 
-  it("an area with nothing recorded is drawn as quiet paper, never left out", () => {
+  it("an area with nothing recorded is drawn the same size, never left out", () => {
     const html = render();
-    expect(html.match(/class="ter ar [^"]*\bquiet\b/g)).toHaveLength(8);
+    expect(html.match(/class="ter quiet"/g)).toHaveLength(8);
+  });
+
+  it("one accent: no area colour, no picture and no inline paint on any territory", () => {
+    const by = groupMilestonesByShelf(catalogue());
+    const html = render({ milestones: catalogue().map(m => (m.id === by.words[0].id ? seen(m) : m)), openDomain: "talking" });
+    for (const d of DOMAIN_IDS) {
+      const ter = terOf(html, d);
+      expect(ter, d).not.toMatch(/<img|--arbor-domain/);
+      // The territory itself carries no inline paint (glyph sizes are the icon's own).
+      expect(ter.slice(0, ter.indexOf(">")), d).not.toContain("style=");
+    }
   });
 });
 
@@ -288,7 +299,9 @@ describe("v10.1 — milestonesV10.css and the area body's developmentMap.css", (
       expect(css).not.toMatch(/progress|(?:width|inline-size):\s*(?!100%)\d+(?:\.\d+)?%/);
       expect(css).not.toMatch(/--arbor-(?:green|red|amber|yellow|peach|pink)/);
     }
-    expect(v10).not.toMatch(/--ar-(?:talking|moving|hands|thinking|playing|feelings|body|family)/);
+    expect(v10).not.toMatch(/--ar-(?:talking|moving|hands|thinking|playing|feelings|body|family)|--arbor-domain|var\(--t[wim]\)/);
+    // The seen leaf is the record colour, one for every area.
+    expect(v10).toContain(".ds .ter .tl .tok { --c: var(--k-moment); }");
   });
   it("the area's newest-moment line is ruled on the inline start", () => {
     expect(rule(area, ".area-detail-last")).toContain("border-inline-start:");
