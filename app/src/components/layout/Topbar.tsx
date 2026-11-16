@@ -101,7 +101,7 @@ export default function Topbar() {
                   <li className="flex items-center gap-1 min-w-0">
                     <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
                     {crumb.view ? (
-                      <button type="button" onClick={() => setActiveTab(crumb.pill!)} className="min-h-11 px-1 truncate hover:underline underline-offset-2">
+                      <button type="button" onClick={() => setActiveTab(crumb.pill!)} className="min-h-11 min-w-11 px-1 truncate text-center hover:underline underline-offset-2">
                         {crumbLabel(crumb.pill, true, t, childName)}
                       </button>
                     ) : (
