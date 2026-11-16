@@ -144,7 +144,9 @@ describe("B-ASKJB-36 · critic r1: the way in, the pill row and the filter chips
 
   it("no place pill reads selected in the Kept reader", () => {
     const shell = read("components/layout/Shell.tsx");
-    expect(shell).toContain('const on = it.tab === pillLitTab(activeTab) && !(activeTab === "development" && query.get("view") === "kept");');
+    // v10 re-pin: the shell lights through litPillFor (HOME_PILLS); the Kept
+    // reader still lights no pill.
+    expect(shell).toContain('const on = it.tab === litPillFor(activeTab) && !(activeTab === "development" && query.get("view") === "kept");');
   });
 
   it("every filter chip, the one-word All included, is at least 44 px wide and tall", () => {
