@@ -828,6 +828,9 @@
 .ds .ds-guide-scroll { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .ds .ds-guide-scroll::-webkit-scrollbar { display: none; }
 .ds .ds-guide-scroll .gstop { flex: none; scroll-snap-align: start; }
+/* Touch floor: the canvas draws the phone strip's stops at 40 px; production
+   keeps every tappable stop at 44 px (DESIGN.md touch targets). */
+.ds .guide.mini .gstop { min-height: 44px; }
 .ds .ds-snap-scroll { overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; scroll-padding-inline: 0; }
 .ds .ds-snap-scroll::-webkit-scrollbar { display: none; }
 .ds .ds-snap-scroll > * { scroll-snap-align: start; }
