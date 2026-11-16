@@ -1,69 +1,67 @@
-import React, { useId, useRef } from "react";
+import React, { useId } from "react";
 import { useArbor } from "../../context/ArborContext";
 import Icon from "../ui/Icon";
-import { BrandChip, brandChipShape, type BrandChipTone } from "../ui/BrandChip";
 import { INTENT_ICON, type FamilyTopic } from "../../lib/familyTopics";
 import { NOW_COPY } from "./nowViewCopy";
 import { guideFaceFor } from "./nowGuideFace";
 import { requestFamilyTopicEdit } from "./familyTopicEvents";
 
-/** v4: the recents row cycles the brand tones (peach, lav, green, sky, pink, sapphire). */
-const QUESTION_TONES: readonly BrandChipTone[] = ["peach", "lav", "green", "sky", "pink", "sapphire"];
 const intentIcon = (intent?: string) => INTENT_ICON[intent as FamilyTopic["intent"]] ?? "help";
 /** F-NOW-1: a question wears its guide topic's glyph; one no guide matches keeps its intent's. */
 const questionIcon = (title: string, intent: string | undefined, lang: "en" | "he") => guideFaceFor(title, lang).glyph ?? intentIcon(intent);
 
 /**
- * v3 Now (11 Oct 2026): the parent's question as a row under the title — the
- * active question, the other saved ones one tap away, and the full sheet.
- * Only real saved questions appear; set-aside ones stay in the sheet.
- * F-NOW-1: talking about the question lives in the launcher and the sheet,
- * not here; the edit glyph opens the sheet on this question's wording.
+ * Now v10.1 (N-Now › "Your question"): the parent's question as one chip in
+ * the stage, under the lead — the active question (with its edit glyph) or the
+ * empty state, then "New question" and "All questions"; the other saved
+ * questions follow as small chips, one tap to switch. Only real saved
+ * questions appear; set-aside ones stay in the sheet. Talking about the
+ * question lives in the launcher and the sheet, not here.
  */
-export default function NowQuestionRow({ lang, topic, onOpen, onCreate, "data-module": module }: {
+export default function NowQuestionRow({ lang, topic, onOpen, onCreate, phone = false, "data-module": module }: {
   lang: "en" | "he";
   topic?: { id: string; title: string; intent?: string } | null;
   /** The full questions sheet; without it the row still shows the active question. */
   onOpen?: () => void;
   onCreate?: () => void;
+  /** The phone composition: the chip's actions fold under its line. */
+  phone?: boolean;
   /** The Today module stamp, set by NowView; it counts only while a question is active. */
   "data-module"?: string;
 }) {
   const { familyTopics = [], selectFamilyTopic } = useArbor();
   const copy = NOW_COPY[lang];
   const id = useId();
-  const row = useRef<HTMLDivElement>(null);
   const others = familyTopics.filter(item => item.id !== topic?.id && !item.asideAt);
   const count = familyTopics.length;
-  // RTL scrolls toward negative offsets; "forward" always means toward the reading end.
-  const scroll = (forward: boolean) => row.current?.scrollBy({ left: (forward ? 1 : -1) * (lang === "he" ? -1 : 1) * 240, behavior: "smooth" });
+  const emptyOpen = count && onOpen ? onOpen : onCreate ?? onOpen;
 
-  return <section className="now-question" aria-labelledby={`${id}-label`} data-module={topic ? module : undefined}>
-    <div className="now-question-head">
-      <p id={`${id}-label`} className="now-kicker">{copy.questionLabel}</p>
-      {topic && <span className="now-question-note">{copy.questionNote}</span>}
-      {onCreate && <button type="button" className="now-question-new" onClick={onCreate}><Icon name="add" size={18} />{copy.newQuestion}</button>}
+  return <section className="nw-q" aria-labelledby={`${id}-label`} data-module={topic ? module : undefined}>
+    <div className={phone ? "nw-qc m" : "nw-qc"}>
+      <span className="l">
+        <Icon name={topic ? questionIcon(topic.title, topic.intent, lang) : "help"} size={18} className="now-question-icon" />
+        <span className="nw-qc-text">
+          <span id={`${id}-label`}>{copy.questionLabel}</span>
+          {topic ? <span className="nw-qc-active" data-testid="now-question-active">
+            {" · "}<b dir="auto">{topic.title}</b>
+            {onOpen && <button type="button" className="nw-qc-edit" aria-label={copy.editQuestion} title={copy.editQuestion} onClick={() => { requestFamilyTopicEdit(topic.id); onOpen(); }}><Icon name="edit" size={16} /></button>}
+          </span> : emptyOpen ? <>
+            {" · "}<button type="button" className="nw-qc-empty" data-testid="now-question-empty" onClick={emptyOpen}>
+              <b>{copy.noQuestion}</b><small>{count ? copy.noQuestionBody : copy.firstQuestionBody}</small>
+            </button>
+          </> : null}
+        </span>
+      </span>
+      {(onCreate || onOpen) && <span className="acts">
+        <i className="sp" aria-hidden="true" />
+        {onCreate && <button type="button" className="now-question-new" onClick={onCreate}><Icon name="add" size={18} />{copy.newQuestion}</button>}
+        {onOpen && <button type="button" className="now-question-all" onClick={onOpen}>{copy.topics}{count > 0 ? ` (${count})` : ""}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button>}
+      </span>}
     </div>
-    <div className="now-question-row">
-      {topic ? <div className="now-question-active" data-testid="now-question-active">
-        <Icon name={questionIcon(topic.title, topic.intent, lang)} size={24} className="now-question-icon" />
-        <div className="now-question-text"><small>{copy.activeNow}</small><b dir="auto">{topic.title}</b></div>
-        {onOpen && <button type="button" className="now-question-edit" aria-label={copy.editQuestion} title={copy.editQuestion} onClick={() => { requestFamilyTopicEdit(topic.id); onOpen(); }}><Icon name="edit" size={18} /></button>}
-      </div> : (onOpen || onCreate) && <button type="button" className="now-question-empty" data-testid="now-question-empty" onClick={count && onOpen ? onOpen : onCreate ?? onOpen}>
-        <Icon name="help" size={22} />
-        <span><b>{copy.noQuestion}</b><small>{count ? copy.noQuestionBody : copy.firstQuestionBody}</small></span>
-      </button>}
-      {others.length > 0 && <>
-        {others.length > 2 && <button type="button" className="now-question-scroll" aria-label={copy.earlierQuestions} onClick={() => scroll(false)}><Icon name="arrow_back" size={22} className="rtl:-scale-x-100" /></button>}
-        <div ref={row} className="now-question-chips" role="group" aria-label={copy.otherQuestions}>
-          {/* v4: each other question wears the brand gradient chip, in a stable tone per position. */}
-          {others.map((item, index) => <button key={item.id} type="button" className="now-question-chip" onClick={() => selectFamilyTopic(item.id)}>
-            <BrandChip icon={questionIcon(item.title, item.intent, lang)} tone={QUESTION_TONES[index % QUESTION_TONES.length]} shape={brandChipShape(index)} size={30} /><span dir="auto">{item.title}</span>
-          </button>)}
-        </div>
-        {others.length > 2 && <button type="button" className="now-question-scroll" aria-label={copy.moreQuestions} onClick={() => scroll(true)}><Icon name="arrow_forward" size={22} className="rtl:-scale-x-100" /></button>}
-      </>}
-      {onOpen && <button type="button" className="now-question-all" onClick={onOpen}><Icon name="list" size={20} />{copy.topics}{count > 0 ? ` (${count})` : ""}</button>}
-    </div>
+    {others.length > 0 && <div className="nw-q-others ds-snap-scroll" role="group" aria-label={copy.otherQuestions}>
+      {others.map(item => <button key={item.id} type="button" className="now-question-chip" onClick={() => selectFamilyTopic(item.id)}>
+        <Icon name={questionIcon(item.title, item.intent, lang)} size={18} /><span dir="auto">{item.title}</span>
+      </button>)}
+    </div>}
   </section>;
 }
