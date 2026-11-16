@@ -138,3 +138,12 @@
 .coach-report__script [data-testid="say-this"][data-presentation="quote"] { padding: 18px 20px; border-radius: 18px; background: var(--arbor-paper-deep); }
 .coach-report__tools button { border-radius: 999px; border-color: var(--arbor-rule-strong); color: var(--arbor-clay-deep); }
 .coach-report__disclosure > button { font-size: 15px; }
+/* v10.3: a wide answer (the expanded view) lays out as the board's grid —
+   the reading across, the steps beside the words to use, the rest across. */
+@container (min-width: 860px) {
+  .coach-report { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+  .coach-report > * { grid-column: 1 / -1; margin-block-start: 0 !important; }
+  .coach-report > .coach-report__next { grid-column: span 8; }
+  .coach-report > .coach-report__script { grid-column: span 4; }
+  .coach-report__opening .coach-report__lead > p:first-child { font-size: 30px; line-height: 1.12; }
+}
