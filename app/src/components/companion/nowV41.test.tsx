@@ -234,7 +234,12 @@ describe("v4.1 wiring", () => {
   it("lets Together open a routine by address and drops it on close", () => {
     const src = read("TogetherRoutines.tsx");
     expect(src).toContain('useHashQuery().get("routine")');
-    expect(src).toContain('routeHash("practice", { f: "routines" })');
+    // v10.1: the in-page filter is gone (Routines is all of #/practice), so
+    // closing replaces the address with the bare #/practice, never f=routines.
+    expect(src).toContain('window.history.replaceState(window.history.state, "", `#${routeHash("practice")}`)');
+    expect(src).not.toContain('f: "routines"');
+    // Once per child and routine.
+    expect(src).toContain("if (handledRoutine.current === key) return;");
   });
 });
 

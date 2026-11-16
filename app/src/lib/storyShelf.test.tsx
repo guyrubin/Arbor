@@ -132,7 +132,7 @@ describe("B-PLAY-12 · the surfaces", () => {
     expect((COMICS.match(/\{storyBooks\.map\(storyBookTile\)\}/g) ?? []).length).toBe(2);
     const noHero = COMICS.slice(COMICS.indexOf("if (!hasHero)"), COMICS.indexOf("const openAdventure"));
     expect(noHero).toContain("{storyBooks.map(storyBookTile)}");
-    const shelf = COMICS.slice(COMICS.indexOf('data-module="comics-shelf"'));
+    const shelf = COMICS.slice(COMICS.indexOf('data-module={embedded ? undefined : "comics-shelf"}'));
     expect(shelf).toContain("{storyBooks.map(storyBookTile)}");
     // The reread opens in place, before either branch.
     expect(COMICS.indexOf("if (openRun)")).toBeGreaterThan(-1);

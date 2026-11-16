@@ -67,6 +67,8 @@ describe("companion events — the call sites are live", () => {
   const portrait = read("components/companion/ChildPortrait.tsx");
   const together = read("components/companion/TogetherView.tsx");
   const workspace = read("components/companion/CompanionWorkspace.tsx");
+  // v10.1: Together's games and away-from-the-screen ideas moved to Together › Play.
+  const playStudio = read("components/together/PlayStudio.tsx");
 
   it("each place reports itself once per mount (or per child)", () => {
     expect(now).toContain('useEffect(() => { trackCompanionPlaceOpen("now"); }, []);');
@@ -83,9 +85,9 @@ describe("companion events — the call sites are live", () => {
     expect(recommendation).toContain('useEffect(() => { if (useAi && aiStep) trackActionOffered("now"); }, [useAi, aiStep]);');
   });
 
-  it("Together keeps Practice Studio's two series alive", () => {
-    expect(together).toContain('trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");');
-    expect(together).toMatch(/if \(!isCurrent\(\)\) return;\s*if \(saved\) \{[^}]+setKeptState\([\s\S]*?trackPracticeTogetherDid\(id\);/);
+  it("Together › Play keeps Practice Studio's two series alive", () => {
+    expect(playStudio).toContain('trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");');
+    expect(playStudio).toMatch(/if \(!isCurrent\(\)\) return;\s*if \(saved\) \{[^}]+setKeptState\([\s\S]*?trackPracticeTogetherDid\(id\);/);
   });
 
   it("NEGATIVE CONTROL: the companion folder is no longer silent", () => {

@@ -6,6 +6,10 @@
  * It was a static <p> ending "… · Settings": a parent had to find Settings and
  * then the PIN row on their own. It is a 44 px button that asks the shell to
  * open Settings with the PIN row scrolled into view (settingsBus focus).
+ *
+ * v10.1: #/practice is Together › Routines; the gate card (the hand-over with
+ * "Start playing" and "Set a PIN") moved to Together › Play, PlayStudio.tsx,
+ * rendered by #/daily-play inside the design-system root (.ds).
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,8 +19,8 @@ import { consumeSettingsFocus, requestOpenSettings, SETTINGS_FOCUS_ANCHOR, SETTI
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(path.join(here, rel), "utf8").replace(/\r\n/g, "\n");
-const studio = read("../companion/TogetherView.tsx");
-const css = read("../companion/companionExperience.css");
+const studio = read("../together/PlayStudio.tsx");
+const css = read("../together/together.css");
 const settings = read("../layout/SettingsModal.tsx");
 
 describe("B-PLAY-06 · the PIN ask is a button that lands on the PIN row", () => {
@@ -28,13 +32,14 @@ describe("B-PLAY-06 · the PIN ask is a button that lands on the PIN row", () =>
     expect(at).toBeGreaterThan(-1);
     expect(tag).toMatch(/^<button\b/);
     expect(tag).toContain('type="button"');
-    expect(tag).toContain('className="companion-text-button"');
-    expect(css).toContain(".companion-page button, .companion-preview button { min-block-size: var(--touch-min);");
+    expect(tag).toContain('className="pl-btn ghost"');
+    expect(css).toMatch(/\.ds \.pl-btn\{[^}]*min-height:44px/);
   });
 
   it("it opens Settings with the pin focus, only while no PIN is set", () => {
     expect(tag).toContain('onClick={() => requestOpenSettings({ focus: "pin" })}');
-    expect(studio).toContain('{!pinSet && <button type="button" className="companion-text-button" data-testid="together-gate-pin"');
+    expect(studio).toContain('{!pinSet && <button type="button" className="pl-btn ghost" data-testid="together-gate-pin"');
+    expect(studio).toContain("const pinSet = Boolean(readParentPin());");
     expect(studio).not.toContain("markPinNudgeShown");
   });
 

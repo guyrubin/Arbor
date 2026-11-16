@@ -19,11 +19,12 @@ import path from "node:path";
 const SRC = path.resolve(__dirname, "..");
 
 const OWNS_FAILURE = [
-  "components/companion/TogetherView.tsx",
   "components/kidmode/KidExitRecap.tsx",
   "components/overview/QuickLogModal.tsx",
   // B-PROG-16: the handback keeps the draft and shows its own "didn't save" line.
   "components/program/ProgramBookHandback.tsx",
+  // v10.1: Together's "We already tried it" (inline alert) moved from TogetherView to Together › Play.
+  "components/together/PlayStudio.tsx",
 ];
 const SEAM_TOASTS = [
   // Tonight's "What happened?" on Now (parity 9 Oct): TonightFlow has no inline error.

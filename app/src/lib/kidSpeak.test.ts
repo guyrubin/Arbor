@@ -242,7 +242,8 @@ describe("KID-21 — the parent challenge is not the same sum on every device", 
   it("the PIN ask renders on the PARENT door, in the parent register", () => {
     // v3 F-TOG-1 re-pin: the one-time nudge folded into Together's gate card,
     // which says "set a PIN" whenever none is set and opens Settings on the PIN row.
-    const studio = stripComments(read("components/companion/TogetherView.tsx"));
+    // v10.1: that gate card (the hand-over) moved to Together › Play.
+    const studio = stripComments(read("components/together/PlayStudio.tsx"));
     expect(studio).toContain('t("companion.together-view.play-opens-in-the-child-area-set-a-pin-to")');
     expect(studio).toContain('onClick={() => requestOpenSettings({ focus: "pin" })}');
     expect(studio).not.toContain("shouldNudgeForPin()");

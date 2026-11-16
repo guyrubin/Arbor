@@ -220,7 +220,9 @@ describe("B-KID-06 · kid copy says what the door does", async () => {
 });
 
 describe("B-KID-06 · Word World never claims a Kid Mode seat", async () => {
-  const directParentRoute = /if\s*\(direct\s*&&\s*world\.tab\)\s*\{\s*rememberDoor\(`world-\$\{world\.id\}`\);\s*setActiveTab\(world\.tab\);\s*\}\s*else\s+requestKidMode\(/;
+  // v10.1: Play has no in-page filter to restore, so the return-door memory
+  // (rememberDoor) left with togetherNavigation; the direct route is unchanged.
+  const directParentRoute = /if\s*\(direct\s*&&\s*world\.tab\)\s*setActiveTab\(world\.tab\);\s*else\s+requestKidMode\(/;
   const { STUDIO_WORLDS } = await import("../practice/studioWorlds");
   const { en: baseEn, he: baseHe } = await import("../../lib/i18n");
   it("a parent-only arcade world opens its parent tab and the label names that tab (EN + HE)", () => {
@@ -237,15 +239,15 @@ describe("B-KID-06 · Word World never claims a Kid Mode seat", async () => {
     expect(baseHe["nav.tab.language"]).toMatch(/[֐-׿]/);
     // Parity 9 Oct: Together opens a world that has no Kid Mode seat (or does
     // not work in the UI language) on its own parent tab — honest navigation.
-    expect(read("../companion/TogetherView.tsx")).toMatch(directParentRoute);
+    // v10.1: the games and their previews moved to Together › Play (PlayStudio).
+    expect(read("../together/PlayStudio.tsx")).toMatch(directParentRoute);
   });
-  it("rejects missing or misdirected parent routes while pinning the return card", () => {
-    const together = read("../companion/TogetherView.tsx");
+  it("rejects missing or misdirected parent routes", () => {
+    const together = read("../together/PlayStudio.tsx");
     expect(together).toMatch(directParentRoute);
     for (const broken of [
       together.replace("setActiveTab(world.tab);", ""),
       together.replace("setActiveTab(world.tab);", 'setActiveTab("practice");'),
-      together.replace("rememberDoor(`world-${world.id}`);", ""),
       together.replace("if (direct && world.tab)", "if (!direct && world.tab)"),
     ]) {
       expect(broken).not.toBe(together);

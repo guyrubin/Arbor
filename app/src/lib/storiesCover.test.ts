@@ -46,9 +46,16 @@ function playerView(src: string): string {
   return src.slice(at);
 }
 
+/**
+ * The parent arm of the kidMode ternary. v10.1 recomposed it as one DsRoot
+ * (Guide → ChainStrip → Route of three RouteSections); the anchor is the
+ * DsRoot open tag that follows the kid branch.
+ */
+const PARENT_ARM = '    ) : (\n      <DsRoot composition={composition} className="stories-v10" data-testid="stories-screen"';
+
 /** The parent branch of the catalogue view: everything after the kid ternary. */
 function parentBranch(src: string): string {
-  const at = src.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">");
+  const at = src.indexOf(PARENT_ARM);
   expect(at, "the parent branch of the #/stories catalogue was not found").toBeGreaterThan(-1);
   return src.slice(at, src.indexOf("const playerBody = (immersiveMode: boolean)"));
 }
@@ -56,7 +63,7 @@ function parentBranch(src: string): string {
 /** The kid branch: from the kidMode ternary's true arm to the parent arm. */
 function kidBranch(src: string): string {
   const from = src.indexOf("    return kidMode ? (");
-  const to = src.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">");
+  const to = src.indexOf(PARENT_ARM);
   expect(from).toBeGreaterThan(-1);
   expect(to).toBeGreaterThan(from);
   return src.slice(from, to);
