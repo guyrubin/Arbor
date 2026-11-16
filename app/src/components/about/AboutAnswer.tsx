@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { fmtDayFirst as fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 as fmtDay } from "../../lib/formatDate";
 import { aspectOfWords, type AspectState } from "../../lib/aboutAspects";
 import { forgetsOnIso, isPermanentRetention } from "../../lib/memoryExpiry";
 import { scrubMemoryProposals } from "../../server/parentWordsScrub";

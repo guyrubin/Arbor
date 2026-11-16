@@ -5,7 +5,7 @@ import { useHeroAvatar } from "../ui/HeroAvatar";
 import { Avatar } from "../ui/Avatar";
 import { asksForHero, childPicture } from "../../lib/childPicture";
 import { formatChildAge } from "../../lib/age/format";
-import { fmtDayFirst as fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 as fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import { Icon } from "../ui/Icon";
 import AboutLastVisit from "./AboutLastVisit";

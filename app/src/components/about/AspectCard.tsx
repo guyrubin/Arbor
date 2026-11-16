@@ -18,7 +18,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { isTold, receiptShows, RECEIPT_MS, type AspectFact, type AspectId, type AspectReceipt, type AspectState } from "../../lib/aboutAspects";
 import { confirmFact, isFactStale, type FactField } from "../../lib/factsAsOf";
-import { fmtDayFirst as fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 as fmtDay } from "../../lib/formatDate";
 import { languageName } from "../../lib/languageName";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { toParentWords } from "../../server/parentWordsScrub";
