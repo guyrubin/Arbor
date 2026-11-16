@@ -31,6 +31,7 @@ import WeekInstrument from "../weekly/v10/WeekInstrument";
 import WhatHelped from "../weekly/v10/WhatHelped";
 import CarryNextWeek from "../weekly/v10/CarryNextWeek";
 import YourDay from "../weekly/v10/YourDay";
+import WeekReadGuide from "../weekly/v10/WeekReadGuide";
 import { weeklyCopy } from "../weekly/v10/weeklyCopy";
 import InviteCard from "../referral/InviteCard";
 import "../weekly/v10/weeklyV10.css";
@@ -285,10 +286,24 @@ export default function WeeklyTab() {
   const stage: "weekly-glance" | "weekly-empty" | null = dashboardShown && week ? "weekly-glance" : !selected ? "weekly-empty" : null;
   const stageStamp = { "data-module": stage ?? undefined };
 
+  /* Desktop (N-Week-D): the week's scene beside the "How to read this week"
+     rail; phone draws the guide as a row under the scene (N-Week-M). */
+  const wrapStage = (scene: React.ReactNode) =>
+    !phone && stage === "weekly-glance" ? (
+      <div className="g12 wk10-stagegrid">
+        <div className="x8">{scene}</div>
+        <div className="x4">
+          <WeekReadGuide composition={composition} copy={copy} />
+        </div>
+      </div>
+    ) : (
+      scene
+    );
+
   const art = EMPTY_ART.weekly;
   const kicker = (
     <span className="gsec">
-      <span data-testid="weekly-eyebrow" className="kicker">{t("elev.wk.kicker", { range })}</span>
+      <span data-testid="weekly-eyebrow" className="kicker">{range}</span>
       {isCurrent && <StartHere>{copy.startHere}</StartHere>}
     </span>
   );
@@ -298,6 +313,7 @@ export default function WeeklyTab() {
       <Guide stops={stops} mini={phone} label={copy.onThisPage} current={activeTab === "day-windows" ? stops.length - 1 : 0} />
       <Route composition={composition} tight={phone}>
         <RouteSection id={STOP.week} n={stopNo(STOP.week)} on aria-labelledby="weekly-title">
+          {wrapStage(
           <Scene field="now" className="wk10-scene" orbs={phone ? [{ size: 260, left: -170, top: -150, opacity: 0.5 }, { size: 200, right: -110, top: -120, opacity: 0.55, b: true }] : [{ size: 420, left: -250, top: -250, opacity: 0.55 }, { size: 300, right: -150, top: -190, opacity: 0.55, b: true }]}>
             <header className="wk10-head">
               <div className="stack wk10-headtext">
@@ -358,8 +374,10 @@ export default function WeeklyTab() {
               </div>
             ) : null}
           </Scene>
+          )}
           {/* Phone: the Visit summary door sits under the scene card, as N-Week-M draws it. */}
           {phone && stage === "weekly-glance" && summaryDoor}
+          {phone && stage === "weekly-glance" && <WeekReadGuide composition={composition} copy={copy} />}
         </RouteSection>
 
         {dashboardShown && week && (
