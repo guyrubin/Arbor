@@ -142,3 +142,7 @@
 .ds .nx-aline button:hover { background: var(--tint-2); }
 .ds .nx-aline button > b { color: var(--ink); font-weight: 700 !important; }
 .ds .nx-aline button bdi, .ds .nx-aline button b { font-size: 12px; }
+.ds .nx-fc.nod { background: var(--paper); border-color: var(--rule-strong); color: var(--ink-soft); }
+.ds button.nx-fc { min-height: 44px; }
+.ds button.nx-fc:hover { background: var(--tint); }
+.ds .nx-rb.m button.fp-tok { min-width: 44px; min-height: 44px; margin-inline: -4px; }

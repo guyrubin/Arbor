@@ -6,7 +6,8 @@ import type { FamilyPlanApi } from "../../hooks/useFamilyPlan";
 import type { FamilyPlanCopy } from "./familyPlanCopy";
 import { adultLabel, dayNum, dayShort, rangeLabel, spanLabel, weekdayShort, whenLabel, type Lang } from "./format";
 
-const tokState = (s: FamilyPlanState) => (s === "has" ? "solid" : s === "asked" ? "open" : "none") as "solid" | "open" | "none";
+// N-Plan-M/D draw two token states: an asked date is still "nobody yet" (sent is not accepted).
+const tokState = (s: FamilyPlanState) => (s === "has" ? "solid" : "none") as "solid" | "none";
 
 function stateWords(item: FamilyPlanDate, s: FamilyPlanState, c: FamilyPlanCopy, meUid: string): string {
   if (s === "has") return item.holder?.uid === meUid ? c.stateHasYou : c.stateHas(adultLabel(item.holder, meUid, c));
@@ -23,6 +24,9 @@ export interface StageProps {
   onAsk: (id: string) => void;
   /** The screen's one "Add a school message" (stamped by the route), shown here only while the plan is empty. */
   emptyAction: React.ReactNode;
+  /** A held change (N-Plan: "Review the change" leads to it). */
+  heldId?: string | null;
+  onReviewChange?: () => void;
 }
 
 /**
@@ -40,9 +44,6 @@ function WeekRibbon({ plan, lang, c, onOpen, phone }: Pick<StageProps, "plan" | 
   const token = (item: FamilyPlanDate) => {
     const s = stateOf(item);
     const words = stateWords(item, s, c, plan.me.uid);
-    // Phone tiles are narrower than the 44 px floor: there the token is a
-    // picture and each date opens from The dates list just below.
-    if (phone) return <Token key={item.id} kind="date" state={tokState(s)} label={c.tokenLabel(item.title, `${whenLabel(item, lang)}, ${words}`)}>{dayNum(item.date)}</Token>;
     return (
       <button key={item.id} type="button" className="fp-tok" onClick={() => onOpen(item.id)} aria-label={c.tokenLabel(item.title, `${whenLabel(item, lang)}, ${words}`)}>
         <Token kind="date" state={tokState(s)} size="lg" label={c.tokenLabel(item.title, words)}>{dayNum(item.date)}</Token>
@@ -70,7 +71,7 @@ function WeekRibbon({ plan, lang, c, onOpen, phone }: Pick<StageProps, "plan" | 
   );
 }
 
-export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyAction }: StageProps) {
+export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyAction, heldId, onReviewChange }: StageProps) {
   const desk = composition === "desk";
   const { counts, dates, window: w } = plan;
   const range = rangeLabel(w.days[0], w.days[w.days.length - 1], lang, c, desk);
@@ -83,11 +84,17 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyActi
     ? [{ size: 420, left: -250, bottom: -280, opacity: 0.55 }, { size: 360, right: -170, top: -230, opacity: 0.8, b: true }]
     : [{ size: 240, left: -160, bottom: -160, opacity: 0.5 }, { size: 220, right: -120, top: -130, opacity: 0.75, b: true }];
   const empty = plan.loaded && dates.length === 0;
+  // One primary under the week: review a held change first (N-Plan), else ask who takes the next uncovered date.
+  const primary = heldId && onReviewChange ? (
+    <button type="button" className={desk ? "btn primary sm" : "btn primary block"} onClick={onReviewChange}>{c.reviewTheChange}</button>
+  ) : next ? (
+    <button type="button" className={desk ? "btn primary sm" : "btn primary block"} onClick={() => onAsk(next.id)} aria-label={`${c.whoTakes} ${c.tokenLabel(next.title, whenLabel(next, lang))}`}>{c.whoTakes}</button>
+  ) : null;
   const legend = (
     <TokenLegend
       items={[
-        { token: <Token kind="date" size="sm" label={c.legendHas}>{dayNum(w.today)}</Token>, label: c.legendHas },
-        { token: <Token kind="date" state="none" size="sm" label={c.legendNone}>{dayNum(w.today)}</Token>, label: c.legendNone },
+        { token: <Token kind="date" size="sm" label={c.legendHas}>{dayNum(plan.dates.find((d) => stateOf(d) === "has")?.date ?? w.today)}</Token>, label: c.legendHas },
+        { token: <Token kind="date" state="none" size="sm" label={c.legendNone}>{dayNum(plan.dates.find((d) => stateOf(d) !== "has")?.date ?? w.today)}</Token>, label: c.legendNone },
       ]}
     />
   );
@@ -125,15 +132,13 @@ export function PlanStage({ composition, plan, lang, c, onOpen, onAsk, emptyActi
             <WeekRibbon plan={plan} lang={lang} c={c} onOpen={onOpen} phone={!desk} />
             <div className="line between" style={{ gap: 16, padding: desk ? "12px 28px 20px" : "10px 16px 0", flexWrap: "wrap" }}>
               {legend}
-              {desk && next && <button type="button" className="btn primary sm" onClick={() => onAsk(next.id)} aria-label={`${c.whoTakes} ${c.tokenLabel(next.title, whenLabel(next, lang))}`}>{c.whoTakes}</button>}
+              {desk && primary}
             </div>
           </>
         )}
         {!desk && <div style={{ height: 16 }} />}
       </Scene>
-      {!desk && !empty && next && (
-        <button type="button" className="btn primary block" onClick={() => onAsk(next.id)} aria-label={`${c.whoTakes} ${c.tokenLabel(next.title, whenLabel(next, lang))}`}>{c.whoTakes}</button>
-      )}
+      {!desk && !empty && primary}
     </>
   );
 }

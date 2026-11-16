@@ -111,13 +111,13 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
   );
 }
 
-export function RequestsTile({ plan, lang, c, onOpen }: Common) {
+export function RequestsTile({ plan, lang, c, onOpen, figures = true, children }: Common & { figures?: boolean; children?: React.ReactNode }) {
   const requests = plan.openRequests;
   const queued = plan.reminders;
   const forWhom = (uid: string | null) => (uid ? (uid === plan.me.uid ? c.forYou : c.forAdult(adultLabel(plan.roster.adults.find((a) => a.uid === uid) ?? { uid, email: null }, plan.me.uid, c))) : c.forYou);
   return (
     <Tile icon="notifications" kind="date" title={c.requestsReminders} titleId="fp-req-h">
-      {(requests.length > 0 || queued.length > 0) && (
+      {figures && (requests.length > 0 || queued.length > 0) && (
         <div className="line" style={{ gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
           {requests.length > 0 && <Fig size="md" n={requests.length} unit={c.figRequests(requests.length)} />}
           {queued.length > 0 && <Fig size="md" n={queued.length} unit={c.figReminders(queued.length)} />}
@@ -143,6 +143,7 @@ export function RequestsTile({ plan, lang, c, onOpen }: Common) {
         </ol>
       )}
       <p className="small">{c.inAppOnly}</p>
+      {children}
     </Tile>
   );
 }

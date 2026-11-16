@@ -108,6 +108,21 @@ export interface FamilyPlanCopy {
   reviewApply: string;
   reviewApplyAsk: Fn<[string]>;
   reviewKeepBoth: string;
+  /** Hold a change to decide later ("One change to review"). */
+  reviewLater: string;
+  /** N-Plan-M: the phone's section names and heads. */
+  stopsPhone: { change: string; found: string; alerts: string };
+  changeHead: string;
+  changeDraftFrom: Fn<[number, string]>;
+  reviewApplyAskAgain: string;
+  changeDraftOne: string;
+  kindTags: Record<"deadline" | "event" | "join" | "note", string>;
+  changeStill: Fn<[string]>;
+  askSomeoneElse: string;
+  reviewTheChange: string;
+  lineOf: Fn<[number]>;
+  prepWith: Fn<[string]>;
+  foundOf: Fn<[number, number]>;
   reviewError: string;
   reviewBlocked: string;
   reviewCrisis: string;
@@ -158,7 +173,7 @@ export interface FamilyPlanCopy {
   versionLabel: Fn<[number]>;
   wasTime: Fn<[string]>;
   // receipts
-  receipt: Record<"added" | "took" | "asked" | "changed" | "done" | "cancelled" | "prep" | "edited" | "undone" | "kept_note", Fn<[number]>>;
+  receipt: Record<"added" | "took" | "asked" | "changed" | "held" | "done" | "cancelled" | "prep" | "edited" | "undone" | "kept_note", Fn<[number]>>;
   duplicatesSkipped: Fn<[number]>;
   undo: string;
   saveError: string;
@@ -278,6 +293,19 @@ const en: FamilyPlanCopy = {
   reviewApply: "Apply the change",
   reviewApplyAsk: (who) => `Apply and ask ${who} again`,
   reviewKeepBoth: "Keep both dates",
+  reviewLater: "Review it later",
+  stopsPhone: { change: "Change", found: "Found", alerts: "Reminders" },
+  changeHead: "One change to review",
+  changeDraftFrom: (v, at) => `Arbor draft · from version ${v} of the message, ${at}`,
+  reviewApplyAskAgain: "Apply and ask again",
+  changeDraftOne: "Arbor draft · one thing changed",
+  kindTags: { deadline: "Deadline", event: "Event", join: "Event", note: "Note" },
+  changeStill: (when) => `Still ${when} in your plan until you apply it.`,
+  askSomeoneElse: "Ask someone else",
+  reviewTheChange: "Review the change",
+  lineOf: (n) => `line ${n} of the message`,
+  prepWith: (title) => `To bring, with ${title}`,
+  foundOf: (i, n) => `Found ${i} of ${n}`,
   reviewError: "Arbor could not read the message just now. Try again, or add the dates yourself.",
   reviewBlocked: "Arbor could not safely draft from this message. Add the dates yourself.",
   reviewCrisis: "This message may need more than a plan. Safety & urgent help is in the top bar.",
@@ -339,6 +367,7 @@ const en: FamilyPlanCopy = {
     took: () => "You have it",
     asked: () => "Request sent in Arbor",
     changed: () => "Change applied",
+    held: () => "Kept to review",
     done: () => "Marked as done",
     cancelled: () => "Date cancelled",
     prep: () => "Added to prepare",
@@ -464,6 +493,19 @@ const he: FamilyPlanCopy = {
   reviewApply: "עדכון השינוי",
   reviewApplyAsk: (who) => `לעדכן ולבקש שוב מ${who}`,
   reviewKeepBoth: "לשמור את שני התאריכים",
+  reviewLater: "לבדוק אחר כך",
+  stopsPhone: { change: "שינוי", found: "נמצא", alerts: "תזכורות" },
+  changeHead: "שינוי אחד לבדיקה",
+  changeDraftFrom: (v, at) => `טיוטה של Arbor · מגרסה ${v} של ההודעה, ${at}`,
+  reviewApplyAskAgain: "לעדכן ולבקש שוב",
+  changeDraftOne: "טיוטה של Arbor · דבר אחד השתנה",
+  kindTags: { deadline: "מועד אחרון", event: "אירוע", join: "אירוע", note: "הערה" },
+  changeStill: (when) => `בתוכנית שלכם עדיין ${when} עד שתעדכנו.`,
+  askSomeoneElse: "לבקש ממישהו אחר",
+  reviewTheChange: "בדיקת השינוי",
+  lineOf: (n) => `שורה ${n} בהודעה`,
+  prepWith: (title) => `להביא, ל${title}`,
+  foundOf: (i, n) => `נמצא ${i} מתוך ${n}`,
   reviewError: "Arbor לא הצליח לקרוא את ההודעה כרגע. נסו שוב, או הוסיפו את התאריכים בעצמכם.",
   reviewBlocked: "Arbor לא יכול לנסח בבטחה מההודעה הזאת. הוסיפו את התאריכים בעצמכם.",
   reviewCrisis: "ייתכן שההודעה הזאת צריכה יותר מתוכנית. בטיחות ועזרה דחופה נמצאים בסרגל העליון.",
@@ -525,6 +567,7 @@ const he: FamilyPlanCopy = {
     took: () => "זה אצלך",
     asked: () => "הבקשה נשלחה ב-Arbor",
     changed: () => "השינוי עודכן",
+    held: () => "נשמר לבדיקה",
     done: () => "סומן שבוצע",
     cancelled: () => "התאריך בוטל",
     prep: () => "נוסף להכנה",
