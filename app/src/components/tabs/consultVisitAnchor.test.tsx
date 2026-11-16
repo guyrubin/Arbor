@@ -110,14 +110,14 @@ describe("W2-CAREPRO r2 · the stamp is a real act", () => {
     expect(html.indexOf('data-testid="consult-build"')).toBeLessThan(html.indexOf('data-testid="consult-reason-section"'));
   });
 
-  it("the step-3 target is addressable and focusable; at lg it is the sticky end column", () => {
+  it("the step-3 target is addressable and focusable; design v10.1: its own card in the summary row", () => {
     const html = renderToStaticMarkup(<ConsultTab />);
-    const panes = html.slice(html.indexOf('data-testid="consult-panes"'), html.indexOf('data-testid="consult-panes"') + 200);
-    expect(panes).toContain("lg:grid-cols-[minmax(0,1fr)_22rem]");
-    const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
-    expect(step3).toContain("lg:sticky");
+    // v10.1 (Care › Visits): choose · preview · share are three cards of section 3.
+    for (const card of ["care-bring", "care-preview", "care-share"]) expect(html).toContain(`class="vt ${card}"`);
+    expect(html.indexOf('class="vt care-bring"')).toBeLessThan(html.indexOf('class="vt care-preview"'));
+    expect(html.indexOf('class="vt care-preview"')).toBeLessThan(html.indexOf('class="vt care-share"'));
     expect(html).toMatch(/id="consult-review-export"[^>]*>\s*<h2 tabindex="-1"/);
-    // the gradient Copy lives in that column
+    // Copy lives in that card
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(html.indexOf('id="consult-review-export"'));
   });
 });
@@ -252,19 +252,19 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
       harness.locale = locale;
       localStorage.setItem("arbor.consultExportAudience", "pediatrician");
       const html = renderToStaticMarkup(<ConsultTab />);
+      // design v10.1: the preview is its own card just before the share card.
       const step3 = html.indexOf('id="consult-review-export"');
       const preview = html.indexOf('data-testid="consult-preview"');
       const reviewed = html.indexOf('data-testid="consult-reviewed"');
       const copy = html.indexOf('data-testid="consult-copy"');
-      expect(step3).toBeGreaterThan(0);
-      expect(preview).toBeGreaterThan(step3);
-      expect(reviewed).toBeGreaterThan(preview);
+      expect(preview).toBeGreaterThan(0);
+      expect(step3).toBeGreaterThan(preview);
+      expect(reviewed).toBeGreaterThan(step3);
       expect(copy).toBeGreaterThan(reviewed);
       expect(html).not.toMatch(/<input[^>]*type="checkbox"/);
       const toggle = html.slice(reviewed, html.indexOf("</button>", reviewed));
       expect(toggle).toContain('aria-pressed="false"');
       expect(toggle).toContain("w-11 h-11");
-      expect(html).toContain("lg:top-[var(--sticky-offset)]");
     });
 
     it(`${locale}: the preview is clean plain text, one block per line in the reader's direction`, () => {
@@ -371,15 +371,13 @@ describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
     expect(presetPacket("self", packet).sections).toHaveLength(4);
   });
 
-  it("design P1: the lg step-3 column is a fixed frame — no column-level scroll; only the preview scrolls", () => {
+  it("design P1: the step-3 card has no scroll of its own; only the preview scrolls", () => {
     localStorage.setItem("arbor.consultExportAudience", "pediatrician");
     const html = renderToStaticMarkup(<ConsultTab />);
     const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
     expect(step3).not.toContain("overflow-y-auto");
-    expect(step3).toContain("lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)]");
     const preview = /<section data-testid="consult-preview"[^>]*class="([^"]*)"/.exec(html)![1];
     expect(preview).toContain("lg:overflow-y-auto");
-    expect(preview).toContain("lg:max-h-[min(26rem,50dvh)]");
     // the verbs follow the scrolling preview, outside it
     const previewEnd = html.indexOf("</section>", html.indexOf('data-testid="consult-preview"'));
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(previewEnd);

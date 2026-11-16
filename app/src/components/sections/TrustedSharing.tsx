@@ -86,6 +86,11 @@ export function PreviewItemRows({ items, lang, className, style }: { items: Pack
 }
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import HomeProgramShareCard, { HomeProgramAdherenceView, homeProgramLinkOn, sharedViewMode, type HomeProgramGrant } from "../program/HomeProgramShare";
+import { Guide } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import PeopleScene from "../care/v10/PeopleScene";
+import { careCopy } from "../care/v10/careV10Copy";
+import "../care/v10/care.css";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -111,6 +116,7 @@ export function weekPrimaryAction(email: string): "grant" | "hint" {
 }
 
 export default function TrustedSharing() {
+  const composition = useComposition();
   const { childProfile, openPaywall, setActiveTab, activeTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   // B-BOOK-79: the Everyday plans (counts) ride the same shared input as the recipient's view.
   const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
@@ -296,6 +302,8 @@ export default function TrustedSharing() {
   // move to the persistent "Sharing history" card — the grant records
   // (createdAt/expiresAt/revokedAt) ARE the audit trail, surviving reloads.
   const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
+  // Design v10.1: the scene's count — every live share the family holds.
+  const liveGrants = shares.filter(isLiveGrant);
   const team = shares.filter((g) => isLiveGrant(g) && g.accessMode !== "family_workspace");
   // W2-CAREPRO c2 r2 — the done state, fed by the existing grant list (no new
   // write): once a live week grant exists, the card says who reads the week,
@@ -450,14 +458,26 @@ export default function TrustedSharing() {
   // here). This page links there.
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] flex flex-col gap-6">
-      {/* W2-CAREPRO r2: flush — the column's gap-6 is the only rhythm. */}
-      <PageHeader
-        flush
-        eyebrow={t("nav.care")}
-        title={t("sec.sharing.title")}
-        subtitle={t("sec.sharing.sub", { name: first })}
+    /* Design v10.1 (Care › People): a guide, the Trusted sharing scene, and
+       three numbered sections — who sees what (the co-parent invite and the
+       week share), the people you share with (the roster, one-tap revoke),
+       then shared with you, your data and the record. */
+    <div className={composition === "desk" ? "ds ds-desk care-v10 care-people" : "ds ds-phone care-v10 care-people"} data-composition={composition}>
+      <div className="care-visits flex flex-col gap-6">
+      <Guide
+        mini={composition === "phone"}
+        label={careCopy(uiLang).onThisPage}
+        className="care-guide"
+        stops={[
+          { id: "people-who", title: careCopy(uiLang).people.stopWho, sub: loading ? undefined : liveGrants.length > 0 ? careCopy(uiLang).people.stopWhoSub(liveGrants.length) : careCopy(uiLang).people.stopWhoNone },
+          { id: "people-roster", title: t("sec.sharing.team.title", { name: first }) },
+          { id: "people-more", title: t("elev.learnCare.share.more.title") },
+        ]}
       />
+      <div className={composition === "desk" ? "route gut" : "route m"}>
+      <section className="rsec" id="people-who">
+      <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
+      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} />
 
       {error && (
         <ErrorState
@@ -746,7 +766,10 @@ export default function TrustedSharing() {
           with the revoke action folded in. The former duplicate "Active shares"
           list is gone. */}
       </div>
+      </section>
 
+      <section className="rsec" id="people-roster">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">2</span>
       {!error && (
         <div data-module="sharing-roster" style={{ display: "contents" }}>
         {/* W2-CAREPRO r2: with nobody on the roster, one muted line — not a
@@ -803,6 +826,10 @@ export default function TrustedSharing() {
           while the fold belongs to the primary move. Demoted modules keep their
           own `data-module` stamp and add `data-module-demoted`, which is what
           makes the budget rule countable: top-level = stamps minus demoted. */}
+      </section>
+
+      <section className="rsec" id="people-more">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">3</span>
       <details data-module-disclosure="sharing-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
@@ -894,6 +921,9 @@ export default function TrustedSharing() {
 
         </div>
       </details>
+      </section>
+      </div>
+      </div>
 
       {/* CARE-2: read-only recipient viewer — exactly the granted scopes,
           server-assembled and guard-checked. No capture paths, no writes. */}
@@ -955,6 +985,6 @@ export default function TrustedSharing() {
         </div>
       </Modal>
 
-    </motion.div>
+    </div>
   );
 }
