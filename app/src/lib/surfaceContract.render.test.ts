@@ -354,11 +354,19 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
     // exclusive branches, so the fix was one wrapper stamp and zero demotions.
     // B-GROWTH-22: copilot left this list — its leaf is deleted and its seat
     // renders the development leaf (asserted below, like find-pro).
-    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "smart-reminders", "language"]) {
+    // v10.1 (N-Remind): smart-reminders left this list — quiet hours and calmer
+    // stretches are operated in place inside its prefs module (the board's
+    // "When Arbor may reach you" box), so the page is three modules (prefs ·
+    // contract · delivery) with nothing folded away; asserted below.
+    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "language"]) {
       const c = countModules(leaves.get(route)!);
       expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
       expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
     }
+    const reminders = countModules(leaves.get("smart-reminders")!);
+    expect(reminders.demoted, "smart-reminders folds nothing away: quiet hours live in its prefs module").toBe(0);
+    expect(reminders.disclosures).toBe(0);
+    expect(reminders.topLevel).toBe(3);
     // B-CAREPRO-19: #/find-pro is retired to Consult — its seat renders the
     // Consult leaf (like #/handoff), which stays inside the same budget of 2.
     const findPro = countModules(leaves.get("find-pro")!);

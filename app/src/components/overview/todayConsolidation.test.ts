@@ -49,7 +49,9 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
     // literal in NowLoopBlocks); an accepted step LEADS Now (no door line).
     expect(overview).toContain('const lead = selectNowLead({');
     expect(overview).toContain('recordPending: record.saving || record.error');
-    expect(overview).toContain('fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation"');
+    // v10.1: a running Challenge plan is drawn in "Waiting for you" (Tonight), never as the stage's lead.
+    expect(overview).toContain('fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation"');
+    expect(overview).toContain("<NowChallengePlan plan={plan}");
     expect(overview).toContain('const stamp = { "data-primary-move": MOVE } as const;');
     expect(count(overview, /<TodayActionLoop/g)).toBe(0);
     expect(count(overview, /<TodayStepLine/g)).toBe(0);
@@ -102,7 +104,7 @@ describe("TODAY-2/CODEX-1 — one loop, not three stacked widgets", () => {
   it("section order: the lead → Notice (say-back → noticed) → the week (What changed) → the Tonight pointer → the agenda (the offer)", () => {
     const view = stripComments(todayFile("NowView.tsx"));
     const lines = stripComments(todayFile("NowTodayLines.tsx"));
-    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("{showNotice ?"), view.indexOf("<NowWhatChangedLines"), view.indexOf("{showPointer &&"), view.indexOf("<NowAgendaExtras")];
+    const viewOrder = [view.indexOf("<NowRecommendation"), view.indexOf("const noticeStep = showNotice ?"), view.indexOf("<NowWhatChangedLines"), view.indexOf("{showPointer &&"), view.indexOf("<NowAgendaExtras")];
     const noticeOrder = [lines.indexOf("<TodaySayBackLine"), lines.indexOf("<ArborNoticedCard")];
     for (const idx of [...viewOrder, ...noticeOrder, lines.indexOf("<WhatChanged"), lines.indexOf("<CompanionOfferSlot")]) expect(idx).toBeGreaterThan(-1);
     expect([...viewOrder].sort((a, b) => a - b)).toEqual(viewOrder);

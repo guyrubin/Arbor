@@ -34,7 +34,7 @@ vi.mock("../../context/LanguageContext", async () => {
 });
 
 import PlansSection from "./PlansSection";
-import NowPlanLead from "./NowPlanLead";
+import { NowChallengePlan } from "../companion/now10/NowWaiting";
 import PlanComposer from "./PlanComposer";
 import { authoredPatterns, getPattern } from "../../lib/library/plans/planBooks";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
@@ -183,10 +183,11 @@ describe("the ONE Everyday plans card (S1)", () => {
   });
 });
 
-describe("the Today lead of a running plan (B-BOOK-78)", () => {
+// v10.1 (N-Now): the running plan is drawn in Now's "Waiting for you" rail as the Challenge plan object (NowChallengePlan), no longer the stage's lead.
+describe("Now's Challenge plan object for a running plan (B-BOOK-78)", () => {
   const plan = (doc: PlanBookDoc, now: Date) => activePlans([doc], now)[0];
   const lead = (doc: PlanBookDoc, now: Date, evening: boolean) =>
-    html(<NowPlanLead plan={plan(doc, now)} lang="en" childName="Noa" now={now} evening={evening} onNight={noop} onUndoNight={noop} onJournal={noop} onOpen={noop} />);
+    html(<NowChallengePlan plan={plan(doc, now)} lang="en" childName="Noa" now={now} evening={evening} onNight={noop} onUndoNight={noop} onJournal={noop} onOpen={noop} />);
 
   it("carries the three steps as the parent will do them, the day of the plan and the count of nights", () => {
     const h = lead(docAt(APPROVED), DAY_7, false);

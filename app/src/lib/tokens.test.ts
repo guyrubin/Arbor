@@ -770,7 +770,6 @@ const RGBA_BASELINE: Record<string, number> = {
   "components/search/TopbarSearch.tsx": 1,
   "components/sections/Masterclasses.tsx": 3,
   "components/sections/Screening.tsx": 2,
-  "components/sections/SmartRemindersPanel.tsx": 1,
   "components/stories/ComicReader.tsx": 1,
   "components/tabs/CoachTab.tsx": 1,
   "components/tabs/HeroJourneyTab.tsx": 3,

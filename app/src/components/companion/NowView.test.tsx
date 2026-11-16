@@ -362,34 +362,41 @@ describe("Now record and visit leads", () => {
   it("leads with the Now kicker (no date, no picture, no age) and still hands the loop clock on", () => {
     vi.setSystemTime(new Date(2026, 9, 14, 20, 30));
     const html = renderToStaticMarkup(<NowView />);
-    const heading = html.slice(html.indexOf('<header class="now-heading"'), html.indexOf("</header>"));
-    expect(heading).toContain(`data-testid="now-kicker">${NOW_COPY.en.kicker}</p>`);
+    // v10.1: the stage's head line is the screen's one h1 (the shell's top bar names the place).
+    const heading = html.slice(html.indexOf('class="line between nw-stage-head"'), html.indexOf("</h1>") + 5);
+    expect(heading).toContain(`data-testid="now-kicker">${NOW_COPY.en.title("Noa")}</h1>`);
+    expect(html.match(/<h1/g)).toHaveLength(1);
     expect(heading).not.toContain(new Date(2026, 9, 14, 20, 30).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
     expect(heading).not.toContain("4 years");
     expect(heading).not.toMatch(/<img|today-identity/);
     expect(state.moreProps.now.getTime()).toBe(Date.now());
   });
-  it.each(["en", "he"] as const)("%s: tonight is one step, and the week sits behind More for tonight", (lang) => {
+  it.each(["en", "he"] as const)("%s: tonight is one step, then what waits, the week and what is coming, as numbered stops", (lang) => {
     state.lang = lang;
     const copy = NOW_COPY[lang];
     const html = renderToStaticMarkup(<NowView />);
     expect(html).toContain(copy.title("Noa"));
+    // The production subtitle is stop 1's line in the guide.
     expect(html).toContain(copy.subtitle);
     expect(NOW_COPY.en.title("Noa")).toBe("One thing tonight with Noa");
     expect(NOW_COPY.he.title("נועה")).toBe("הערב, דבר אחד עם נועה");
     expect(NOW_COPY.he.pickedWhy.tonight).toBe("הערב הוא זמן שקט לחזור על היום");
+    // v10.1 (N-Now): the guide's stops and the route's sections, in the same order.
+    const guide = html.slice(html.indexOf('<nav class="guide'), html.indexOf("</nav>"));
+    const hrefs = [...guide.matchAll(/href="#([a-z-]+)"/g)].map(m => m[1]);
+    expect(hrefs[0]).toBe("now-tonight");
+    expect(hrefs.slice(-2)).toEqual(["now-week", "now-ahead"]);
     const practice = html.indexOf('data-module="today-practice"');
-    const more = html.indexOf('data-testid="now-more-tonight"');
-    const grid = html.indexOf('class="now-day-grid"');
-    expect(practice).toBeGreaterThan(-1);
-    expect(more).toBeGreaterThan(practice);
-    expect(grid).toBeGreaterThan(more);
-    expect(html).toContain('class="now-tonight-more"');
-    const at = html.indexOf('data-testid="now-more-tonight"');
-    const details = html.slice(html.lastIndexOf("<details", at), at + 80);
-    expect(details).not.toMatch(/\sopen(?:=|>|\s)/);
-    expect(html).toContain(copy.moreTonight);
-    expect(html).toContain(copy.moreTonightSub);
+    const week = html.indexOf('id="now-week"');
+    const ahead = html.indexOf('id="now-ahead"');
+    expect(practice).toBeGreaterThan(html.indexOf('id="now-tonight"'));
+    expect(week).toBeGreaterThan(practice);
+    expect(ahead).toBeGreaterThan(week);
+    // Nothing is hidden behind a fold any more: the week and the agenda are open sections.
+    expect(html).not.toContain('data-testid="now-more-tonight"');
+    expect(html).not.toMatch(/<details[^>]*now-tonight-more/);
+    expect(html).toContain(copy.weeklyTitle);
+    expect(html).toContain(copy.remindersTitle);
   });
 });
 
@@ -460,8 +467,10 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
     expect(plan).toContain(copy.oneAction);
     // Kept: Another idea. Dropped: the library door.
     expect(plan).not.toContain(lang === "he" ? "לספריית הפעילויות" : "Browse activities");
-    // Clinical firewall: no ratio, percentage or bar anywhere on the card.
-    expect(plan).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+    // Clinical firewall: no ratio, percentage or bar anywhere on the card (its words;
+    // the day arc places the clock by percent in style, never as a figure).
+    expect(words(plan)).not.toMatch(/\d\s*\/\s*\d|\d\s*%/);
+    expect(plan).not.toMatch(/role="progressbar"|<progress/);
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(button(copy.begin)["data-primary-move"]).toBe("choose-next-step");
     expect(state.readerProps).toMatchObject({ open: false, lang, crumb: copy.planTag.recommendation, note: copy.putDown });
@@ -634,7 +643,8 @@ describe("v3 F-NOW-1 · the plan card's body and the guide reader", () => {
       expect(plain).not.toContain('data-testid="now-question-empty"');
       expect(plain).toContain(copy.noOffer);
       // Clinical firewall and the one-move rule hold on the empty state too.
-      expect(plan).not.toMatch(/\d\s*\/\s*\d|\d\s*%|role="progressbar"|<progress/);
+      expect(words(plan)).not.toMatch(/\d\s*\/\s*\d|\d\s*%/);
+      expect(plan).not.toMatch(/role="progressbar"|<progress/);
       expect(page.match(/data-primary-move=/g)).toHaveLength(1);
       if (lang === "he") expect(words(line).replace(/Noa/g, "").replace(question, "")).not.toMatch(/[A-Za-z]/);
     });

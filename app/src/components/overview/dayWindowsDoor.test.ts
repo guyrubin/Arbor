@@ -59,8 +59,11 @@ describe("B-TODAY-13 — the rhythm line is the Day Windows door on Today", () =
     expect(translate("he", "elev.today.dw.link")).toBe("לשעות היום");
   });
 
-  it("Today's drawer no longer carries a Day Windows row", () => {
-    expect(OVERVIEW).not.toContain('setActiveTab("day-windows")');
+  it("Today's drawer no longer carries a Day Windows row; v10.1's one door is the stage's \"Your day at a glance\" link", () => {
+    // N-Now draws the link beside the stage's head line (the fold target, Weekly
+    // report's "Your day at a glance"); it is the only one on Now, and no drawer row returns.
+    expect(OVERVIEW.match(/setActiveTab\("day-windows"\)/g)).toHaveLength(1);
+    expect(OVERVIEW).toContain('<MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>');
     expect(OVERVIEW).not.toContain("today-open-day-windows");
   });
 });
