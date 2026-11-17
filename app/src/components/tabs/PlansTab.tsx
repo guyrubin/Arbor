@@ -179,7 +179,7 @@ export default function PlansTab() {
   }
   const printing = target.kind === "pattern" && target.print ? running.find((r) => r.def.id === target.pattern) : undefined;
   if (printing) {
-    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} />);
+    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} onBack={() => openChallenge(printing.def.id)} />);
   }
   if (target.kind !== "none") {
     const focus = target.kind === "pattern" ? target.pattern : null;
@@ -395,7 +395,6 @@ export default function PlansTab() {
                 readyMade={<RoutineTemplates />}
                 onTogether={() => setActiveTab("practice")}
                 routines={routinesRow}
-                writeOwnTitle={t("plan.create")}
                 writeOwn={writeOwn}
               />
             </div>

@@ -61,7 +61,9 @@ describe("Challenge Plans page (N-Challenge)", () => {
     expect(text(html)).toMatch(/\b3\s+nights you answered yes/);
     expect((text(html).match(/nights you answered yes/g) ?? []).length).toBe(1);
     expect(html).toContain("tok plan md none");
-    expect(text(html)).toContain("No answer");
+    // Fidelity audit: the legend reads as N-Challenge-D words it ("no answer: unknown, not a miss").
+    expect(text(html)).toContain(PLANS_COPY.en.noAnswerLegend);
+    expect(PLANS_COPY.en.noAnswerLegend).toBe("no answer: unknown, not a miss");
     expect(text(html.replace(/ style="[^"]*"/g, ""))).not.toMatch(/\d\s*%|missed|score|streak/i);
   });
 
@@ -99,9 +101,13 @@ describe("Challenge Plans page (N-Challenge)", () => {
     expect(Number(firstStop?.[1])).toBeGreaterThan(50);
   });
 
-  it("phone: the same sections in the same order, one tree", () => {
+  it("phone: N-Challenge-M's sections in its order (plan, steps, nights, all), one tree", () => {
     const html = screen({ composition: "phone" });
-    const order = ["cp-stage", "cp-today", "cp-page", "cp-all"].map((id) => html.indexOf(`id="${id}"`));
+    // N-Challenge-M: the night question shares the stage's card; no Today rail and no "on one page" snap.
+    expect(html).not.toContain('id="cp-today"');
+    expect(html).not.toContain('id="cp-page"');
+    expect((html.match(/data-plan-step-card=/g) ?? []).length).toBe(3);
+    const order = ["cp-stage", "cp-steps", "cp-nights", "cp-all"].map((id) => html.indexOf(`id="${id}"`));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect((html.match(/data-plan-open=""/g) ?? []).length).toBe(1);
@@ -202,7 +208,9 @@ describe("the composer on the journey road (CP-1 to CP-3)", async () => {
     expect(text(steps)).toContain("2 of 5 · Agree");
     expect(steps).not.toMatch(/\{time\}|\{minutes\}/);
     expect((steps.match(/class="cp-kid"/g) ?? []).length).toBe(3);
-    expect(text(steps)).toContain("In Noa's book");
+    // CP-2: the first step's words open ("Noa hears, exactly"); the others fold to "Noa hears".
+    expect(text(steps)).toContain("Noa hears, exactly");
+    expect((steps.match(/<details class="cp-kidd/g) ?? []).length).toBe(2);
   });
   it("Agree: the box and the duration are real toggles", () => {
     const box = render(run({ type: "open" }, { type: "redLinesDone" }, { type: "stepsDone" }));
