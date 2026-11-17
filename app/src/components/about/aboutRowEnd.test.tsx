@@ -3,7 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ABOUT_COPY } from "./aboutViewCopy";
-import { ShellRowEndView } from "../layout/Shell";
+import { ShellRowEndView } from "../layout/ShellRowEnd";
 
 /** V77 (N-About-D): About sets the pill row's end to "<day> · nothing is
  *  remembered without your approval", in both languages (Hebrew flagged for
