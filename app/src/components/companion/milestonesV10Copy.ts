@@ -78,6 +78,7 @@ export interface MilestonesV10Copy {
   listShort: string;
   toolsShort: string;
   checkShort: string;
+  allAreas: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -161,6 +162,7 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listShort: "List",
     toolsShort: "Tools",
     checkShort: "Check",
+    allAreas: "All",
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -242,6 +244,7 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     listShort: "רשימה",
     toolsShort: "כלים",
     checkShort: "בדיקה",
+    allAreas: "הכול",
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",

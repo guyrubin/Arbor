@@ -40,9 +40,13 @@ export interface DevelopmentMapProps {
   composition: Composition;
   /** The clock the growing line reads (tests pin it). */
   nowMs?: number;
+  /** Under the tiles: the hint and the growing line (the map), the hint only, or nothing (the list's fold). */
+  caption?: "full" | "hint" | "none";
+  /** Controls that lead the row (the list's Search and All on a phone). */
+  lead?: React.ReactNode;
 }
 
-export default function DevelopmentMap({ milestones, observations, openDomain, onToggle, composition, nowMs }: DevelopmentMapProps) {
+export default function DevelopmentMap({ milestones, observations, openDomain, onToggle, composition, nowMs, caption = "full", lead }: DevelopmentMapProps) {
   const { t, uiLang } = useLanguage();
   const copy = milestonesV10Copy(uiLang);
   const seen = useMemo(() => noticedByDomain(milestones), [milestones]);
@@ -54,6 +58,7 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
   return (
     <div className="ms-map" data-testid="dev-map">
       <ul className={`mci${desk ? "" : " m ds-snap-scroll"}`} role="list" aria-label={copy.indexLabel}>
+        {lead && <li className="mcs-item mcs-lead">{lead}</li>}
         {DOMAIN_IDS.map((domain) => {
           const moment = last[domain];
           const count = seen[domain];
@@ -93,14 +98,14 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
           );
         })}
       </ul>
-      <div className="mcap">
+      {caption !== "none" && <div className="mcap">
         <p data-testid="dev-map-note">{copy.tilesHint}</p>
-        {growing.length > 0 && (
+        {caption === "full" && growing.length > 0 && (
           <p data-testid="dev-map-growing">
             <strong>{t("companion.milestones.growing")}</strong> {growing.map((domain) => domainName(domain, t)).join(" · ")}
           </p>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

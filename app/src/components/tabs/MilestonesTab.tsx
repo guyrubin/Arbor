@@ -19,7 +19,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // shared action cluster every other content object uses.
 import { ContentActionBar } from "../ui/ContentActionBar";
 import { UrgentSupport } from "../safety/UrgentSupport";
-import { cardCls, Split } from "../ui/kit";
+import { cardCls } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
 import { noticedMilestoneCounts } from "../../lib/record/counts";
@@ -52,14 +52,14 @@ import {
   type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { DEVELOPMENTAL_DOMAIN_IDS, primaryDomainLabel } from "../../lib/domains/registry";
+import { DEVELOPMENTAL_DOMAIN_IDS, DOMAIN_IDS, domainName, primaryDomainLabel, type DomainId } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
 import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
-import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import { SHELF_IDS, shelfDef, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import NoticeCard from "../loop/NoticeCard";
 // B-DESIGN-03 (P7-DESIGN blend frame): the route's answers are the ONE segmented
 // control; each shelf row group leads with its duotone glyph and a section head.
@@ -71,9 +71,14 @@ import { PRACTICES } from "../../content/practices";
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
 // v10.1: the list view of My child › Milestones, in the design system's frame.
-import { DsRoot, Guide, Route, RouteHead, RouteSection } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteHead, RouteSection, Token } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import MilestonesBand from "../companion/MilestonesBand";
+import DevelopmentMap from "../companion/DevelopmentMap";
+import { EarlierLater } from "../companion/AreaRowDetail";
+import { recordSince } from "../companion/milestonesModel";
+import { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
+import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { bandForAgeMonths as screeningBand } from "../../lib/screening";
 import MilestonesReadGuide from "../companion/MilestonesReadGuide";
 import { seenTotals } from "../companion/milestonesModel";
@@ -137,6 +142,7 @@ export default function MilestonesTab() {
 
   const { t, uiLang, aiLang } = useLanguage();
   const composition = useComposition();
+  const desk = composition === "desk";
   const v10 = milestonesV10Copy(uiLang);
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
@@ -211,6 +217,9 @@ export default function MilestonesTab() {
     // B-LOOP-04: the one write seam (lib/milestones/observe via the context),
     // shared with Today's and the Journal's Notice cards.
     setMilestoneObservation(item.id, status);
+    // V77: an answer never moves the list to another area (the default area
+    // follows the first unanswered card, so it is pinned in the same render).
+    if (!areaPick || areaPick.childId !== childProfile.id) setAreaPick({ childId: childProfile.id, area: listArea });
     if (status !== "yes" || item.checked) return;
     // P5 critic r1 (framer ruling 3): the confetti burst fires ONCE per
     // milestone id ever (a completion moment, never a repeat reward); an Undo and a
@@ -307,29 +316,6 @@ export default function MilestonesTab() {
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  /* B-DESIGN-03 — the jump rail is NAVIGATION only: the ring marks the shelf
-     the parent jumped to (never an answer, a count or a verdict). A jump
-     closes a running search first, then scrolls once the shelf is rendered,
-     and moves focus to the shelf (tabIndex -1) for keyboard and screen reader. */
-  const [jumpedTo, setJumpedTo] = useState<ShelfId | null>(null);
-  const [pendingJump, setPendingJump] = useState<ShelfId | null>(null);
-  const jumpTo = (shelf: ShelfId) => {
-    setJumpedTo(shelf);
-    if (query || searchOpen) {
-      setQuery("");
-      setSearchOpen(false);
-    }
-    setPendingJump(shelf);
-  };
-  useEffect(() => {
-    if (!pendingJump) return;
-    setPendingJump(null);
-    const target = document.getElementById(`ms-at-${pendingJump}`) ?? document.getElementById("ms-at-quiet");
-    if (!target) return;
-    const still = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
-    target.focus({ preventScroll: true });
-  }, [pendingJump]);
   // P5 critic r1 (design P0): the map in ACTION order — shelves holding a
   // Notice card first, then the shelves with only their door; a shelf with no
   // catalogue row (Sleep, Family) closes the map as a quiet row with its
@@ -341,6 +327,42 @@ export default function MilestonesTab() {
   // P5 critic r2 (P1-4): the route's ONE stamp sits on the first card the
   // parent has NOT answered this session; an answered (held) card keeps none.
   const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);
+  // V77 (N-ChildList boards): the area tiles are the list's filter. The area the
+  // list opens on holds the first card the parent can answer; "All" lists every
+  // area. The pick is per child (a sibling never inherits it).
+  const [areaPick, setAreaPick] = useState<{ childId: string; area: DomainId | "all" } | null>(null);
+  const firstArea: DomainId = stampShelf ? shelfDef(stampShelf).domain : mapShelves[0] ? shelfDef(mapShelves[0]).domain : DOMAIN_IDS[0];
+  const listArea: DomainId | "all" = areaPick && areaPick.childId === childProfile.id ? areaPick.area : firstArea;
+  const pickArea = (area: DomainId | "all") => {
+    setAreaPick({ childId: childProfile.id, area });
+    if (query || searchOpen) { setQuery(""); setSearchOpen(false); }
+  };
+  const inArea = (shelf: ShelfId) => listArea === "all" || shelfDef(shelf).domain === listArea;
+  const isSeenIt = (m: Milestone) => m.observationStatus === "yes" || (!m.observationStatus && m.checked === true);
+  /** The area's cards: what to notice next (the shelf's Notice card, then the
+   *  rest of its around-now and own rows not yet Seen), then every Seen it,
+   *  oldest first by its day. Order is the record's, never a ranking. */
+  const gridCards = useMemo(() => {
+    const out: { m: Milestone; shelf: ShelfId; kind: "next" | "seen"; pick: boolean }[] = [];
+    for (const shelf of SHELF_IDS.filter(inArea)) {
+      const pick = noticeFor(shelf);
+      const bands = shelfBands(shelfItems[shelf], currentBand.months);
+      const around = bands.filter((b) => b.current || b.months === -1).flatMap((b) => b.items);
+      if (pick) out.push({ m: pick, shelf, kind: "next", pick: true });
+      for (const m of around) if (m.id !== pick?.id && !isSeenIt(m)) out.push({ m, shelf, kind: "next", pick: false });
+    }
+    const seen: typeof out = [];
+    for (const shelf of SHELF_IDS.filter(inArea)) {
+      for (const m of shelfItems[shelf]) if (isSeenIt(m) && !out.some((c) => c.m.id === m.id)) seen.push({ m, shelf, kind: "seen", pick: false });
+    }
+    seen.sort((a, b) => (Date.parse(a.m.observationUpdatedAt ?? "") || 0) - (Date.parse(b.m.observationUpdatedAt ?? "") || 0));
+    return [...out, ...seen];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listArea, shelfItems, noticePicks, heldNotice, milestones, currentBand.months]);
+  const gridIds = useMemo(() => new Set(gridCards.map((c) => c.m.id)), [gridCards]);
+  // The route's ONE stamp: the first card in the grid the parent has not answered.
+  const gridStampId = gridCards.find((c) => c.kind === "next" && !c.m.observationStatus && !c.m.checked && !(c.pick && heldNotice[c.shelf]))?.m.id ?? null;
+  const allCount = useMemo(() => SHELF_IDS.reduce((n, shelf) => n + shelfItems[shelf].length, 0), [shelfItems]);
   const quietWindow = milestoneAgeWindow(comparisonMonths);
   const quietShelves = SHELF_IDS.filter((id) => shelfItems[id].length === 0).map((shelf) => ({
     shelf,
@@ -711,7 +733,7 @@ export default function MilestonesTab() {
    *  answer already given shown as selected. A parent-added row keeps its own
    *  controls (rename / delete live only there). */
   const [beforeRow, setBeforeRow] = useState<Record<string, Milestone>>({});
-  const renderRow = (m: Milestone, shelf: ShelfId) =>
+  const renderRow = (m: Milestone, shelf: ShelfId, answersAttrs?: Record<string, string>, asCard = false) =>
     m.custom ? renderItem(m) : (
       <React.Fragment key={m.id}>
       <NoticeCard
@@ -723,6 +745,10 @@ export default function MilestonesTab() {
         variant="row"
         hideShelf
         answers="segmented"
+        answersAttrs={answersAttrs}
+        /* V77 list card: a stored answer shows as the pressed answer; the
+           receipt, When? and Keep follow the parent's own answer, as before. */
+        initialPhase={asCard ? "ask" : undefined}
         selected={m.observationStatus ?? (m.checked ? "yes" : null)}
         onAnswer={(status) => {
           setBeforeRow((p) => ({ ...p, [m.id]: m }));
@@ -745,13 +771,16 @@ export default function MilestonesTab() {
    *  "Earlier" (a closed disclosure, the same rows) and "Coming next" (a
    *  closed disclosure, titles only — read, never tick). The only age text a
    *  row carries is its own sourced sentence (milestoneAgeLine). */
-  const renderShelfBands = (shelf: ShelfId) => {
+  const renderShelfBands = (shelf: ShelfId, inGrid = false) => {
     const bands = shelfBands(shelfItems[shelf], currentBand.months);
     const skip = noticeFor(shelf)?.id;
-    const now = bands.filter((b) => b.current).flatMap((b) => b.items).filter((m) => m.id !== skip);
-    const earlier = bands.filter((b) => !b.current && !b.later && b.months !== -1).flatMap((b) => b.items).filter((m) => m.id !== skip).reverse();
-    const next = bands.filter((b) => b.later).flatMap((b) => b.items);
-    const own = bands.filter((b) => b.months === -1).flatMap((b) => b.items);
+    // V77 list: the around-now and own rows (and every Seen it) are the area
+    // grid's cards above; the door keeps what the grid does not show.
+    const inCard = (m: Milestone) => inGrid && gridIds.has(m.id);
+    const now = bands.filter((b) => b.current).flatMap((b) => b.items).filter((m) => m.id !== skip && !inCard(m));
+    const earlier = bands.filter((b) => !b.current && !b.later && b.months !== -1).flatMap((b) => b.items).filter((m) => m.id !== skip && !inCard(m)).reverse();
+    const next = bands.filter((b) => b.later).flatMap((b) => b.items).filter((m) => !inCard(m));
+    const own = bands.filter((b) => b.months === -1).flatMap((b) => b.items).filter((m) => !inCard(m));
     const group = "t-sm font-semibold";
     return (
       <div className="space-y-3">
@@ -798,6 +827,49 @@ export default function MilestonesTab() {
 
   /** B-LOOP-05 — word search across shelves: the page-language catalogue
    *  text and the stored words (a parent-added row keeps its own). */
+  /** B-LOOP-05 — the shelf's ONE Notice card (held in place once answered, its
+   *  Undo restoring the document byte-equal, the next title on the same shelf
+   *  after an answer); in the V77 list it is a card in the area grid. */
+  const renderPick = (card: Milestone, shelf: ShelfId, answersAttrs?: Record<string, string>) => (
+    <>
+
+                        <NoticeCard
+                          key={card.id}
+                          milestone={card}
+                          shelf={shelf}
+                          gender={childProfile.gender}
+                          childName={firstName}
+                          variant="row"
+                          hideShelf
+                          answersAttrs={answersAttrs}
+                          onAnswer={(status) => {
+                            setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
+                            setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
+                            observeMilestone(card, status);
+                          }}
+                          onUndo={() => {
+                            const previous = beforeAnswer[shelf];
+                            if (previous) restoreMilestone(previous);
+                          }}
+                          onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
+                          onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
+                          onKeepPhoto={() => setKeepsakeFor(card.id)}
+                          answers="segmented"
+                          /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
+                          besideWords={ownWords[shelf]?.[0]?.text ?? null}
+                        />
+                        {renderKeepsake(card)}
+                        {heldNotice[shelf] === card.id && (() => {
+                          const next = nextOnShelf(shelf, card.id);
+                          return next ? (
+                            <p data-testid="ms-shelf-next" className="mt-1 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+                              {t("elev.loop.ms.nextOn", { shelf: shelfLabel(shelf, t), title: milestoneText(next, "title", t, msGender) })}
+                            </p>
+                          ) : null;
+                        })()}
+                        
+    </>
+  );
   const searchText = (m: Milestone): string[] => [milestoneText(m, "title", t, msGender), milestoneText(m, "looks", t, msGender), m.title, m.skillLooksLike ?? ""];
   const searchHits = query.trim()
     ? SHELF_IDS.map((shelf) => ({ shelf, items: shelfItems[shelf].filter((m) => matchesMilestoneQuery(searchText(m), query)) })).filter((g) => g.items.length > 0)
@@ -838,83 +910,45 @@ export default function MilestonesTab() {
   /* B-DESIGN-03 (product c2.r3 P2-3): ONE quote pair per locale for the
      family's words on this route — ״…״ in Hebrew, “…” in English. */
   const quoted = (text: string) => t("elev.loop.ms.quoted", { text });
-  /* B-DESIGN-03 (P7-DESIGN blend frame, DESIGN-DIRECTION.md §Chosen row 7):
-     the nine shelf glyphs as a jump rail under the header — 44 px duotone,
-     registry order (never the action order, never a count, never a state
-     colour: the tint is the shelf's own). Search leads the rail (the map's
-     44 px search icon, P5 r1 design P0). Below sm the names ride in the
-     accessible name only (the fold at 375); from sm they print under each glyph.
-     P7-DESIGN fix r1 (framer ruling R4, milestones design P1-1): the names print
-     at EVERY width on ONE line (each item at least 64 px, as wide as its name —
-     the design of record's 375 frame sets every name on one line); Shell drops
-     the hub kicker on phones for this route, the portrait is 44 px and the
-     rail's top margin 8 px, so the stamp keeps the 375 fold (designBlend model). */
-  const jumpRail = (
-    <nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">
-      <ul className="flex items-start gap-2">
-        <li className="flex flex-none items-start gap-2">
-          <button
-            type="button"
-            data-testid="ms-search-open"
-            aria-label={t("elev.loop.ms.search")}
-            aria-expanded={searchOpen || !!query}
-            onClick={() => setSearchOpen((v) => !v)}
-            className="flex min-h-11 min-w-16 flex-col items-center gap-1"
-            style={{ color: "var(--arbor-ink-soft)" }}
-          >
-            <span className="inline-flex h-11 w-11 items-center justify-center" style={{ borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}>
-              <Icon name="search" size={20} />
-            </span>
-            <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{t("top.search")}</span>
-          </button>
-          <span aria-hidden="true" className="h-11 w-px flex-none" style={{ background: "var(--arbor-rule)" }} />
-        </li>
-        {SHELF_IDS.map((shelf) => {
-          const on = jumpedTo === shelf;
-          return (
-            <li key={shelf} className="flex-none">
-              <button
-                type="button"
-                data-testid="ms-jump"
-                data-shelf={shelf}
-                aria-label={shelfLabel(shelf, t)}
-                aria-current={on ? "location" : undefined}
-                onClick={() => jumpTo(shelf)}
-                className="flex min-h-11 min-w-16 flex-col items-center gap-1"
-                style={{ color: on ? "var(--arbor-ink)" : "var(--arbor-ink-soft)" }}
-              >
-                <span className="inline-flex" style={{ borderRadius: "var(--r)", boxShadow: on ? "0 0 0 2px var(--arbor-paper), 0 0 0 4px var(--arbor-ink)" : undefined }}>
-                  <ShelfGlyph shelf={shelf} />
-                </span>
-                <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{shelfLabel(shelf, t)}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
   // P5-LOOP c2 r1: the rail exists only for the under-2 lead.
   const hasRail = comparisonMonths < 24;
   // The first card the parent can answer (the route's stamp) — named by the first-open lede.
   const firstCard = stampShelf ? noticeFor(stampShelf) : undefined;
+  /* B1 — under-2 reassurance lead: name the current stage, no checklist
+     framing (it led a side rail; in the V77 list it opens the area's stage). */
+  const underTwoLead = (
+    <div data-testid="ms-under-two" className="msl-lead rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                              <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
+                              {corrected.applied && (
+                                <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                                  {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+                          </div>
+  );
   const shelfMap = (
           <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
             {/* B-DESIGN-03: at 375 the jump rail above IS the map's heading
                 (the first answers stay above the fold); the h2 keeps the outline,
                 names the rail, and prints from sm up. */}
-            <h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.loop.shelfMap.title")}
-            </h2>
+            {/* V77: the chosen area names the stage; the search and "All" sit beside it. */}
+            <div className="msl-top">
+            <div className="msl-head">
+              {listArea !== "all" && <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[listArea]} size={22} /></span>}
+              <h2 id="ms-map-title" className="msl-tt">{listArea === "all" ? t("elev.loop.shelfMap.title") : domainName(listArea, t)}</h2>
+            </div>
             <MilestoneKeptStatus history={keptNotes} />
-            {(searchOpen || !!query) && (
-              <label className="field-pill mb-1 flex sm:mt-3 min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
+            {(desk || searchOpen || !!query) && <div className="msl-tools">
+              <label className="field-pill msl-search flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
                 <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
                 <input
                   data-testid="ms-search"
                   type="search"
                   dir="auto"
-                  autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("elev.loop.search.placeholder")}
@@ -928,7 +962,12 @@ export default function MilestonesTab() {
                   </button>
                 )}
               </label>
-            )}
+              {desk && <button type="button" className={`chip msl-all min-h-11${listArea === "all" ? " on" : ""}`} data-testid="ms-area-all" aria-pressed={listArea === "all"} onClick={() => pickArea(listArea === "all" ? firstArea : "all")}>
+                {v10.allAreas} <b className="arbor-num">{allCount}</b>
+              </button>}
+            </div>}
+            </div>
+            {hasRail && underTwoLead}
 
             {searchHits ? (
               <div data-testid="ms-search-results" className="mt-4 space-y-4">
@@ -954,11 +993,28 @@ export default function MilestonesTab() {
               </div>
             ) : (
               <div className="mt-1">
+                <ul className="msl-grid" data-testid="ms-area-grid" role="list">
+                  {gridCards.map(({ m, shelf, kind, pick }) => {
+                    const stamp = m.id === gridStampId ? { "data-primary-move": "notice-milestone" } : undefined;
+                    const at = kind === "seen" ? m.observationUpdatedAt : undefined;
+                    return (
+                      <li key={m.id} className={`msl-card ${kind}`} data-testid="ms-card" data-milestone={m.id} data-state={kind}>
+                        <p className="msl-chip" data-testid="ms-card-chip">
+                          <span aria-hidden="true"><Token kind="moment" size="sm" state={kind === "seen" ? undefined : "ai"} label={kind === "seen" ? t(NOTICE_ANSWER_KEYS.yes) : v10.nextToNotice} /></span>
+                          <b>{kind === "seen" ? t(NOTICE_ANSWER_KEYS.yes) : v10.nextToNotice}</b>
+                          {at && <span> · <time dateTime={at}>{fmtDayV10(at, uiLang)}</time></span>}
+                        </p>
+                        {pick ? renderPick(m, shelf, stamp) : renderRow(m, shelf, stamp, true)}
+                        {!m.custom && <EarlierLater milestone={m} milestones={milestones} gender={childProfile.gender ?? null} />}
+                      </li>
+                    );
+                  })}
+                </ul>
                 {/* P5 critic r1 (design P0): shelves in ACTION order — the
                     shelves holding a Notice card first, then the shelves with
                     only their door; the shelves with no catalogue row close
                     the map as quiet rows (framer ruling 2). */}
-                {mapShelves.map((shelf, i) => {
+                {mapShelves.filter(inArea).map((shelf, i) => {
                   const card = noticeFor(shelf);
                   const n = shelfCounts[shelf];
                   const open = Boolean(openShelves[shelf]);
@@ -991,47 +1047,7 @@ export default function MilestonesTab() {
                           <span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfDayLabel(shelfWords[shelf]!.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
                         </p>
                       )}
-                      {card ? (
-                        /* A ROW inside the map (no card in a card); the shelf is
-                           named once by the header; the first shelf's answers
-                           carry the route's one stamp. */
-                        <>
-                        <NoticeCard
-                          key={card.id}
-                          milestone={card}
-                          shelf={shelf}
-                          gender={childProfile.gender}
-                          childName={firstName}
-                          variant="row"
-                          hideShelf
-                          answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}
-                          onAnswer={(status) => {
-                            setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
-                            setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
-                            observeMilestone(card, status);
-                          }}
-                          onUndo={() => {
-                            const previous = beforeAnswer[shelf];
-                            if (previous) restoreMilestone(previous);
-                          }}
-                          onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
-                          onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
-                          onKeepPhoto={() => setKeepsakeFor(card.id)}
-                          answers="segmented"
-                          /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
-                          besideWords={ownWords[shelf]?.[0]?.text ?? null}
-                        />
-                        {renderKeepsake(card)}
-                        {heldNotice[shelf] === card.id && (() => {
-                          const next = nextOnShelf(shelf, card.id);
-                          return next ? (
-                            <p data-testid="ms-shelf-next" className="mt-1 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
-                              {t("elev.loop.ms.nextOn", { shelf: shelfLabel(shelf, t), title: milestoneText(next, "title", t, msGender) })}
-                            </p>
-                          ) : null;
-                        })()}
-                        </>
-                      ) : windowShelfItems[shelf].length === 0 ? (
+                      {!card && windowShelfItems[shelf].length === 0 ? (
                         <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
                       ) : null}
                       <button
@@ -1047,7 +1063,7 @@ export default function MilestonesTab() {
                       </button>
                       {open && (
                         <div className="mt-2 space-y-3">
-                          {renderShelfBands(shelf)}
+                          {renderShelfBands(shelf, true)}
                           <button
                             type="button"
                             data-testid="ms-play-ideas"
@@ -1098,6 +1114,8 @@ export default function MilestonesTab() {
                     never says "No milestones": it shows its shelf-level practice
                     as one thing to try, and no door; with none for this age the
                     shelves fold into ONE quiet line. */}
+                {/* The shelves with no catalogue row (Sleep, Family) keep their one
+                    thing to try under every area: the boards have no other home for it. */}
                 {quietShelves.length > 0 && (
                   <div data-testid="ms-quiet-shelves" className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                     {quietShelves.filter((q) => q.practice).map((q) => (
@@ -1180,7 +1198,11 @@ export default function MilestonesTab() {
     </p>
   ) : null;
 
-  const desk = composition === "desk";
+  // The band names the child as the map's does ("Dylan's growth, in your words.").
+  const [bandBefore, bandAfter = ""] = t("companion.milestones.title").split("{name}");
+  const bandTitle = <>{bandBefore}<bdi dir="auto">{firstName || t("ms.watch.childFallback")}</bdi>{bandAfter || null}</>;
+  const sinceAt = recordSince(observations);
+  const recordSinceDay = sinceAt === null ? null : fmtDayV10(sinceAt, uiLang);
   const stops = [
     { id: "ms-list", title: desk ? v10.listGuideList : v10.listShort, sub: v10.listGuideListSub },
     { id: "ms-tools", title: desk ? v10.listGuideTools : v10.toolsShort, sub: v10.listGuideToolsSub },
@@ -1335,14 +1357,28 @@ export default function MilestonesTab() {
           {/* v10.1: the band shared with the map (header, figure, Map / List). The
               list's own jump rail is its index of areas, so the band carries no
               second one and the first Seen it stays above the fold on a desk. */}
-          <MilestonesBand composition={composition} kicker={t("companion.milestones.kicker")} title={t("ms.title")} titleId="ms-list-title"
-            current="milestones" totals={seenTotals(milestones)} compact />
+          <MilestonesBand composition={composition} kicker={v10.kicker} title={desk ? bandTitle : t("ms.title")} titleId="ms-list-title"
+            current="milestones" totals={{ ...seenTotals(milestones), since: recordSinceDay }} compact>
+            {/* The fold law: the list's first answer stays above the Ask bar, so
+                the band is the compact one and the tiles carry the hint on a desk only. */}
+            <DevelopmentMap milestones={milestones} observations={observations} openDomain={listArea === "all" ? null : listArea}
+              onToggle={(area) => pickArea(area)} composition={composition} caption={desk ? "hint" : "none"}
+              lead={desk ? undefined : (
+                <span className="msl-lead-tools">
+                  <button type="button" className="msl-icon min-h-11" data-testid="ms-search-open" aria-label={t("elev.loop.ms.search")} aria-expanded={searchOpen || !!query} onClick={() => setSearchOpen((v) => !v)}>
+                    <Icon name="search" size={22} />
+                  </button>
+                  <button type="button" className={`chip msl-all min-h-11${listArea === "all" ? " on" : ""}`} data-testid="ms-area-all" aria-pressed={listArea === "all"} onClick={() => pickArea(listArea === "all" ? firstArea : "all")}>
+                    {v10.allAreas} <b className="arbor-num">{allCount}</b>
+                  </button>
+                </span>
+              )} />
+          </MilestonesBand>
           <div className="ms-row">
             <div className="stg">
               <div className="mcst ms-list-stage">
       <div data-testid="ms-header" className="min-w-0">
-                  {!desk && headerWords}
-                  {jumpRail}
+
                 </div>
 
       {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
@@ -1365,47 +1401,13 @@ export default function MilestonesTab() {
                     lands between it and Born early (it was a display:contents wrapper —
                     the space-y margin was dropped and the two touched at 0 px). */}
                 <div data-module="milestones-spine" className="min-w-0">
-                {hasRail ? (
-                <Split
-                  ratio="minmax(300px,1fr) minmax(0,1.4fr)"
-                  className="md:[&>div]:!contents xl:[&>div]:!grid"
-                  left={
-                    <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
-                      {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
-                          right? Change" and "{n} noticed" sit under the lede in the
-                          header; the rail keeps only the under-2 lead. */}
-                      {comparisonMonths < 24 && (
-                      <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-                        {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
-                        {comparisonMonths < 24 && (
-                          <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                              <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
-                              {corrected.applied && (
-                                <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
-                                  {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
-                          </div>
-                        )}
-                      </div>
-                      )}
-          
-          
-                    </div>
-                  }
-                  right={shelfMap}
-                />
-                ) : shelfMap}
+                {shelfMap}
                 </div>
               </div>
             </div>
             <div className="rlc" id="ms-tools">
               <MilestonesReadGuide steps="list" suggests={false} />
-              {desk && headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}
+              {headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}
               {tools}
             </div>
           </div>
