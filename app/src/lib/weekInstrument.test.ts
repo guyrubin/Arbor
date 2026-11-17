@@ -94,3 +94,16 @@ describe("weekInstrument — the join of a hard moment to the step tried for it"
     expect(elsewhere.joins).toEqual([]);
   });
 });
+
+describe("weekInstrument — a plan step done is its own kind (N-Week-D: Plan step done)", () => {
+  it("a step from a plan that helped counts as plan; one that did not help stays not this time", () => {
+    const data = weekInstrument({ observations: [], logs: [], dayStarts, endMs: START + 7 * DAY - 1, isCurrent: false,
+      actionLoop: [
+        { id: "p1", source: "plan", outcome: "helped", outcomeAt: at(1, 9) },
+        { id: "p2", source: "plan", outcome: "not_today", outcomeAt: at(1, 10) },
+        { id: "s1", source: "digest", outcome: "helped", outcomeAt: at(2, 9) },
+      ] });
+    expect(data.counts).toMatchObject({ plan: 1, not: 1, helped: 1 });
+    expect(data.lane.map((l) => l.kind)).toEqual(["plan", "not", "helped"]);
+  });
+});
