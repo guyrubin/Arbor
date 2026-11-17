@@ -590,7 +590,7 @@ describe('Rover Delivery words', () => {
   it('keeps the tile words and the closing words of the brief', () => {
     expect(en.title).toBe('Rover Delivery'); expect(en.description).toBe('Plan the way. Fix one thing.');
     expect(en.instruction).toBe('Turn the signs so the rover reaches Pep, then press start.');
-    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Away from the screen: put paper arrows on the floor and drive a toy car to a teddy.');
+    expect(en.finishTitle).toBe('The rover made it to Pep!'); expect(en.transfer).toBe('Away from the screen: put paper arrows on the floor and drive a toy car to a teddy.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
     expect(he.title).not.toMatch(/[A-Za-z]/); expect(he.title.length).toBeGreaterThan(0);
   });

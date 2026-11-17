@@ -210,7 +210,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
       else if (now === 'jam') expect(live(seen)).toEqual(['oops-pause']);
       else if (now === 'reset') expect(live(seen)).toEqual(['oops-restart']);
       else if (now === 'copy') { expect(live(seen)).toEqual(PETALS.filter(id => !open.includes(id)).map(id => `petal-${id}`)); expect(live(seen).length).toBeGreaterThan(0); }
-      else { expect(now).toBe('undo'); expect(live(seen)).toEqual(open.map(id => `petal-${id}`)); expect(open.length).toBeGreaterThan(0); }
+      else { expect(now).toBe('undo'); expect(live(seen)).toEqual([`petal-${open.at(-1)}`]); expect(open.length).toBeGreaterThan(0); }
     });
     const end = finish(tree)!; expect(end).toBeDefined();
     expect(end.props).toMatchObject({ title: w.finishTitle, subtitle: w.transfer, playAgainLabel: shared.again, homeLabel: shared.home });
@@ -336,7 +336,8 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(phase(tree)).toBe('undo'); expect(heading(tree)).toBe(w.undo); expect(status(tree)).toBe(oopsLine(w.undoFirst, openPetals(tree).length)); expect(shell(tree).hearIt).toBe(w.undo);
     expect(hero(tree).pose).toBe('idle'); expect(hinted(tree)).toEqual([]);
     expect(control(tree, 'oops-pause').props.disabled).toBe(true); expect(control(tree, 'oops-restart').props.disabled).toBe(true);
-    expect(live(tree)).toEqual([order[0], order[1], spare[0]].sort().map(id => `petal-${id}`));
+    // Only the newest petal is invited back; the others still answer with a wobble.
+    expect(live(tree)).toEqual([`petal-${spare[0]}`]);
     expect(PETALS.every(id => petal(tree, id).props.disabled === false)).toBe(true);
     // An open petal that is not the last one must wait: a clear next step, and then the right petal is ringed.
     h.sound.mockClear();

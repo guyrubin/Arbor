@@ -165,7 +165,8 @@ export default function OopsButton() {
                 const showing = phase === 'watch' && !folded && place > -1 && place < shown;
                 const open = showing || phase === 'bloom' || opened.includes(petal);
                 const half = stuck === petal;
-                const live = phase === 'copy' ? !open : phase === 'undo' && open;
+                // B-GAME-46: in undo only the newest petal is invited; the others still answer with a wobble.
+                const live = phase === 'copy' ? !open : phase === 'undo' && opened[opened.length - 1] === petal;
                 return <button type="button" key={petal} className="bop-piece oops-petal" style={{ '--petal': petal } as CSSProperties} data-petal={petal} data-open={open} data-half={half} data-wobble={wobble === petal || (phase === 'jam' && half)} data-hint={hinted === petal} disabled={phase !== 'copy' && phase !== 'undo'} aria-disabled={!live} aria-pressed={open} aria-label={oopsLine(half ? w.petalStuck : open ? w.petalOpen : w.petalClosed, w.petals[petal])} onClick={() => press(petal)}>
                   {open && <i className="oops-pop" aria-hidden="true" />}
                   <BopSprite name={PETAL_ART[petal]} size={54} className="oops-petal__art" flat />

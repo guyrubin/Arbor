@@ -152,10 +152,12 @@ export default function WobblyDelivery() {
     if (phaseRef.current !== 'fetch') return;
     void selectionHaptic();
     const result = deliveryPick(requestRef.current, deliveredRef.current, item);
-    if (result === 'repeat' || result === 'other') {
+    // A toy already on the rug is not "not yet": it only wobbles, with no line and no sound.
+    if (result === 'repeat') { setWobble(item); if (oopsTimer.current !== null) clearTimeout(oopsTimer.current); oopsTimer.current = setTimeout(() => { oopsTimer.current = null; setWobble(null); }, OOPS_MS); return; }
+    if (result === 'other') {
       // Nothing is lost and nothing locks: the toy wobbles, the hero shrugs
       // it off, and the same request is still waiting.
-      if (result === 'other') setOthers(othersRef.current + 1);
+      setOthers(othersRef.current + 1);
       kidSfx('tryAgain'); setStatus(w.notYet); setTurn(count => count + 1); setWobble(item); setOops(true);
       if (oopsTimer.current !== null) clearTimeout(oopsTimer.current);
       oopsTimer.current = setTimeout(() => { oopsTimer.current = null; setOops(false); setWobble(null); }, OOPS_MS);
@@ -232,7 +234,7 @@ export default function WobblyDelivery() {
             <span className="delivery-rug" aria-hidden="true"><BopSprite name="rest-rug" flat /></span>
             <BopFriend friend={friend} mood={celebrate ? 'happy' : 'idle'} size={46} className="delivery-friend" />
             {/* One lantern a thing asked for, lit as each one lands on the rug: how far along, at a glance. */}
-            {phase !== 'ready' && <span className="delivery-lanterns" aria-hidden="true">{request.map((_, index) => <i key={index} data-on={index < delivered.length || celebrate} />)}</span>}
+            {phase !== 'ready' && phase !== 'bloom' && <span className="delivery-lanterns" aria-hidden="true">{request.map((_, index) => <i key={index} data-on={index < delivered.length || celebrate} />)}</span>}
             <div className="delivery-landed" role="img" aria-label={`${w.rug[round]}: ${delivered.length ? delivered.map(item => w.items[item]).join(w.listJoin) : w.rugEmpty}`}>
               {delivered.map((item, slot) => <span key={item} data-slot={slot}><i className="delivery-puff" aria-hidden="true" /><BopSprite name={item} /></span>)}
             </div>

@@ -23,6 +23,8 @@ export const HERO_SEAT = 4;
 export const HOP_MS = 380;
 export const JOIN_MS = 1500;
 export const SUN_MS = 4200;
+/** How long the spinner wheel turns (its CSS rotate transition); the hop is named once it stops. */
+export const TURN_MS = 1050;
 export const WOBBLE_MS = 460;
 
 const onPath = (position: number) => Number.isInteger(position) && position >= 0 && position <= PATH_END;

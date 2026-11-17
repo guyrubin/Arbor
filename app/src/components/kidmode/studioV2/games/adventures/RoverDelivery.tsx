@@ -186,7 +186,7 @@ export default function RoverDelivery() {
             {phase === 'drive' && <span className="rover-puff" key={`${runs}:${trail.length}`} aria-hidden="true" style={placed(car.cell, level.size, 0)} />}
             {/* Pep waits on the rug, in front of the rover when it pulls up. */}
             <span className="rover-pep" aria-hidden="true" style={placed(level.goal, level.size, 0)}>
-              <BopFriend friend="pep" mood={phase === 'arrived' ? 'happy' : 'idle'} size={level.size === 3 ? 44 : 34} />
+              <BopFriend friend="pep" mood={phase === 'arrived' ? 'happy' : 'idle'} size={44} />
             </span>
             {/* The next pictures are fetched ahead, so a happy Pep never arrives late. */}
             <span className="rover-ahead" aria-hidden="true">

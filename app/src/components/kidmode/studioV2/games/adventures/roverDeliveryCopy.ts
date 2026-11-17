@@ -21,7 +21,7 @@ export const ROVER_DELIVERY_COPY = {
     bloomOpen: 'Open flower. Tap to fold it down.', bloomFolded: 'Folded flower. Tap to open it.',
     bloomNowFolded: 'The flower is folded down. The way is clear.', bloomNowOpen: 'The flower is open again.',
     rover: 'The rover, facing {0}', goal: 'Pep’s rug', planter: 'Flower pot', startMat: 'The rover’s starting place', board: 'The play-room floor',
-    finishTitle: 'Delivered!', transfer: 'Away from the screen: put paper arrows on the floor and drive a toy car to a teddy.',
+    finishTitle: 'The rover made it to Pep!', transfer: 'Away from the screen: put paper arrows on the floor and drive a toy car to a teddy.',
   },
   he: {
     hear: 'לשמוע שוב',
@@ -40,7 +40,7 @@ export const ROVER_DELIVERY_COPY = {
     bloomOpen: 'פרח פתוח. נוגעים כדי לקפל אותו.', bloomFolded: 'פרח מקופל. נוגעים כדי לפתוח אותו.',
     bloomNowFolded: 'הפרח מקופל. הדרך פנויה.', bloomNowOpen: 'הפרח שוב פתוח.',
     rover: 'הרובר, פונה {0}', goal: 'השטיח של פפ', planter: 'עציץ', startMat: 'נקודת ההתחלה של הרובר', board: 'רצפת חדר המשחקים',
-    finishTitle: 'המשלוח הגיע!', transfer: 'מחוץ למסך: מניחים חצים מנייר על הרצפה ומסיעים מכונית צעצוע אל דובי.',
+    finishTitle: 'הרובר הגיע אל פפ!', transfer: 'מחוץ למסך: מניחים חצים מנייר על הרצפה ומסיעים מכונית צעצוע אל דובי.',
   },
 } as const;
 export type RoverDeliveryWords = typeof ROVER_DELIVERY_COPY['en'] | typeof ROVER_DELIVERY_COPY['he'];

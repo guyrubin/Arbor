@@ -12,7 +12,7 @@ export const HERO_BAND_COPY = {
     finish: 'Your hero has a dance of its own.', transfer: 'Away from the screen: teach someone your dance, one move at a time.',
     quiet: 'Sound is off. Watch the rings and your hero.', unavailable: 'Watch the rings and your hero; sound is unavailable here.',
     moves: ['Jump', 'Zoom', 'Pose', 'Wobble', 'Hop', 'Spin'],
-    pads: 'Move pads', track: 'My dance', pattern: 'The dance to copy', step: 'Step', empty: 'no move', hidden: 'waiting for a move', takeOut: 'take it out',
+    pads: 'Move pads', track: 'My dance', pattern: 'The dance to copy', step: 'Step', empty: 'no move', hidden: 'waiting for a move', takeOut: 'Take it out',
     speed: 'Dance speed', memory: 'Show the moves', hideMemory: 'Hide the moves',
     keep: 'My own dance', play: 'Play my dance', stop: 'Pause',
   },

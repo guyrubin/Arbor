@@ -39,7 +39,7 @@
 .delivery-flower[data-open=true] > .delivery-flower__open { opacity: 1; transform: scale(1.2); }
 /* B-GAME-46: the bloom is the payoff, so the flower grows to twice its size as it opens. */
 .delivery-flower { transition: inline-size .7s var(--studio-ease-soft); }
-.delivery-flower[data-open=true] { inline-size: 72px; }
+.delivery-flower[data-open=true] { z-index: 4; inline-size: 72px; }
 
 /* The request: one picture card a thing, numbered in the order to bring it.
    Face down, a card keeps its number and its place but hides its picture.
@@ -94,7 +94,7 @@
 @container (max-width: 312px) { .delivery-board { zoom: .9; } }
 @container (max-width: 302px) { .delivery-board { zoom: .85; } }
 @container (max-width: 285px) { .delivery-board { zoom: .8; } }
-@container (max-width: 268px) { .delivery-board { zoom: .72; } }
+@container (max-width: 268px) { .delivery-board { zoom: .74; } }
 @container (min-width: 353px) { .delivery-board { zoom: 1.05; } }
 @container (min-width: 363px) { .delivery-board { zoom: 1.08; } }
 @container (min-width: 373px) { .delivery-board { zoom: 1.11; } }
