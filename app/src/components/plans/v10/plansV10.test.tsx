@@ -55,6 +55,24 @@ describe("Challenge Plans page (N-Challenge)", () => {
     for (const a of ["data-plan-open", "data-plan-print", "data-plan-change", "data-plan-close", "data-plan-night-yes", "data-plan-night-no"]) expect(html).toContain(a);
   });
 
+  it("plan and step names (planNames) where the boards draw them; the book keeps its own title", () => {
+    const desk = screen();
+    const cards = desk.slice(desk.indexOf("data-plans-chooser"));
+    // the list's card: the plan's name, the book in its own line
+    expect(cards).toMatch(/data-plan-door-title="">Saying goodbye at drop-off</);
+    expect(text(cards)).toContain("The book: The door opens again");
+    // the stage's h1 stays the book's title
+    expect(desk).toMatch(/<h1 class="hero" dir="auto"[^>]*>The door opens again<\/h1>/);
+    // the Today rail's step and "What do we do?"
+    expect(desk).toMatch(/data-plan-today-step="">Our goodbye</);
+    expect(text(desk)).toContain("Step 2 · A thing from home");
+    expect(text(desk)).toContain("Step 3 · When the door opens again");
+    // phone: the list row and the step cards
+    const phone = screen({ composition: "phone" });
+    expect(phone).toMatch(/data-plan-door-title="">Saying goodbye at drop-off</);
+    expect(text(phone)).toContain("Step 1 · Our goodbye");
+  });
+
   it("nights are counts of what the parent confirmed; an unanswered night is unknown (dashed), never a miss", () => {
     const html = screen();
     // V77: the count is the nights tile's figure (said once; the stage no longer repeats it).
@@ -227,6 +245,15 @@ describe("the composer on the journey road (CP-1 to CP-3)", async () => {
     expect((door.match(/<h1[ >]/g) ?? []).length).toBe(1);
     const red = render(run({ type: "open" }));
     for (const w of dropoff.watchFor) expect(red).toContain(`data-plan-redline="${w.id}"`);
+  });
+  it("CP-2: the step cards carry the steps' names (phone and desktop)", () => {
+    const steps = run({ type: "open" }, { type: "redLinesDone" });
+    const phone = render(steps);
+    const desk = renderToStaticMarkup(<PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={steps} composition="desk" />);
+    for (const html of [phone, desk]) {
+      const names = [...html.matchAll(/data-plan-step-name="">([^<]+)</g)].map((m) => m[1]);
+      expect(names).toEqual(["Our goodbye", "A thing from home", "When the door opens again"]);
+    }
   });
   it("Agree: each step shows what the parent does (time filled in) beside the child's line", () => {
     const steps = render(run({ type: "open" }, { type: "redLinesDone" }));

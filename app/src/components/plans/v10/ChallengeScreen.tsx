@@ -12,6 +12,7 @@ import type { HeGender, PatternId } from "../../../lib/library/types";
 import { ChallengeBook } from "./ChallengeBook";
 import { mirrorPoints, Road, zigzagPoints } from "./Road";
 import { plansCopy } from "./plansCopy";
+import { planName, stepName } from "../../../lib/plans/planNames";
 
 /**
  * Challenge Plans, homed under Now › Plans (Guy, 16 Nov). One page per running
@@ -281,7 +282,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
         {parentStep && (
           <div className="cp-st">
             <span className="cp-n"><b>1</b><Icon name="group" size={18} /></span>
-            <div className="cp-pl" dir="auto"><small>{c.youDo}</small>{parentStep}</div>
+            <div className="cp-pl" dir="auto"><b className="cp-sh" data-plan-today-step="">{stepName(plan.def.id, plan.doc.stepMenuIds?.[0], lang) ?? c.youDo}</b>{parentStep}</div>
           </div>
         )}
         {childLine && (
@@ -297,7 +298,9 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     const t = book?.steps[i]?.time;
     return t ? s(`time.${t}` as Parameters<typeof planString>[0]) : "";
   };
-  const stepHead = (i: number) => [c.stepN(i + 1), stepTime(i)].filter(Boolean).join(" · ");
+  /* "Step 1 · Our goodbye · Every morning": the step, its name and its time of day. */
+  const stepLabel = (i: number) => (plan ? stepName(plan.def.id, book?.steps[i]?.menuId, lang) : null);
+  const stepHead = (i: number) => [c.stepN(i + 1), stepLabel(i), stepTime(i)].filter(Boolean).join(" · ");
   const kidText = (i: number) => {
     const line = book?.steps[i]?.text;
     if (!line) return "";
@@ -368,14 +371,16 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const card = (d: PatternDef) => {
     const r = running.find((x) => x.def.id === d.id);
     const bookTitle = d.title[lang];
+    // N-Challenge-D/M: the card is titled with the plan's parent-facing name; the book keeps its title.
+    const name = planName(d.id, lang) ?? bookTitle;
     const onClick = () => (r ? p.onFocus(d.id) : p.onStart(d));
     if (!desk) {
       return (
         <button key={d.id} type="button" className={`cp-row${r ? " run" : ""}`} onClick={onClick} data-plan-door={d.id} aria-current={r && plan?.def.id === d.id ? "true" : undefined}>
           <i className="ci" aria-hidden="true"><Icon name="auto_stories" size={18} /></i>
           <span>
-            <b dir="auto">{bookTitle}</b>
-            <small dir="auto">{d.parentWords[lang]}</small>
+            <b dir="auto" data-plan-door-title="">{name}</b>
+            <small dir="auto">{c.book(bookTitle)}</small>
           </span>
           <span className="rs">{r ? (plan?.def.id === d.id ? c.runningAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)) : s("chooser.age", { age: d.ageText })}</span>
         </button>
@@ -387,13 +392,13 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
           <div className="cb" style={{ alignItems: "center" }}>
             <ChallengeBook title={bookTitle} size="sm" width={54} label={c.book(bookTitle)} />
             <div className="stack ds-col" style={{ gap: 3 }}>
-              <h3 className="ds-plans-cat" dir="auto" data-plan-door-title="">{bookTitle}</h3>
+              <h3 className="ds-plans-cat" dir="auto" data-plan-door-title="">{name}</h3>
               <p dir="auto">{d.parentWords[lang]}</p>
+              <p dir="auto" className="cp-bookline" data-plan-door-book=""><i>{c.theBook(bookTitle)}</i>{r ? null : ` · ${c.days(d.defaultDurationDays)}`}</p>
             </div>
           </div>
           <div className="cf2" style={{ flexWrap: "nowrap" }}>
             {r ? <span className="run">{plan?.def.id === d.id ? c.runningOpenAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
-            {!r && <span>{c.days(d.defaultDurationDays)}</span>}
             <span style={{ marginInlineStart: "auto", background: "none", padding: 0, color: "var(--sapphire-deep)", display: "inline-flex", alignItems: "center", gap: 2 }}>{r ? s("card.open") : <>{c.startThis}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" style={{ background: "none", padding: 0 }} /></>}</span>
           </div>
         </button>

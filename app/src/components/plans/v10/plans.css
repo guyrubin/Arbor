@@ -405,3 +405,7 @@
 .ds-plans .cp-hear { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
 .ds-plans .cp-hear small { font-size: 12px; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; color: var(--note-ink); }
 .ds-plans .cp-hear p { margin: 0; font-family: var(--font-kid) !important; font-weight: 600 !important; font-size: 15px; line-height: 1.4; color: var(--kid-ink); }
+/* Plan and step names (planNames). */
+.ds-plans .cp-pl > .cp-sh { display: block; margin-bottom: 2px; }
+.ds-plans .cp-bookline { font-size: 12px; line-height: 1.35; color: var(--ink-soft); }
+.ds-plans .cp-bookline i { font-family: var(--font-editorial); font-style: italic; }
