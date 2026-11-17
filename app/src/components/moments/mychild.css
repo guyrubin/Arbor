@@ -476,7 +476,20 @@
 .ds-mychild.ds-phone .said-rows .sqr { grid-template-columns: 34px minmax(0, 1fr); row-gap: 2px; }
 .ds-mychild.ds-phone .said-rows .sqd { grid-column: 2; font-size: 12px; color: var(--ink-soft); }
 /* N-Said: the sayings fill the stage (one row per saying, evenly), the profile meta sits at the tile's end. */
-.ds-mychild.ds-desk .said-v10 .mcst > [data-module="language-words"] { flex: 1; display: flex; flex-direction: column; }
-.ds-mychild.ds-desk .said-v10 .said-rows { flex: 1; }
-.ds-mychild.ds-desk .said-v10 .said-rows .sqr { flex: 1; }
+.ds-mychild.said-v10.ds-desk .mcst > [data-module="language-words"] { flex: 1; display: flex; flex-direction: column; }
+.ds-mychild.said-v10.ds-desk .said-rows { flex: 1; }
+.ds-mychild.said-v10.ds-desk .said-rows .sqr { flex: 1; }
 .ds-mychild .said-profile .said-profile-meta { margin-inline-start: auto; }
+/* V77 re-audit: a rail tile's heading is the sans .h3 the boards set (the app's h3 rule is the display face). */
+.ds-mychild .vt .vh h3.h3, .ds-mychild .hm-last-h h3.h3 { font-family: var(--font-sans) !important; font-weight: 600 !important; }
+.ds-mychild .said-profile .vh h3 { white-space: nowrap; }
+.ds-mychild .said-profile .said-profile-meta { font-size: 12px; }
+/* N-SaidHe: under one language, a right-to-left saying is a card set large; its words' chips read right to left. */
+.ds-mychild .said-rows .sqr.he { direction: rtl; min-height: 120px; padding: 6px 22px; border-top: 0; border-radius: 18px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--rule); margin-bottom: 12px; }
+.ds-mychild .said-rows .sqr.he .q { font-family: 'Frank Ruhl Libre', 'IBM Plex Sans Hebrew', serif !important; font-style: normal; font-weight: 500 !important; font-size: 32px; line-height: 1.3; text-align: start; }
+.ds-mychild.ds-phone .said-rows .sqr.he .q { font-size: 24px; }
+.ds-mychild .said-rows .sqr.he .sqd { direction: ltr; unicode-bidi: isolate; }
+.ds-mychild .said-words .wchip.rtl { direction: rtl; }
+.ds-mychild .said-words .wchip.rtl .w { font-family: 'Frank Ruhl Libre', 'IBM Plex Sans Hebrew', serif !important; font-size: 22px; font-weight: 500 !important; }
+.ds-mychild .said-words .wchip.rtl small { direction: ltr; unicode-bidi: isolate; }
+.ds-mychild .said-page-m > * { width: 100%; justify-content: center; }

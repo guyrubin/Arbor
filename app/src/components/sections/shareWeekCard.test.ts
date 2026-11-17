@@ -121,8 +121,10 @@ describe("B-CAREPRO-26 · the card on #/sharing (source)", () => {
     expect(card).toContain("lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]");
     expect(card).toContain('data-testid="sharing-trust-line"');
     expect(sharing).toMatch(/!loading && team\.length === 0 \? \(\s*<p data-testid="sharing-roster-empty"/);
-    // design v10.1: the page opens on the Trusted sharing scene (its H1 and line)
-    expect(sharing).toMatch(/<PeopleScene[^>]*title=\{t\("sec\.sharing\.title"\)\}[^>]*sub=\{t\("sec\.sharing\.sub"/);
+    // design V77 audit (N-People): the scene's kicker is the page's name ("Trusted sharing"), its H1 the question it answers
+    expect(sharing).toMatch(/<PeopleScene[^>]*kicker=\{t\("sec\.sharing\.title"\)\}[^>]*title=\{careCopy\(uiLang\)\.people\.lanesLabel\(first\)\}/);
+    // NEGATIVE CONTROL: the pre-audit shape (the title as the H1, a sub line) no longer matches
+    expect(sharing).not.toMatch(/<PeopleScene[^>]*title=\{t\("sec\.sharing\.title"\)\}/);
     for (const lang of ["en", "he"] as const) {
       const body = translate(lang, "elev.learnCare.share.week.body");
       expect(body.split(/[.!?](\s|$)/).filter((x) => x && x.trim()).length, `${lang} one sentence`).toBe(1);

@@ -26,6 +26,27 @@ export type CarePeopleCopy = {
   notInvited: string;
   seesNow: string;
   wouldSee: string;
+  stopInvite: string;
+  stopInviteSub: string;
+  stopCarry: string;
+  stopCarrySub: string;
+  stopShares: string;
+  invitesHead: string;
+  invitesSub: string;
+  sharesHead: string;
+  carryWeekTitle: (name: string) => string;
+  carryWeekUnit: string;
+  carryWeekSub: string;
+  carryReadsWeekly: string;
+  carryReadsStory: string;
+  carryReadOnly: string;
+  carryYouSend: string;
+  carryCustomTitle: string;
+  carryCustomUnit: string;
+  carryCustomSub: string;
+  carrySeesTicked: string;
+  stopKinds: string;
+  invitesAndShares: string;
 };
 
 export type CareV10Copy = {
@@ -63,6 +84,23 @@ export type CareV10Copy = {
     packedWordsSub: string;
     lastNote: string;
     timelineLabel: string;
+    addToSummary: string;
+    yourNote: string;
+    teacherHint: string;
+    reasonHint: string;
+    onlyYou: string;
+    staysTitle: string;
+    staysBody: (name: string) => string;
+    goesTitle: string;
+    goesBody: string;
+    nothingReaches: string;
+    staysLine: (name: string) => string;
+    previewHead: string;
+    stopShort: { visit: string; summary: string; dates: string };
+    packedPlan: (n: number) => string;
+    packedPlanSub: string;
+    summaryGroups: (n: number) => string;
+    uncheckPrivate: string;
   };
   brief: {
     stopBrief: string;
@@ -71,6 +109,10 @@ export type CareV10Copy = {
     stopShareSub: string;
     kicker: string;
     backSub: string;
+    lede: string;
+    stopShortBrief: string;
+    stopShortPage: string;
+    pageHead: string;
     nextVisit: (who: string, date: string) => string;
   };
   people: CarePeopleCopy;
@@ -98,6 +140,14 @@ export type CareV10Copy = {
     ledgerNext: (date: string) => string;
     ledgerOpen: string;
     ledgerMarksNote: string;
+    ledgerHardSettled: (hard: number, settled: number) => string;
+    lede: (name: string) => string;
+    docsHead: string;
+    stopKeptShort: string;
+    doorTitle: string;
+    doorSub: string;
+    yourDataWhere: string;
+    yourDataWhat: string;
   };
 };
 
@@ -136,9 +186,26 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       packedMilestones: (n) => plural(n, "milestone", "milestones"),
       packedMilestonesSub: "you marked seen",
       packedWords: (n) => plural(n, "word or saying", "words and sayings"),
-      packedWordsSub: "you wrote down",
+      packedWordsSub: "you kept",
       lastNote: "Your note from the last visit",
       timelineLabel: "Your appointments by date",
+      addToSummary: "Add to the visit summary",
+      yourNote: "your note",
+      teacherHint: "Teacher opens the Teacher brief.",
+      reasonHint: "One line, in your words.",
+      onlyYou: "Only you see this.",
+      staysTitle: "Stays in Arbor",
+      staysBody: (name) => `${isolate(name)}'s whole record`,
+      goesTitle: "Goes only when you save, copy or send",
+      goesBody: "One page with the lines you ticked",
+      nothingReaches: "Nothing reaches your care team until you choose.",
+      staysLine: (name) => `Stays in Arbor: ${isolate(name)}'s whole record. Leaves when you choose: one page, the lines you ticked.`,
+      previewHead: "Preview the visit summary",
+      stopShort: { visit: "Visit", summary: "Summary", dates: "Dates" },
+      packedPlan: (n) => plural(n, "plan step done", "plan steps done"),
+      packedPlanSub: "in the action plan",
+      uncheckPrivate: "Uncheck to keep private",
+      summaryGroups: (n) => (n === 8 ? "Eight groups, line by line" : `${n} ${plural(n, "group", "groups")}, line by line`),
     },
     brief: {
       stopBrief: "The brief",
@@ -147,6 +214,10 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopShareSub: "save, copy, ask Arbor",
       kicker: "Teacher brief · one page, classroom words",
       backSub: "Change who it is for, or the template, in Visits",
+      lede: "One page in classroom words: what helps and what to try. You review every line before it goes anywhere.",
+      stopShortBrief: "Brief",
+      stopShortPage: "The page",
+      pageHead: "The brief",
       nextVisit: (who, date) => `Next visit: ${who}, ${date}`,
     },
     people: {
@@ -176,6 +247,27 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       notInvited: "not invited yet",
       seesNow: "sees it now",
       wouldSee: "would see it once you invite",
+      stopInvite: "Before you invite",
+      stopInviteSub: "what it starts",
+      stopCarry: "What a share carries",
+      stopCarrySub: "the week, a custom share",
+      stopShares: "Shares and your data",
+      invitesHead: "Invites",
+      invitesSub: "waiting for an answer",
+      sharesHead: "Shared with you, your data and the record",
+      carryWeekTitle: (name) => `${isolate(name)}'s week, to read`,
+      carryWeekUnit: "things to read",
+      carryWeekSub: "the weekly report and the story timeline",
+      carryReadsWeekly: "reads the weekly report",
+      carryReadsStory: "reads the story timeline",
+      carryReadOnly: "read only",
+      carryYouSend: "You send them the invite.",
+      carryCustomTitle: "A custom share",
+      carryCustomUnit: "person at a time",
+      carryCustomSub: "you choose what, and for how long",
+      carrySeesTicked: "sees only what you ticked",
+      stopKinds: "Kinds",
+      invitesAndShares: "Invites and shares",
     },
     records: {
       stopRecord: "The record",
@@ -201,6 +293,14 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       ledgerNext: (date) => `next ${date}`,
       ledgerOpen: "open where they live",
       ledgerMarksNote: "Each mark is one thing you recorded.",
+      ledgerHardSettled: (h, settled) => (settled === 0 ? `${h} hard` : settled === h ? (h === 1 ? "1 hard, marked settled" : `${h} hard, each marked settled`) : `${h} hard, ${settled} marked settled`),
+      lede: (name) => `Your own documents about ${isolate(name)}, built from what you've already logged.`,
+      docsHead: "Documents you can save",
+      stopKeptShort: "Kept",
+      doorTitle: "Prepare a visit summary",
+      doorSub: "In Visits",
+      yourDataWhere: "Your data, in Settings",
+      yourDataWhat: "Export or delete a child's data, or delete your account.",
     },
   },
   he: {
@@ -235,9 +335,26 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       packedMilestones: (n) => (n === 1 ? "אבן דרך" : "אבני דרך"),
       packedMilestonesSub: "שסימנתם שראיתם",
       packedWords: (n) => (n === 1 ? "מילה או משפט" : "מילים ומשפטים"),
-      packedWordsSub: "שרשמתם",
+      packedWordsSub: "ששמרתם",
       lastNote: "מה רשמתם אחרי הביקור הקודם",
       timelineLabel: "הפגישות שלכם לפי תאריך",
+      addToSummary: "להוסיף לסיכום הביקור",
+      yourNote: "הפתק שלכם",
+      teacherHint: "גננת פותחת את התקציר לגן.",
+      reasonHint: "שורה אחת, במילים שלכם.",
+      onlyYou: "רק אתם רואים את זה.",
+      staysTitle: "נשאר ב-Arbor",
+      staysBody: (name) => `כל התיעוד של ${isolate(name)}`,
+      goesTitle: "יוצא רק כשאתם שומרים, מעתיקים או שולחים",
+      goesBody: "עמוד אחד עם השורות שסימנתם",
+      nothingReaches: "שום דבר לא מגיע לצוות הטיפול עד שתבחרו.",
+      staysLine: (name) => `נשאר ב-Arbor: כל התיעוד של ${isolate(name)}. יוצא כשאתם בוחרים: עמוד אחד, השורות שסימנתם.`,
+      previewHead: "תצוגה מקדימה של סיכום הביקור",
+      stopShort: { visit: "ביקור", summary: "סיכום", dates: "תאריכים" },
+      packedPlan: (n) => (n === 1 ? "צעד בתוכנית שבוצע" : "צעדים בתוכנית שבוצעו"),
+      packedPlanSub: "בתוכנית הפעולה",
+      summaryGroups: (n) => `${n} קבוצות, שורה אחר שורה`,
+      uncheckPrivate: "מורידים סימון כדי לשמור לעצמכם",
     },
     brief: {
       stopBrief: "התקציר",
@@ -246,6 +363,10 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       stopShareSub: "שמירה, העתקה, בקשה מ-Arbor",
       kicker: "תקציר לגן · עמוד אחד, בשפת הגן",
       backSub: "משנים למי זה, או את התבנית, בביקורים",
+      lede: "עמוד אחד בשפת הגן: מה עוזר ומה כדאי לנסות. אתם עוברים על כל שורה לפני שהיא יוצאת.",
+      stopShortBrief: "תקציר",
+      stopShortPage: "העמוד",
+      pageHead: "התקציר",
       nextVisit: (who, date) => `הביקור הבא: ${who}, ${date}`,
     },
     people: {
@@ -275,6 +396,27 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       notInvited: "עוד לא הוזמנו",
       seesNow: "רואים עכשיו",
       wouldSee: "יראו אחרי שתזמינו",
+      stopInvite: "לפני שמזמינים",
+      stopInviteSub: "מה זה פותח",
+      stopCarry: "מה שיתוף כולל",
+      stopCarrySub: "השבוע, שיתוף מותאם",
+      stopShares: "שיתופים והמידע שלכם",
+      invitesHead: "הזמנות",
+      invitesSub: "ממתינות לתשובה",
+      sharesHead: "שותף איתכם, המידע שלכם והתיעוד",
+      carryWeekTitle: (name) => `השבוע של ${isolate(name)}, לקריאה`,
+      carryWeekUnit: "דברים לקריאה",
+      carryWeekSub: "הדוח השבועי וציר הסיפור",
+      carryReadsWeekly: "קוראים את הדוח השבועי",
+      carryReadsStory: "קוראים את ציר הסיפור",
+      carryReadOnly: "קריאה בלבד",
+      carryYouSend: "אתם שולחים להם את ההזמנה.",
+      carryCustomTitle: "שיתוף מותאם",
+      carryCustomUnit: "אדם אחד בכל פעם",
+      carryCustomSub: "אתם בוחרים מה, ולכמה זמן",
+      carrySeesTicked: "רואים רק את מה שסימנתם",
+      stopKinds: "סוגים",
+      invitesAndShares: "הזמנות ושיתופים",
     },
     records: {
       stopRecord: "התיעוד",
@@ -300,6 +442,14 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       ledgerNext: (date) => `הבא ${date}`,
       ledgerOpen: "לפתוח במקום שבו הם נשמרים",
       ledgerMarksNote: "כל סימן הוא דבר אחד שרשמתם.",
+      ledgerHardSettled: (h, settled) => (settled === 0 ? `${h} קשים` : settled === h ? `${h} קשים, כולם סומנו שנרגעו` : `${h} קשים, ${settled} סומנו שנרגעו`),
+      lede: (name) => `המסמכים שלכם על ${isolate(name)}, מתוך מה שכבר תיעדתם.`,
+      docsHead: "מסמכים שאפשר לשמור",
+      stopKeptShort: "נשמר",
+      doorTitle: "הכנת סיכום ביקור",
+      doorSub: "בביקורים",
+      yourDataWhere: "המידע שלכם, בהגדרות",
+      yourDataWhat: "ייצוא או מחיקה של המידע על ילד, או מחיקת החשבון.",
     },
   },
 };

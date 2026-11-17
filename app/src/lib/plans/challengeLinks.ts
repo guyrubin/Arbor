@@ -34,3 +34,23 @@ export function readChallengeQuery(q: URLSearchParams): ChallengeTarget {
 export function challengePlanHref(pattern?: PatternId | null, opts: { compose?: boolean; print?: boolean } = {}): string {
   return "#" + routeHash("plans", { challenge: pattern ?? CHALLENGE_ALL, ...(pattern && opts.compose ? { compose: "1" } : {}), ...(pattern && opts.print ? { printout: "1" } : {}) });
 }
+
+/**
+ * The plan a Challenge Plans view has open, as the shell's breadcrumb names it
+ * (N-Challenge-D: "Now › Plans › {plan}"); null on Plans' home. The composer
+ * names the pattern it composes; the plan's page, the running plan it shows
+ * (the one asked for, else the newest running); the parent copy, its plan.
+ * The name is the plan's own title (the board's parent-register names are not
+ * in the pattern data).
+ */
+export function openChallengeName(
+  target: ChallengeTarget,
+  running: { def: { id: PatternId; title: { en: string; he: string } } }[],
+  composing: { title: { en: string; he: string } } | null | undefined,
+  lang: "en" | "he",
+): string | null {
+  if (target.kind === "none") return null;
+  if (composing) return composing.title[lang];
+  const open = target.kind === "pattern" ? running.find((r) => r.def.id === target.pattern) ?? (target.print ? undefined : running[0]) : running[0];
+  return open ? open.def.title[lang] : null;
+}

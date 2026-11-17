@@ -86,7 +86,6 @@ export interface FamilyPlanCopy {
   reviewPasteHint: string;
   reviewRead: string;
   reviewReading: string;
-  reviewKeepsLines: string;
   reviewFound: Fn<[number, number]>;
   reviewNothing: string;
   reviewDraft: string;
@@ -115,6 +114,34 @@ export interface FamilyPlanCopy {
   changeHead: string;
   changeDraftFrom: Fn<[number, string]>;
   reviewApplyAskAgain: string;
+  reviewThings: Fn<[number]>;
+  figFound: Fn<[number]>;
+  figNoDate: Fn<[number]>;
+  beforeAdd: string;
+  keepsTitle: string;
+  keepsSub: string;
+  relDay: Fn<[number]>;
+  whatThisDoes: string;
+  ifYouApplyIt: string;
+  doesRequest: Fn<[string, string]>;
+  doesRequestSub: Fn<[string, string]>;
+  doesReask: Fn<[string, string]>;
+  doesReminder: Fn<[string]>;
+  doesReminderSub: string;
+  notAffected: Fn<[string]>;
+  stillWhen: Fn<[string]>;
+  versionsTitle: string;
+  versionLine: Fn<[number, string]>;
+  versionWaiting: string;
+  versionsKeep: string;
+  coCanYou: string;
+  coFromMessage: Fn<[number]>;
+  coYesTitle: string;
+  coStepAsked: string;
+  coStepAccepted: string;
+  coStepDone: string;
+  oneChangeToReview: string;
+  staysNote: string;
   changeDraftOne: string;
   kindTags: Record<"deadline" | "event" | "join" | "note", string>;
   changeStill: Fn<[string]>;
@@ -271,7 +298,6 @@ const en: FamilyPlanCopy = {
   reviewPasteHint: "Arbor reads it for dates and keeps only the lines a kept date came from, never the whole message.",
   reviewRead: "Find the dates",
   reviewReading: "Reading the message…",
-  reviewKeepsLines: "Arbor keeps the lines it used, not the whole message.",
   reviewFound: (dated, notes) => `${dated} ${dated === 1 ? "date" : "dates"} found${notes ? `, ${notes} ${notes === 1 ? "note" : "notes"} with no date` : ""}`,
   reviewNothing: "Arbor found no dates in this message. You can add one yourself.",
   reviewDraft: "Arbor draft · you decide",
@@ -298,6 +324,34 @@ const en: FamilyPlanCopy = {
   changeHead: "One change to review",
   changeDraftFrom: (v, at) => `Arbor draft · from version ${v} of the message, ${at}`,
   reviewApplyAskAgain: "Apply and ask again",
+  reviewThings: (n) => (n === 1 ? "One thing in this message" : `${["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"][n] ?? n} things in this message`),
+  figFound: (n) => (n === 1 ? "date found" : "dates found"),
+  figNoDate: (n) => (n === 1 ? "note with no date" : "notes with no date"),
+  beforeAdd: "Before you add",
+  keepsTitle: "Arbor keeps the lines it used",
+  keepsSub: "Not the whole message.",
+  relDay: (n) => (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 ? `In ${n} days` : `${-n} days ago`),
+  whatThisDoes: "What this does",
+  ifYouApplyIt: "if you apply it",
+  doesRequest: (who, old) => `The request to ${who} was for ${old}`,
+  doesRequestSub: (old, nw) => `It closes. A yes to ${old} would not count for ${nw}.`,
+  doesReask: (who, nw) => `${who} is asked again, for ${nw}`,
+  doesReminder: (when) => `The reminder for ${when} stops`,
+  doesReminderSub: "It stops when you apply the change. The next one follows the new time.",
+  notAffected: (title) => `${title} is not affected`,
+  stillWhen: (when) => `Still ${when}.`,
+  versionsTitle: "Versions",
+  versionLine: (v, what) => `Version ${v} · ${what}`,
+  versionWaiting: "waiting for you",
+  versionsKeep: "Both versions stay with the plan. Nothing is replaced silently.",
+  coCanYou: "Can you take this?",
+  coFromMessage: (v) => `From the kindergarten's message, version ${v}`,
+  coYesTitle: "What your yes means",
+  coStepAsked: "Asked. Not yours yet.",
+  coStepAccepted: "Yours once you say yes.",
+  coStepDone: "You mark it after the date.",
+  oneChangeToReview: "Arbor draft · one change to review",
+  staysNote: "No date in the message: it stays a note",
   changeDraftOne: "Arbor draft · one thing changed",
   kindTags: { deadline: "Deadline", event: "Event", join: "Event", note: "Note" },
   changeStill: (when) => `Still ${when} in your plan until you apply it.`,
@@ -384,7 +438,7 @@ const en: FamilyPlanCopy = {
   coAsksYou: (who) => `${who} asks you`,
   coTakeIt: "I'll take it",
   coCant: "I can't",
-  coYesMeans: "Your yes is for this version. If the kindergarten changes it, you are asked again.",
+  coYesMeans: "If the kindergarten changes it, Arbor asks you again.",
   coYesFor: (n) => `Your yes is for version ${n}.`,
   coAddCalendar: "Add it to my calendar when I say yes",
   coChanged: "This date changed since you were asked. Here is the new version.",
@@ -471,7 +525,6 @@ const he: FamilyPlanCopy = {
   reviewPasteHint: "Arbor קורא אותה כדי למצוא תאריכים ושומר רק את השורות שמהן הגיעו התאריכים שנשמרו, לא את כל ההודעה.",
   reviewRead: "מציאת התאריכים",
   reviewReading: "קורא את ההודעה…",
-  reviewKeepsLines: "Arbor שומר את השורות שבהן השתמש, לא את כל ההודעה.",
   reviewFound: (dated, notes) => `${dated === 1 ? "נמצא תאריך אחד" : `נמצאו ${dated} תאריכים`}${notes ? `, ${notes === 1 ? "הערה אחת" : `${notes} הערות`} בלי תאריך` : ""}`,
   reviewNothing: "Arbor לא מצא תאריכים בהודעה הזאת. אפשר להוסיף תאריך בעצמכם.",
   reviewDraft: "טיוטה של Arbor · אתם מחליטים",
@@ -498,6 +551,34 @@ const he: FamilyPlanCopy = {
   changeHead: "שינוי אחד לבדיקה",
   changeDraftFrom: (v, at) => `טיוטה של Arbor · מגרסה ${v} של ההודעה, ${at}`,
   reviewApplyAskAgain: "לעדכן ולבקש שוב",
+  reviewThings: (n) => (n === 1 ? "דבר אחד בהודעה הזאת" : `${n} דברים בהודעה הזאת`),
+  figFound: (n) => (n === 1 ? "תאריך נמצא" : "תאריכים נמצאו"),
+  figNoDate: (n) => (n === 1 ? "הערה בלי תאריך" : "הערות בלי תאריך"),
+  beforeAdd: "לפני שמוסיפים",
+  keepsTitle: "Arbor שומר את השורות שבהן השתמש",
+  keepsSub: "לא את כל ההודעה.",
+  relDay: (n) => (n === 0 ? "היום" : n === 1 ? "מחר" : n === -1 ? "אתמול" : n > 1 ? `בעוד ${n} ימים` : `לפני ${-n} ימים`),
+  whatThisDoes: "מה זה עושה",
+  ifYouApplyIt: "אם מעדכנים",
+  doesRequest: (who, old) => `הבקשה ל${who} הייתה ל־${old}`,
+  doesRequestSub: (old, nw) => `היא נסגרת. "כן" ל־${old} לא נחשב ל־${nw}.`,
+  doesReask: (who, nw) => `נבקש שוב מ${who}, ל־${nw}`,
+  doesReminder: (when) => `התזכורת ל־${when} נעצרת`,
+  doesReminderSub: "היא נעצרת כשמעדכנים את השינוי. התזכורת הבאה הולכת לפי הזמן החדש.",
+  notAffected: (title) => `${title} לא משתנה`,
+  stillWhen: (when) => `עדיין ${when}.`,
+  versionsTitle: "גרסאות",
+  versionLine: (v, what) => `גרסה ${v} · ${what}`,
+  versionWaiting: "מחכה לכם",
+  versionsKeep: "שתי הגרסאות נשמרות בתוכנית. שום דבר לא מוחלף בשקט.",
+  coCanYou: "תוכלו לקחת את זה?",
+  coFromMessage: (v) => `מההודעה של הגן, גרסה ${v}`,
+  coYesTitle: "מה ה״כן״ שלכם אומר",
+  coStepAsked: "נשאלתם. עוד לא שלכם.",
+  coStepAccepted: "שלכם ברגע שתגידו כן.",
+  coStepDone: "אתם מסמנים אחרי התאריך.",
+  oneChangeToReview: "טיוטה של Arbor · שינוי אחד לבדיקה",
+  staysNote: "אין תאריך בהודעה: נשאר כהערה",
   changeDraftOne: "טיוטה של Arbor · דבר אחד השתנה",
   kindTags: { deadline: "מועד אחרון", event: "אירוע", join: "אירוע", note: "הערה" },
   changeStill: (when) => `בתוכנית שלכם עדיין ${when} עד שתעדכנו.`,
@@ -584,7 +665,7 @@ const he: FamilyPlanCopy = {
   coAsksYou: (who) => `${who} מבקש ממך`,
   coTakeIt: "אני לוקח/ת",
   coCant: "לא יכול/ה",
-  coYesMeans: "ה״כן״ שלך הוא לגרסה הזאת. אם הגן ישנה, תתבקש/י שוב.",
+  coYesMeans: "אם הגן ישנה אותו, Arbor ישאל אותך שוב.",
   coYesFor: (n) => `ה״כן״ שלך הוא לגרסה ${n}.`,
   coAddCalendar: "להוסיף ליומן שלי כשאני אומר/ת כן",
   coChanged: "התאריך השתנה מאז שביקשו ממך. זו הגרסה החדשה.",

@@ -12,7 +12,7 @@ import { milestonesV10Copy } from "./milestonesV10Copy";
  * today). Drawings are decor (aria-hidden); the step names are the text. It
  * shows no record and counts nothing.
  */
-export default function MilestonesReadGuide({ steps = "map" }: { steps?: "map" | "list" }) {
+export default function MilestonesReadGuide({ steps = "map", suggests = true }: { steps?: "map" | "list"; suggests?: boolean }) {
   const { t, uiLang } = useLanguage();
   const copy = milestonesV10Copy(uiLang);
   const seenIt = t(NOTICE_ANSWER_KEYS.yes);
@@ -21,7 +21,7 @@ export default function MilestonesReadGuide({ steps = "map" }: { steps?: "map" |
   const cards = <span className="gdc" aria-hidden="true"><i /><i /></span>;
   const rows = steps === "map"
     ? [{ draw: cells, label: copy.readPick }, { draw: axis, label: copy.readDates }, { draw: cards, label: copy.readMark }]
-    : [{ draw: cells, label: copy.readPick }, { draw: cards, label: copy.readMark }];
+    : [{ draw: cells, label: copy.readPick }, { draw: cards, label: copy.readMarkEach }, { draw: <span className="gd8 gdw" aria-hidden="true">{Array.from({ length: 8 }, (_, i) => <i key={i} />)}</span>, label: copy.readCheckWhole }];
   return (
     <section className="mcc mcg" aria-labelledby="ms-read-title" data-testid="ms-read-guide">
       <div className="ch">
@@ -39,8 +39,9 @@ export default function MilestonesReadGuide({ steps = "map" }: { steps?: "map" |
       </ol>
       <p className="key3">
         <span><span aria-hidden="true"><Token kind="moment" size="sm" label={seenIt} /></span>{seenIt}</span>
-        <span><span aria-hidden="true"><Token kind="moment" state="ai" size="sm" label={copy.arborSuggests} /></span>{copy.arborSuggests}</span>
-        {steps === "map" && <span><span aria-hidden="true"><Token kind="neutral" state="here" size="sm" label={copy.today} /></span>{copy.today}</span>}
+        {steps === "list" && <span data-testid="ms-read-key-next"><span aria-hidden="true"><Token kind="moment" state="ai" size="sm" label={copy.nextToNotice} /></span>{copy.nextToNotice}</span>}
+        {suggests && steps === "map" && <span data-testid="ms-read-key-suggests"><span aria-hidden="true"><Token kind="moment" state="ai" size="sm" label={copy.arborSuggests} /></span>{copy.arborSuggests}</span>}
+        {steps === "map" && <span><i className="ms-key-today" aria-hidden="true" />{copy.today}</span>}
       </p>
     </section>
   );

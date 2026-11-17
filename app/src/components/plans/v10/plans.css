@@ -365,3 +365,43 @@
 /* V77 states: focus is a 2 px sapphire ring at a 2 px offset. */
 .ds-plans button:focus-visible, .ds-plans a:focus-visible, .ds-plans select:focus-visible, .ds-plans textarea:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
 .ds-plans button:disabled { opacity: .55; cursor: default; }
+
+/* Fidelity audit (N-Plans/N-Challenge): tile names and script moments are sans (the boards' span.h3),
+   not the app-wide heading face; the rail's number sits beside its two-line title. */
+.ds-plans .vt .vh .h3, .ds-plans .ds-plans-h4 { font-family: var(--font-sans) !important; }
+.ds-plans .siderail > .rh { flex-wrap: wrap; align-items: flex-start; }
+.ds-plans .siderail > .rh .h3 { flex: 1 1 0; min-width: 0; }
+/* N-Challenge: the rail's sub sits beside its title; sources under a label column. */
+.ds-plans .siderail > .rh .h3 { flex: 0 1 auto; }
+.ds-plans .siderail > .rh .small { flex-basis: auto; padding-inline-start: 0; align-self: center; }
+.ds-plans .cp-src { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; font-size: 13px; }
+.ds-plans .cp-src > b { font-weight: 500 !important; color: var(--ink); }
+.ds-plans.ds-phone .cp-src { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.ds-plans .cp-stepcard { display: flex; flex-direction: column; gap: 10px; }
+.ds-plans .cp-stepcard .cp-st { align-items: center; }
+.ds-plans .cp-sh { font-size: 14px; font-weight: 600 !important; color: var(--ink); }
+/* CP-1/CP-2: the card questions are small sans kickers (not the app heading face); a long chip wraps. */
+.ds-plans .cp-q { font-family: var(--font-sans) !important; font-size: 12px !important; line-height: 1.3; }
+.ds-plans .cp-chip { white-space: normal; text-align: start; max-width: 100%; }
+.ds-plans .cp-kidd { border-radius: 14px; background: #fffdf6; box-shadow: inset 0 0 0 1px #eadfca; }
+.ds-plans .cp-kids { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; cursor: pointer; list-style: none; }
+.ds-plans .cp-kids::-webkit-details-marker { display: none; }
+.ds-plans .cp-kids small { flex: none; font-size: 12px; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; color: var(--note-ink); }
+.ds-plans .cp-kidt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600 !important; color: var(--kid-ink); }
+.ds-plans .cp-kidd[open] .cp-kidt { visibility: hidden; }
+.ds-plans .cp-kidd > .cp-kid { box-shadow: none; padding-top: 0; }
+
+/* CP-2-Agree-D: the desktop composer (scene, rail, Make it yours). */
+.ds-plans .cp-aghead { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; padding: 22px 28px 0; }
+.ds-plans .cp-agjr { margin-top: -6px; }
+.ds-plans .cp-agjr .cp-jr { margin-bottom: 26px !important; }
+.ds-plans .cp-agcard { background: var(--card); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px #1b2a4a14; }
+.ds-plans .cp-stn { margin: 0; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 20px; line-height: 1.15; color: var(--ink); }
+.ds-plans .cp-when2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.ds-plans .cp-when { display: flex; flex-direction: column; gap: 2px; min-height: 44px; padding: 6px 12px; border-radius: 12px; background: var(--tint-2); }
+.ds-plans .cp-when small { font-size: 12px; color: var(--ink-soft); }
+.ds-plans .cp-when select { border: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--ink); padding: 0; min-height: 24px; }
+.ds-plans .cp-when-ro b { font-size: 14px; font-weight: 600 !important; color: var(--ink); }
+.ds-plans .cp-hear { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-plans .cp-hear small { font-size: 12px; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; color: var(--note-ink); }
+.ds-plans .cp-hear p { margin: 0; font-family: var(--font-kid) !important; font-weight: 600 !important; font-size: 15px; line-height: 1.4; color: var(--kid-ink); }

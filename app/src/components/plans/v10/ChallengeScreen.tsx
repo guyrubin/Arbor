@@ -155,11 +155,20 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const running = useMemo(() => activePlans(p.planRows, p.now), [p.planRows, p.now]);
   const plan = (p.focus ? running.find((r) => r.def.id === p.focus) : running[0]) ?? null;
   const runningIds = new Set(running.map((r) => r.def.id));
-  const listed = [...running.map((r) => r.def), ...p.composable.filter((d) => !runningIds.has(d.id))];
+  // N-Challenge-D: the running plan keeps its place in the list (marked "Running · open it above").
+  const listed = [...p.composable, ...running.map((r) => r.def).filter((d) => !p.composable.some((x) => x.id === d.id))];
   const [notTonight, setNotTonight] = useState(false);
   const [journaled, setJournaled] = useState(false);
 
-  const stops: GuideStop[] = plan
+  const stops: GuideStop[] = plan && !desk
+    ? [
+        /* N-Challenge-M: Plan · Steps · Nights · All eight. */
+        { id: "cp-stage", title: c.planShort, sub: c.bookReady },
+        { id: "cp-steps", title: c.stepsShort, sub: c.threeSteps },
+        { id: "cp-nights", title: c.nights, sub: c.nightsUnit },
+        { id: "cp-all", title: c.allShort(listed.length), sub: c.pickAnother },
+      ]
+    : plan
     ? [
         { id: "cp-stage", title: c.childPlan(childName), sub: c.bookReady },
         { id: "cp-today", title: c.today, sub: c.todayGuideSub },
@@ -172,7 +181,9 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const title = plan ? plan.def.title[lang] : "";
   const recorded = plan ? nightRecorded(plan.doc, p.now) : false;
   const parentStep = plan ? tonightStepForParent(plan.doc, lang) : null;
-  const childLine = plan ? tonightStepForChild(plan.doc, lang, p.gender) : null;
+  const childRaw = plan ? tonightStepForChild(plan.doc, lang, p.gender) : null;
+  // The book's sentence opens the box, so it starts with a capital (the board's "Every morning, …").
+  const childLine = childRaw ? childRaw.charAt(0).toLocaleUpperCase(lang) + childRaw.slice(1) : null;
   const total = plan?.doc.durationDays ?? 0;
   const night = plan ? Math.min(plan.day, total) : 0;
 
@@ -235,8 +246,9 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     >
       <div className="line between" style={{ padding: desk ? "24px 28px 0" : "16px 16px 0", alignItems: "flex-start" }}>
         <span className="gsec">
-          <span className="kicker">{c.challengePlan}</span>
-          <StartHere>{c.today}</StartHere>
+          {/* CP-5: at Reflect the kicker names the day the nights ended and the plan; no "Start here". */}
+          <span className="kicker">{plan.review ? `${fmtDayV10(new Date(new Date(plan.doc.approvedAt).getTime() + plan.doc.durationDays * 86_400_000), lang, p.now)} · ${title}` : c.challengePlan}</span>
+          {!plan.review && <StartHere>{c.startHere}</StartHere>}
         </span>
         {desk && <NightFig lang={lang} night={night} total={total} size="md" />}
       </div>
@@ -280,44 +292,76 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
     </>
   );
 
+  /* "Step 1 · Every morning": the step and its time of day (the boards' step names are not in the data). */
+  const stepTime = (i: number) => {
+    const t = book?.steps[i]?.time;
+    return t ? s(`time.${t}` as Parameters<typeof planString>[0]) : "";
+  };
+  const stepHead = (i: number) => [c.stepN(i + 1), stepTime(i)].filter(Boolean).join(" · ");
+  const kidText = (i: number) => {
+    const line = book?.steps[i]?.text;
+    if (!line) return "";
+    const t = lang === "he" ? line.he[p.gender] : line.en;
+    return t.charAt(0).toLocaleUpperCase(lang) + t.slice(1);
+  };
+  /* N-Challenge-M §2: one card per step — the step, what you do, what {name} hears. */
+  const stepCards = plan && book && book.parent.planSteps.map((line, i) => (
+    <article key={i} className="nx-phc cp-stepcard" data-plan-step-card={i + 1}>
+      <div className="cp-st">
+        <span className="cp-n"><b>{i + 1}</b><Icon name="check" size={18} /></span>
+        <div className="cp-pl" dir="auto"><b className="cp-sh">{stepHead(i)}</b></div>
+      </div>
+      <p dir="auto" style={{ fontSize: 13, lineHeight: 1.4, color: "var(--ink)", margin: 0 }}>{line[lang]}</p>
+      {kidText(i) && <div className="cp-kid" dir="auto"><small>{c.inTheBook(childName)}</small>{kidText(i)}</div>}
+    </article>
+  ));
+
   const stepsTile = plan && book && (
-    <Tile className={desk ? "x4" : undefined} icon="checklist" kind="plan" title={c.theSteps} titleId="cp-steps" link={<button type="button" className="ds-link" onClick={() => p.onChange(plan)}>{s("review.change")}</button>}>
+    <Tile className={desk ? "x4" : undefined} icon="checklist" kind="plan" title={c.theSteps} titleId="cp-steps" link={<button type="button" className="ds-link" onClick={() => p.onChange(plan)} aria-label={s("review.change")}>{c.change}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" /></button>}>
       <ol className="stack ds-col" style={{ gap: 14, margin: 0, padding: 0, listStyle: "none" }} data-plan-steps="">
         {book.parent.planSteps.map((line, i) => (
           <li key={i} className="cp-st">
             <span className="cp-n"><b>{i + 1}</b><Icon name="check" size={18} /></span>
-            <div className="cp-pl" dir="auto">{line[lang]}</div>
+            <div className="cp-pl" dir="auto"><small>{stepHead(i)}</small>{line[lang]}</div>
           </li>
         ))}
       </ol>
       {book.box && book.box.length > 0 && (
-        <p className="line1" dir="auto"><b>{c.theBox}</b> {book.box.map((b) => b.label[lang]).join(" · ")}</p>
+        <p className="line1" dir="auto"><b>{c.theBox}</b> {c.boxLede(childName)} {book.box.map((b, i) => (i > 0 && lang === "en" ? b.label[lang].charAt(0).toLowerCase() + b.label[lang].slice(1) : b.label[lang])).join(", ")}.</p>
       )}
     </Tile>
   );
 
-  const nightsTile = plan && (
-    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.tried} titleId="cp-nights">
+  const nightsBody = plan && (
+    <>
       <Fig n={nightsCount(plan.doc)} unit={c.nightsUnit} size="md" />
       <NightsStrip plan={plan} lang={lang} now={p.now} />
       <TokenLegend
         items={[
           { token: <i className="tok plan sm" aria-hidden="true" />, label: s("today.night.yes") },
-          { token: <i className="tok plan none sm" aria-hidden="true" />, label: c.noAnswer },
+          { token: <i className="tok plan none sm" aria-hidden="true" />, label: c.noAnswerLegend },
         ]}
       />
+    </>
+  );
+  const nightsTile = plan && (
+    <Tile className={desk ? "x4" : undefined} icon="nightlight" kind="plan" title={c.tried} titleId="cp-nights">
+      {nightsBody}
     </Tile>
   );
 
   const sourcesTile = plan && (
     <Tile className={desk ? "x4" : undefined} icon="menu_book" title={c.whereFrom} titleId="cp-sources">
-      <ul className="stack ds-col" style={{ gap: 8, margin: 0, paddingInlineStart: 18, fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
+      <div className="cp-src">
+      <b>{c.sourcesLabel}</b>
+      <ul className="stack ds-col" style={{ gap: 8, margin: 0, padding: 0, listStyle: "none", fontSize: 13, lineHeight: 1.35 }} data-plan-sources="">
         {plan.def.sources.map((src) => (
           <li key={src.id} dir="auto">
             {src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 2 }}>{src.label[lang]}</a> : src.label[lang]}
           </li>
         ))}
       </ul>
+      </div>
     </Tile>
   );
 
@@ -350,7 +394,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
           <div className="cf2" style={{ flexWrap: "nowrap" }}>
             {r ? <span className="run">{plan?.def.id === d.id ? c.runningOpenAbove : c.runningNight(Math.min(r.day, r.doc.durationDays), r.doc.durationDays)}</span> : <span data-plan-door-age="">{s("chooser.age", { age: d.ageText })}</span>}
             {!r && <span>{c.days(d.defaultDurationDays)}</span>}
-            <span style={{ marginInlineStart: "auto", background: "none", padding: 0, color: "var(--sapphire-deep)" }}>{r ? s("card.open") : c.startThis}</span>
+            <span style={{ marginInlineStart: "auto", background: "none", padding: 0, color: "var(--sapphire-deep)", display: "inline-flex", alignItems: "center", gap: 2 }}>{r ? s("card.open") : <>{c.startThis}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" style={{ background: "none", padding: 0 }} /></>}</span>
           </div>
         </button>
       </div>
@@ -360,7 +404,7 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
   const all = listed.length > 0 && (
     <>
       {/* With no plan running there is no stage, so the list's title is the screen's one h1. */}
-      <RouteHead level={plan ? 2 : 1} title={s("section.hard")} sub={desk ? c.allSub(listed.length, childName) : undefined} />
+      <RouteHead level={plan ? 2 : 1} title={s("section.hard")} sub={desk ? c.allSub(listed.length, childName) : c.allCount(listed.length)} />
       {!plan && <p className="small" style={{ marginBottom: 8 }}>{c.noRunning}</p>}
       {desk ? (
         <div className="g12" data-plans-chooser="">{listed.map(card)}</div>
@@ -394,31 +438,40 @@ export function ChallengeScreen(p: ChallengeScreenProps) {
                   <Icon name="menu_book" size={18} />
                   {s("card.open")}
                 </button>
-                {actions}
+                {/* N-Challenge-M: the night question and the plan's other moves share one card. */}
+                <section className="vt" style={{ padding: 16, borderRadius: 18, gap: 12 }} data-plan-today="">
+                  {nightQuestion}
+                  {actions}
+                </section>
               </div>
             </RouteSection>
-            <RouteSection id="cp-today" n={2}>
-              <RouteHead title={c.today} sub={c.todaySub(childName)} />
-              <div className="stack ds-col" style={{ gap: 10 }}>{todayCards}</div>
+            <RouteSection id="cp-steps" n={2}>
+              <RouteHead title={c.theSteps} sub={c.stepsApproved} />
+              <div className="stack ds-col" style={{ gap: 10 }} data-module="plans-challenge-page">
+                <Snap label={c.theSteps}>{stepCards}</Snap>
+                <SnapDots count={3} caption={c.stepOf(1, 3)} />
+                {book?.box && book.box.length > 0 && <p className="small" dir="auto"><b>{c.theBox}</b> {c.boxLede(childName)} {book.box.map((b, i) => (i > 0 && lang === "en" ? b.label[lang].charAt(0).toLowerCase() + b.label[lang].slice(1) : b.label[lang])).join(", ")}.</p>}
+              </div>
+            </RouteSection>
+            <RouteSection id="cp-nights" n={3}>
+              <RouteHead title={c.tried} />
+              {nightsBody && <section className="vt" style={{ padding: 16, borderRadius: 18, gap: 12 }}>{nightsBody}</section>}
             </RouteSection>
           </>
         )}
-        {plan && (
+        {plan && desk && (
           <RouteSection id="cp-page" n={3} stopTop={2}>
-            <RouteHead title={c.onePage} sub={desk ? c.onePageSub : undefined} />
-            {desk ? (
-              <div className="g12" data-module="plans-challenge-page">{stepsTile}{nightsTile}{sourcesTile}</div>
-            ) : (
-              <div data-module="plans-challenge-page" className="stack ds-col" style={{ gap: 10 }}>
-                <Snap label={c.onePage}>{stepsTile}{nightsTile}{sourcesTile}</Snap>
-                <SnapDots count={3} caption={c.theSteps} />
-              </div>
-            )}
+            <RouteHead title={c.onePage} sub={desk ? c.onePageHeadSub : undefined} />
+            <div className="g12" data-module="plans-challenge-page">{stepsTile}{nightsTile}{sourcesTile}</div>
           </RouteSection>
         )}
         {all && (
           <RouteSection id="cp-all" n={plan ? 4 : 1} on={!plan} stopTop={2}>
-            <div data-module="plans-challenge-all" className="stack ds-col" style={{ gap: 12 }}>{all}</div>
+            <div data-module="plans-challenge-all" className="stack ds-col" style={{ gap: 12 }}>
+              {all}
+              {/* N-Challenge-M: where the running plan comes from closes the page. */}
+              {!desk && sourcesTile}
+            </div>
           </RouteSection>
         )}
       </Route>

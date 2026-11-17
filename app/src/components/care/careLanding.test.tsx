@@ -181,11 +181,18 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const order = ["consult-visit-card", "consult-visit-head", "consult-audience-step", "consult-reason-section", "consult-bring-row", "consult-preview", "consult-review-export"];
       for (let i = 1; i < order.length; i++) expect(at(order[i]), order[i]).toBeGreaterThan(at(order[i - 1]));
       expect(at("consult-review-export")).toBeLessThan(page.indexOf('data-module="consult-aside"'));
-      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(at("consult-review-export"));
-      // the guide names the four numbered sections, in order
+      // Design V77 audit (N-Care-M, this harness's composition): "I have recommendations for home" closes the
+      // getting-ready card — after your one line, before the visit summary (desktop: it closes the Share card).
+      const home = page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
+      expect(home).toBeGreaterThan(at("consult-reason-section"));
+      expect(home).toBeLessThan(at("consult-bring-row"));
+      // Design V77 audit (N-Care-M): the phone guide names three numbered stops — Visit, Summary, Dates
+      // (desktop keeps four: your next visit, getting ready, the visit summary, appointments)
       const guide = /<nav class="guide[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(html)![1];
       const stops = [...guide.matchAll(/class="gnum[^"]*">(\d)</g)].map((m) => m[1]);
-      expect(stops).toEqual(["1", "2", "3", "4"]);
+      expect(stops).toEqual(["1", "2", "3"]);
+      const short = careCopy(locale).visits.stopShort;
+      for (const label of [short.visit, short.summary, short.dates]) expect(decode(guide)).toContain(label);
       // the builder's own step numbers step aside for the route's
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())
@@ -209,7 +216,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect((html.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length).toBe(1);
     });
 
-    it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); the moments chip is a count`, () => {
+    it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); design V77 — the moments chip is the group's name, its count on the section row`, () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
@@ -224,7 +231,11 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       }
       const moments = chips.find((c) => c.includes('data-bring="moments"'));
       expect(moments).toContain('aria-pressed="true"');
-      expect(decode(row)).toContain(translate(locale, "elev.consult.bring.moments.other", { n: 2 }));
+      expect(decode(row)).not.toContain(translate(locale, "elev.consult.bring.moments.other", { n: 2 }));
+      const momentsChip = /<button[^>]*data-bring="moments"[^>]*>([\s\S]*?)<\/button>/.exec(row)![1];
+      expect(decode(momentsChip.replace(/<[^>]+>/g, "")).trim()).not.toMatch(/\d/);
+      // the count stays on the summary's section row ("Everyday moments 2")
+      expect(html).toMatch(/data-section="moments"[^>]*>[^<]*<b>\d+<\/b>/);
       // counts only: no share, ratio or "n of m" about the child
       expect(decode(row)).not.toMatch(/%|\d\s*\/\s*\d|\bof\b|מתוך/);
     });

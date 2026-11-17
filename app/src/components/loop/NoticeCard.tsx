@@ -5,6 +5,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { Milestone } from "../../types";
 import { milestoneText } from "../../lib/milestoneData";
 import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import { OBSERVED_WHEN, type ObserveStatus, type ObservedWhen } from "../../lib/milestones/observe";
 // B-DESIGN-04: the 44 px duotone shelf glyph (P7-DESIGN; the flat loop chip retired here).
@@ -114,6 +115,10 @@ export interface NoticeCardProps {
   initialPhase?: NoticePhase;
   stampMove?: string;
   answersAttrs?: Record<string, string>;
+  /** Attributes for the held card's next move once it holds an answer: the
+   *  Keep controls when words are kept, else the stored answer's Change (the
+   *  list keeps its one stamp on the card the parent is working on). */
+  heldAttrs?: Record<string, string>;
   besideWords?: string | null;
   answers?: "pills" | "segmented";
 }
@@ -134,7 +139,7 @@ export function NoticeContent({
   milestone, shelf, gender, childName, onAnswer, onWhen, onKeepQuote, onKeepPhoto,
   onUndo, selected, observedWhen, observedAt, savedWords, savedAt, inlineEvidenceAllowed = true, confirmed = true,
   onOpen, onDetails, variant = "card", hideShelf = false, initialPhase,
-  stampMove, answersAttrs, besideWords, answers = "pills",
+  stampMove, answersAttrs, heldAttrs, besideWords, answers = "pills",
 }: NoticeCardProps) {
   const { t, uiLang } = useLanguage();
   const copy = NOTICE_OBJECT_COPY[uiLang === "he" ? "he" : "en"];
@@ -177,7 +182,7 @@ export function NoticeContent({
   const art = SHELF_ART[shelf];
   const dateValue = savedAt ?? keptAt;
   const date = dateValue && Number.isFinite(Date.parse(dateValue))
-    ? new Date(dateValue).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
+    ? fmtDayV10(dateValue, uiLang === "he" ? "he" : "en") : null;
   const busy = pending !== null;
   const observedAnchor = observedAt === undefined ? milestone.observedAt : observedAt;
   const datedAnswer = response === "yes" && when === "today" && !!observedAnchor && Number.isFinite(Date.parse(observedAnchor));
@@ -242,6 +247,9 @@ export function NoticeContent({
   const stamp = stampMove ? { "data-primary-move": stampMove } : {};
   const open = onDetails ?? onOpen;
   const hasResponse = phase !== "ask";
+  // A held card's stamp sits on its next move: the Keep controls once words are
+  // kept (right under the kept line), otherwise the stored answer's Change.
+  const heldOnKeep = !!kept && hasResponse && !!(onKeepQuote || onKeepPhoto);
 
   return (
     <article data-testid="notice-card" data-milestone-id={milestone.id} data-shelf={shelf} data-phase={phase}
@@ -282,7 +290,7 @@ export function NoticeContent({
             <span className="t-sm">{copy.response}</span>
             <strong className="t-base"><Icon name="check" size={16} />{t(NOTICE_ANSWER_KEYS[response])}</strong>
             <button type="button" className="notice-object-link min-h-[44px]" disabled={busy}
-              data-testid="notice-change" onClick={() => { setPhase("ask"); setError(null); }}>{copy.change}</button>
+              data-testid="notice-change" {...(heldOnKeep ? {} : heldAttrs ?? {})} onClick={() => { setPhase("ask"); setError(null); }}>{copy.change}</button>
           </div>
         )}
         {phase === "seen" && (
@@ -327,7 +335,7 @@ export function NoticeContent({
           </figure>
         )}
         {hasResponse && (onKeepQuote || onKeepPhoto) && (
-          <div data-testid="notice-keep" className="notice-object-keep">
+          <div data-testid="notice-keep" className="notice-object-keep" {...(heldOnKeep ? heldAttrs ?? {} : {})}>
             <p className="t-sm font-semibold">{kept ? copy.editWords : t("elev.loop.notice.keep")}</p>
             {onKeepQuote && canKeepInline && (
               <form className="notice-object-quote-form" onSubmit={event => { event.preventDefault(); keep(); }}>

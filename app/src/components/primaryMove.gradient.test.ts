@@ -252,11 +252,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "sections/SchoolBrief.tsx",
     "sections/Screening.tsx",
     "sections/TrustedSharing.tsx",
-    // H3b/R17 — the #/stories cover button. Licensed, not tolerated: it carries
-    // `data-primary-move="read-tonights-story"`, which surfaceContract.ts:276
-    // declares as that route's ONE primary move, and it is the only gradient in
-    // the file. storiesCover.test.ts pins the stamp and its position.
-    "tabs/HeroJourneyTab.tsx",
+    // (V77: tabs/HeroJourneyTab.tsx left the ratchet — its read-tonights-story move is the
+    // header band's V77 primary button, no gradient; storiesCover.test.ts pins it.)
     // W2-SHELLPLAY critic r1: the Generate button carries
     // data-primary-move="generate-bedtime-story" (surfaceContract
     // bedtime-stories.primaryMove) and is the only gradient in the file (it was

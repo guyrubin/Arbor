@@ -5,7 +5,7 @@ import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { useHashQuery } from "../../hooks/useHashQuery";
 import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection, Token } from "../../design/primitives";
-import { Draw, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
+import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
 import Icon from "../ui/Icon";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
@@ -23,7 +23,7 @@ import { GoalFocusLine } from "../practice/GoalFocusLine";
 import SessionLengthChips from "../practice/SessionLengthChips";
 import { selectDailyPlay, concernDomainsFromLogs, daySeedFor, type ScoredActivity, type SessionLength } from "../../playbank/select";
 import { recommendCourse, READINESS_COURSES, localizeCourse, courseActivities, type PlayCourse } from "../../playbank/courses";
-import { type PlayActivity, bandForAge, playDomainLabel } from "../../playbank/content";
+import { type PlayActivity, bandForAge, localizeActivity, playDomainLabel } from "../../playbank/content";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { focusGoal, goalLabel, activeGoalDomains, type ActiveGoal } from "../../practice/goalBuilder";
 import { buildDailyPlan, buildGoalObservation, estimateLoggedDayCount, type DailyPlan } from "../../practice/dailyPlan";
@@ -326,21 +326,20 @@ function ScopedDailyPlayTab() {
     : null;
   const chain: ChainNode[] = [
     ...(pickedBecause ? [{ kind: "you" as const, tag: goal ? t("elev.goal.profile.title") : copy.chainPicked, text: pickedBecause }] : []),
-    ...(dailyPlan ? [{ kind: "arbor" as const, tag: copy.arborSuggests, text: dailyPlan.scoredActivity.activity.title, sub: copy.chainOneIdea }] : []),
+    ...(dailyPlan ? [{ kind: "arbor" as const, tag: copy.arborSuggests, text: copy.chainOneIdea }] : []),
     ...(studio.kidAvailable && studio.worlds.length > 0 ? [{ kind: "kid" as const, tag: copy.chainKid(firstName), text: copy.chainPlays }] : []),
   ];
   const stops = [
     { id: "idea", title: copy.stopIdea, sub: copy.stopIdeaSub },
-    { id: "handover", title: copy.stopHandOver, sub: copy.stopHandOverSub },
+    { id: "handover", title: copy.stopHandOver, sub: copy.stopHandOverSub(firstName) },
     ...(studio.kidAvailable ? [{ id: "games", title: copy.stopGames, sub: copy.stopGamesSub }] : []),
     { id: "courses", title: copy.stopCourses, sub: copy.stopCoursesSub },
-    { id: "more-ideas", title: t("companion.together-view.more-ideas"), sub: undefined },
   ];
   const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
   const ideaStation = (
     <section className="tg-stack pl-idea" data-module="play-daily-plan" aria-label={t("plan.card.eyebrow")} style={{ gap: 10, minWidth: 0 }}>
-      {dailyPlan && <AgeChip profile={childProfile} />}
+      {/* E6: the age fact is the band figure's sub-line when there is a play idea; the chip stands in without one. */}
       {/* The plan card offers "Choose what you're working on" itself when no focus is set; the line shows the focus once one is. */}
       {(goal || !dailyPlan) && <GoalFocusLine goals={activeGoals} testId="daily-play-goals-edit" onClick={() => setGoalModalOwner(childProfile.id)} />}
       {/* CI-30: the goal-linked play idea — post-activity observation writes to goalObservations (COPPA-reviewed path). */}
@@ -358,6 +357,7 @@ function ScopedDailyPlayTab() {
         onSessionLengthChange={(v) => { handleSessionLength(v); handlePlanSessionLength(v); }}
         ageYears={ageYearsOf(childProfile)}
         onSetGoal={() => setGoalModalOwner(childProfile.id)}
+        titleInBand
       />
     </section>
   );
@@ -370,7 +370,7 @@ function ScopedDailyPlayTab() {
         steps={[
           { drawing: Draw.cards(), label: copy.stopIdea },
           { drawing: <><span className="pl-ico pl-game" style={{ width: 18, height: 18, borderRadius: 6 }} /><Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" /><span className="ds-pencil" style={{ padding: "0 4px" }}><Icon name="lock" size={14} /></span></>, label: copy.handOver },
-          { drawing: Draw.pick(4), label: copy.stopCourses },
+          { drawing: <span className="ax"><i className="tok kid" style={{ left: "20%" }} /><i className="tok kid" style={{ left: "50%" }} /><i className="tok kid" style={{ left: "80%" }} /></span>, label: copy.didThere(firstName) },
         ]}
         keyItems={[
           { mark: <span className="ds-pencil" style={{ padding: "0 6px" }} aria-hidden="true"><Icon name="edit" size={14} /></span>, label: copy.keyIdea },
@@ -380,15 +380,27 @@ function ScopedDailyPlayTab() {
       />
     </RailTile>
   );
+  // Today's play idea in the reader's language (the band's title and minutes).
+  const bandIdea = dailyPlan ? localizeActivity(dailyPlan.scoredActivity.activity, uiLang) : null;
   const headerBand = (
     <div className="scene now" style={{ padding: phone ? "16px 14px 14px" : "22px 28px 18px", gap: phone ? 12 : 16 }}>
       <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
+      {/* V77: the band's hero is today's play idea itself — its title, "We did this" (primary)
+          and "Coach me on this", and the minutes; the card below draws neither (each once).
+          No idea yet: the library title and its line. */}
       <FrameHead
         phone={phone}
         kicker={copy.playKicker}
         startHere={copy.startHere}
-        title={<span id="play-title">{t("play.libTitle", { name: firstName })}</span>}
-        sub={t("play.libSubtitle", { name: firstName })}
+        title={<span id="play-title">{bandIdea ? bandIdea.title : t("play.libTitle", { name: firstName })}</span>}
+        sub={bandIdea ? t("plan.card.eyebrow") : t("play.libSubtitle", { name: firstName })}
+        action={dailyPlan && (
+          <span className="line" style={{ gap: 10, flexWrap: "wrap" }}>
+            {!planDone && <button type="button" className="btn primary nowrap min-h-11" data-testid="play-band-did" onClick={() => handlePlanDid(dailyPlan)}><Icon name="check" size={18} />{t("play.did")}</button>}
+            <button type="button" className="btn ghost nowrap min-h-11" style={{ background: "var(--card)" }} data-testid="play-band-coach" onClick={() => handlePlanCoach(dailyPlan)}>{t("play.coach")}</button>
+          </span>
+        )}
+        figure={bandIdea && <FrameFigure n={bandIdea.durationMin} unit={copy.minUnit} sub={ageLabel(childProfile, t)} />}
       />
       {/* Size pass: the phone drops the strip; why the idea was picked is one line in the band. */}
       {phone
@@ -416,9 +428,9 @@ function ScopedDailyPlayTab() {
                   {ideaStation}
                   <PlayHandOver studio={studio} composition={composition} />
                 </div>
+                {studio.kidAvailable && <PlayDidThere composition={composition} />}
                 {guideTile}
                 {ideasRail}
-                {studio.kidAvailable && <PlayDidThere composition={composition} />}
               </div>
             ) : (
               <div className="rowa">
@@ -492,7 +504,8 @@ function ScopedDailyPlayTab() {
             </div>
           </RouteSection>
 
-          <RouteSection id="more-ideas" n={n("more-ideas")} aria-labelledby="play-more-title">
+          {/* More ideas: the picks (the route's log-play move), after the courses; the board's guide has four stops, so no number. */}
+          <section className="rsec" id="more-ideas" aria-labelledby="play-more-title">
             <div className="tg-stack" style={{ gap: 12 }}>
               <div style={{ paddingInlineStart: phone ? 0 : 8 }}><RouteHead id="play-more-title" title={t("companion.together-view.more-ideas")} sub={copy.moreIdeasSub} /></div>
               {/* CI-31: one selection controls all the idea cards. With a play idea its card
@@ -523,7 +536,7 @@ function ScopedDailyPlayTab() {
                 ))}
               </div>
             </div>
-          </RouteSection>
+          </section>
         </Route>
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import type { Composition } from "../../../design/useComposition";
-import { Fig, LivingForm, Tile } from "../../../design/primitives";
+import { Fig, Tile } from "../../../design/primitives";
 import Icon from "../../ui/Icon";
 import { WEEK_ORDER, weekGlance, type WeekCountKey } from "../../../lib/weekGlance";
 import { recapWeekStartMs } from "../../../hooks/useWeeklyRecap";
@@ -53,12 +53,13 @@ export default function NowThisWeek({ composition, observations, actionLoop, now
   const rest = desk ? [] : WEEK_ORDER.filter((key) => week.counts[key] > 0).slice(2, 4);
   const done = Math.min(100, Math.max(0, ((now.getTime() - weekStartMs) / WEEK_MS) * 100));
   const link = <button type="button" className="ds-link" data-testid="now-week-report" onClick={onReport}>{reportLabel}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button>;
-  const figs = (keys: WeekCountKey[]) => keys.map((key) => <Fig key={key} size="md" n={week.counts[key]} unit={labels[key]} className={`now-week-${key}`} />);
+  // Steps marked "not this time" are a count under the helped figure (board N-Now), never a share of it.
+  const notThisTime = week.perDay.filter((day) => day.outcome === "not-this-time").length;
+  const figs = (keys: WeekCountKey[]) => keys.map((key) => <Fig key={key} size="md" n={week.counts[key]} unit={labels[key]} className={`now-week-${key}`}
+    sub={key === "helped" && notThisTime > 0 ? <span data-testid="now-week-not-this-time">{copy.notThisTime(notThisTime)}</span> : undefined} />);
   const body = tiles.length ? <>
     <div className="nw-week-figs">
       {figs(tiles)}
-      {desk && <span className="grow" />}
-      {desk && <LivingForm src="/visuals/parent/v2/empty-weekly-480.webp" width={132} height={60} crop={{ w: 168.5, h: 112.3, x: -18.3, y: -28.4 }} style={{ marginBottom: -4 }} />}
     </div>
     {rest.length > 0 && <div className="nw-week-figs">{figs(rest)}</div>}
   </> : <p className="nw-week-empty" data-testid="now-week-empty">{emptyLine}</p>;

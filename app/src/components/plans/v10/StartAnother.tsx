@@ -26,8 +26,6 @@ export interface StartAnotherProps {
   onTogether: () => void;
   /** The family's own routines and "Add a routine" (RoutinesCard). */
   routines: React.ReactNode;
-  /** "Create a plan for a specific challenge": production's title. */
-  writeOwnTitle: string;
   writeOwn: React.ReactNode;
 }
 
@@ -51,7 +49,7 @@ export function StartAnother(p: StartAnotherProps) {
   const routineTile = !desk ? (
     <section className="vt" style={{ padding: 16, borderRadius: 18, gap: 4 }} aria-labelledby="plans-start-routine">
       <button type="button" className="ds-plans-linkrow" onClick={p.onTogether}>
-        <span className="gi kid" aria-hidden="true"><Icon name="checklist" size={18} /></span>
+        <span className="gi kid" aria-hidden="true"><Icon name="interests" size={18} /></span>
         <span>
           <b id="plans-start-routine">{c.fromRoutine}</b>
           <small>{p.readyMadeCount > 0 ? c.readyMadeInTogether(p.readyMadeCount) : c.togetherRoutines}</small>
@@ -62,7 +60,7 @@ export function StartAnother(p: StartAnotherProps) {
       <div className="stack ds-col" style={{ gap: 6, paddingTop: 10, borderTop: "1px solid var(--rule)" }}>{p.routines}</div>
     </section>
   ) : (
-    <Tile className="x6" icon="checklist" kind="kid" title={c.fromRoutine} titleId="plans-start-routine" link={<MoreLink onClick={p.onTogether}>{c.togetherRoutines}</MoreLink>}>
+    <Tile className="x6" icon="interests" kind="kid" title={c.fromRoutine} titleId="plans-start-routine" link={<MoreLink onClick={p.onTogether}>{c.togetherRoutines}</MoreLink>}>
       {p.readyMadeCount > 0 && (
         <>
           <div className="line" style={{ gap: 12 }}>
@@ -76,14 +74,23 @@ export function StartAnother(p: StartAnotherProps) {
     </Tile>
   );
 
-  const writeTile = (
-    <Tile className={desk ? "x6" : undefined} icon="edit_note" kind="plan" title={p.writeOwnTitle} titleId="plans-start-write">
+  const draft = (
+    <span className="ds-plans-draft">
+      <Icon name="edit" size={15} />
+      {c.draftLabel}
+    </span>
+  );
+  /* N-Plans-D: glyph, name, the lede and the draft label. N-Plans-M: the name with the draft label
+     beside it, then the field (no glyph, no lede). */
+  const writeTile = desk ? (
+    <Tile className="x6" icon="flag" kind="plan" title={c.writeOwn} titleId="plans-start-write">
       <p style={{ fontSize: 13, lineHeight: 1.4, color: "var(--ink-soft)" }}>{c.writeOwnLede}</p>
-      <span className="ds-plans-draft">
-        <Icon name="edit" size={15} />
-        {c.draftLabel}
-      </span>
-      <div className="stack ds-col" style={{ gap: 8, marginTop: "auto" }}>{p.writeOwn}</div>
+      {draft}
+      <div className="stack ds-col" style={{ gap: 8, marginTop: 4 }}>{p.writeOwn}</div>
+    </Tile>
+  ) : (
+    <Tile title={c.writeOwn} titleId="plans-start-write" link={draft}>
+      <div className="stack ds-col" style={{ gap: 8 }}>{p.writeOwn}</div>
     </Tile>
   );
 

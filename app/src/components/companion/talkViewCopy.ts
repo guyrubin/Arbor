@@ -22,6 +22,7 @@ export const TALK_COPY = {
     usedGuides: (n: number) => (n === 1 ? "1 guide" : `${n} guides`),
     usedNotes: (n: number) => (n === 1 ? "1 remembered note" : `${n} remembered notes`),
     usedNotesSub: "Memory you approved, sent with this question",
+    usedProgram: (name: string, week: number) => `${name} · week ${week}`,
   },
   he: {
     guideLabel: "איך קוראים את התשובה",
@@ -39,6 +40,7 @@ export const TALK_COPY = {
     usedGuides: (n: number) => (n === 1 ? "מדריך אחד" : `${n} מדריכים`),
     usedNotes: (n: number) => (n === 1 ? "זיכרון אחד" : `${n} זיכרונות`),
     usedNotesSub: "זיכרון שאישרתם, נשלח עם השאלה הזו",
+    usedProgram: (name: string, week: number) => `${name} · שבוע ${week}`,
   },
 } as const;
 

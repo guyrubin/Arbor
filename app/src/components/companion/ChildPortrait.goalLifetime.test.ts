@@ -97,8 +97,9 @@ function mountedPortraitProof(duplicateKey: boolean) {
     // v10.1: the design primitives and the composition read (layout only).
     "../../design/primitives": { DsRoot: pass, Guide: empty, MoreLink: empty, Route: pass, RouteHead: empty, RouteSection: pass, scrollToSection() {} },
     "../../design/useComposition": { useComposition: () => "desk" },
-    "../../lib/domains/icons": { DOMAIN_ICONS: {} }, "../../lib/routes": { routeHash: () => "" }, "../../lib/formatDate": { fmtDayV10: () => "" },
-    "../ui/Icon": { Icon: empty }, "./milestonesModel": { seenTotals: () => ({ seen: 0, areas: 0 }), recordSince: () => null },
+    "../../lib/domains/icons": { DOMAIN_ICONS: {} }, "../../lib/routes": { routeHash: () => "" }, "../../lib/formatDate": { fmtDayV10: () => "" }, "../../lib/childAge": { ageYearsFromProfile: () => 0 },
+    "./now10/NowWorthKnowing": { default: empty }, "./nowViewCopy": { NOW_COPY: { en: { readMinutes: () => "" }, he: { readMinutes: () => "" } } }, "./now10/nowV10.css": {},
+    "../ui/Icon": { Icon: empty }, "./milestonesModel": { seenTotals: () => ({ seen: 0, areas: 0 }), firstMilestoneRecord: () => null }, "./useMilestonesRowEnd": { useMilestonesRowEnd() {} },
     "./milestonesV10Copy": { milestonesV10Copy: () => copy }, "./milestonesV10.css": {},
   }, source => duplicateKey ? source.replace('key={`goal-picker:${childProfile.id}`}', 'key={childProfile.id}') : source).default;
   function Shell() {

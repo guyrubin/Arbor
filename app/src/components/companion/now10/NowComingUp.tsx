@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useArbor } from "../../../context/ArborContext";
-import { Fig, LivingForm, MoreLink, Tile } from "../../../design/primitives";
+import { Fig, MoreLink, Tile } from "../../../design/primitives";
 import Icon from "../../ui/Icon";
 import { planDoneSteps, todaysPlanStep } from "../../../lib/plans";
 import { routineIdOfPlan } from "../../../lib/routineTemplates";
@@ -64,12 +64,12 @@ export function NowActionPlan({ composition, copy, plansLabel, nextLine, onOpen,
   const flat = (plan.phases ?? []).flatMap((phase, phaseIdx) => (phase.steps ?? []).map((s, stepIdx) => ({ phaseIdx, stepIdx, done: s.completed || s.status === "done" })));
   const done = planDoneSteps(plan);
   const desk = composition === "desk";
-  return <Tile icon="check" kind="plan" title={<span dir="auto">{plan.title}</span>} titleId={titleId} className={desk ? "x4 nw-actionplan" : "nw-actionplan"}
+  const nextIndex = flat.findIndex((s) => s.phaseIdx === step.phaseIdx && s.stepIdx === step.stepIdx) + 1;
+  // Board N-Now: the tile is "Action plan"; the plan's own title is its second line.
+  return <Tile icon="check" kind="plan" title={copy.actionPlan} titleId={titleId} className={desk ? "x4 nw-actionplan" : "nw-actionplan"}
     link={<MoreLink onClick={onOpen}>{plansLabel}</MoreLink>}>
-    <div className="line" style={{ gap: desk ? 14 : 12 }}>
-      <LivingForm src="/visuals/guides/drop-off-480.webp" width={desk ? 116 : 60} height={desk ? 84 : 43} crop={desk ? { w: 265.1, h: 149.1, x: -140.9, y: -38.7 } : { w: 137.1, h: 77.1, x: -72.9, y: -20 }} />
-      {done > 0 && <Fig size="md" n={done} unit={copy.stepsDone(done)} />}
-    </div>
+    <p className="nw-plan-name" dir="auto" data-testid="now-actionplan-title">{plan.title}</p>
+    {done > 0 && <div className="line"><Fig size="md" n={done} unit={copy.stepsDone(done)} sub={nextIndex > 0 ? copy.nextIsStep(nextIndex) : undefined} /></div>}
     <span className="line nw-trail" role="img" aria-label={copy.planTrailAria(done, flat.length)}>
       {flat.map((s) => {
         const here = s.phaseIdx === step.phaseIdx && s.stepIdx === step.stepIdx;

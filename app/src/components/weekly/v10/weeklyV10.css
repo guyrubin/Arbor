@@ -473,3 +473,42 @@
 .ds .wk10-join.v::after { content: ""; position: absolute; bottom: -2px; inset-inline-start: -5.5px; border: 5px solid transparent; border-top: 6px solid currentColor; border-bottom-width: 0; }
 .ds .wk10-join.h { top: 50%; inset-inline-end: 4px; border-top: 1.5px solid currentColor; }
 .ds .wk10-join.h::after { content: ""; position: absolute; top: -5.5px; inset-inline-end: -2px; border: 5px solid transparent; border-inline-start: 6px solid currentColor; border-inline-end-width: 0; }
+
+/* ── Fidelity re-audit (N-Week-D/M) ── */
+.ds .btn.wk10-summary { background: var(--card); color: var(--wk-plan-ink); box-shadow: inset 0 0 0 1.5px var(--wk-plan); }
+.ds .btn.wk10-summary .msr { color: var(--wk-plan); }
+.ds .btn.wk10-summary:hover { background: var(--tint-2); }
+.ds .btn.wk10-step { background: var(--card); }
+/* The dates rail: the next item after the week in its own column past Friday, joined by a dotted run. */
+.ds .wk10-plot.has-beyond .wk10-row { grid-template-columns: 30px repeat(7, minmax(0, 1fr)) 76px; }
+.ds .wk10-plot.has-beyond .wk10-ground { grid-column: 2 / span 7; }
+.ds .wk10-plot .wk10-beyondcell { border-top-style: dotted !important; opacity: .92; }
+.ds .wk10-dates .wk10-cell:last-child:not(.wk10-beyondcell) { border-top-style: solid; }
+/* Kids Studio's line is a statement, not a control: 36 px on desktop; the Milestones door stays 44. */
+.ds-desk span.wk-q { min-height: 36px; font-size: 12px; }
+.ds-desk button.wk-q { font-size: 13px; }
+.ds-desk .wk10-chiprow { flex-wrap: wrap; row-gap: 6px; }
+/* Words you used on <day>: the board's quote, the day already in the title. */
+.ds .wk10-words.dayed [data-testid="weekly-what-worked-line"] > p:first-child { border: 0; padding-inline-start: 0; font-family: var(--font-display) !important; font-style: italic; font-size: 17px; }
+html[lang="he"] .ds .wk10-words.dayed [data-testid="weekly-what-worked-line"] > p:first-child { font-style: normal; }
+.ds .wk10-words.dayed [data-testid="weekly-what-worked-line"] > p + p { display: none; }
+.ds .nx-area.hard { background: var(--wk-hard-wash); }
+/* Phone rows (N-Week-M): an empty day ahead is a short row with its label inline; a date is a pill in the strip. */
+.ds-phone .wk10-head .hero { text-wrap: balance; }
+.ds .wk10-mr.short { min-height: 24px; }
+.ds .wk10-mr.short .wk-mdh { flex-direction: row; gap: 5px; align-items: center; }
+.ds .wk10-mr.short .wk-mdh b { margin-top: 0; font-size: 16px; min-width: 0; }
+.ds .wk10-mr.short .wk-ms { min-height: 24px; }
+.ds .wk10-mstrip > .wk10-mdate { position: absolute; inset-inline-start: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 12px); z-index: 3; }
+.ds .wk10-mstrip > .wk10-mdate .wk-pill { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; box-shadow: 0 0 0 1px var(--wk-grid); }
+.ds .wk10-beyond-t { display: flex; align-items: center; padding-inline: 6px; min-height: 40px; }
+.ds .wk10-beyond-t .wk-pill { white-space: normal; line-height: 1.2; padding-block: 4px; }
+.ds-phone .wk10-chiprow > .wk-q { flex: 0 1 auto; white-space: nowrap; }
+.ds-phone .wk10-day .rhead .small { display: none; }
+.ds .wk10-others-head { gap: 10px; align-items: center; }
+.ds .wk10-others-head .sdots { margin-inline-start: auto; padding: 0; }
+.ds .wk10-mr.short .wk-mdh { white-space: nowrap; gap: 3px; font-size: 12px; overflow: visible; }
+.ds .wk10-mr.short .wk-mdh b { font-size: 14px; }
+.ds-phone .wk10-mr { grid-template-columns: 46px minmax(0, 1fr) minmax(44px, auto); }
+.ds-phone .wk10-words > .wk-tw { width: 28px; height: 28px; }
+.ds-phone .wk-tr.wk10-words { grid-template-columns: 28px minmax(0, 1fr); }

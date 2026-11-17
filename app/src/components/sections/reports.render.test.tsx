@@ -21,6 +21,11 @@ const harness = vi.hoisted(() => ({
   locale: "en" as "en" | "he",
   logs: [] as { id: string; timestamp: string; behaviorType: string; notes?: string; trigger?: string }[],
   openSettings: vi.fn(),
+  composition: "phone" as "phone" | "desk",
+}));
+vi.mock("../../design/useComposition", async (orig) => ({
+  ...(await orig<typeof import("../../design/useComposition")>()),
+  useComposition: () => harness.composition,
 }));
 
 vi.mock("../../context/ArborContext", () => ({
@@ -55,6 +60,7 @@ import Reports, { reportsLeadCounts, keptThisWeek } from "./Reports";
 
 beforeEach(() => {
   harness.locale = "en";
+  harness.composition = "phone";
   harness.logs = [
     { id: "l1", timestamp: new Date(Date.now() - DAY).toISOString(), behaviorType: "Moment", notes: "I did the gate by myself." },
     { id: "l2", timestamp: new Date(Date.now() - 3 * DAY).toISOString(), behaviorType: "Moment" },
@@ -116,16 +122,21 @@ describe("B-CAREPRO-NEW-2e · the lead line counts what the parent logged (numer
       const html = renderToStaticMarkup(<Reports />);
       const c = careCopy(locale).records;
       const start = new Date(Date.now() - 40 * DAY).toISOString();
+      // V77 audit: the heading is the record itself; on a phone (this harness) the date the record began sits under it
+      // ("Since …"), on a desktop in the kicker ("Your full record · since …").
       expect(/<p data-testid="reports-lead-since"[^>]*>([^<]*)<\/p>/.exec(html)![1]).toBe(c.ledgerSince(fmtDayV10(start, locale)));
+      expect(html).toContain(`<span class="kicker">${translate(locale, "sec.reports.title")}</span>`);
+      expect(/<h1[^>]*data-testid="reports-lead-title"[^>]*>([^<]*)<\/h1>/.exec(html)![1].replace(/&#x27;/g, "'")).toBe(translate(locale, "elev.reports.record.title", { name: "Dylan" }));
       // the counts sentence gave way to the ledger (one row per kind that has records)
       expect(html).not.toContain('data-testid="reports-lead-counts"');
       const rows = [...html.matchAll(/data-testid="records-ledger-row" data-kind="([^"]+)" data-count="(\d+)"/g)].map((m) => [m[1], Number(m[2])]);
       expect(rows).toEqual([["moments", 3], ["milestones", 2]]);
-      const ledger = html.slice(html.indexOf('data-testid="records-ledger"'), html.indexOf('data-primary-move="export-report"'));
+      // the ledger runs to its marks note (on a phone Save leads it; see "where Save sits")
+      const ledger = html.slice(html.indexOf('data-testid="records-ledger"'), html.indexOf("care-ledger-note"));
       expect(ledger).toContain(c.ledgerLatest(fmtDayV10(new Date(Date.now() - DAY).toISOString(), locale)));
       expect(ledger).not.toMatch(/%|\/\s*\d|\bof\b|מתוך/);
       expect(ledger).not.toMatch(/>0</);
-      expect(html.indexOf('data-testid="records-ledger"')).toBeLessThan(html.indexOf('data-primary-move="export-report"'));
+      expect(html.indexOf('data-testid="records-ledger"')).toBeLessThan(html.indexOf("care-ledger-note"));
       expect(html).toContain(c.ledgerMarksNote);
     });
   }
@@ -210,9 +221,8 @@ describe("W2-CAREPRO c2 r2 · the lead is permanent after a save", () => {
       const { REPORTS_WEEKLY_EXPORT_KEY } = await import("./Reports");
       recordExport("c1", REPORTS_WEEKLY_EXPORT_KEY, new Date().toISOString());
       const html = renderToStaticMarkup(<Reports />).replace(/&#x27;/g, "'");
-      const since = /<p data-testid="reports-lead-since"[^>]*>([^<]*)<\/p>/.exec(html)![1];
       const start = new Date(Date.now() - 40 * DAY).toISOString();
-      expect(since).toBe(careCopy(locale).records.ledgerSince(fmtDayV10(start, locale)));
+      expect(/<p data-testid="reports-lead-since"[^>]*>([^<]*)<\/p>/.exec(html)![1]).toBe(careCopy(locale).records.ledgerSince(fmtDayV10(start, locale)));
       expect(html).toMatch(/data-kind="moments" data-count="3"/);
       expect(html).not.toMatch(/(?:^|[^\d])0 (?:moments|רגעים|milestones|אבני דרך)/);
       expect(html).not.toContain('data-testid="reports-lead-new"');
@@ -229,6 +239,37 @@ describe("W2-CAREPRO c2 r2 · the lead is permanent after a save", () => {
       const extra = /<p data-testid="reports-lead-new"[^>]*>([^<]*)<\/p>/.exec(html)![1];
       expect(extra).toBe(translate(locale, "elev.reports.lead.new.one", { n: 1, date: fmtDayV10(savedAt, locale) }));
       expect(html.indexOf('data-testid="records-ledger"')).toBeLessThan(html.indexOf('data-testid="reports-lead-new"'));
+    });
+  }
+});
+
+/* V77 phone composition (integration decision, 17 Nov): the page's one action,
+ * "Save {name}'s record", leads the ledger on a phone (thumb order, under the
+ * header band); desktop keeps N-Records-D's order (ledger, then Save). */
+describe("V77 · where Save sits", () => {
+  const order = (html: string) => ({
+    save: html.indexOf('data-primary-move="export-report"'),
+    ledger: html.indexOf('data-testid="records-ledger"'),
+    note: html.indexOf("care-ledger-note"),
+    stamps: (html.match(/data-primary-move="/g) ?? []).length,
+  });
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: phone — Save comes before the ledger, once; the marks note stays after the ledger`, () => {
+      harness.locale = locale;
+      harness.composition = "phone";
+      const o = order(renderToStaticMarkup(<Reports />));
+      expect(o.save).toBeGreaterThan(0);
+      expect(o.save).toBeLessThan(o.ledger);
+      expect(o.note).toBeGreaterThan(o.ledger);
+      expect(o.stamps).toBe(1);
+    });
+    it(`${locale}: NEGATIVE CONTROL — desktop keeps the board's order: the ledger, then Save, once`, () => {
+      harness.locale = locale;
+      harness.composition = "desk";
+      const o = order(renderToStaticMarkup(<Reports />));
+      expect(o.ledger).toBeGreaterThan(0);
+      expect(o.save).toBeGreaterThan(o.ledger);
+      expect(o.stamps).toBe(1);
     });
   }
 });

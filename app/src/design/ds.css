@@ -898,3 +898,46 @@ html[lang="he"] .ds .ds-said, html[lang="he"] .ds .knot q, html[lang="he"] .ds .
 .ds .ds-menurow-text b { font-weight: 600 !important; font-size: 15px; line-height: 1.25; }
 .ds .ds-menurow-text .small { font-size: 13px; line-height: 1.3; color: var(--ink-soft); }
 .ds .ds-menurow.on { background: var(--tint-2); box-shadow: inset 0 0 0 1.5px #c9dbf7; }
+
+/* ── V77 N-States-D: how the controls respond ────────────────────────────────
+   Default, hover, pressed, focus and disabled for the controls the v10 screens
+   use, built only from existing tokens (the board's own note). A selected
+   control is never shown by colour alone: it stays a filled shape or an
+   outline in every state. Hover applies only where a pointer can hover. Focus
+   is a gap and then a 2 px sapphire ring on every control, from the keyboard
+   too; it is an outline, so forced-colours mode keeps it. A disabled control
+   is sunk and muted. Production's answer track (SegmentedAnswers) paints its
+   cells inline, so its hover and press rules use !important. Nothing moves. ── */
+.ds :is(a[href], button, [role="switch"], [role="tab"], summary):focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+/* A selected index segment already wears a 2.5 px outline: the ring sits outside it. */
+.ds .mci :is(a, button).mcs.on:focus-visible { outline-offset: 4.5px; }
+/* A focused cell of an answer track draws its ring over its neighbours. */
+.ds :is(.sg3 button, [data-testid="segmented-answers"] button):focus-visible { position: relative; z-index: 1; }
+@media (hover: hover) {
+  .ds .btn.primary:hover:not(:disabled) { background: var(--sapphire-deep); }
+  .ds .btn.ghost:hover:not(:disabled) { background: var(--tint-2); }
+  .ds .mci :is(a, button).mcs:not(.on):hover { background: #fff; box-shadow: inset 0 0 0 1.5px var(--pencil); }
+  .ds .mci :is(a, button).mcs.on:hover { background: var(--tint-2); box-shadow: 0 0 0 2.5px var(--sapphire-deep), 0 10px 18px -14px #14225a80; }
+  .ds .kchip:not(.on):not([aria-pressed="true"]):hover:not(:disabled) { background: var(--tint-2); }
+  .ds .kchip:is(.on, [aria-pressed="true"]):hover:not(:disabled) { background: var(--tint-2); box-shadow: inset 0 0 0 1.5px var(--sapphire-deep); }
+  .ds .sg3 button:not(.on):not([aria-pressed="true"]):hover:not(:disabled),
+  .ds [data-testid="segmented-answers"] button:not([aria-pressed="true"]):hover:not(:disabled) { background: var(--card) !important; box-shadow: var(--shadow-card); }
+  .ds .sg3 button:is(.on, [aria-pressed="true"]):hover:not(:disabled),
+  .ds [data-testid="segmented-answers"] button[aria-pressed="true"]:hover:not(:disabled) { background: var(--sapphire-deep) !important; box-shadow: none; }
+}
+.ds .btn.primary:active:not(:disabled) { background: var(--ink); }
+.ds .btn.ghost:active:not(:disabled) { background: var(--well); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .mci :is(a, button).mcs:not(.on):active { background: var(--tint-2); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .mci :is(a, button).mcs.on:active { background: var(--well); box-shadow: 0 0 0 2.5px var(--sapphire-deep); }
+.ds .kchip:not(.on):not([aria-pressed="true"]):active:not(:disabled) { background: var(--well); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .kchip:is(.on, [aria-pressed="true"]):active:not(:disabled) { background: var(--well); box-shadow: inset 0 0 0 2px var(--sapphire-deep); }
+.ds .sg3 button:not(.on):not([aria-pressed="true"]):active:not(:disabled),
+.ds [data-testid="segmented-answers"] button:not([aria-pressed="true"]):active:not(:disabled) { background: var(--tint-2) !important; box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .sg3 button:is(.on, [aria-pressed="true"]):active:not(:disabled),
+.ds [data-testid="segmented-answers"] button[aria-pressed="true"]:active:not(:disabled) { background: var(--ink) !important; box-shadow: none; }
+.ds :is(.btn.primary, .btn.ghost, .kchip):is(:disabled, [aria-disabled="true"]) { background: var(--sunk); color: var(--muted); box-shadow: none; opacity: .55; cursor: default; }
+.ds :is(.sg3 button, [data-testid="segmented-answers"] button):disabled { opacity: .5; }
+.ds [role="switch"]:disabled { opacity: .45; }
+@media (prefers-reduced-motion: no-preference) {
+  .ds .mci .mcs, .ds .kchip, .ds [data-testid="segmented-answers"] button { transition: background-color .16s ease, color .16s ease, box-shadow .16s ease; }
+}

@@ -10,7 +10,8 @@ import { sectionForTab, pillRowFor, litPillFor } from "../../lib/navigation";
 import { useComposition } from "../../design/useComposition";
 import { NewTag } from "../../design/primitives";
 import { useNowClock } from "../companion/useNowClock";
-import { fmtShellNow } from "../../lib/formatDate";
+import { useShellSlots } from "../../lib/shellSlots";
+import { ShellRowEndView } from "./ShellRowEnd";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import CompanionWorkspace from "../companion/CompanionWorkspace";
@@ -265,6 +266,8 @@ export default function Shell() {
   const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
   const composition = useComposition();
   const now = useNowClock();
+  // V77: what the route puts at the end of its pill row (lib/shellSlots).
+  const { rowEnd } = useShellSlots();
   // v4: the About pill names the child ("About Mia"); without a name it is "About".
   const childFirstName = childProfile.name?.trim().split(/\s+/)[0] ?? "";
 
@@ -522,9 +525,7 @@ export default function Shell() {
                   );
                 })}
               </div>
-              {composition === "desk" && (
-                <span className="small ds-shellrow-when" data-testid="shell-now">{fmtShellNow(now, uiLang)}</span>
-              )}
+              {composition === "desk" && <ShellRowEndView now={now} uiLang={uiLang} end={rowEnd} />}
             </div>
           )}
 

@@ -56,8 +56,9 @@ export function familyPlanLinesForNow(
         weekday: weekdayShort(d.date, lang),
         day: Number(dayNum(d.date)),
         nobody: !d.holder,
-        title: d.title,
-        sub: d.time ? `${d.time} · ${who}` : who,
+        // Board N-Now: the time rides the title ("Thursday's group visit, 10:00"); the sub says whose it is.
+        title: d.time ? NOW_V10_COPY[lang].familyPlanAt(d.title, d.time) : d.title,
+        sub: NOW_V10_COPY[lang].familyPlanWho(who),
         onOpen,
       };
     });

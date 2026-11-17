@@ -21,7 +21,8 @@ import { LEARN_CATEGORIES } from "../../learn/learnLibrary";
 import { FOR_YOU_COPY } from "../foryou/forYouCopy";
 
 const DAY = 86_400_000;
-const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", composition: "desk" as "desk" | "phone", saved: [] as string[] }));
+const harness = vi.hoisted(() => ({ locale: "en" as "en" | "he", composition: "desk" as "desk" | "phone", saved: [] as string[], crumb: undefined as string | null | undefined }));
+vi.mock("../../lib/shellSlots", () => ({ useShellCrumb: (label: string | null | undefined) => { harness.crumb = label; } }));
 
 vi.mock("../../context/ArborContext", () => ({
   useArborOptional: () => null,
@@ -59,6 +60,7 @@ beforeEach(() => {
   harness.locale = "en";
   harness.composition = "desk";
   harness.saved = [];
+  harness.crumb = undefined;
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} });
   vi.stubGlobal("window", { history: { state: null, pushState: () => {}, back: () => {} }, addEventListener: () => {}, removeEventListener: () => {}, location: { href: "" }, setTimeout });
 });
@@ -109,5 +111,24 @@ describe("Library v10", () => {
     const html = renderToStaticMarkup(<LearnLibrary />);
     expect(html).toContain(esc(FOR_YOU_COPY.en.libSavedCount(1)));
     expect(html).toContain(esc(FOR_YOU_COPY.en.libSavedOpen));
+  });
+
+  for (const locale of ["en", "he"] as const) {
+    it(`${locale}: the shell crumb names the view showing — "Library › Reads" (N-Library-D)`, () => {
+      harness.locale = locale;
+      renderToStaticMarkup(<LearnLibrary />);
+      expect(harness.crumb).toBe(FOR_YOU_COPY[locale].libReads);
+      // NEGATIVE CONTROL: the Courses label is not what the Reads view sends.
+      expect(harness.crumb).not.toBe(translate(locale, "learn.courses"));
+    });
+  }
+
+  it("the Courses view sends the Courses label (one hook, keyed to the filter)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./LearnLibrary.tsx", import.meta.url), "utf8");
+    expect(src).toContain('useShellCrumb(filter === "courses" ? t("learn.courses") : copy.libReads);');
+    expect((src.match(/useShellCrumb\(/g) || []).length).toBe(1);
+    // NEGATIVE CONTROL: a hook after the reader's early return would be caught.
+    expect(src.indexOf("useShellCrumb(")).toBeLessThan(src.indexOf("if (openCourse) {"));
   });
 });

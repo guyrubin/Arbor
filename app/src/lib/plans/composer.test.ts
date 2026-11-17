@@ -75,6 +75,21 @@ describe("the composer flow", () => {
     expect(composerReducer(def, approved, { type: "swap", slot: 2, menuId: "blow-bubbles" }).ownStep).toBeUndefined();
   });
 
+  it("CP-2-Agree-D: the box and the duration also answer on the steps screen (desktop), never before it", () => {
+    const steps = run(...toSteps);
+    expect(steps.stage).toBe("steps");
+    const s = composerReducer(def, composerReducer(def, steps, { type: "the-box", itemId: "song", on: true }), { type: "duration", durationDays: 21 });
+    expect(s.boxItemIds).toContain("song");
+    expect(s.durationDays).toBe(21);
+    // still bounded, and still nothing at the door or the red lines
+    expect(composerReducer(def, steps, { type: "duration", durationDays: 90 }).durationDays).toBe(steps.durationDays);
+    const door = initialComposer(def, "en");
+    expect(composerReducer(def, door, { type: "the-box", itemId: "song", on: true }).boxItemIds).toEqual(door.boxItemIds);
+    // one tap on "Preview the book": steps → box → preview
+    const previewed = composerReducer(def, composerReducer(def, s, { type: "stepsDone" }), { type: "boxDone" });
+    expect(previewed.stage).toBe("preview");
+  });
+
   it("box and duration are bounded; preview → the explicit approval → the request body", () => {
     const s = run(...toSteps, { type: "stepsDone" }, { type: "the-box", itemId: "song", on: true }, { type: "the-box", itemId: "sweets", on: true }, { type: "the-box", itemId: "book", on: false }, { type: "duration", durationDays: 28 }, { type: "duration", durationDays: 90 }, { type: "boxDone" });
     expect(s.stage).toBe("preview");

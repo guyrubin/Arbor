@@ -70,6 +70,7 @@ async function mountedRouteProof() {
     "../../lib/companionPlaces": { isCompanionHome: () => true },
     "../../lib/navigation": { sectionForTab: () => ({}), pillRowFor: () => empty },
     "../../lib/surfaceContract": { contractFor: () => undefined },
+    "../../lib/shellSlots": { useShellSlots: () => ({ crumb: null, rowEnd: null }) },
     "../../lib/kidModeGate": { isKidModeActive: () => false, subscribeKidMode: () => noOp },
     "../../hooks/useEntitlement": { takeBillingReturn: () => false },
     "../kidmode/KidModeContext": { KidModeProvider: pass },

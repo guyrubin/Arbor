@@ -138,3 +138,12 @@ export function recordSince(entries: readonly { at: string }[], nowMs: number = 
   }
   return first;
 }
+
+/** The day of the child's first milestone record: the earliest dated answer
+ *  (Seen it, Not yet or Not sure), or null when none is dated. Pure. */
+export function firstMilestoneRecord(milestones: readonly { observationUpdatedAt?: string; observationStatus?: string | null; checked?: boolean }[], nowMs: number = Date.now()): number | null {
+  return recordSince(
+    milestones.filter((m) => (m.observationStatus || m.checked) && typeof m.observationUpdatedAt === "string").map((m) => ({ at: m.observationUpdatedAt! })),
+    nowMs,
+  );
+}
