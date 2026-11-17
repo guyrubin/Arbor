@@ -326,3 +326,16 @@ html[lang="he"] .ds .nw-face .now-plan-say { font-style: normal; }
 /* Tonight › no plan: one door line */
 .ds .nw-step .now-challenge-door { background: var(--card); border-radius: 18px; padding: 8px 14px; box-shadow: var(--shadow-tile); }
 .ds .nw-ask .now-notice-head.kk, .ds .nw-ask .now-notice-head.kk > span:not(.msr) { font-family: var(--font-sans) !important; }
+
+/* ── Fidelity re-audit (N-Now-D/M) ── */
+/* The desktop face carries no art: the question title takes the bowl at the board's 34px. */
+.ds-desk .nw-stage .nw-face .now-plan-title { font-size: 34px; }
+/* The face stays inside the bowl: clear of the rail on both sides, whatever the title's length or language. */
+.ds-desk .nw-stage .nw-arc > .nw-arc-face { padding-inline: 15%; }
+/* Notebook: what is already remembered sits at the row's end, a check token and its count. */
+.ds .nw-badge .fig .nw-remembered { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-weight: 400 !important; font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
+.ds .nw-actionplan .nw-plan-name { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+/* Phone week head: title and range share the line, the report link closes it. */
+.ds-phone .nw-week-phone > .rhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.ds-phone .nw-week-phone > .rhead > .small { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-phone .nw-week-phone > .rhead > .ds-link { margin-inline-start: auto; white-space: nowrap; flex: none; }

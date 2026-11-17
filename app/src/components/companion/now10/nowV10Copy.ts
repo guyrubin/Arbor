@@ -64,6 +64,12 @@ export const NOW_V10_COPY = {
     arborSuggests: "Arbor suggests",
     stopSubs: { tonight: "one question", waiting: "now, tonight, later", week: "what you kept and what helped", ahead: "tomorrow’s step, dates" },
     eveningShort: "Evening",
+    notThisTime: (n: number) => `${n} not this time`,
+    remembered: (n: number) => `${n} remembered`,
+    actionPlan: "Action plan",
+    nextIsStep: (n: number) => `next is step ${n}`,
+    familyPlanAt: (title: string, time: string) => `${title}, ${time}`,
+    familyPlanWho: (who: string) => `Family plan: ${who}`,
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -120,6 +126,12 @@ export const NOW_V10_COPY = {
     arborSuggests: "ארבור מציע",
     stopSubs: { tonight: "שאלה אחת", waiting: "עכשיו, הערב, אחר כך", week: "מה ששמרתם ומה שעזר", ahead: "הצעד של מחר, תאריכים" },
     eveningShort: "ערב",
+    notThisTime: (n: number) => `${n} לא הפעם`,
+    remembered: (n: number) => `${n} נשמרו בזיכרון`,
+    actionPlan: "תוכנית פעולה",
+    nextIsStep: (n: number) => `הבא הוא צעד ${n}`,
+    familyPlanAt: (title: string, time: string) => `${title}, ב-${time}`,
+    familyPlanWho: (who: string) => `תוכנית משפחתית: ${who}`,
   },
 } as const;
 
