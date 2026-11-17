@@ -3,7 +3,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { MilestoneKeptHistory } from "../../hooks/useMilestoneKeptNotes";
 import type { FirstKeepsake } from "../../lib/firstsKeepsake";
 import type { KeptThing } from "../../lib/kept/keptThings";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import KeptItem from "../kept/KeptItem";
 
 /** A saved note remains readable/editable even when it cannot be verified as
@@ -18,7 +18,7 @@ export default function MilestoneKeptNote({ note, item, childName, scope, disabl
     {item ? <KeptItem key={`${scope}:${JSON.stringify([childName, item])}`} item={item} childName={childName} disabled={disabled} beforeExport={beforeExport} />
       : <div data-testid="ms-keepsake-unverified">
         <p className="kept-words"><bdi dir="auto">{note.note}</bdi></p>
-        <p className="t-xs" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.waveR.keepsake.on", { date: fmtDay(note.noticedOn, uiLang) })}</p>
+        <p className="t-xs" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.waveR.keepsake.on", { date: fmtDayV10(note.noticedOn, uiLang) })}</p>
       </div>}
     {note.photoUrl && <img src={note.photoUrl} alt="" className="mt-2 w-full rounded-lg object-cover" style={{ maxHeight: 160 }} />}
     <button type="button" className="kept-text-button" data-testid="ms-keepsake-edit" onClick={onEdit}>{t("elev.waveR.keepsake.edit")}</button>

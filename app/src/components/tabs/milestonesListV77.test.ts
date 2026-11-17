@@ -39,4 +39,15 @@ describe("V77 list — the area grid", () => {
     expect(code.match(/data-primary-move/g)).toHaveLength(1);
     expect(card).toContain("const stamp = m.id === gridStampId ?");
   });
+
+  it("the stamp stays on the held card (the one just answered) while it is in the grid; otherwise the first unanswered card", () => {
+    expect(MS).toContain("const heldId = heldCard && heldCard.childId === childProfile.id && gridIds.has(heldCard.id) ? heldCard.id : null;");
+    expect(MS).toContain("const gridStampId = heldId ?? gridCards.find(");
+    expect(MS).toContain("setHeldCard({ childId: childProfile.id, id: item.id });");
+    // both card kinds carry it in either phase (answers while asking, Change once held)
+    expect(MS.match(/heldAttrs=\{answersAttrs\}/g)).toHaveLength(2);
+  });
+  it("NEGATIVE CONTROL: with nothing held the stamp is never on an answered card", () => {
+    expect(MS).toMatch(/gridCards\.find\(\(c\) => c\.kind === "next" && !c\.m\.observationStatus && !c\.m\.checked/);
+  });
 });

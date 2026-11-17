@@ -222,6 +222,8 @@ export default function MilestonesTab() {
     // V77: an answer never moves the list to another area (the default area
     // follows the first unanswered card, so it is pinned in the same render).
     if (!areaPick || areaPick.childId !== childProfile.id) setAreaPick({ childId: childProfile.id, area: listArea });
+    // The card the parent just answered holds the route's one stamp while its receipt shows.
+    setHeldCard({ childId: childProfile.id, id: item.id });
     if (status !== "yes" || item.checked) return;
     // P5 critic r1 (framer ruling 3): the confetti burst fires ONCE per
     // milestone id ever (a completion moment, never a repeat reward); an Undo and a
@@ -333,6 +335,7 @@ export default function MilestonesTab() {
   // list opens on holds the first card the parent can answer; "All" lists every
   // area. The pick is per child (a sibling never inherits it).
   const [areaPick, setAreaPick] = useState<{ childId: string; area: DomainId | "all" } | null>(null);
+  const [heldCard, setHeldCard] = useState<{ childId: string; id: string } | null>(null);
   const firstArea: DomainId = stampShelf ? shelfDef(stampShelf).domain : mapShelves[0] ? shelfDef(mapShelves[0]).domain : DOMAIN_IDS[0];
   const listArea: DomainId | "all" = areaPick && areaPick.childId === childProfile.id ? areaPick.area : firstArea;
   const pickArea = (area: DomainId | "all") => {
@@ -362,8 +365,11 @@ export default function MilestonesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listArea, shelfItems, noticePicks, heldNotice, milestones, currentBand.months]);
   const gridIds = useMemo(() => new Set(gridCards.map((c) => c.m.id)), [gridCards]);
-  // The route's ONE stamp: the first card in the grid the parent has not answered.
-  const gridStampId = gridCards.find((c) => c.kind === "next" && !c.m.observationStatus && !c.m.checked && !(c.pick && heldNotice[c.shelf]))?.m.id ?? null;
+  // The route's ONE stamp: on the card the parent just answered while it is held
+  // (its receipt, When?, Keep and Undo are the next move), otherwise on the first
+  // card in the grid the parent has not answered.
+  const heldId = heldCard && heldCard.childId === childProfile.id && gridIds.has(heldCard.id) ? heldCard.id : null;
+  const gridStampId = heldId ?? gridCards.find((c) => c.kind === "next" && !c.m.observationStatus && !c.m.checked && !(c.pick && heldNotice[c.shelf]))?.m.id ?? null;
   const allCount = useMemo(() => SHELF_IDS.reduce((n, shelf) => n + shelfItems[shelf].length, 0), [shelfItems]);
   const quietWindow = milestoneAgeWindow(comparisonMonths);
   const quietShelves = SHELF_IDS.filter((id) => shelfItems[id].length === 0).map((shelf) => ({
@@ -748,6 +754,7 @@ export default function MilestonesTab() {
         hideShelf
         answers="segmented"
         answersAttrs={answersAttrs}
+        heldAttrs={answersAttrs}
         /* V77 list card: a stored answer shows as the pressed answer; the
            receipt, When? and Keep follow the parent's own answer, as before. */
         initialPhase={asCard ? "ask" : undefined}
@@ -844,6 +851,7 @@ export default function MilestonesTab() {
                           variant="row"
                           hideShelf
                           answersAttrs={answersAttrs}
+                          heldAttrs={answersAttrs}
                           onAnswer={(status) => {
                             setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
                             setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
