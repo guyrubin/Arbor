@@ -137,10 +137,10 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
     </p>
   ) : null;
 
-  /* Today's move. Desktop: under the step, inside the card (above the fold at 1280). Phone (N-Plans-M):
-     a full-width button below the card. */
+  /* Today's move. Desktop: under the trail, inside the card. Phone (N-Plans-M): a full-width
+     button below the card. */
   const actions = (
-      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "14px 28px 0" : 0 }}>
+      <div className="stack ds-col" style={{ gap: 10, padding: desk ? "18px 28px 0" : 0 }}>
         {step && (
           <div className="ds-plans-try">
             <CoachTryIt step={step.text} today={today} lang={lang} onTryIt={(text) => onTryIt(text, ref(step))} onUndo={onUndo} buttonProps={primary} />
@@ -189,8 +189,8 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         {desk && <Fig n={done.length} unit={c.ofSteps(steps.length)} sub={plan.phases.length > 1 ? c.inPhases(plan.phases.length) : undefined} size="md" />}
       </div>
 
-      <div data-testid={step ? "plan-today-step" : undefined} style={{ display: "grid", gridTemplateColumns: desk ? "auto minmax(0, 1fr)" : "0 minmax(0, 1fr)", gap: desk ? 20 : 0, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
-        {desk ? <LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={116} height={83} /> : <span aria-hidden="true" />}
+      <div data-testid={step ? "plan-today-step" : undefined} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: desk ? 20 : 12, alignItems: "center", padding: desk ? "6px 28px 0" : "10px 16px 0" }}>
+        <LivingForm src={EMPTY_ART.plans.src} srcSet={EMPTY_ART.plans.srcSet} width={desk ? 116 : 84} height={desk ? 83 : 60} />
         <div className="stack ds-col" style={{ gap: desk ? 8 : 4 }}>
           {step ? (
             <>
@@ -214,11 +214,12 @@ export function ActionPlanStage({ plan, step, today, lang, now, composition, ech
         </div>
       </div>
 
-      {desk && actions}
-      {/* The trail follows today's move (the move stays above the fold; the sweep's bar). */}
-      <div style={{ padding: desk ? "40px 28px 22px" : "36px 12px 16px", marginTop: desk ? "auto" : undefined }}>
+      {/* N-Plans-D/M: the trail sits under the step; today's move follows it (desktop, inside the
+          card; phone, a full-width button below the card). */}
+      <div style={{ padding: desk ? "30px 28px 0" : "36px 12px 16px" }}>
         <PlanTrail plan={plan} todayStep={step} lang={lang} composition={composition} />
       </div>
+      {desk && <div style={{ paddingBottom: 24 }}>{actions}</div>}
     </Scene>
     {!desk && actions}
     </>
