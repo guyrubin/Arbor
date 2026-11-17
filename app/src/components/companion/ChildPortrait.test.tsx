@@ -141,7 +141,7 @@ vi.mock("react/jsx-dev-runtime", async original => {
 });
 import ChildPortrait from "./ChildPortrait";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayMonth, fmtDayV10 } from "../../lib/formatDate";
 import { translate } from "../../lib/i18n";
 import { ALL_MILESTONES, bandForAgeMonths } from "../../lib/milestoneData";
 import { noticedByDomain } from "../../lib/milestones/domainMap";
@@ -279,7 +279,10 @@ describe("v3 F-CHILD-1 — the portrait cards", () => {
     const kept = html.slice(html.indexOf('data-testid="portrait-card-kept"'), html.indexOf('id="ms-next"'));
     expect(kept).toContain(esc(translate(lang, "companion.milestones.card.kept")));
     expect(kept).toContain("Sang the whole bath song");
-    expect(kept).toContain(esc(translate(lang, "companion.milestones.srcParent", { date: fmtDay("2026-06-10T10:00:00.000Z", lang) })));
+    // V77: the kept day in the boards' form, the day first ("10 Jun"); no "Parent · Jun 10, 2026".
+    expect(kept).toContain(fmtDayMonth("2026-06-10T10:00:00.000Z", lang));
+    expect(kept).not.toContain(esc(translate(lang, "companion.milestones.srcParent", { date: fmtDay("2026-06-10T10:00:00.000Z", lang) })));
+    expect(strength).toContain('data-testid="portrait-card-strength-open"');
     const goal = html.slice(html.indexOf('data-testid="portrait-goals-edit"'), html.indexOf('data-testid="dev-map-checkrow"'));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.title")));
     expect(goal).toContain(esc(translate(lang, "elev.goal.profile.empty")));
@@ -468,7 +471,7 @@ describe("v3 F-CHILD-1 — answers, firsts and the chosen watch", () => {
     state.screenings = [{ id: "s1", answeredAt: "2026-06-01T10:00:00.000Z", recheckDueAt: "2026-09-01T10:00:00.000Z" }];
     const html = render();
     expect(html).toContain('data-testid="dev-map-recheck"');
-    expect(html).toContain(esc(translate("en", "elev.growth.recheck.date", { date: fmtDay("2026-09-01T10:00:00.000Z", "en") })));
+    expect(html).toContain(esc(translate("en", "elev.growth.recheck.date", { date: fmtDayV10("2026-09-01T10:00:00.000Z", "en") })));
   });
 
   it("the chosen watch leads its own area with the re-check date; Stop watching offers Undo, and Undo restores it", () => {

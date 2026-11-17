@@ -102,7 +102,12 @@ export default function AreaTimeline({ domain, milestones, composition, gender =
   ) : null;
 
   if (composition !== "desk") {
-    if (leaves.length === 0) return <p className="ms-tl-none" data-testid="area-timeline-none">{t("companion.devMap.none")}</p>;
+    if (leaves.length === 0) return (
+      <div className="ms-tl-none" data-testid="area-timeline-none">
+        <p className="ms-tl-none-t">{copy.nothingYet}</p>
+        <p className="ms-tl-none-s">{copy.leafSub}</p>
+      </div>
+    );
     return (
       <ol className="ms-tl-list" data-testid="area-timeline">
         {leaves.map((leaf, i) => (
@@ -137,7 +142,7 @@ export default function AreaTimeline({ domain, milestones, composition, gender =
         ))}
         <span className="ms-tl-axis" aria-hidden="true" />
         <span className="ms-tl-today" data-testid="area-timeline-today" style={{ gridColumn: `${Math.max(1, cal.days - 6)} / ${cal.days + 1}` }}><i aria-hidden="true" /><span>{copy.today}</span></span>
-        {leaves.length === 0 && <span className="ms-tl-empty" data-testid="area-timeline-none">{t("companion.devMap.none")}</span>}
+        {leaves.length === 0 && <span className="ms-tl-empty" data-testid="area-timeline-none">{copy.nothingYet}</span>}
         {leaves.map((leaf, i) => (
           <span key={leaf.id} className="ms-tl-leaf" style={col(cal.marks[i])} role="listitem" aria-label={`${seenIt}: ${leaf.title}, ${day(leaf.ms)}`} data-testid="area-timeline-leaf">
             <span aria-hidden="true"><Token kind="moment" size="md" label={seenIt} isNew={i === leaves.length - 1} /></span>
@@ -149,6 +154,7 @@ export default function AreaTimeline({ domain, milestones, composition, gender =
           ) : null;
         })}
       </div>
+      {leaves.length === 0 && <p className="ms-tl-leafsub" data-testid="area-timeline-empty-sub">{copy.leafSub}</p>}
       {leaves.length > 0 && (
         <ol className="ms-tl-cards" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${leaves.length}, minmax(0, 1fr))` }}>
           {leaves.map((leaf, i) => (

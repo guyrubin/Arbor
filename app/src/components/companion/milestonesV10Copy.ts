@@ -57,6 +57,18 @@ export interface MilestonesV10Copy {
   earlier: string;
   later: string;
   byAge: string;
+  nothingYet: string;
+  markSeen: string;
+  leafSub: string;
+  checkName: string;
+  checkLine: string;
+  checkNotYet: string;
+  inYourWords: string;
+  onShelf: string;
+  openAbout: string;
+  worthKnowing: string;
+  worthKnowingAt: string;
+  ageWords: readonly string[];
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -119,6 +131,18 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     earlier: "Earlier",
     later: "Later",
     byAge: "by {age}",
+    nothingYet: "Nothing recorded yet",
+    markSeen: "Mark what you have seen",
+    leafSub: "Each thing you mark Seen it puts a leaf here, on its date.",
+    checkName: "5-minute development check",
+    checkLine: "{n} quick questions · under 4 minutes",
+    checkNotYet: "Not done yet. Results write into these same areas.",
+    inYourWords: "in your words",
+    onShelf: "on the {shelf} shelf",
+    openAbout: "Open About {name}",
+    worthKnowing: "Worth knowing",
+    worthKnowingAt: "Worth knowing at {age}",
+    ageWords: ["", "one", "two", "three", "four", "five", "six"],
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -179,6 +203,18 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     earlier: "מוקדם יותר",
     later: "מאוחר יותר",
     byAge: "עד גיל {age}",
+    nothingYet: "עוד לא תועד דבר",
+    markSeen: "סמנו מה ראיתם",
+    leafSub: "כל דבר שתסמנו 'ראיתי' מוסיף כאן עלה, בתאריך שלו.",
+    checkName: "בדיקת התפתחות של 5 דקות",
+    checkLine: "{n} שאלות קצרות · פחות מ-4 דקות",
+    checkNotYet: "עוד לא נעשתה. התוצאות נכתבות לאותם תחומים.",
+    inYourWords: "במילים שלכם",
+    onShelf: "במדף {shelf}",
+    openAbout: "לפתוח את על {name}",
+    worthKnowing: "כדאי לדעת",
+    worthKnowingAt: "כדאי לדעת בגיל {age}",
+    ageWords: ["", "שנה", "שנתיים", "שלוש", "ארבע", "חמש", "שש"],
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",

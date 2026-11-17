@@ -12,7 +12,7 @@ import { milestonesV10Copy } from "./milestonesV10Copy";
  * today). Drawings are decor (aria-hidden); the step names are the text. It
  * shows no record and counts nothing.
  */
-export default function MilestonesReadGuide({ steps = "map" }: { steps?: "map" | "list" }) {
+export default function MilestonesReadGuide({ steps = "map", suggests = true }: { steps?: "map" | "list"; suggests?: boolean }) {
   const { t, uiLang } = useLanguage();
   const copy = milestonesV10Copy(uiLang);
   const seenIt = t(NOTICE_ANSWER_KEYS.yes);
@@ -39,8 +39,8 @@ export default function MilestonesReadGuide({ steps = "map" }: { steps?: "map" |
       </ol>
       <p className="key3">
         <span><span aria-hidden="true"><Token kind="moment" size="sm" label={seenIt} /></span>{seenIt}</span>
-        <span><span aria-hidden="true"><Token kind="moment" state="ai" size="sm" label={copy.arborSuggests} /></span>{copy.arborSuggests}</span>
-        {steps === "map" && <span><span aria-hidden="true"><Token kind="neutral" state="here" size="sm" label={copy.today} /></span>{copy.today}</span>}
+        {suggests && <span data-testid="ms-read-key-suggests"><span aria-hidden="true"><Token kind="moment" state="ai" size="sm" label={copy.arborSuggests} /></span>{copy.arborSuggests}</span>}
+        {steps === "map" && <span><i className="ms-key-today" aria-hidden="true" />{copy.today}</span>}
       </p>
     </section>
   );
