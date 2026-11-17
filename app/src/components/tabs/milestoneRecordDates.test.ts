@@ -21,7 +21,7 @@
 import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 import { tGCare } from "../../lib/growthCareText";
 
 const SRC_ROOT = path.resolve(__dirname, "../..");
@@ -95,7 +95,9 @@ describe("GP-10 — the row is about noticing for the first time", () => {
 describe("GP-10 — the record keeps its dates", () => {
   it("the checked-row chip renders observationUpdatedAt through the ONE date seam", () => {
     expect(chipBlock).toContain("item.observationUpdatedAt");
-    expect(chipBlock).toContain("fmtDay(item.observationUpdatedAt, uiLang)");
+    // V77: the boards' V10 day ("Fri 14 Aug"), still the one date seam (lib/formatDate).
+    expect(chipBlock).toContain("fmtDayV10(item.observationUpdatedAt, uiLang)");
+    expect(chipBlock).not.toContain("fmtDay(item.observationUpdatedAt, uiLang)");
     expect(chipBlock).toContain('elev.gcare.ms.noticedOn');
     // An undated legacy mark is not given an invented day.
     expect(chipBlock).toContain('elev.gcare.ms.noticedUndated');
@@ -115,6 +117,7 @@ describe("GP-10 — the record keeps its dates", () => {
     expect(he).not.toContain("{date}");
     // Never a bare numeric DD/MM — the F-09 seam always names the month.
     expect(fmtDay(at, "en")).not.toMatch(/^\d+\/\d+/);
+    expect(tGCare("en", "elev.gcare.ms.noticedOn", { date: fmtDayV10(at, "en", new Date("2026-11-17T12:00:00Z")).replace(/[\u2068\u2069]/g, "") })).toBe("Noticed Fri 14 Aug");
   });
 
   it("an unparseable timestamp degrades to an empty date, never to 'Invalid Date'", () => {

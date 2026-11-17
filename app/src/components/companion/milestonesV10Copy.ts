@@ -69,6 +69,15 @@ export interface MilestonesV10Copy {
   worthKnowing: string;
   worthKnowingAt: string;
   ageWords: readonly string[];
+  readMarkEach: string;
+  readCheckWhole: string;
+  latestTitle: string;
+  notOnList: string;
+  notOnListSub: string;
+  checkSection: string;
+  listShort: string;
+  toolsShort: string;
+  checkShort: string;
   listGuideList: string;
   listGuideListSub: string;
   listGuideTools: string;
@@ -143,6 +152,15 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     worthKnowing: "Worth knowing",
     worthKnowingAt: "Worth knowing at {age}",
     ageWords: ["", "one", "two", "three", "four", "five", "six"],
+    readMarkEach: "Mark each one",
+    readCheckWhole: "Check the whole",
+    latestTitle: "{name}'s latest milestone",
+    notOnList: "Not on the list?",
+    notOnListSub: "Add something you saw. It joins the area you choose.",
+    checkSection: "The Development Check",
+    listShort: "List",
+    toolsShort: "Tools",
+    checkShort: "Check",
     listGuideList: "The list",
     listGuideListSub: "Mark each item",
     listGuideTools: "Latest, and tools",
@@ -215,6 +233,15 @@ export const MILESTONES_V10_COPY: Readonly<Record<"en" | "he", MilestonesV10Copy
     worthKnowing: "כדאי לדעת",
     worthKnowingAt: "כדאי לדעת בגיל {age}",
     ageWords: ["", "שנה", "שנתיים", "שלוש", "ארבע", "חמש", "שש"],
+    readMarkEach: "מסמנים כל אחד",
+    readCheckWhole: "בודקים את התמונה כולה",
+    latestTitle: "אבן הדרך האחרונה של {name}",
+    notOnList: "לא ברשימה?",
+    notOnListSub: "הוסיפו משהו שראיתם. הוא מצטרף לתחום שתבחרו.",
+    checkSection: "בדיקת ההתפתחות",
+    listShort: "רשימה",
+    toolsShort: "כלים",
+    checkShort: "בדיקה",
     listGuideList: "הרשימה",
     listGuideListSub: "מסמנים כל פריט",
     listGuideTools: "האחרון, וכלים",

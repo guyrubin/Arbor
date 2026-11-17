@@ -272,3 +272,21 @@
 .ds .ms-know .nw-know { padding: 16px 18px; border-radius: 18px; }
 .ds .ms-know .nw-know .lead { font-size: 17px; line-height: 1.3; }
 .ds .ms-tl-empty { align-self: center; margin-bottom: 0; padding: 2px 14px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+
+/* V77 audit — the list: the latest card's head, Not on the list?, and the check section */
+.ds .ms-latest-h { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; font: 600 17px/1.2 var(--font-display) !important; color: var(--ink); }
+.ds .ms-latest-h .ogi, .ds .ms-check-for .ogi { width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--tint-2); color: var(--sapphire-deep); }
+.ds .ms-add-row { display: flex; align-items: center; gap: 12px; }
+.ds .ms-add-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds .ms-add-text b { font-size: 15px; font-weight: 600 !important; color: var(--ink); }
+.ds .ms-check-link { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow-tile); }
+.ds .ms-check-link > p { margin: 0; }
+.ds .ms-check-for { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds .ms-check-body { font-size: 15px; line-height: 1.45; color: var(--ink); max-width: 64ch; }
+.ds .ms-check-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds .ms-check-go-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ds .ms-check-state { font-size: 13px; color: var(--ink-soft); }
+.ds .ms-check-basis { font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
+.ds .gd8.gdw i { background: var(--k-moment-w); }
+.ds .ms-check-link { align-items: flex-start; text-align: start; }
+.ds .ms-check-link .ms-check-chips, .ds .ms-check-link .ms-check-go-row { justify-content: flex-start; }

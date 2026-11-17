@@ -137,7 +137,7 @@ export default function AreaTimeline({ domain, milestones, composition, gender =
         {Array.from({ length: weeks }, (_, w) => (
           <React.Fragment key={w}>
             <span className={`ms-tl-week${w % 2 ? "" : " shade"}`} aria-hidden="true" style={{ gridColumn: `${w * 7 + 1} / span ${Math.min(7, cal.days - w * 7)}` }} />
-            {cal.days - w * 7 >= 3 && <span className="ms-tl-wk" aria-hidden="true" style={{ gridColumn: `${w * 7 + 1} / span ${Math.min(7, cal.days - w * 7)}` }}>{short(cal.start + w * 7 * DAY_MS + DAY_MS / 2)}</span>}
+            {cal.days - w * 7 >= 5 && <span className="ms-tl-wk" aria-hidden="true" style={{ gridColumn: `${w * 7 + 1} / span ${Math.min(7, cal.days - w * 7)}` }}>{short(cal.start + w * 7 * DAY_MS + DAY_MS / 2)}</span>}
           </React.Fragment>
         ))}
         <span className="ms-tl-axis" aria-hidden="true" />

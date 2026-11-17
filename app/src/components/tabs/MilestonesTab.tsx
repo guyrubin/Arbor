@@ -34,7 +34,7 @@ import { isRenderableMilestoneMedia } from "../../content/governance";
 import { ageLabelForMonths, ageYearsFromProfile } from "../../lib/childAge";
 // GP-10 — the record keeps DATES and "first time" language; Wave G strings.
 import { tGCare } from "../../lib/growthCareText";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 // LL-A3 — milestone → Learn Library "why this matters" door
 import { bestCardForDomain } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
@@ -74,6 +74,7 @@ import { ShelfGlyph } from "../ui/ShelfGlyph";
 import { DsRoot, Guide, Route, RouteHead, RouteSection } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import MilestonesBand from "../companion/MilestonesBand";
+import { bandForAgeMonths as screeningBand } from "../../lib/screening";
 import MilestonesReadGuide from "../companion/MilestonesReadGuide";
 import { seenTotals } from "../companion/milestonesModel";
 import { milestonesV10Copy } from "../companion/milestonesV10Copy";
@@ -233,6 +234,10 @@ export default function MilestonesTab() {
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
   const currentBand = bandForAgeMonths(comparisonMonths);
+  // The check's own band (Screening asks exactly its items).
+  const checkBand = screeningBand(comparisonMonths);
+  const checkRuns = useChildCollection<{ id: string; answeredAt: string }>(childProfile.id, "screenings");
+  const lastCheckAt = useMemo(() => checkRuns.items.reduce<string | null>((latest, r) => (r.answeredAt && (!latest || r.answeredAt > latest) ? r.answeredAt : latest), null), [checkRuns.items]);
   // GP-08: every count on this surface is over the child's AGE WINDOW (current
   // corrected band + one earlier — the shared lib/milestoneData helper), never
   // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
@@ -507,7 +512,7 @@ export default function MilestonesTab() {
             {item.checked && (
               <span data-testid="ms-noticed-chip" className="text-[12px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                 {item.observationUpdatedAt
-                  ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(item.observationUpdatedAt, uiLang) })
+                  ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDayV10(item.observationUpdatedAt, uiLang) })
                   : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
               </span>
             )}
@@ -1158,7 +1163,7 @@ export default function MilestonesTab() {
             <span data-testid="ms-latest-area"><span className="hidden sm:inline"> · </span>{t("elev.ms.latest.area", { area: latestShelfName })} · </span>
             <span className="hidden sm:inline">{t("elev.ms.latest.when")} </span>
             <time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">
-              <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+              <bdi>{fmtDayV10(latestNoticed.at, uiLang)}</bdi>
             </time>
           </>
         )}
@@ -1177,9 +1182,9 @@ export default function MilestonesTab() {
 
   const desk = composition === "desk";
   const stops = [
-    { id: "ms-list", title: v10.listGuideList, sub: v10.listGuideListSub },
-    { id: "ms-tools", title: v10.listGuideTools, sub: v10.listGuideToolsSub },
-    { id: "ms-check", title: v10.listGuideCheck, sub: v10.listGuideCheckSub },
+    { id: "ms-list", title: desk ? v10.listGuideList : v10.listShort, sub: v10.listGuideListSub },
+    { id: "ms-tools", title: desk ? v10.listGuideTools : v10.toolsShort, sub: v10.listGuideToolsSub },
+    { id: "ms-check", title: desk ? v10.listGuideCheck : v10.checkShort, sub: v10.listGuideCheckSub },
   ];
   // v10.1: the latest line (with Not right? Change), Born early and Add milestone — the list's tools.
   // The ONE warm accent (the newest kept words, or the first-open sentence).
@@ -1218,6 +1223,12 @@ export default function MilestonesTab() {
     <div className="ms-list-tools">
       {(latestLine || (latestNoticed && changingLatest)) && (
         <div className="obj ms-latest">
+          {latestNoticed && (
+            <p className="ms-latest-h" data-testid="ms-latest-title">
+              <span className="ogi" aria-hidden="true"><Icon name="star" size={18} /></span>
+              <span>{v10.latestTitle.replace("{name}", firstName || t("ms.watch.childFallback"))}</span>
+            </p>
+          )}
           {latestLine}
           {/* Critic r3 (P1): correctable where it is read — "Not right?
               Change" opens the ONE answer group for the latest milestone. */}
@@ -1295,9 +1306,12 @@ export default function MilestonesTab() {
       {/* Add custom milestone */}
       <div data-module="milestones-custom" className={`${cardCls} p-5`}>
         {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="touch-target -mx-2 gap-2 px-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="add" size={16} /> {t("ms.addMilestone")}
-          </button>
+          <div className="ms-add-row">
+            <span className="ms-add-text"><b>{v10.notOnList}</b><span>{v10.notOnListSub}</span></span>
+            <button onClick={() => setShowAdd(true)} className="btn sm min-h-11 ms-add-go">
+              {t("ms.addMilestone")}
+            </button>
+          </div>
         ) : (
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
             <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("ms.newPlaceholder")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
@@ -1390,21 +1404,30 @@ export default function MilestonesTab() {
               </div>
             </div>
             <div className="rlc" id="ms-tools">
+              <MilestonesReadGuide steps="list" suggests={false} />
               {desk && headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}
-              <MilestonesReadGuide steps="list" />
               {tools}
             </div>
           </div>
         </RouteSection>
         <RouteSection id="ms-check" n={3} aria-labelledby="ms-check-title">
-          <RouteHead id="ms-check-title" title={t("sec.screen.title")} />
-          {/* The Development check is its own page (#/screening); this is its one door from the list. */}
+          <RouteHead id="ms-check-title" title={v10.checkSection} />
+          {/* The Development check is its own page (#/screening); this is its one door
+              from the list, introduced in Screening's own words (its band, its item
+              count, its basis and trust lines). */}
           <div className="ms-check-link" data-testid="ms-check-link">
-            <p>{t("sec.screen.sub", { name: firstName || t("ms.watch.childFallback") })}</p>
-            <button type="button" className="btn primary min-h-11" data-testid="ms-check-start" onClick={() => setActiveTab("screening")}>
-              <Icon name="fact_check" size={18} />
-              {t("screen.start")}
-            </button>
+            <p className="ms-check-for"><span className="ogi" aria-hidden="true"><Icon name="fact_check" size={18} /></span>
+              <span>{t("screen.introTitle", { name: firstName || t("ms.watch.childFallback"), band: t(`screen.band.${checkBand.id}`) })}</span></p>
+            <p className="ms-check-body">{t("screen.intro.body", { n: checkBand.items.length })}</p>
+            <p className="ms-check-chips"><span className="chip">{t("kit.trust.calm")}</span><span className="chip">{t("kit.trust.escalation")}</span></p>
+            <div className="ms-check-go-row">
+              <button type="button" className="btn primary min-h-11" data-testid="ms-check-start" onClick={() => setActiveTab("screening")}>
+                <Icon name="fact_check" size={18} />
+                {t("screen.start")}
+              </button>
+              <span className="ms-check-state" data-testid="ms-check-state">{lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDayV10(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}</span>
+            </div>
+            <p className="ms-check-basis">{t("screen.intro.basis")} {t("screen.trustNote")}</p>
           </div>
         </RouteSection>
       </Route>
