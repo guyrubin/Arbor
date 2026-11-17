@@ -34,7 +34,7 @@ import { GameFinish, GameShell } from '../../../game/GameShell';
 import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { FIVE_FRIEND_SUN_COPY, countAlong, countOnLine, sunLine, turnLine, type FiveFriendSunWords } from './fiveFriendSunCopy';
-import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SUN_MS, TURN_MS, WOBBLE_MS } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SUN_MS, TURN_MS, TURN_TICKS, WOBBLE_MS } from './fiveFriendSunRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -64,7 +64,11 @@ const hinted = (tree: unknown) => PADS.filter(at => pad(tree, at).props['data-hi
 const hopping = (tree: unknown) => phase(tree) === 'hop' && !nodes(tree).some(n => n.props['data-fresh'] === true);
 
 /** Taps the spinner, hears its click, and waits for the wheel to stop. */
-function spinOn(tree: unknown) { spinner(tree).props.onClick!(); expect(h.sound).toHaveBeenLastCalledWith('tap'); h.sound.mock.calls.pop(); vi.advanceTimersByTime(TURN_MS); }
+function spinOn(tree: unknown) {
+  spinner(tree).props.onClick!(); expect(h.sound).toHaveBeenLastCalledWith('tap'); h.sound.mock.calls.pop(); vi.advanceTimersByTime(TURN_MS);
+  // The wheel's own clicks while it turns (B-GAME-46).
+  expect(h.sound.mock.calls.splice(-TURN_TICKS.length)).toEqual(TURN_TICKS.map(tick => ['tap', tick.gain]));
+}
 /** Fixes the spinner: each spin takes the next roll, and the last one repeats. */
 function rolls(...values: number[]) { let turn = 0; vi.spyOn(Math, 'random').mockImplementation(() => values[Math.min(turn++, values.length - 1)]); }
 /** A replayable run of spins. */
@@ -197,7 +201,10 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     // The wheel clicks and turns; the hop is not named and no pad works until it stops.
     expect(phase(tree)).toBe('turning'); expect(heading(tree)).toBe(w.turning); expect(spinner(tree).props['aria-label']).toBe(w.turning); expect(h.sound.mock.calls).toEqual([['tap']]);
     expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true); h.sound.mockClear();
-    vi.advanceTimersByTime(TURN_MS - 1); expect(phase(render())).toBe('turning'); vi.advanceTimersByTime(1); tree = render();
+    vi.advanceTimersByTime(TURN_MS - 1); expect(phase(render())).toBe('turning');
+    // It clicks softer and slower as it settles, every click before it stops (B-GAME-46).
+    expect(h.sound.mock.calls).toEqual(TURN_TICKS.map(tick => ['tap', tick.gain])); expect(TURN_TICKS.every(tick => tick.at < TURN_MS)).toBe(true); h.sound.mockClear();
+    vi.advanceTimersByTime(1); tree = render();
     expect(phase(tree)).toBe('count'); expect(heading(tree)).toBe(w.hopFirst[1]);
     // The spinner shows its hop three ways: pips, a numeral and its name.
     expect(spinner(tree).props).toMatchObject({ disabled: true, 'aria-label': sunLine(w.spinnerShows, 2), 'data-face': 2, 'data-ready': false });

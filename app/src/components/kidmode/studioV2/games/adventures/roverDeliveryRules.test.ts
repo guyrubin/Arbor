@@ -2,7 +2,7 @@
  * floor is solved before the child changes something, each has exactly one
  * answer, and no setting of the signs can keep the rover driving for ever. */
 import { describe, expect, it } from 'vitest';
-import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, cellColumn, cellRow, faceToward, fixSigns, headingOf, initialSigns, initialTurns, isHeading, levelFor, quarterTurn, roverAtStart, roverHint, roverStep, roverTone, runRover, spinLevel, turnsOf, type Heading, type RoverEnd, type RoverLevel } from './roverDeliveryRules';
+import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, cellColumn, cellRow, faceToward, fixSigns, headingOf, initialSigns, initialTurns, isHeading, levelFor, mirrorLevel, quarterTurn, roverAtStart, roverHint, roverStep, roverTone, runRover, spinLevel, turnsOf, type Heading, type RoverEnd, type RoverLevel } from './roverDeliveryRules';
 
 const CHALLENGES = ['gentle', 'explore'] as const;
 const ROUNDS = [0, 1, 2] as const;
@@ -339,18 +339,40 @@ describe('Rover Delivery helpers', () => {
 });
 
 describe('Rover Delivery replays (B-GAME-46)', () => {
-  it('turns every floor a quarter clockwise per play again, and back after four', () => {
-    expect(ROVER_SPINS).toBe(4);
+  it('turns every floor a quarter clockwise per play again, mirrors it after four, and is back after eight', () => {
+    expect(ROVER_SPINS).toBe(8);
     const first = levelFor('gentle', 0);
     expect(levelFor('gentle', 0, 0)).toBe(first);
     expect(levelFor('gentle', 0, 1)).toEqual({ size: 3, start: 0, heading: 'e', goal: 8, signs: [{ cell: 2, initial: 'e', fix: 's' }], planters: [] });
-    expect(spinLevel(first, 4)).toEqual(first);
-    for (const { level } of FLOORS) expect(spinLevel(spinLevel(level, 1), 3)).toEqual(level);
+    expect(spinLevel(first, 4)).toEqual(mirrorLevel(first)); expect(spinLevel(first, 8)).toEqual(first);
+    expect(mirrorLevel(first)).toEqual({ size: 3, start: 8, heading: 'n', goal: 0, signs: [{ cell: 2, initial: 's', fix: 'w' }], planters: [] });
+    for (const { level } of FLOORS) { expect(spinLevel(spinLevel(level, 1), 3)).toEqual(level); expect(spinLevel(level, 5)).toEqual(spinLevel(mirrorLevel(level), 1)); }
+    // Eight plays, eight different maps of each floor.
+    for (const { challenge, round } of FLOORS) expect(new Set(Array.from({ length: ROVER_SPINS }, (_, spin) => JSON.stringify(levelFor(challenge, round, spin)))).size).toBe(ROVER_SPINS);
+  });
+
+  it('keeps each mirrored floor as written: every route mirrored, one answer, unsolved at first, same presses per sign', () => {
+    const flip: Record<Heading, Heading> = { n: 'n', e: 'w', s: 's', w: 'e' };
+    for (const { name, level } of FLOORS) {
+      const mirrored = mirrorLevel(level);
+      let answers = 0, plainAnswers = 0;
+      for (const set of settings(level)) for (const folded of [false, true]) {
+        const plain = runRover(level, set, folded), moved = runRover(mirrored, set.map(heading => flip[heading]), folded);
+        expect(moved.end, name).toBe(plain.end); expect(moved.path.length, name).toBe(plain.path.length);
+        if (moved.end === 'goal' && folded) answers += 1;
+        if (plain.end === 'goal' && folded) plainAnswers += 1;
+      }
+      expect(answers, name).toBe(plainAnswers); expect(answers, name).toBeGreaterThan(0);
+      expect(runRover(mirrored, fixSigns(mirrored), true).end, name).toBe('goal');
+      expect(runRover(mirrored, initialSigns(mirrored), false).end, name).not.toBe('goal');
+      expect(tapsToFix(mirrored), name).toBe(tapsToFix(level)); expect(thingsToChange(mirrored), name).toBe(thingsToChange(level));
+      expect(roverHint(mirrored, initialSigns(mirrored), false), name).toEqual(roverHint(level, initialSigns(level), false));
+    }
   });
 
   it('keeps each turned floor as written: same end for every setting, one answer, unsolved at first, same presses per sign', () => {
     for (const { name, challenge, round, level } of FLOORS) {
-      for (let spin = 1; spin < ROVER_SPINS; spin++) {
+      for (let spin = 1; spin < 4; spin++) {
         const turned = levelFor(challenge, round, spin);
         let answers = 0;
         for (const set of settings(level)) {

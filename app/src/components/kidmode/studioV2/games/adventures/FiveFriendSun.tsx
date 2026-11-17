@@ -13,7 +13,7 @@ import { defaultChallenge, type Challenge } from './adventureRules';
 import { BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { FIVE_FRIEND_SUN_COPY, countAlong, countOnLine, sunLine, turnLine } from './fiveFriendSunCopy';
-import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, TURN_MS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, TURN_MS, TURN_TICKS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn } from './fiveFriendSunRules';
 import './fiveFriendSun.css';
 
 /** `make-room` is the beat where the child brings Chock's far pad into the circle. */
@@ -70,6 +70,7 @@ export default function FiveFriendSun() {
     if (next < 1) return;
     // The wheel clicks as it turns; the hop is only named once it stops (B-GAME-46).
     void selectionHaptic(); kidSfx('tap'); setWheel(from => wheelTurn(from, next, spinMax(challenge))); setSpin(next); setMisses(0); setWobble(0); setStatus(''); setPhase('turning');
+    for (const tick of TURN_TICKS) later(tick.at, () => kidSfx('tap', tick.gain));
     later(TURN_MS, () => setPhase('count'));
   };
   const tapPad = (pad: number) => {
