@@ -17,12 +17,13 @@ export function ChallengePicker({ value, onChange, words }: { value: Challenge; 
 export function AdventureSteps({ done, total = 3 }: { done: number; total?: number }) {
   return <div className="adventure-steps" aria-hidden="true">{Array.from({ length: total }, (_, i) => <span key={i} data-done={i < done} data-current={i === done}>{i < done ? <Check size={15} /> : <Leaf size={15} />}</span>)}</div>;
 }
-export function AdventureHeading({ children, focusKey, onHear, muted = false }: { children: React.ReactNode; focusKey: string | number; onHear?: () => void; muted?: boolean }) {
+/** `hearLabel` names the replay button when the game has no Sprout guide (B-GAME-46). */
+export function AdventureHeading({ children, focusKey, onHear, muted = false, hearLabel }: { children: React.ReactNode; focusKey: string | number; onHear?: () => void; muted?: boolean; hearLabel?: string }) {
   const { t } = useLanguage();
   const ref = useRef<HTMLHeadingElement>(null);
   const mounted = useRef(false);
   useEffect(() => { if (mounted.current) ref.current?.focus({ preventScroll: true }); mounted.current = true; }, [focusKey]);
-  return <div className="adventure-prompt"><h2 className="adventure-heading" tabIndex={-1} ref={ref}>{children}</h2>{onHear && <button type="button" className="adventure-guide-replay" disabled={muted} onClick={onHear} aria-label={t('aria.hearSprout')}><Volume2 size={20} aria-hidden="true" /></button>}</div>;
+  return <div className="adventure-prompt"><h2 className="adventure-heading" tabIndex={-1} ref={ref}>{children}</h2>{onHear && <button type="button" className="adventure-guide-replay" disabled={muted} onClick={onHear} aria-label={hearLabel ?? t('aria.hearSprout')}><Volume2 size={20} aria-hidden="true" /></button>}</div>;
 }
 /** Neutral authored environment; profile identity is always a separate layer. */
 export function AdventureScenery({ world }: { world: 'story-theater' | 'sound-orbit' }) {

@@ -211,7 +211,7 @@ export default function WobblyDelivery() {
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--delivery" data-adventure="delivery" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={roundsDone} total={DELIVERY_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${phase === 'carry' ? 'fetch' : phase}`} onHear={hear} muted={guide.muted || busy}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${phase === 'carry' ? 'fetch' : phase}`} onHear={hear} muted={guide.muted || busy} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage delivery-stage" data-phase={phase} data-shelf={shelf.length}>
           <BopCheer beat={phase === 'thanks' || phase === 'bloom' ? `${phase}:${roundsDone}` : null} big={phase === 'bloom'} />
           <BopScene scene="scene-delivery" />

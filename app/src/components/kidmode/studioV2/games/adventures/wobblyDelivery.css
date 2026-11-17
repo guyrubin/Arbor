@@ -22,7 +22,7 @@
 .delivery-tile[data-tile='1'] { --x: 141px; }
 .delivery-tile[data-tile='2'] { --x: 182px; }
 .delivery-tile > .bop-sprite { inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; }
-.delivery-tile[data-lit=true] { transform: scale(1.1, .9); filter: drop-shadow(0 0 7px var(--bop-amber)); }
+.delivery-tile[data-lit=true] { transform: scale(1.1, .9); outline: 3px solid var(--bop-amber); outline-offset: 1px; border-radius: 50%; }
 
 /* The friend's rug at the end of the room, the friend on it, and what has
    been brought along its near edge. The flower stands behind, by the wall. */
@@ -36,7 +36,7 @@
 .delivery-flower > .bop-sprite { grid-area: 1 / 1; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; transform-origin: 50% 100%; transition: opacity .45s var(--studio-ease-soft), transform .7s var(--studio-ease-spring), filter .45s var(--studio-ease-soft); }
 .delivery-flower__open { opacity: 0; transform: scale(.8); }
 .delivery-flower[data-open=true] > .delivery-flower__folded { opacity: 0; }
-.delivery-flower[data-open=true] > .delivery-flower__open { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 9px var(--bop-amber)); }
+.delivery-flower[data-open=true] > .delivery-flower__open { opacity: 1; transform: scale(1.2); }
 
 /* The request: one picture card a thing, numbered in the order to bring it.
    Face down, a card keeps its number and its place but hides its picture.
@@ -139,7 +139,7 @@
 .delivery-puff { position: absolute; inset-block-end: -2px; inset-inline-start: 50%; inline-size: 44px; block-size: 14px; margin-inline-start: -22px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--arbor-on-accent) 90%, transparent) 0 40%, color-mix(in srgb, var(--bop-amber) 40%, transparent) 60%, transparent 72%); opacity: 0; animation: delivery-puff .5s var(--studio-ease-soft); }
 .delivery-lanterns { position: absolute; z-index: 3; inset-inline-end: 12px; inset-block-end: 134px; inline-size: 108px; display: flex; justify-content: center; gap: 7px; pointer-events: none; }
 .delivery-lanterns > i { inline-size: 16px; block-size: 20px; border-radius: 45% 45% 50% 50%; border: 2px solid color-mix(in srgb, var(--bop-teal-ink) 55%, transparent); background: color-mix(in srgb, var(--bop-teal) 22%, var(--arbor-on-accent)); box-shadow: 0 2px 3px var(--bop-shade); transition: background-color .3s var(--studio-ease-soft), box-shadow .3s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
-.delivery-lanterns > i[data-on=true] { border-color: var(--bop-teal-ink); background: radial-gradient(circle at 50% 40%, var(--arbor-on-accent), var(--bop-amber) 70%); box-shadow: 0 0 10px var(--bop-amber), 0 2px 3px var(--bop-shade); transform: translateY(-2px) scale(1.1); }
+.delivery-lanterns > i[data-on=true] { border-color: var(--bop-teal-ink); background: radial-gradient(circle at 50% 40%, var(--arbor-on-accent), var(--bop-teal) 70%); box-shadow: 0 2px 3px var(--bop-shade); transform: translateY(-2px) scale(1.1); }
 @keyframes delivery-note { 0% { opacity: 0; translate: 0 10px; scale: .5; } 25% { opacity: 1; scale: 1.1; } 100% { opacity: 0; translate: 0 -34px; scale: .9; } }
 @keyframes delivery-ring { 0% { opacity: .9; scale: .4; } 100% { opacity: 0; scale: 1.6; } }
 @keyframes delivery-puff { 0% { opacity: .95; scale: .4 .6; } 100% { opacity: 0; scale: 1.5 1; } }

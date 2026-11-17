@@ -29,7 +29,7 @@
 
 .oops-hub { position: absolute; z-index: 2; inset-block-start: calc(50% - 29px); inset-inline-start: calc(50% - 29px); inline-size: 58px; block-size: 58px; pointer-events: none; }
 .oops-hub > .bop-sprite { aspect-ratio: auto 1 / 1; }
-.oops-hub::before { content: ''; position: absolute; z-index: -1; inset: -110%; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--bop-amber) 72%, transparent), transparent 66%); opacity: 0; transition: opacity .35s var(--studio-ease-soft); }
+.oops-hub::before { content: ''; position: absolute; z-index: -1; inset: -110%; border-radius: 50%; background: none; border: 5px solid var(--bop-teal); inset: -60%; opacity: 0; transition: opacity .35s var(--studio-ease-soft); }
 .oops-toy[data-bloom=true] > .oops-hub::before { opacity: 1; }
 .oops-toy[data-bloom=true] > .oops-hub { animation: oops-glow 1.2s var(--studio-ease-soft) 2; }
 
@@ -103,10 +103,10 @@
 /* B-GAME-45: every petal that opens pops a ring of light, and a bloom throws
    ten slow-turning rays behind the toy. Decoration only, tokens only, gone
    with motion off or forced colours. */
-.oops-pop { position: absolute; z-index: 0; inset: 6px; border-radius: 50%; border: 4px solid var(--bop-amber); box-shadow: 0 0 14px color-mix(in srgb, var(--bop-amber) 70%, transparent); opacity: 0; animation: oops-pop .55s var(--studio-ease-soft); pointer-events: none; }
+.oops-pop { position: absolute; z-index: 0; inset: 6px; border-radius: 50%; border: 4px solid var(--bop-teal-ink); opacity: 0; animation: oops-pop .55s var(--studio-ease-soft); pointer-events: none; }
 .oops-rays { position: absolute; z-index: -1; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 0; block-size: 0; animation: oops-rays-turn 9s linear infinite, oops-rays-in .5s var(--studio-ease-soft); pointer-events: none; }
-.oops-rays > i { position: absolute; inset-block-end: 0; inset-inline-start: -13px; inline-size: 26px; block-size: 160px; transform-origin: 50% 100%; rotate: calc(var(--ray) * 36deg); background: linear-gradient(to top, transparent 20%, color-mix(in srgb, var(--bop-amber) 55%, transparent) 55%, transparent); clip-path: polygon(50% 100%, 0 0, 100% 0); }
-.oops-rays > i:nth-child(even) { background: linear-gradient(to top, transparent 25%, color-mix(in srgb, var(--bop-teal) 45%, transparent) 60%, transparent); }
+.oops-rays > i { position: absolute; inset-block-end: 0; inset-inline-start: -13px; inline-size: 26px; block-size: 160px; transform-origin: 50% 100%; rotate: calc(var(--ray) * 36deg); background: linear-gradient(to top, transparent 20%, color-mix(in srgb, var(--bop-teal) 50%, transparent) 55%, transparent); clip-path: polygon(50% 100%, 0 0, 100% 0); }
+.oops-rays > i:nth-child(even) { background: linear-gradient(to top, transparent 25%, color-mix(in srgb, var(--studio-mist) 90%, transparent) 60%, transparent); }
 @keyframes oops-pop { 0% { opacity: .95; scale: .6; } 100% { opacity: 0; scale: 1.35; } }
 @keyframes oops-rays-turn { to { rotate: 360deg; } }
 @keyframes oops-rays-in { from { opacity: 0; scale: .3; } to { opacity: 1; scale: 1; } }
