@@ -134,10 +134,23 @@ export default function WhatHelped({
   const side = (
     <div className="stack wk10-helped-side">
       {hasHeldWords && (
-        <article className={`wk-node words wk10-words${wordsDay ? " dayed" : ""}`} data-testid="weekly-thread-words">
-          <span className="k">{wordsDay ? copy.wordsYouUsedOn(wordsDay) : copy.wordsYouUsed}</span>
-          {heldWords}
-        </article>
+        phone ? (
+          /* N-Week-M: the words card leads with a music-note glyph tile (decor). */
+          <article className={`wk-tr words wk10-words${wordsDay ? " dayed" : ""}`} data-testid="weekly-thread-words">
+            <span className="wk-tw" aria-hidden="true" data-testid="weekly-words-glyph">
+              <Icon name="music_note" size={15} />
+            </span>
+            <div className="wk10-node-body">
+              <span className="k">{wordsDay ? copy.wordsYouUsedOn(wordsDay) : copy.wordsYouUsed}</span>
+              {heldWords}
+            </div>
+          </article>
+        ) : (
+          <article className={`wk-node words wk10-words${wordsDay ? " dayed" : ""}`} data-testid="weekly-thread-words">
+            <span className="k">{wordsDay ? copy.wordsYouUsedOn(wordsDay) : copy.wordsYouUsed}</span>
+            {heldWords}
+          </article>
+        )
       )}
       {hardCount > 0 && (
         <button type="button" className="nx-co wk10-linkcard" data-testid="weekly-hard-card" onClick={onHardMoments}>
