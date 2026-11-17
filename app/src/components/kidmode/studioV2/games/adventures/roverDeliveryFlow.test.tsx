@@ -110,9 +110,9 @@ function solve(level: RoverLevel, w: RoverDeliveryWords) {
   return render();
 }
 /** A whole adventure the short way, from its first floor. */
-function playOut(challenge: Challenge, w: RoverDeliveryWords) {
+function playOut(challenge: Challenge, w: RoverDeliveryWords, spin = 0) {
   let tree = render();
-  for (let round = 0; round < ROVER_ROUNDS; round++) tree = solve(levelFor(challenge, round), w);
+  for (let round = 0; round < ROVER_ROUNDS; round++) tree = solve(levelFor(challenge, round, spin), w);
   return tree;
 }
 /** A whole adventure the long way round: a flower is folded and opened once to
@@ -427,32 +427,35 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     }
   });
 
-  it('starts again from the first floor on play again, and drops a run that is cut short', () => {
-    const first = levelFor('gentle', 0);
+  it('starts again from the first floor on play again, turned a quarter, and drops a run that is cut short', () => {
+    // B-GAME-46: each play again turns the floors a quarter clockwise; picking a challenge does not.
+    const first = levelFor('gentle', 0, 1);
     let tree = playOut('gentle', w);
     finish(tree)!.props.onPlayAgain(); tree = render();
+    expect(first.start).not.toBe(levelFor('gentle', 0).start);
     expect(finish(tree)).toBeUndefined(); expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0);
     expect(pointing(tree, first)).toEqual(initialSigns(first)); expect(at(tree)).toBe(first.start); expect(trail(tree)).toEqual([]); expect(hints(tree)).toHaveLength(1);
     expect(picker(tree).props.value).toBe('gentle'); expect(hero(tree).props).toMatchObject({ pose: 'idle', kick: 0, celebrate: false }); expect(h.tones.stop).toHaveBeenCalled();
-    expect(finish(playOut('gentle', w))).toBeDefined();
+    expect(finish(playOut('gentle', w, 1))).toBeDefined();
     // The bigger adventure plays again as the bigger adventure, from its first floor.
     finish(render())!.props.onPlayAgain(); picker(render()).props.onChange('explore');
-    tree = playOut('explore', w); finish(tree)!.props.onPlayAgain(); tree = render();
+    tree = playOut('explore', w, 2); finish(tree)!.props.onPlayAgain(); tree = render();
+    const big = levelFor('explore', 0, 3), last = levelFor('gentle', 0, 3);
     expect(picker(tree).props.value).toBe('explore'); expect(board(tree).props.style['--rover-n']).toBe(4); expect(done(tree)).toBe(0);
-    expect(pointing(tree, levelFor('explore', 0))).toEqual(['n', 'n']); expect(at(tree)).toBe(12); expect(bloom(tree)).toBeUndefined();
+    expect(pointing(tree, big)).toEqual(initialSigns(big)); expect(at(tree)).toBe(big.start); expect(bloom(tree)).toBeUndefined();
     // A new start in the middle of a run: nothing of the old run lands afterwards.
     const restart = picker(tree).props.onChange as (level: Challenge) => void;
     startButton(tree, w).props.onClick!(); tree = render(); expect(phase(tree)).toBe('drive');
-    vi.advanceTimersByTime(STEP_MS); expect(at(render())).toBe(13);
+    vi.advanceTimersByTime(STEP_MS); expect(at(render())).toBe(runRover(big, initialSigns(big), false).path[1]);
     restart('gentle'); h.sound.mockClear(); h.tones.play.mockClear();
     vi.advanceTimersByTime(30_000); tree = render();
-    expect(phase(tree)).toBe('ready'); expect(at(tree)).toBe(6); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0); expect(trail(tree)).toEqual([]);
+    expect(phase(tree)).toBe('ready'); expect(at(tree)).toBe(last.start); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0); expect(trail(tree)).toEqual([]);
     expect(h.sound).not.toHaveBeenCalled(); expect(h.tones.play).not.toHaveBeenCalled();
     // A new start after parked runs forgets them: only the first-floor pulse, the first prompt again.
-    send(first, w); tree = send(first, w).tree; expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(0);
+    send(last, w); tree = send(last, w).tree; expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(runRover(last, initialSigns(last), false).at);
     restart('gentle'); tree = render();
-    expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(6); expect(pointing(tree, first)).toEqual(['n']);
-    expect(send(first, w).tree).toBeDefined(); expect(hints(render())).toEqual([]);
+    expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(last.start); expect(pointing(tree, last)).toEqual(initialSigns(last));
+    expect(send(last, w).tree).toBeDefined(); expect(hints(render())).toEqual([]);
   });
 
   it('plays the whole game with sound off: the floor and the words carry it', () => {

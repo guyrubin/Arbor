@@ -75,9 +75,38 @@ const LEVELS: Record<Challenge, readonly RoverLevel[]> = {
   ],
 };
 
-export function levelFor(challenge: Challenge, round: number): RoverLevel {
+/** B-GAME-46: each play again turns every floor a quarter turn clockwise, so
+ * a replay is a fresh map. A turn of the whole floor keeps its one answer and
+ * how many presses each sign needs; only where things stand changes. */
+export const ROVER_SPINS = 4;
+
+function spinCell(cell: number, size: number): number {
+  const row = Math.floor(cell / size), column = cell % size;
+  return column * size + (size - 1 - row);
+}
+
+export function spinLevel(level: RoverLevel, spin: number): RoverLevel {
+  const times = ((Math.trunc(spin) % ROVER_SPINS) + ROVER_SPINS) % ROVER_SPINS;
+  let next = level;
+  for (let at = 0; at < times; at++) {
+    const size = next.size, cell = (value: number) => spinCell(value, size);
+    next = {
+      size,
+      start: cell(next.start),
+      heading: quarterTurn(next.heading),
+      goal: cell(next.goal),
+      signs: next.signs.map(sign => ({ cell: cell(sign.cell), initial: quarterTurn(sign.initial), fix: quarterTurn(sign.fix) })),
+      planters: next.planters.map(cell),
+      ...(next.bloom === undefined ? {} : { bloom: cell(next.bloom) }),
+    };
+  }
+  return next;
+}
+
+export function levelFor(challenge: Challenge, round: number, spin = 0): RoverLevel {
   const levels = LEVELS[challenge];
-  return levels[Number.isInteger(round) ? Math.min(Math.max(round, 0), levels.length - 1) : 0];
+  const level = levels[Number.isInteger(round) ? Math.min(Math.max(round, 0), levels.length - 1) : 0];
+  return spin ? spinLevel(level, spin) : level;
 }
 
 export function isHeading(value: unknown): value is Heading {
