@@ -103,7 +103,7 @@ export default function HeroBand() {
   const showTime = () => {
     setPhase('stage');
     begin({ tempo: tempoRef.current, loop: () => loopRef.current, steps: SHOW_STEPS, onStep: step => { setCursor(step); strike(loopRef.current[step]); },
-      onEnd: () => { setPlaying(false); setCursor(-1); kidSfx('correct'); setPhase('done'); } });
+      onEnd: () => { setPlaying(false); setCursor(-1); kidSfx('finish'); setPhase('done'); } });
   };
   const openJam = (moves: (MoveId | null)[] = emptyLoop(), speed: DanceTempo = tempoRef.current) => {
     stopBeat(); setLoop(moves); setTempo(speed); setMove(null); setShowPattern(false); setStatus(''); setPhase('jam');
@@ -115,7 +115,8 @@ export default function HeroBand() {
     if (now === 'copy') {
       guide.cancel(); hit(id); strike(id);
       const next = [...input.current, id];
-      if (id !== target[next.length - 1]) { input.current = []; setPlayed([]); setStatus(w.retry); setShowPattern(true); return; }
+      // B-GAME-46: a different move keeps the moves already danced; the ring shows the step to try.
+      if (id !== target[next.length - 1]) { kidSfx('tryAgain'); setStatus(w.retry); setShowPattern(true); return; }
       input.current = next; setPlayed(next); setStatus('');
       if (phraseMatches(target, next)) { setPhase('matched'); kidSfx('correct'); }
       return;
@@ -160,7 +161,6 @@ export default function HeroBand() {
         <AdventureHeading focusKey={`${round}:${phase}`} onHear={guide.replay} muted={guide.muted || playing} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="band-stage" data-phase={phase} data-move={move ?? 'none'} data-playing={playing}>
           <BopScene scene="scene-band" />
-          <span className="band-spot" aria-hidden="true" />
           {/* B-GAME-45: the show gets its lights: three beams sweep the stage. */}
           {phase === 'stage' && <span className="band-beams" aria-hidden="true"><i /><i /><i /></span>}
           <BopCheer beat={phase === 'matched' ? round : phase === 'stage' ? 'stage' : null} big={phase === 'stage'} />
@@ -177,7 +177,7 @@ export default function HeroBand() {
               const name = id === null ? w.empty : visible ? w.moves[id] : w.hidden;
               const attrs = { 'data-move': visible && id !== null ? id : 'none', 'data-now': index === cursor, 'data-next': phase === 'copy' && index === played.length };
               return phase === 'jam'
-                ? <button type="button" key={index} className="band-step" {...attrs} disabled={id === null} aria-label={`${w.step} ${index + 1}: ${name}${id === null ? '' : `. ${w.takeOut}`}`} onClick={() => { setLoop(placeMove(loopRef.current, index, null)); setStatus(''); }}>{Glyph ? <Glyph size={20} aria-hidden="true" /> : <i aria-hidden="true" />}</button>
+                ? <button type="button" key={index} className="band-step" {...attrs} aria-disabled={id === null} aria-label={`${w.step} ${index + 1}: ${name}${id === null ? '' : `. ${w.takeOut}`}`} onClick={() => { if (id === null) return; setLoop(placeMove(loopRef.current, index, null)); setStatus(''); }}>{Glyph ? <Glyph size={20} aria-hidden="true" /> : <i aria-hidden="true" />}</button>
                 : <span key={index} className="band-step" {...attrs} role="img" aria-label={`${w.step} ${index + 1}: ${name}`}>{Glyph ? <Glyph size={20} aria-hidden="true" /> : <i aria-hidden="true" />}</span>;
             })}
           </div>
@@ -210,7 +210,7 @@ export default function HeroBand() {
               <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={showDance}><Play size={21} aria-hidden="true" />{phase === 'ready' ? w.showMe : w.showAgain}</button>
               {phase === 'copy' && <button type="button" className="studio-game-button-v2" aria-pressed={showPattern} onClick={() => setShowPattern(value => !value)}><Eye size={20} aria-hidden="true" />{showPattern ? w.hideMemory : w.memory}</button>}
               <button type="button" className="studio-game-button-v2" onClick={() => openJam()}>{w.own}</button>
-              {kept?.kind === 'dance' && <button type="button" className="studio-game-button-v2" onClick={() => { if (saved.isCurrent() && validDance(kept.moves, kept.tempo)) openJam([...kept.moves], kept.tempo as DanceTempo); }}>{w.open}</button>}
+              {kept?.kind === 'dance' && validDance(kept.moves, kept.tempo) && <button type="button" className="studio-game-button-v2" onClick={() => { if (saved.isCurrent()) openJam([...kept.moves], kept.tempo as DanceTempo); }}>{w.open}</button>}
             </>}
         </div>
         {jamming && <p className="adventure-transfer">{w.transfer}</p>}

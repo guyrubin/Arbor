@@ -600,7 +600,7 @@ describe('Rover Delivery words', () => {
     expect(roverLine(en.signNow, en.directions.e)).toBe('The sign is pointing right.'); expect(roverLine(en.rover, en.directions.s)).toBe('The rover, facing down');
     expect(roverLine(he.sign, he.directions.e)).toBe('שלט שמצביע ימינה. נוגעים כדי לסובב.'); expect(roverLine(he.signNow, he.directions.n)).toBe('השלט מצביע למעלה.');
     // Each parked line says where the rover stopped and what kind of thing to change.
-    expect(en.ends.edge).toBe('The rover stopped at the edge. Which sign needs a turn?'); expect(en.ends.planter).toBe('The rover stopped at the planter. Which sign needs a turn?');
+    expect(en.ends.edge).toBe('The rover stopped at the edge. Which sign needs a turn?'); expect(en.ends.planter).toBe('The rover stopped at the flower pot. Which sign needs a turn?');
     expect(en.ends.bloom).toBe('The rover stopped at the flower. Tap the flower to fold it down.'); expect(en.ends.loop).toBe('The rover is going in circles. Turn one sign.');
     expect(roverLine('{0}{1}{2}', 'a')).toBe('a'); expect(roverLine('no blank', 'a')).toBe('no blank'); expect(roverLine('{0} and {0}', 'a')).toBe('a and a');
   });

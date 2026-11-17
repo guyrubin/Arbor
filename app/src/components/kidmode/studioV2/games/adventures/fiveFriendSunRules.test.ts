@@ -52,7 +52,7 @@ describe('Five-Friend Sun: the path and the circle', () => {
     expect(padCell(Number.NaN)).toEqual(padCell(0)); expect(padCell(3.9)).toEqual(padCell(3));
   });
   it('keeps every beat short, and the finished sun long enough to take in', () => {
-    expect(HOP_MS).toBe(380); expect(SUN_MS).toBe(2600); expect(SUN_MS).toBeGreaterThan(JOIN_MS);
+    expect(HOP_MS).toBe(380); expect(SUN_MS).toBe(4200); expect(SUN_MS).toBeGreaterThan(JOIN_MS);
     expect(JOIN_MS).toBeGreaterThanOrEqual(HOP_MS); expect(JOIN_MS).toBeLessThanOrEqual(2000);
     expect(WOBBLE_MS).toBeGreaterThan(0); expect(WOBBLE_MS).toBeLessThan(2 * HOP_MS);
   });

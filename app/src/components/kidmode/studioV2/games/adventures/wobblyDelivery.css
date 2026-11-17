@@ -12,7 +12,7 @@
 .delivery-shelf { --item: 66px; position: absolute; z-index: 1; inset-block-start: 5px; inset-inline-start: 6px; display: grid; grid-template-columns: repeat(2, var(--item)); grid-auto-rows: var(--item); gap: 4px; padding: 5px; border-radius: var(--studio-radius-control); border: 1px solid var(--bop-line); border-block-end: 4px solid var(--bop-shade); background: repeating-linear-gradient(transparent 0 calc(var(--item) + 1px), var(--bop-shade) calc(var(--item) + 1px) calc(var(--item) + 4px)) content-box, var(--bop-pearl); box-shadow: 0 6px 14px var(--bop-shade); transition: opacity .25s var(--studio-ease-soft), box-shadow .25s var(--studio-ease-soft), border-color .25s var(--studio-ease-soft); }
 .delivery-stage[data-shelf='6'] .delivery-shelf { --item: 60px; }
 .delivery-stage[data-phase=ask] .delivery-item > .bop-sprite { opacity: .55; }
-.delivery-stage[data-phase=fetch] .delivery-shelf, .delivery-stage[data-phase=carry] .delivery-shelf { border-color: var(--bop-teal-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bop-teal) 55%, transparent), 0 6px 14px var(--bop-shade); }
+.delivery-stage[data-phase=fetch] .delivery-shelf, .delivery-stage[data-phase=carry] .delivery-shelf { border-color: var(--bop-amber); box-shadow: 0 6px 14px var(--bop-shade); }
 .delivery-shelf .delivery-item { inline-size: var(--item); block-size: var(--item); border-radius: var(--studio-radius-control); }
 .delivery-item > .bop-sprite { inline-size: 84%; max-block-size: 84%; object-fit: contain; transition: opacity .2s var(--studio-ease-soft); }
 .delivery-item[data-away=true] > .bop-sprite { opacity: .26; filter: grayscale(1); }
@@ -37,6 +37,9 @@
 .delivery-flower__open { opacity: 0; transform: scale(.8); }
 .delivery-flower[data-open=true] > .delivery-flower__folded { opacity: 0; }
 .delivery-flower[data-open=true] > .delivery-flower__open { opacity: 1; transform: scale(1.2); }
+/* B-GAME-46: the bloom is the payoff, so the flower grows to twice its size as it opens. */
+.delivery-flower { transition: inline-size .7s var(--studio-ease-soft); }
+.delivery-flower[data-open=true] { inline-size: 72px; }
 
 /* The request: one picture card a thing, numbered in the order to bring it.
    Face down, a card keeps its number and its place but hides its picture.
@@ -52,7 +55,7 @@
 /* B-KID-175: a face-down card is a real card back: woven teal felt, a
    stitched edge and a felt button in the middle, not a flat box. */
 .delivery-card[data-up=false]:not([data-waiting=true]) { border-color: var(--bop-teal-ink); background: radial-gradient(circle at 30% 18%, color-mix(in srgb, var(--arbor-on-accent) 30%, transparent), transparent 58%), repeating-linear-gradient(45deg, color-mix(in srgb, var(--arbor-on-accent) 13%, transparent) 0 3px, transparent 3px 8px), repeating-linear-gradient(-45deg, color-mix(in srgb, var(--bop-teal-ink) 20%, transparent) 0 3px, transparent 3px 8px), var(--bop-teal); outline: 2px dashed color-mix(in srgb, var(--arbor-on-accent) 62%, transparent); outline-offset: -6px; box-shadow: 0 3px 0 var(--bop-teal-ink), 0 7px 10px -5px var(--bop-shade); }
-.delivery-card__back { inline-size: 46%; aspect-ratio: 1; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--arbor-on-accent) 85%, transparent); background: radial-gradient(circle, var(--bop-amber) 0 30%, color-mix(in srgb, var(--arbor-on-accent) 26%, transparent) 33%); box-shadow: 0 2px 3px color-mix(in srgb, var(--bop-teal-ink) 60%, transparent); }
+.delivery-card__back { inline-size: 46%; aspect-ratio: 1; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--arbor-on-accent) 85%, transparent); background: radial-gradient(circle, var(--bop-teal-ink) 0 30%, color-mix(in srgb, var(--arbor-on-accent) 26%, transparent) 33%); box-shadow: 0 2px 3px color-mix(in srgb, var(--bop-teal-ink) 60%, transparent); }
 .delivery-card[data-done=true] { border-color: var(--bop-teal-ink); background: color-mix(in srgb, var(--bop-teal) 24%, var(--arbor-on-accent)); }
 .delivery-card[data-done=true] > .bop-chip { border-color: var(--bop-teal-ink); background: var(--bop-teal-ink); color: var(--arbor-on-accent); }
 .delivery-card[data-next=true] { transform: translateY(-2px); box-shadow: 0 0 0 3px var(--bop-amber), 0 5px 8px var(--bop-shade); }
@@ -74,7 +77,7 @@
 
 /* Asking again is the clever move: after a tap that was not it, the button
    is ringed until the child asks or brings the right thing. */
-.adventure--delivery .adventure-actions .delivery-ask[data-hint=true] { border-color: var(--bop-teal-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bop-teal) 60%, transparent); }
+.adventure--delivery .adventure-actions .delivery-ask[data-hint=true] { border-color: var(--bop-amber); outline: 3px solid var(--bop-amber); outline-offset: 2px; }
 /* The prompt and the status line keep their room, so the shelf and the
    buttons never move under a finger when the words change. */
 .arbor-play .adventure--delivery .adventure-heading { display: flex; align-items: center; min-block-size: 82px; }
@@ -136,7 +139,7 @@
 .delivery-tile[data-tile='2'] .delivery-note { box-shadow: 0 0 0 2px var(--bop-teal), 0 4px 8px var(--bop-shade); }
 .delivery-note__ring { position: absolute; inset-block-start: 160%; inset-inline-start: 50%; inline-size: 40px; block-size: 16px; margin-inline-start: -20px; border-radius: 50%; border: 3px solid var(--bop-amber); opacity: 0; animation: delivery-ring .5s var(--studio-ease-soft); }
 .delivery-landed > span { position: relative; }
-.delivery-puff { position: absolute; inset-block-end: -2px; inset-inline-start: 50%; inline-size: 44px; block-size: 14px; margin-inline-start: -22px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--arbor-on-accent) 90%, transparent) 0 40%, color-mix(in srgb, var(--bop-amber) 40%, transparent) 60%, transparent 72%); opacity: 0; animation: delivery-puff .5s var(--studio-ease-soft); }
+.delivery-puff { position: absolute; inset-block-end: -2px; inset-inline-start: 50%; inline-size: 44px; block-size: 14px; margin-inline-start: -22px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--arbor-on-accent) 90%, transparent) 0 40%, var(--bop-line) 60%, transparent 72%); opacity: 0; animation: delivery-puff .5s var(--studio-ease-soft); }
 .delivery-lanterns { position: absolute; z-index: 3; inset-inline-end: 12px; inset-block-end: 134px; inline-size: 108px; display: flex; justify-content: center; gap: 7px; pointer-events: none; }
 .delivery-lanterns > i { inline-size: 16px; block-size: 20px; border-radius: 45% 45% 50% 50%; border: 2px solid color-mix(in srgb, var(--bop-teal-ink) 55%, transparent); background: color-mix(in srgb, var(--bop-teal) 22%, var(--arbor-on-accent)); box-shadow: 0 2px 3px var(--bop-shade); transition: background-color .3s var(--studio-ease-soft), box-shadow .3s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
 .delivery-lanterns > i[data-on=true] { border-color: var(--bop-teal-ink); background: radial-gradient(circle at 50% 40%, var(--arbor-on-accent), var(--bop-teal) 70%); box-shadow: 0 2px 3px var(--bop-shade); transform: translateY(-2px) scale(1.1); }

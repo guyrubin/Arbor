@@ -174,8 +174,7 @@ export default function OopsButton() {
                   {(phase === 'jam' || phase === 'undo') && open && <span className="bop-chip oops-petal__chip" data-undo-number={opened.indexOf(petal) + 1}>{String(opened.indexOf(petal) + 1)}</span>}
                 </button>;
               })}
-              {/* B-GAME-45: a bloom throws light: ten rays turn slowly behind the toy. */}
-              {phase === 'bloom' && <span className="oops-rays" aria-hidden="true">{Array.from({ length: 10 }, (_, ray) => <i key={ray} style={{ '--ray': ray } as CSSProperties} />)}</span>}
+              {/* B-GAME-46: the bloom has no rays (no glow in the kid register): the hub's teal ring and Chock's hop carry it. */}
               <span className="oops-hub" aria-hidden="true"><BopSprite name="oops-hub" size="100%" /></span>
             </div>
             <span className="oops-ahead" aria-hidden="true"><BopSprite name="chock-happy" size={1} flat /></span>

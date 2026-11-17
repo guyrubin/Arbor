@@ -300,7 +300,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     // The whole order is open: the whole flower opens, the hub glows, Chock is glad.
     expect(phase(tree)).toBe('bloom'); expect(heading(tree)).toBe(w.bloom); expect(status(tree)).toBe(w.bloomNext); expect(steps(tree)).toBe(1);
     expect(openPetals(tree)).toEqual([...PETALS]); expect(one(tree, 'the toy', classed('oops-toy')).props['data-bloom']).toBe(true);
-    expect(nodes(one(tree, 'the rays', classed('oops-rays')).props.children)).toHaveLength(10); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
+    expect(nodes(tree).some(classed('oops-rays'))).toBe(false); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
     expect(chock(tree)).toBe('happy'); expect(hero(tree).celebrate).toBe(true); expect(h.sound.mock.calls).toEqual([['correct']]); expect(live(tree)).toEqual([]);
     petal(tree, second).props.onClick!(); control(tree, 'oops-pause').props.onClick!(); control(tree, 'oops-restart').props.onClick!();
     vi.advanceTimersByTime(BLOOM_MS - 1); expect(phase(render())).toBe('bloom');
@@ -604,7 +604,7 @@ describe('Oops Button words', () => {
     expect(en.title).toBe('Oops Button'); expect(en.description).toBe('Pause. Put back. Try again.');
     expect(en.instruction).toBe('Copy the flower. If it gets stuck, press Oops, put the petals back and start again.');
     expect(en.jam).toBe('Oops. The flower got stuck. Press Oops.'); expect(en.jamToy).toBe('Oops. The flower got stuck by itself. That happens. Press Oops.'); expect(en.pause).toBe('Oops!');
-    expect(en.undo).toBe('Put the petals back. Biggest number first.'); expect(oopsLine(en.undoWait, 3)).toBe('Not yet. Press number 3.'); expect(en.reset).toBe('All back. Press Start again.');
+    expect(en.undo).toBe('Put the petals back. The last one goes first.'); expect(oopsLine(en.undoWait, 3)).toBe('Not yet. Press number 3.'); expect(en.reset).toBe('All back. Press Start again.');
     expect(en.finishTitle).toBe('It bloomed!'); expect(en.transfer).toBe('Away from the screen: when a block tower wobbles, say oops, stop, take the top block off first, then build again.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });

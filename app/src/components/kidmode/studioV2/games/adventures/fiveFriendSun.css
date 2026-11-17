@@ -19,7 +19,7 @@
 .sun-flower { position: absolute; z-index: 0; inset-inline-start: 70px; inset-block-start: 2px; inline-size: 80px; aspect-ratio: 1; color: var(--studio-deep-ink); }
 .sun-flower::before { content: ''; position: absolute; inset: -9%; z-index: -1; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--arbor-on-accent) 72%, transparent) 42%, transparent 70%); pointer-events: none; }
 /* Its light on the floor, in the middle of the circle: one step per friend. */
-.sun-flower::after { content: ''; position: absolute; z-index: -1; inset-inline-start: -12px; inset-block-start: 132px; inline-size: 104px; block-size: 36px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--bop-amber) 75%, transparent), transparent 70%); opacity: calc(var(--sun-lit, 0) * .14); transition: opacity .5s var(--studio-ease-soft); pointer-events: none; }
+.sun-flower::after { content: ''; position: absolute; z-index: -1; inset-inline-start: -12px; inset-block-start: 132px; inline-size: 104px; block-size: 36px; border-radius: 50%; background: none; opacity: 0; display: none; transition: opacity .5s var(--studio-ease-soft); pointer-events: none; }
 .sun-flower > .bop-sprite { aspect-ratio: auto 1 / 1; }
 /* The lit drawing sits exactly on the unlit one. One more fifth of it shows
    for each friend, clockwise from just before straight up. */
@@ -157,7 +157,7 @@
    wheel has stopped. */
 .adventure--sun .adventure-actions .sun-spinner { overflow: visible; background: var(--arbor-on-accent); }
 .adventure--sun .adventure-actions .sun-spinner::before { content: ''; position: absolute; z-index: 3; inset-block-start: -11px; inset-inline-start: 50%; translate: -50% 0; border-inline: 9px solid transparent; border-block-start: 15px solid var(--studio-deep-ink); filter: drop-shadow(0 2px 1px var(--bop-shade)); pointer-events: none; }
-.sun-wheel { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; rotate: var(--wheel-turn, 0deg); transition: rotate 1.05s cubic-bezier(.16, .84, .22, 1); background: conic-gradient(var(--bop-teal) 0 calc(360deg / var(--faces, 3)), var(--bop-amber) 0 calc(720deg / var(--faces, 3)), color-mix(in srgb, var(--bop-teal) 45%, var(--arbor-on-accent)) 0); box-shadow: inset 0 0 0 3px var(--arbor-on-accent), inset 0 -6px 10px color-mix(in srgb, var(--studio-deep-ink) 18%, transparent); }
+.sun-wheel { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; rotate: var(--wheel-turn, 0deg); transition: rotate 1.05s cubic-bezier(.16, .84, .22, 1); background: conic-gradient(var(--bop-teal) 0 calc(360deg / var(--faces, 3)), var(--bop-pearl) 0 calc(720deg / var(--faces, 3)), color-mix(in srgb, var(--bop-teal) 45%, var(--arbor-on-accent)) 0); box-shadow: inset 0 0 0 3px var(--arbor-on-accent), inset 0 -6px 10px color-mix(in srgb, var(--studio-deep-ink) 18%, transparent); }
 .sun-spinner[data-faces='2'] .sun-wheel { --faces: 2; }
 .sun-spinner[data-faces='3'] .sun-wheel { --faces: 3; }
 /* Each wedge's dots sit out along the middle of the wedge, near the rim. */
@@ -171,23 +171,23 @@
 .adventure--sun .sun-spinner__count { z-index: 4; animation: sun-hub-in .4s var(--studio-ease-spring) 1.05s backwards; }
 
 /* The sun's rays: they turn slowly behind the flower and grow brighter with
-   every friend, and blaze when the circle is whole. */
-.sun-rays { position: absolute; inset: -42%; z-index: -2; border-radius: 50%; background: repeating-conic-gradient(color-mix(in srgb, var(--bop-amber) 70%, transparent) 0 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); opacity: calc(var(--sun-lit, 0) * .13); scale: calc(.7 + var(--sun-lit, 0) * .08); animation: sun-rays-turn 22s linear infinite; transition: opacity .6s var(--studio-ease-soft), scale .6s var(--studio-ease-soft); pointer-events: none; }
-.sun-flower[data-full] .sun-rays { opacity: 1; scale: 1.5; animation-duration: 7s; }
+   every friend, and turn wider when the circle is whole. Teal: B-GAME-46. */
+.sun-rays { position: absolute; inset: -42%; z-index: -2; border-radius: 50%; background: repeating-conic-gradient(color-mix(in srgb, var(--bop-teal) 40%, transparent) 0 9deg, transparent 9deg 24deg); -webkit-mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); mask-image: radial-gradient(circle, currentColor 18%, transparent 68%); opacity: calc(var(--sun-lit, 0) * .13); scale: calc(.7 + var(--sun-lit, 0) * .08); animation: sun-rays-turn 22s linear infinite; transition: opacity .6s var(--studio-ease-soft), scale .6s var(--studio-ease-soft); pointer-events: none; }
+.sun-flower[data-full] .sun-rays { opacity: .45; scale: 1.3; animation-duration: 9s; }
 .sun-flower[data-full] { animation: sun-flower-blaze 2.4s var(--studio-ease-soft); }
 /* A friend joins: the flower answers with one ring of light. */
-.sun-burst { position: absolute; inset: 0; z-index: -1; border-radius: 50%; border: 4px solid var(--bop-amber); opacity: 0; animation: sun-burst .9s var(--studio-ease-soft); pointer-events: none; }
+.sun-burst { position: absolute; inset: 0; z-index: -1; border-radius: 50%; border: 4px solid var(--bop-teal-ink); opacity: 0; animation: sun-burst .9s var(--studio-ease-soft); pointer-events: none; }
 
 /* A landing: six sparks fly out from under the hero's feet. */
 .sun-pad__burst { position: relative; z-index: 1; place-self: center; inline-size: 0; block-size: 0; pointer-events: none; }
-.sun-pad__burst > span { position: absolute; inset-inline-start: -4px; inset-block-start: -4px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--bop-amber); opacity: 0; rotate: calc(var(--ray) * 60deg); animation: sun-spark .62s var(--studio-ease-soft); }
+.sun-pad__burst > span { position: absolute; inset-inline-start: -4px; inset-block-start: -4px; inline-size: 8px; block-size: 8px; border-radius: 50%; background: var(--bop-teal-ink); opacity: 0; rotate: calc(var(--ray) * 60deg); animation: sun-spark .62s var(--studio-ease-soft); }
 .sun-pad__burst > span:nth-child(even) { background: var(--bop-teal); }
 
 /* The whole circle: petals fall over the stage. */
 .sun-confetti { position: absolute; inset: 0; z-index: 6; overflow: hidden; pointer-events: none; }
-.sun-confetti > span { position: absolute; inset-block-start: -8%; inset-inline-start: calc(4% + var(--petal) * 6.8%); inline-size: 12px; block-size: 18px; border-radius: 80% 10% 80% 10%; background: var(--bop-amber); opacity: 0; animation: sun-petal 2.4s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 70ms) forwards; }
+.sun-confetti > span { position: absolute; inset-block-start: -8%; inset-inline-start: calc(4% + var(--petal) * 6.8%); inline-size: 12px; block-size: 18px; border-radius: 80% 10% 80% 10%; background: var(--bop-teal-ink); opacity: 0; animation: sun-petal 2.4s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 70ms) forwards; }
 .sun-confetti > span:nth-child(3n) { background: var(--bop-teal); }
-.sun-confetti > span:nth-child(3n + 1) { background: color-mix(in srgb, var(--bop-amber) 55%, var(--arbor-on-accent)); }
+.sun-confetti > span:nth-child(3n + 1) { background: var(--bop-pearl); box-shadow: 0 0 0 2px var(--bop-teal-ink); }
 
 @keyframes sun-hub-in { from { scale: .2; opacity: 0; } 70% { scale: 1.18; opacity: 1; } to { scale: 1; } }
 @keyframes sun-rays-turn { to { rotate: 1turn; } }
