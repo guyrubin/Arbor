@@ -3,7 +3,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { useArborPause } from "../../lib/pauseArborStore";
 import { careSafetyLines, firstDialableContact, readSafetyReviewed } from "../../safety/safetyLines";
@@ -57,7 +57,7 @@ export default function CareAside() {
   const reviewed = readSafetyReviewed(childProfile.id);
   const arborPause = useArborPause();
   const pauseUntil = arborPause.record?.until
-    ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
+    ? t("companion.pause.until", { when: fmtDayV10(arborPause.record.until, uiLang) })
     : t("companion.pause.untilYou");
 
   // v4: a complementary landmark, but not an <aside> element — the shell's
@@ -92,7 +92,7 @@ export default function CareAside() {
           )}
         </div>
         <p data-testid="care-aside-reviewed" className="t-xs" style={{ color: MUTED }}>
-          {t("elev.safety.review.last")} <strong style={{ color: INK }}>{reviewed ? fmtDay(reviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
+          {t("elev.safety.review.last")} <strong style={{ color: INK }}>{reviewed ? fmtDayV10(reviewed, uiLang) : t("elev.safety.review.notYet")}</strong>
         </p>
         {/* ONE way into Safety. When the family's region has no talk line in
             the directory, it says what Safety's by-country list is for. */}

@@ -25,7 +25,7 @@ import VisitsComposition from "../care/v10/VisitsComposition";
 import type { PackedCounts } from "../care/v10/VisitScene";
 import { DsRoot } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
-import { reportsLeadCounts } from "../../lib/recordCounts";
+import { parentWords, reportsLeadCounts } from "../../lib/recordCounts";
 import type { LangObservation } from "../../growth/vocabAgg";
 import { activeHomeEnrolments, toggleExerciseDay, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
 import type { FamilyGoal } from "../../lib/goals";
@@ -88,7 +88,7 @@ export default function ConsultTab() {
 
 function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isOwnerCurrent: () => boolean }) {
   const { user } = useAuth();
-  const { childProfile, activeTab, setActiveTab, behaviorLogs, milestones } = useArbor();
+  const { childProfile, activeTab, setActiveTab, behaviorLogs, milestones, actionPlans } = useArbor();
   const composition = useComposition();
   const currentChild = useRef(childProfile.id);
   currentChild.current = childProfile.id;
@@ -107,8 +107,13 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
   const packed = useMemo<PackedCounts>(() => {
     const whole = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], langObs: langObsCol.items, sinceIso: null, nowMs: Date.now(), wholeRecord: true });
-    return { moments: whole.moments, milestones: whole.milestones, words: langObsCol.items.filter((o) => (o.phrase ?? "").trim().length > 0).length };
-  }, [behaviorLogs, milestones, langObsCol.items]);
+    // Design V77: "moments in your words" counts the moments that carry the
+    // parent's own words (never an incident's trigger); plan steps are the
+    // ones the family marked done in its action plans.
+    const ownWords = (behaviorLogs ?? []).filter((l) => parentWords(l) !== "").length;
+    const planSteps = (actionPlans ?? []).reduce((n, p) => n + p.phases.reduce((m, ph) => m + ph.steps.filter((st) => st.completed).length, 0), 0);
+    return { moments: ownWords, milestones: whole.milestones, words: langObsCol.items.filter((o) => (o.phrase ?? "").trim().length > 0).length, planSteps };
+  }, [behaviorLogs, milestones, actionPlans, langObsCol.items]);
   // B-PROG-09: the home program the professional gave (programs, home-* rows) and the goals the family accepted
   const programsCol = useChildCollection<HomeProgramEnrolment>(childProfile.id, "programs");
   const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
@@ -329,9 +334,10 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       {/* Design V77: with a visit booked the scene speaks for itself (no sub-line, no "for {name}"). */}
       {landing && !visit && <p data-testid="consult-sub" className="care-sub">{t("elev.consult.sub")}</p>}
       {/* Design V77 (N-Brief): the brief's description is the hero's line. */}
-      {!landing && chosen === "teacher" && <p data-testid="consult-teacher-lede" className="care-sub">{t("elev.carehonesty.consult.teacher.body")}</p>}
+      {!landing && chosen === "teacher" && <p data-testid="consult-teacher-lede" className="care-sub">{careCopy(uiLang).brief.lede}</p>}
       {/* V77 N-Brief-M: the phone brief's hero carries no visit line (the dock keeps its Save as PDF in view). */}
-      {visit && (summary || (!landing && headingKind !== "visit")) && !(chosen === "teacher" && composition !== "desk") && (
+      {/* V77 N-Brief: the brief names its next visit in the stage's header row (desktop) and not at all on a phone. */}
+      {visit && (summary || (!landing && headingKind !== "visit")) && chosen !== "teacher" && (
         <p data-testid="consult-visit-line" className="care-sub">{t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDayV10(visit.whenIso!, uiLang) })}</p>
       )}
       {/* The Teacher brief's own title names the child; "for {name}" would say it twice. */}
@@ -400,7 +406,9 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
           )}
         </section>
       )}
-      {homeEntry}
+      {/* Design V77: on the landing the home door sits in the Share card (desktop) or the getting-ready card (phone). */}
+      {/* V77 N-Brief: the Teacher brief carries no home-program door (Visits holds it). */}
+      {!landing && chosen !== "teacher" && homeEntry}
       {homeDays}
     </div>
   );
@@ -426,6 +434,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
           packed,
           landing,
           followUp,
+          homeDoor: landing ? homeEntry : null,
           timeline: landing ? <VisitTimeline appointments={apptsCol.items} followUps={followUpsCol.items} nowMs={nowMs} /> : null,
           aside: landing ? <CareAside /> : null,
           shared: landing ? <CareShared onPrepareAgain={prepareAgain} /> : null,

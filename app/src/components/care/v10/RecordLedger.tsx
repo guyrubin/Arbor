@@ -65,6 +65,8 @@ export function recordLedgerRows(input: {
   // Moments: a hard moment is one recorded on the hard-moment sheet (it carries an intensity).
   const logs = [...input.logs].sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
   const hard = logs.filter((l) => l.intensity != null).length;
+  // V77: of those, the ones the parent marked settled (BehaviorLog.resolved).
+  const settled = logs.filter((l) => l.intensity != null && l.resolved === true).length;
   const momentMarks = tail(logs).map<LedgerMark>((l, i, shown) => ({ kind: l.intensity != null ? "hard" : "moment", state: "solid", isNew: i === shown.length - 1 }));
 
   // Milestones the parent marked seen, and on how many branches.
@@ -100,7 +102,7 @@ export function recordLedgerRows(input: {
     {
       kind: "moments",
       count: logs.length,
-      sub: logs.length === 0 ? copy.ledgerNone : hard > 0 ? copy.ledgerHard(hard) : copy.ledgerMomentsSub,
+      sub: logs.length === 0 ? copy.ledgerNone : hard > 0 ? copy.ledgerHardSettled(hard, settled) : copy.ledgerMomentsSub,
       latestIso: newest(logs.map((l) => l.timestamp)),
       latestIsNext: false,
       route: ROUTES.moments,
@@ -181,10 +183,11 @@ export default function RecordLedger({ composition, rows, copy, uiLang, labelled
                   {desk ? (
                     <span className="nm" aria-hidden="true">{name}<b>{row.count}</b></span>
                   ) : (
-                    <span className="care-ledger-name" aria-hidden="true">{name} <span className="care-ledger-sub">· {row.sub}</span></span>
+                    // Phone: one line under the marks — the name, its clause and its latest date (keeps Save above the dock).
+                    <span className="care-ledger-name" aria-hidden="true">{name} <span className="care-ledger-sub">· {row.sub}{when ? <> · <span className="care-ledger-when" data-testid="records-ledger-latest">{when}</span></> : null}</span></span>
                   )}
                   {desk && <small className="care-ledger-sub" aria-hidden="true">{row.sub}</small>}
-                  {when && <small className="care-ledger-when" data-testid="records-ledger-latest" aria-hidden="true">{when}</small>}
+                  {desk && when && <small className="care-ledger-when" data-testid="records-ledger-latest" aria-hidden="true">{when}</small>}
                 </span>
                 {!desk && <Icon name="chevron_right" size={18} className="rtl:-scale-x-100 care-ledger-chev" />}
               </button>
