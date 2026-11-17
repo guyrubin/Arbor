@@ -312,6 +312,104 @@ if (hold) {
   addEventListener('pagehide', () => { clearTimeout(timer); clearTimeout(reset); });
 }
 
+/* ---------- the family plan: a school message becomes who has what ----------
+   The page holds the finished example, so it reads without this file. Here it
+   plays once when it comes into view (the message is read, the dates are
+   drafted, added, and given an adult), then the visitor can untick a date,
+   add again, and take or ask for the one nobody has yet. */
+const fam = $('#fam');
+if (fam) {
+  const F = HE ? {
+    reading: 'Arbor קורא את ההודעה…', found: n => `<b>נמצאו ${n} תאריכים.</b> Arbor שומר את השורות האלה, לא את כל ההודעה.`,
+    add: n => n === 1 ? 'הוספת תאריך אחד לתוכנית' : `הוספת ${n} לתוכנית המשפחתית`, pick: 'סמנו לפחות תאריך אחד',
+    added: n => n === 1 ? 'תאריך אחד נוסף לתוכנית.' : `${n} תאריכים נוספו לתוכנית.`, unchanged: 'התוכנית כבר מעודכנת.',
+    you: 'אצלך', has: w => `אצל ${w}`, asked: w => `נשלחה בקשה ל${w}, עוד אין תשובה`, none: 'עוד אף אחד',
+    take: 'אני לוקח/ת', ask: w => `לבקש מ${w}`, who: 'דן',
+  } : {
+    reading: 'Reading the message…', found: n => `<b>${n} dates found.</b> Arbor keeps these lines, not the whole message.`,
+    add: n => n === 1 ? 'Add 1 to the family plan' : `Add ${n} to the family plan`, pick: 'Tick at least one date',
+    added: n => n === 1 ? '1 date added to the family plan.' : `${n} dates added to the family plan.`, unchanged: 'The plan is already up to date.',
+    you: 'You have it', has: w => `${w} has it`, asked: w => `Asked ${w}, no answer yet`, none: 'Nobody yet',
+    take: 'I’ll take it', ask: w => `Ask ${w}`, who: 'Dan',
+  };
+  const lines = $$('.fam-l[data-n]', fam), say = $('#fam-say'), receipt = $('#fam-receipt');
+  const find = $('#fam-find'), add = $('#fam-add'), again = $('#fam-again');
+  const slots = $$('#fam-rb .slot'), rows = $('#fam-dates'), panels = $$('.fam-panel', fam), steps = $$('#fam-steps li');
+  const whens = $$('.fam-date small', rows).map(s => s.textContent);
+  const plan = $$('.fam-item input', fam).map((inp, k) => ({ inp, slot: +inp.dataset.slot, num: inp.dataset.num, title: $('b', inp.parentElement).textContent, when: whens[k], final: inp.dataset.holder || null, holder: inp.dataset.holder || null, asked: false, added: true }));
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const icon = name => { const i = el('i', 'ms', name); i.setAttribute('aria-hidden', 'true'); return i; };
+  const pop = n => { if (!reduced) n.animate([{ transform: 'scale(.3)', opacity: 0 }, { transform: 'scale(1.14)', opacity: 1, offset: 0.62 }, { transform: 'none', opacity: 1 }], { duration: 560, easing: 'cubic-bezier(.16,1,.3,1)' }); };
+  const ring = b => { if (reduced) return; const r = $('.ring', b); r && r.animate([{ opacity: 0.9, transform: 'scale(.6)' }, { opacity: 0, transform: 'scale(1.15)' }], { duration: 560, easing: 'ease-out' }); b.animate([{ scale: 1 }, { scale: 0.95 }, { scale: 1 }], { duration: 260 }); };
+  let ready = true, run = 0;
+  const count = (node, to) => { const from = +node.textContent || 0; if (from === to || reduced) { node.textContent = to; return; } const t0 = performance.now(); const go = now => { const p = clamp01((now - t0) / 600); node.textContent = Math.round(from + (to - from) * ease(p)); if (p < 1) requestAnimationFrame(go); }; requestAnimationFrame(go); };
+  const paint = (fresh = new Set()) => {
+    const on = plan.filter(d => d.added);
+    slots.forEach(s => s.replaceChildren());
+    for (const d of on) { const t = el('i', `tok ${d.holder ? 'has' : 'none'}${d.asked ? ' asked' : ''}`, d.num); slots[d.slot].append(t); if (fresh.has(d)) pop(t); }
+    rows.replaceChildren(...on.map(d => {
+      const r = el('div', `fam-date${d.holder ? ' has' : ''}`), t = el('i', `tok ${d.holder ? 'has' : 'none'}${d.asked ? ' asked' : ''}`, d.num);
+      t.setAttribute('aria-hidden', 'true');
+      const who = el('span', 'fam-who');
+      who.append(icon(d.holder ? 'check_circle' : d.asked ? 'schedule' : 'pending'), d.holder ? (d.holder === 'you' ? F.you : F.has(F.who)) : d.asked ? F.asked(F.who) : F.none);
+      r.append(t, el('b', '', d.title), el('small', '', d.when), who);
+      if (ready && !d.holder && !d.asked) {
+        const a = el('div', 'fam-ask'), mine = el('button', 'fam-btn quiet', F.take), ask = el('button', 'fam-btn quiet', F.ask(F.who));
+        mine.type = ask.type = 'button';
+        mine.addEventListener('click', () => { d.holder = 'you'; paint(new Set([d])); });
+        ask.addEventListener('click', () => { d.asked = true; paint(); const mine2 = run; setTimeout(() => { if (mine2 !== run || !d.asked) return; d.asked = false; d.holder = 'dan'; paint(new Set([d])); }, 1600); });
+        a.append(mine, ask); r.append(a);
+      }
+      if (fresh.has(d)) pop(t);
+      return r;
+    }));
+    count($('#fig-dates'), on.length); count($('#fig-has'), on.filter(d => d.holder).length); count($('#fig-none'), on.filter(d => !d.holder).length);
+  };
+  const label = () => { const n = plan.filter(d => d.inp.checked).length; add.firstChild.textContent = n ? F.add(n) : F.pick; add.disabled = !n; };
+  const commit = () => {
+    const fresh = new Set();
+    let changed = 0;
+    for (const d of plan) { const was = d.added; d.added = d.inp.checked; if (d.added && !was) { fresh.add(d); changed++; } if (!d.added && was) { d.holder = null; d.asked = false; changed++; } }
+    receipt.textContent = fresh.size ? F.added(fresh.size) : changed ? '' : F.unchanged;
+    paint(fresh);
+  };
+  const now = k => { panels.forEach((p, n) => p.classList.toggle('now', n === k)); steps.forEach((s, n) => s.classList.toggle('now', n === k)); };
+  const read = (done) => {
+    const mine = ++run;
+    lines.forEach(l => l.classList.remove('hit')); say.textContent = F.reading; ring(find);
+    lines.forEach((l, k) => setTimeout(() => { if (mine === run) l.classList.add('hit'); }, 300 + k * 380));
+    setTimeout(() => { if (mine !== run) return; say.innerHTML = F.found(lines.length); done && done(mine); }, 300 + lines.length * 380 + 150);
+  };
+  const play = () => {
+    run++; ready = false; again.hidden = true; receipt.textContent = '';
+    plan.forEach(d => { d.added = false; d.holder = null; d.asked = false; d.inp.checked = true; });
+    fam.classList.add('wait'); label(); paint(); now(0);
+    setTimeout(() => read(mine => {
+      const at = (ms, f) => setTimeout(() => { if (mine === run) f(); }, ms);
+      at(150, () => { now(1); fam.classList.remove('wait'); });
+      at(1150, () => ring(add));
+      at(1350, () => { now(2); commit(); });
+      const [first, second] = plan.filter(d => d.final);
+      at(2450, () => { if (first) { first.holder = first.final; paint(new Set([first])); } });
+      at(3350, () => { if (second) { second.asked = true; paint(); } });
+      at(4750, () => { if (second) { second.asked = false; second.holder = second.final; paint(new Set([second])); } });
+      at(5300, () => { ready = true; paint(); now(-1); again.hidden = false; });
+    }), 250);
+  };
+  plan.forEach(d => d.inp.addEventListener('change', label));
+  add.addEventListener('click', () => { ring(add); commit(); });
+  find.addEventListener('click', () => { if (!ready) { ready = true; fam.classList.remove('wait'); now(-1); paint(); again.hidden = false; } read(); });
+  again.addEventListener('click', play);
+  label(); paint();
+  if (!reduced && !filmOnly && 'IntersectionObserver' in window) {
+    /* below the fold it waits as a blank draft, and plays the first time it is well in view */
+    if (fam.getBoundingClientRect().top > innerHeight * 0.6) {
+      ready = false; plan.forEach(d => { d.added = false; d.holder = null; }); lines.forEach(l => l.classList.remove('hit')); say.textContent = ''; fam.classList.add('wait'); paint();
+      new IntersectionObserver((es, io) => es.forEach(e => { if (e.isIntersecting) { io.disconnect(); play(); } }), { threshold: 0.35 }).observe(fam);
+    }
+  }
+}
+
 /* ---------- entrances: only blocks still below the fold opt in ---------- */
 if (!reduced && !filmOnly && 'IntersectionObserver' in window) {
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
