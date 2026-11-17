@@ -34,7 +34,7 @@ import { GameFinish, GameShell } from '../../../game/GameShell';
 import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { OOPS_BUTTON_COPY, oopsLine, type OopsButtonWords } from './oopsButtonCopy';
-import { BLOOM_MS, HOLD_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, orderLength, watchMs } from './oopsButtonRules';
+import { BLOOM_MS, HOLD_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, IDLE_NUDGE_MS, orderLength, watchMs } from './oopsButtonRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -283,7 +283,11 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     vi.advanceTimersByTime(1); tree = render();
     expect(phase(tree)).toBe('copy'); expect(heading(tree)).toBe(w.copy); expect(status(tree)).toBe(w.copyFirst); expect(shell(tree).hearIt).toBe(w.copy);
     expect(one(tree, 'the heading', n => 'focusKey' in n.props).props.muted).toBe(false);
-    expect(live(tree)).toEqual(PETALS.map(id => `petal-${id}`)); expect(vi.getTimerCount()).toBe(1);
+    // The voice and the idle nudge are the two timers on the child's turn.
+    expect(live(tree)).toEqual(PETALS.map(id => `petal-${id}`)); expect(vi.getTimerCount()).toBe(2); expect(hinted(tree)).toEqual([]);
+    // B-GAME-46: a child who sits still is shown the first petal of the order, in the amber ring.
+    vi.advanceTimersByTime(IDLE_NUDGE_MS - 1); tree = render(); expect(hinted(tree)).toEqual([]);
+    vi.advanceTimersByTime(1); tree = render(); expect(hinted(tree)).toEqual([first]); expect(h.sound).not.toHaveBeenCalled();
 
     // The child's turn: a right petal opens with its own tone.
     h.tones.play.mockClear();

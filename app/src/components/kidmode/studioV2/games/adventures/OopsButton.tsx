@@ -13,7 +13,7 @@ import { defaultChallenge, type Challenge } from './adventureRules';
 import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { OOPS_BUTTON_COPY, oopsLine } from './oopsButtonCopy';
-import { BLOOM_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, copyPress, orderFor, toyJams, undoCheck, undoHint, watchMs, type PetalId } from './oopsButtonRules';
+import { BLOOM_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, copyPress, orderFor, toyJams, undoCheck, undoHint, watchMs, type PetalId, IDLE_NUDGE_MS } from './oopsButtonRules';
 import './oopsButton.css';
 
 /** `jam` → pause → `undo` (petals back, last one first) → `reset` → restart → `watch` again. */
@@ -144,7 +144,15 @@ export default function OopsButton() {
   const quietBeat = phase === 'watch' || phase === 'bloom';
   const narration = phase === 'jam' || phase === 'reset' || (phase === 'undo' && (nudge || undone > 0)) ? status : cue;
   const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${attempt}:${waits}`, enabled: phase !== 'done' && !quietBeat });
-  const hinted = phase === 'undo' ? undoHint(opened, waits) : null;
+  // B-GAME-46: a quiet stretch on the child's turn rings the next petal in the order, once.
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    setIdle(false);
+    if (phase !== 'copy') return;
+    const id = setTimeout(() => setIdle(true), IDLE_NUDGE_MS);
+    return () => clearTimeout(id);
+  }, [phase, opened.length, presses, round, attempt]);
+  const hinted = phase === 'undo' ? undoHint(opened, waits) : phase === 'copy' && idle ? order[opened.length] ?? null : null;
 
   return <GameShell fullBleed autoNarrate={false} worldId="puzzle" title={w.title} instruction={w.instruction} hearIt={narration}>
     {phase === 'done'
