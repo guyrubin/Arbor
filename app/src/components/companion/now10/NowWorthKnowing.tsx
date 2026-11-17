@@ -7,6 +7,7 @@ import { recentBehaviorTypes } from "../../../content/hardMomentSurface";
 import { readLearnFeedback } from "../../../learn/learnFeedback";
 import { pickDayKey, todaysLearnPick } from "../../../learn/todaysPick";
 import type { LearnCard } from "../../../learn/learnLibrary";
+import "./nowWorthKnowing.css";
 
 /**
  * "Worth knowing" (one note a day on Now). The canvas sentences are new and

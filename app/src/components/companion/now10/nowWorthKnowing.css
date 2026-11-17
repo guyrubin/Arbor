@@ -1,0 +1,14 @@
+/* "Worth knowing" (NowWorthKnowing): the note bound to a reviewed Learn read.
+   Its own styles travel with the component, which Now, My child, About,
+   Stories and Gentle reminders all mount: on a route that never loads Now's
+   stylesheet the read link lost its 44 px touch floor (sweep, About desk). */
+.ds .nw-know { padding: 20px 22px; gap: 8px; justify-content: center; }
+.ds .nw-know .lead { font-size: 19px; }
+/* The phone card is one column. It used to be a two-column grid that kept a
+   column for an illustration; the V77 pass removed the art, and on a card
+   without it the kicker, the note and the link fell into both columns (the
+   kicker over the note, the link one word per line on My child). */
+.ds .nw-know.m { display: flex; flex-direction: column; gap: 6px; }
+.ds .nw-know.m .lead { font-size: 16px; line-height: 1.34; }
+.ds .nw-know-link { display: inline-flex; flex-wrap: wrap; gap: 0 4px; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--sapphire-deep); font-weight: 600 !important; font-size: 14px; text-align: start; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ds .nw-know-link:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
