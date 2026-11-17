@@ -3,7 +3,7 @@
  * Synthetic dates only.
  */
 import { describe, expect, it } from "vitest";
-import { fmtDay, fmtDayMonthLongV10, fmtDayTimeV10, fmtDayV10, fmtShellNow, fmtTimeV10 } from "./formatDate";
+import { fmtDay, fmtDayMonth, fmtDayMonthLongV10, fmtDayTimeV10, fmtDayV10, fmtShellNow, fmtTimeV10 } from "./formatDate";
 
 const strip = (s: string) => s.replace(/[⁨⁩]/g, "");
 const NOW = new Date("2026-11-16T17:40:00");
@@ -54,5 +54,20 @@ describe("fmtDayMonthLongV10", () => {
     expect(strip(fmtDayMonthLongV10(new Date("2025-10-08T09:00:00"), "en", NOW))).toBe("8 October 2025");
     expect(fmtDayMonthLongV10(new Date("2026-10-08T09:00:00"), "en", NOW)).not.toMatch(/2026/);
     expect(fmtDayMonthLongV10("not a date", "en", NOW)).toBe("");
+  });
+});
+
+/** About's audit: en-GB's ICU data abbreviates September as "Sept"; every board writes three letters. */
+describe("September is three letters, as the boards write it", () => {
+  it("fmtDayV10, fmtDayMonth and fmtDayTimeV10 write Sep, never Sept", () => {
+    const sep = new Date("2023-09-16T10:00:00");
+    expect(strip(fmtDayV10(sep, "en", NOW))).toBe("Sat 16 Sep 2023");
+    expect(strip(fmtDayMonth(sep, "en"))).toBe("16 Sep");
+    expect(strip(fmtDayTimeV10(sep, "en", NOW))).toBe("Sat 16 Sep 2023, 10:00");
+    // Negative control: the raw en-GB output is "Sept", so the fix is doing the work.
+    expect(sep.toLocaleDateString("en-GB", { day: "numeric", month: "short" })).toMatch(/Sept/);
+    // The long month stays whole; Hebrew is untouched.
+    expect(strip(fmtDayMonthLongV10(sep, "en", NOW))).toBe("16 September 2023");
+    expect(strip(fmtDayMonth(sep, "he"))).not.toMatch(/Sep/);
   });
 });

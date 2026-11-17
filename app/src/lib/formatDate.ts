@@ -119,6 +119,10 @@ function shellDay(d: Date, lang: UiLang): string {
    isolate() for Hebrew, display-time only. Legacy screens keep fmtDay. */
 const V10_LOCALES: Record<UiLang, string> = { en: "en-GB", he: "he-IL" };
 
+/** The boards abbreviate every English month to three letters ("16 Sep");
+ *  en-GB's ICU data writes September as "Sept". */
+const threeLetterMonth = (s: string): string => s.replace(/\bSept\b/g, "Sep");
+
 const v10DayOptions = (d: Date, now: Date): Intl.DateTimeFormatOptions => ({
   weekday: "short", day: "numeric", month: "short",
   ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
@@ -146,7 +150,7 @@ export const fmtDayV10 = (input: DateInput, lang: UiLang, now: Date = new Date()
       // The boards' English form has no punctuation: "Sat 14 Nov", "Fri 14 Nov 2025".
       const parts = new Intl.DateTimeFormat(V10_LOCALES.en, options).formatToParts(d);
       const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
-      s = [pick("weekday"), pick("day"), pick("month"), pick("year")].filter(Boolean).join(" ");
+      s = threeLetterMonth([pick("weekday"), pick("day"), pick("month"), pick("year")].filter(Boolean).join(" "));
     }
   } catch {
     s = d.toLocaleDateString(undefined, options);
@@ -159,7 +163,8 @@ export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
   const d = toDate(input);
   if (!d) return "";
   try {
-    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" }));
+    const s = d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" });
+    return isolate(lang === "he" ? s : threeLetterMonth(s));
   } catch {
     return isolate(d.toLocaleDateString(undefined, { day: "numeric", month: "short" }));
   }
