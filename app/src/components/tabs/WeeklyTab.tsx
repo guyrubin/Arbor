@@ -36,6 +36,8 @@ import CarryNextWeek from "../weekly/v10/CarryNextWeek";
 import YourDay from "../weekly/v10/YourDay";
 import WeekReadGuide from "../weekly/v10/WeekReadGuide";
 import { landOnStop } from "../weekly/v10/landing";
+import { weekRowEndText } from "../weekly/v10/rowEnd";
+import { useShellRowEnd } from "../../lib/shellSlots";
 import { weeklyCopy } from "../weekly/v10/weeklyCopy";
 import InviteCard from "../referral/InviteCard";
 import "../weekly/v10/weeklyV10.css";
@@ -163,6 +165,10 @@ export default function WeeklyTab() {
     };
   }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, railDates]);
   const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);
+
+  // N-Week-D: the pill row ends with the week's own sentence (only for this week).
+  const rowEndText = week && isCurrent ? weekRowEndText(week.glance.perDay.map((d) => d.startMs), week.glance.today, locale) : "";
+  useShellRowEnd(rowEndText ? { text: rowEndText } : null);
 
   /* The week's hard-moment logs (the hard kind's "marked settled" line) and,
      per area, the newest record the parent kept: its day and their own words
