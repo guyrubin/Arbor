@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { api } from "../../lib/api";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { liveGrantRows, type GrantRow } from "../../lib/shareGrants";
 import { coParentCopy } from "../../lib/i18nElevation/coParent";
 import { CONSULT_EXPORTS_EVENT, listExports } from "../../consult/exportHistory";
@@ -97,7 +97,7 @@ export function WhoSeesWhat({ state, rows }: { state: "loading" | "failed" | "re
                 <span className="t-xs" style={{ color: MUTED }}>{row.what.length ? row.what.join(", ") : t("sec.sharing.noScopes")}</span>
               </span>
               <span data-testid="care-grant-until" className="flex-none rounded-full px-2.5 py-0.5 t-xs font-bold whitespace-nowrap" style={{ background: "var(--arbor-paper-elevated)", color: row.expiresAt ? "var(--arbor-peach-ink)" : "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
-                {row.expiresAt ? t("elev.consult.who.until", { date: fmtDay(row.expiresAt, uiLang) }) : t("elev.consult.who.noEnd")}
+                {row.expiresAt ? t("elev.consult.who.until", { date: fmtDayV10(row.expiresAt, uiLang) }) : t("elev.consult.who.noEnd")}
               </span>
             </li>
           ))}
@@ -128,7 +128,7 @@ export function pastExportRows(history: readonly { audience: string; at: string 
 }
 
 /** The "Past exports" card. Exported so its rows render under test. */
-export function PastExports({ rows, onPrepareAgain }: { rows: readonly PastExportRow[]; onPrepareAgain?: (audience: ExportAudience) => void }) {
+export function PastExports({ rows, onPrepareAgain, showRecordLink = true }: { rows: readonly PastExportRow[]; onPrepareAgain?: (audience: ExportAudience) => void; /** Off on Records itself (the link would point at the page it sits on). */ showRecordLink?: boolean }) {
   const { setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const title = (row: PastExportRow) => row.kind === "record"
@@ -157,7 +157,7 @@ export function PastExports({ rows, onPrepareAgain }: { rows: readonly PastExpor
                 <span className="min-w-0 flex-1 flex flex-col">
                   <span className="t-sm font-bold">{title(row)}</span>
                   <span className="t-xs" style={{ color: MUTED }}>
-                    {fmtDay(row.at, uiLang)} · {t(row.kind === "record" ? "elev.consult.past.record" : "elev.consult.past.again")}
+                    {fmtDayV10(row.at, uiLang)} · {t(row.kind === "record" ? "elev.consult.past.record" : "elev.consult.past.again")}
                   </span>
                 </span>
                 <Icon name="arrow_forward" size={16} className="flex-none rtl:-scale-x-100" style={{ color: MUTED }} />
@@ -166,10 +166,12 @@ export function PastExports({ rows, onPrepareAgain }: { rows: readonly PastExpor
           ))}
         </ul>
       )}
-      <button type="button" data-testid="care-past-record" onClick={() => setActiveTab("reports")} className={linkCls} style={{ color: "var(--arbor-clay)" }}>
-        {t("nav.tab.reports")}
-        <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
-      </button>
+      {showRecordLink && (
+        <button type="button" data-testid="care-past-record" onClick={() => setActiveTab("reports")} className={linkCls} style={{ color: "var(--arbor-clay)" }}>
+          {t("nav.tab.reports")}
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />
+        </button>
+      )}
     </section>
   );
 }

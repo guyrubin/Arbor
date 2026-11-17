@@ -616,7 +616,7 @@ function fitRehearsalField(el: HTMLTextAreaElement | null) {
  *  no model), and nothing is kept until Keep. Rephrasing a worry into a
  *  question is the model's half, behind its own live eval. The microphone
  *  shows the REC-01 indicator while it is open (B-STATUS-02). */
-function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => string | null }) {
+export function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep: (questions: string[]) => string | null }) {
   const { t } = useLanguage();
   const kept = useReceiptNote();
   const [supported] = useState(() => speechSupported());

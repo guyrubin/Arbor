@@ -1,26 +1,46 @@
 import React, { useMemo } from "react";
 import { Icon } from "../../ui/Icon";
+import { Token } from "../../../design/primitives";
+import { useComposition } from "../../../design/useComposition";
 import { useArbor } from "../../../context/ArborContext";
 import { useLanguage } from "../../../context/LanguageContext";
-import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
-import { fmtDayV10, fmtDayTimeV10 } from "../../../lib/formatDate";
-import { appointmentStatus, sortAppointments, visitRecords, type Appointment, type AppointmentFollowUp } from "../../../lib/careTrack";
+import { useToast } from "../../../context/ToastContext";
+import { ReceiptNoteLine, useReceiptNote } from "../../ui/Receipt";
+import { useChildCollection } from "../../../hooks/useChildCollection";
+import { appointmentRoleLabel, PROFESSION_KEY } from "../../../lib/appointmentLabel";
+import { fmtDayV10, fmtTimeV10 } from "../../../lib/formatDate";
+import {
+  appointmentStartMs, appointmentStatus, appointmentToIcs, consultAudienceForProfession, defaultIcsEgressDeps,
+  isAppointmentProfession, saveIcsFile, sortAppointments, visitRecords,
+  type Appointment, type AppointmentFollowUp, type AppointmentProfession,
+} from "../../../lib/careTrack";
+import { REHEARSAL_MAX_QUESTIONS } from "../../../consult/rehearsalQuestions";
+import { RehearseQuestions } from "../../sections/Appointments";
 import { careCopy } from "./careV10Copy";
 
-/* Care › Visits, section 4 (design v10.1): the family's appointments on one
-   dated line (past solid, today ringed, ahead open), the next booking and the
-   last one as cards, and the parent's own note from the last visit (its one
-   home). Editing a booking (questions, calendar file, Remove appointment,
-   Past visits and what to ask) stays on Appointments, one tap away. */
+/* Care › Visits, the appointments section (design V77, N-Care-D/M): the next
+   booking and the last one as cards, as drawn. The next one carries its acts —
+   Add to calendar (the same calendar file Appointments saves), Talk it through
+   (Appointments' own rehearsal: nothing kept until Keep) and Add to the visit
+   summary (the builder above, prefilled the way Appointments' Prepare does).
+   The last one carries the parent's own note from it. Remove is the same
+   one-tap remove Appointments has. Past visits and what to ask stay on
+   Appointments, one tap away. */
 
-const SHOWN_ON_LINE = 6;
+/** Appointments' prepared question (the `apptQuestions` collection). */
+type PrepQuestion = { id: string; text: string };
 
 export function openAddAppointment(setActiveTab: (t: "appointments") => void) {
   setActiveTab("appointments");
   if (typeof window !== "undefined") window.location.hash = "#/appointments?add=1";
 }
 
-type Mark = { id: string; label: string; date: string; who: string; past: boolean };
+/** Appointments' own reading of a stored mode (provider text passes through). */
+export function modeLabel(mode: string, t: (k: string) => string): string {
+  return /^in.?person$/i.test(mode) ? t("elev.careNet.mode.inPerson")
+    : /^(online|remote|video)$/i.test(mode) ? t("elev.careNet.mode.online")
+    : mode;
+}
 
 export default function VisitTimeline({ appointments, followUps, nowMs = Date.now() }: {
   appointments: readonly Appointment[];
@@ -29,17 +49,17 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
 }) {
   const { setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
-  const c = careCopy(uiLang).visits;
   const { upcoming, past } = useMemo(() => sortAppointments([...appointments], nowMs), [appointments, nowMs]);
   const lastNote = useMemo(() => visitRecords(appointments, followUps)[0] ?? null, [appointments, followUps]);
-  const dated = (a: Appointment) => !!a.whenIso && !Number.isNaN(new Date(a.whenIso).getTime());
-  const marks: Mark[] = [
-    ...[...past].filter(dated).reverse().map((a) => ({ a, past: true })),
-    ...upcoming.filter(dated).map((a) => ({ a, past: false })),
-  ].slice(-SHOWN_ON_LINE).map(({ a, past: p }) => ({ id: a.id, label: String(new Date(a.whenIso!).getDate()), date: fmtDayV10(a.whenIso!, uiLang), who: appointmentRoleLabel(a, t), past: p }));
-  const firstAhead = marks.findIndex((m) => !m.past);
   const next = upcoming[0] ?? null;
   const last = past[0] ?? null;
+  // V77: "Past visits and what to ask" closes the last visit's card (Appointments holds them).
+  const more = (
+    <button type="button" className="care-appts-more" data-testid="care-appointments-open" onClick={() => setActiveTab("appointments")}>
+      <Icon name="history" size={18} /> <span className="grow">{t("elev.learnCare.appt.more.title")}</span>
+      <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+    </button>
+  );
 
   if (appointments.length === 0) {
     return (
@@ -53,63 +73,106 @@ export default function VisitTimeline({ appointments, followUps, nowMs = Date.no
   }
 
   return (
-    <div className="vt care-appts" data-testid="care-appointments">
-      {marks.length > 0 && (
-        <ol className="care-line" aria-label={c.timelineLabel}>
-          {marks.map((m, i) => (
-            <React.Fragment key={m.id}>
-              {i === firstAhead && (
-                <li className="care-line-today" aria-label={c.today(fmtDayV10(new Date(nowMs).toISOString(), uiLang))}>
-                  <i className="tok here sm" aria-hidden="true" />
-                </li>
-              )}
-              <li className={m.past ? "care-line-mark past" : "care-line-mark"}>
-                <i className="tok date" aria-hidden="true">{m.label}</i>
-                <span className="care-line-date">{m.date}</span>
-                <span className="care-line-who">{m.who}</span>
-              </li>
-            </React.Fragment>
-          ))}
-        </ol>
-      )}
+    <div className="care-appts" data-testid="care-appointments">
       <div className="care-vcards">
         {next && <VisitCard appt={next} next />}
-        {last && <VisitCard appt={last} />}
+        {last && <VisitCard appt={last} note={lastNote && lastNote.apptId === last.id ? lastNote.note : null}>{more}</VisitCard>}
       </div>
-      {lastNote && (
+      {/* The parent's own note from a visit that is not the last card's. */}
+      {lastNote && (!last || lastNote.apptId !== last.id) && (
         <figure className="care-lastnote" data-testid="care-last-visit-note">
-          <figcaption className="kicker">{c.lastNote} · {fmtDayV10(lastNote.at, uiLang)}</figcaption>
+          <figcaption className="kicker">{careCopy(uiLang).visits.lastNote} · {fmtDayV10(lastNote.at, uiLang)}</figcaption>
           <blockquote dir="auto" className="ds-said">{lastNote.note}</blockquote>
         </figure>
       )}
-      <div className="care-appts-foot">
-        <button type="button" className="ds-link" data-testid="care-appointments-open" onClick={() => setActiveTab("appointments")}>
-          <Icon name="history" size={18} /> {t("elev.learnCare.appt.more.title")}
-          <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
-        </button>
-      </div>
+      {!last && more}
     </div>
   );
 }
 
-/** Appointments' own reading of a stored mode (provider text passes through). */
-export function modeLabel(mode: string, t: (k: string) => string): string {
-  return /^in.?person$/i.test(mode) ? t("elev.careNet.mode.inPerson")
-    : /^(online|remote|video)$/i.test(mode) ? t("elev.careNet.mode.online")
-    : mode;
-}
-
-function VisitCard({ appt, next = false }: { appt: Appointment; next?: boolean }) {
+function VisitCard({ appt, next = false, note = null, children }: { appt: Appointment; next?: boolean; note?: string | null; children?: React.ReactNode }) {
+  const composition = useComposition();
+  const desk = composition === "desk";
+  const { childProfile, requestConsultPrefill, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
+  const { toast } = useToast();
+  const receipt = useReceiptNote();
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
+  const questionsCol = useChildCollection<PrepQuestion>(childProfile.id, "apptQuestions");
+  const c = careCopy(uiLang).visits;
   const status = appointmentStatus(appt);
-  const when = appt.whenIso ? fmtDayTimeV10(appt.whenIso, uiLang) : appt.when;
+  const statusLabel = t(`elev.learnCare.appt.status.${status}`);
+  const role = appointmentRoleLabel(appt, t);
+  const title = appt.who.trim() || role;
+  const start = appointmentStartMs(appt);
+  const iso = start != null ? new Date(start).toISOString() : null;
+  const day = iso ? fmtDayV10(iso, uiLang) : appt.when.trim();
+  const time = iso ? fmtTimeV10(iso, uiLang) : "";
+  const mode = appt.mode ? modeLabel(appt.mode, t) : "";
+  const low = (x: string) => (uiLang === "en" ? x.toLowerCase() : x);
+
+  // The board's lines: desktop "Speech therapist · In person · Wed 25 Nov · 10:00"
+  // (the last: "In person · 09:00 · your note"); phone "Wed 25 Nov · 10:00 · in person · confirmed".
+  const meta = desk
+    ? (next ? [role, mode, day, time] : [mode, time, note ? c.yourNote : ""]).filter(Boolean).join(" · ")
+    : [day, time, low(mode), low(statusLabel)].filter(Boolean).join(" · ");
+
+  const saveIcs = async () => {
+    const file = appointmentToIcs(appt, Date.now());
+    if (!file) return;
+    const channel = await saveIcsFile(file, defaultIcsEgressDeps());
+    if (channel === "download") receipt.show({ text: t("elev.learnCare.appt.ics.done") });
+    else if (channel === "unavailable") toast(t("elev.learnCare.appt.ics.failed"), "error");
+  };
+  // Appointments' Prepare: the builder takes this professional and the reason already written.
+  const addToSummary = () => {
+    const profession: AppointmentProfession = appt.profession && isAppointmentProfession(appt.profession) ? appt.profession : "other";
+    requestConsultPrefill({
+      audience: consultAudienceForProfession(profession),
+      reason: t("elev.careNet.appt.prepare.reason", { profession: t(PROFESSION_KEY[profession]), date: day }),
+    });
+    setActiveTab("consult");
+    if (typeof document !== "undefined") document.getElementById("care-ready")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  // Appointments' Keep: the reviewed questions join the ones the visit summary carries.
+  const keepRehearsal = (reviewed: string[]): string | null => {
+    const clean = reviewed.map((x) => x.trim()).filter(Boolean).slice(0, REHEARSAL_MAX_QUESTIONS);
+    if (!clean.length) return null;
+    const stamp = Date.now();
+    clean.forEach((text, i) => void questionsCol.upsert({ id: `q${stamp}-${String(i).padStart(2, "0")}`, text }));
+    return clean.length === 1 ? t("elev.learnCare.appt.rehearse.kept.one") : t("elev.learnCare.appt.rehearse.kept.many", { n: clean.length });
+  };
+
   return (
-    <section className={next ? "vcard next care-vcard" : "vcard care-vcard"} aria-label={appointmentRoleLabel(appt, t)}>
+    <section className={next ? "vcard next care-vcard" : "vcard care-vcard"} aria-label={title} data-testid="care-visit-card" data-next={next ? "true" : undefined}>
       <div className="care-vcard-head">
-        <h3 className="care-vcard-title">{appointmentRoleLabel(appt, t)}</h3>
-        <span className={next ? "tagc ink" : "tagc"}>{t(`elev.learnCare.appt.status.${status}`)}</span>
+        {!desk && iso && <Token kind="date" size="md" label={day}>{new Date(start!).getDate()}</Token>}
+        <div className="care-vcard-what">
+          <h3 className="care-vcard-title" dir="auto">{title}</h3>
+          {!desk && <p className="small">{meta}</p>}
+        </div>
+        {desk && <span className={next ? "tagc ink" : "tagc"}>{next || !iso ? statusLabel : `${statusLabel} · ${day}`}</span>}
+        <button type="button" className="care-vcard-remove" onClick={() => void apptsCol.remove(appt.id)} aria-label={t("aria.removeAppointment")}>
+          <Icon name="delete" size={18} />
+        </button>
       </div>
-      <p className="small">{[appt.who && appt.who !== appointmentRoleLabel(appt, t) ? appt.who : null, appt.mode ? modeLabel(appt.mode, t) : null, when].filter(Boolean).join(" · ")}</p>
+      {desk && <p className="small">{meta}</p>}
+      {note && <blockquote dir="auto" className="ds-said care-vcard-note">{note}</blockquote>}
+      {children}
+      <ReceiptNoteLine note={receipt.note} testId="care-visit-receipt" size="sm" />
+      {next && (
+        <div className="care-vcard-acts">
+          {iso && (
+            <button type="button" className="btn primary care-vcard-cal" onClick={() => void saveIcs()}>
+              <Icon name="calendar_month" size={18} /> {t("elev.learnCare.appt.ics")}
+            </button>
+          )}
+          <RehearseQuestions lang={uiLang === "he" ? "he" : "en"} onKeep={keepRehearsal} />
+          <button type="button" className="mbtn care-vcard-summary" onClick={addToSummary}>
+            <Icon name="add" size={18} /> {c.addToSummary}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
