@@ -198,13 +198,18 @@ export default function SmartRemindersPanel() {
   const bells = <span className="line nx-bells" aria-hidden="true">
     {Array.from({ length: NUDGE_DAILY_CEILING }, (_, i) => <span key={i} className={[i < shown ? "nx-bell" : "nx-bell free", desk && "lg"].filter(Boolean).join(" ")}><Icon name="notifications" size={desk ? 24 : 20} /></span>)}
   </span>;
+  // ENG-02: the contract is a live count, not a promise — said once, here.
+  const slots = <div className="line sr-slots" data-testid="sr-max2-count" role="group" aria-label={t("sr.max2.count", { n: shown })}>
+    <Fig size={desk ? "md" : "sm"} n={shown} unit={v10.remShown(NUDGE_DAILY_CEILING)} sub={free === NUDGE_DAILY_CEILING ? v10.remBothFree : free > 0 ? v10.remOneFree : v10.remNoneFree} />
+    {bells}
+  </div>;
   const today = <Scene field="now" className={desk ? "x8 sr-stage" : "sr-stage"}
     orbs={desk ? [{ size: 420, left: -240, bottom: -280, opacity: 0.6 }, { size: 360, right: -170, top: -230, opacity: 0.7, b: true }] : [{ size: 240, left: -160, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.65, b: true }]}>
     <div className="line between sr-stage-head">
       <span className="gsec"><h1 className="kicker">{v10.remKicker}</h1><StartHere>{v10.startHere}</StartHere></span>
     </div>
     <div data-module="reminders-contract" className="sr-today">
-      <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} window={nudgeWindow} copy={v10}>
+      <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} window={nudgeWindow} variant="reminders" copy={v10}>
         {/* NEXT NUDGE (AC-1): what the gated engine would show next, or nothing — centred in the arc. */}
         <div data-testid="sr-next-nudge" aria-label={t("sr.nextNudge.label")} className="sr-next">
           {nudge ? <>
@@ -212,12 +217,10 @@ export default function SmartRemindersPanel() {
             <p className="sr-sub" dir="auto">{t(nudge.headlineKey, nudge.vars)}</p>
           </> : <p className="hero sr-hero">{t("sr.nextNudge.none")}</p>}
         </div>
+        {/* Board N-Remind-D: the count and the two slots sit in the bowl, under the hero. */}
+        {desk && slots}
       </NowDayArc>
-      {/* ENG-02: the contract is a live count, not a promise — said once, here. */}
-      <div className="line sr-slots" data-testid="sr-max2-count" role="group" aria-label={t("sr.max2.count", { n: shown })}>
-        <Fig size={desk ? "md" : "sm"} n={shown} unit={v10.remShown(NUDGE_DAILY_CEILING)} sub={free === NUDGE_DAILY_CEILING ? v10.remBothFree : free > 0 ? v10.remOneFree : v10.remNoneFree} />
-        {bells}
-      </div>
+      {!desk && slots}
     </div>
     <p className="sr-subtitle">{t("sr.subtitle")}</p>
   </Scene>;

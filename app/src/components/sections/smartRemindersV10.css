@@ -122,3 +122,12 @@
 .ds-phone .sr-stage > .sr-subtitle { padding: 8px 16px 14px; }
 .ds-phone .sr-stage-head { padding-top: 12px; }
 .ds-phone .sr-kinds > .nx-ctl { align-items: start; }
+
+/* ── Fidelity re-audit (N-Remind-D) ── */
+/* The bowl holds the next nudge and, under it, the count and its two slots. */
+.ds-desk .sr-stage .nw-arc > .nw-arc-face { flex-direction: column; align-items: center; gap: 10px; }
+.ds-desk .sr-stage .nw-arc-face > .sr-slots { padding: 0; justify-content: center; }
+.ds-desk .sr-stage .nw-arc-face > .sr-slots > .nx-bells { margin-inline-start: 0; }
+/* Delivery: the channels side by side on desktop, as the board sets them (a channel that draws nothing takes no column). */
+.ds-desk .sr-delivery { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: start; }
+.ds-desk .sr-delivery > * { min-width: 0; margin: 0; }
