@@ -38,6 +38,9 @@ import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
  * behind them; that is the verdict class Law 2 bans. One neutral tone, no
  * status chip.
  */
+/** A Hebrew (or other right-to-left script) word or saying. */
+const RTL_SCRIPT = /[\u0590-\u05FF\u0600-\u06FF]/;
+
 export default function LanguageLabTab() {
   const { childProfile, setActiveTab, seedCoach } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -165,11 +168,11 @@ export default function LanguageLabTab() {
             primary move stays above the dock; desk keeps it in the band. */}
         {desk && langIndex.length > 0 && <IndexRow phone={false} label={v.said.guideLangs} items={langIndex} />}
       </div>
-      {desk && langIndex.length > 0 && <div className="mcap"><span>{v.said.cap}</span></div>}
+      {desk && langIndex.length > 0 && <div className="mcap"><span>{langFilter ? v.said.capOne(ln(langFilter)) : v.said.cap}</span></div>}
     </Scene>
   );
   const stage = (
-    <StageCard icon="format_quote" title={v.said.stage} className="said-stage">
+    <StageCard icon="format_quote" title={v.said.stage} end={desk && langFilter ? <span className="small nowrap">{v.said.onlyIn(ln(langFilter))}</span> : undefined} className="said-stage">
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
@@ -189,18 +192,21 @@ export default function LanguageLabTab() {
         {!underThree && filteredWords.length > 0 && (
           <div className="said-words" data-testid="said-words">
             <span className="lab">{langFilter ? v.said.wordsIn(ln(langFilter)) : v.said.wordsAll}</span>
-            <ul>
-              {filteredWords.map((w) => (
-                <li key={w.id} className="wchip">
-                  <i className="tg-said" aria-hidden="true">Aa</i>
+            {/* N-SaidHe: a word in a right-to-left script carries its own script's mark and reads right to left. */}
+            <ul dir={langFilter && filteredWords.every((w) => RTL_SCRIPT.test(w.phrase)) ? "rtl" : undefined}>
+              {filteredWords.map((w) => {
+                const rtl = !!langFilter && RTL_SCRIPT.test(w.phrase);
+                return (
+                <li key={w.id} className={rtl ? "wchip rtl" : "wchip"}>
+                  <i className="tg-said" aria-hidden="true">{rtl ? "אב" : "Aa"}</i>
                   <span className="w" dir="auto">{w.phrase}</span>
                   <small>{[ln(w.language), fmtDayV10(w.timestamp, uiLang)].join(" · ")}</small>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}
-        {!desk && <div className="mt-2">{monthPage}</div>}
       </div>
     </StageCard>
   );
@@ -337,7 +343,8 @@ export default function LanguageLabTab() {
                 <aside className="rlc">{readGuide}{profile}{more}</aside>
               </div>
             ) : (
-              <div className="mstack" style={{ gap: 14 }}>{stage}{readGuide}{profile}{more}</div>
+              /* N-Said-M: the month's page closes the phone page, under the rail. */
+              <div className="mstack" style={{ gap: 14 }}>{stage}{readGuide}{profile}{more}<div className="said-page-m">{monthPage}</div></div>
             )}
           </RouteSection>
         </Route>
