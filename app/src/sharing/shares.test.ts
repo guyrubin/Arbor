@@ -34,6 +34,15 @@ describe("server-enforced sharing expiry", () => {
     expect(g.role).toBe("viewer");
   });
 
+  it("E-Invite: buildGrant keeps the inviter's display name on one line, capped; none without a name (negative control)", () => {
+    const named = buildGrant({ ownerUid: "u1", ownerEmail: "a@b.com", ownerName: "  Maya \n Example ", childId: "c1", recipientEmail: "t@x.com", role: "co_parent" }, NOW);
+    expect(named.ownerName).toBe("Maya Example");
+    expect(buildGrant({ ownerUid: "u1", ownerEmail: "a@b.com", ownerName: "x".repeat(200), childId: "c1", recipientEmail: "t@x.com" }, NOW).ownerName).toHaveLength(80);
+    for (const ownerName of [undefined, null, "   "]) {
+      expect("ownerName" in buildGrant({ ownerUid: "u1", ownerEmail: "a@b.com", ownerName, childId: "c1", recipientEmail: "t@x.com" }, NOW)).toBe(false);
+    }
+  });
+
   it("buildGrant sends stable duration IDs (the localized UI values) through expiryFromDuration", () => {
     // CARE-3: the client now sends stable duration IDs, never display strings.
     expect(expiryFromDuration("30d", NOW)).toBe(new Date(NOW + 30 * 86400000).toISOString());

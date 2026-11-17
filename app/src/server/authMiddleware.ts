@@ -84,7 +84,8 @@ export const createAuthMiddleware = (config: ArborConfig): RequestHandler => {
       // share routes authorize on the email, and an Email/Password token can
       // be minted for any address without proving it — only a verified
       // address may match a grant. Also lets digestOptIn skip its Admin lookup.
-      (req as any).user = { uid: decoded.uid, email: decoded.email ?? null, emailVerified: decoded.email_verified === true };
+      // E-Invite: the signed-in name the token already carries (Google display name), shown to an invitee as "{name} invited you".
+      (req as any).user = { uid: decoded.uid, email: decoded.email ?? null, emailVerified: decoded.email_verified === true, ...(typeof decoded.name === "string" && decoded.name.trim() ? { name: decoded.name } : {}) };
       next();
     } catch (err: any) {
       if (required) {

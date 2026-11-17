@@ -199,7 +199,7 @@ export function createCoParentRouter(deps: { config: ArborConfig; shareStore: Sh
     try {
       if (!source || !await source.childExists(actor.uid, childId)) { res.status(403).json({ error: "child_unavailable" }); return; }
       const existing = (await deps.shareStore.listByOwner(actor.uid, childId)).find((g) => g.accessMode === "family_workspace" && g.recipientEmail === recipientEmail);
-      const grant = existing ?? await deps.shareStore.create(buildGrant({ ownerUid: actor.uid, ownerEmail: actor.email, childId, childName: text(req.body?.childName, 120), recipientEmail, role: "co_parent", scopes: ["story_timeline"], duration: "until_revoked", accessMode: "family_workspace" }));
+      const grant = existing ?? await deps.shareStore.create(buildGrant({ ownerUid: actor.uid, ownerEmail: actor.email, ownerName: (req as express.Request & { user?: { name?: string } }).user?.name ?? null, childId, childName: text(req.body?.childName, 120), recipientEmail, role: "co_parent", scopes: ["story_timeline"], duration: "until_revoked", accessMode: "family_workspace" }));
       res.json(grant);
     } catch { res.status(503).json({ error: "sharing_unavailable" }); }
   });
