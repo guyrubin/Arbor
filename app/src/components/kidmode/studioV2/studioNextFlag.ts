@@ -1,8 +1,9 @@
-/** Next Studio games switch. Off by default everywhere: the eight Studio
- * tiles, their tests and their browser checks are untouched until the games
- * are accepted. A device opts in with localStorage["arbor.flags.studioNext"]
- * = "1", or by opening the app once with ?studioNext=1 (and out again with
- * ?studioNext=0). On, four tiles open the Bop games (Wobbly Delivery,
+/** Next Studio games switch. On by default for every child since Guy's
+ * switch-on, 16 Nov (B-GAME-39). A device opts out with
+ * localStorage["arbor.flags.studioNext"] = "0", or by opening the app once
+ * with ?studioNext=0 (and back in with ?studioNext=1). Without browser
+ * storage (the node test runner) it stays off, so the legacy games keep
+ * their own tests. On, four tiles open the Bop games (Wobbly Delivery,
  * Five-Friend Sun, Oops Button, Rover Delivery) and Sound Orbit opens Hero Band,
  * and the makers (studioCatalog STUDIO_MAKER_IDS) join their worlds. */
 export const STUDIO_NEXT_FLAG_KEY = 'arbor.flags.studioNext';
@@ -12,9 +13,8 @@ export function studioNextFlagOn(): boolean {
   try {
     if (typeof localStorage === 'undefined') return cached = false;
     const asked = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('studioNext');
-    if (asked === '1') localStorage.setItem(STUDIO_NEXT_FLAG_KEY, '1');
-    if (asked === '0') localStorage.removeItem(STUDIO_NEXT_FLAG_KEY);
-    cached = localStorage.getItem(STUDIO_NEXT_FLAG_KEY) === '1';
+    if (asked === '1' || asked === '0') localStorage.setItem(STUDIO_NEXT_FLAG_KEY, asked);
+    cached = localStorage.getItem(STUDIO_NEXT_FLAG_KEY) !== '0';
   } catch {
     cached = false;
   }

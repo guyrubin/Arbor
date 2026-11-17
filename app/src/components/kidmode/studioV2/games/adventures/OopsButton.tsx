@@ -10,7 +10,7 @@ import { useAdventureVoice } from './AdventureGuide';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
-import { BopFriend, BopScene, BopSprite } from './BopArt';
+import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { OOPS_BUTTON_COPY, oopsLine } from './oopsButtonCopy';
 import { BLOOM_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, copyPress, orderFor, toyJams, undoCheck, undoHint, watchMs, type PetalId } from './oopsButtonRules';
@@ -152,6 +152,7 @@ export default function OopsButton() {
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={blooms} total={OOPS_ROUNDS} /></div>
         <AdventureHeading focusKey={`${round}:${phase}:${attempt}`} onHear={guide.replay} muted={guide.muted || quietBeat}>{cue}</AdventureHeading>
         <div className="bop-stage oops-stage">
+          <BopCheer beat={phase === 'bloom' ? blooms : null} big={phase === 'bloom' && blooms >= OOPS_ROUNDS} />
           <BopScene scene="scene-table" />
           <div className="oops-board">
             <span className="oops-hero" aria-hidden="true"><StudioPlayHero size={96} kick={presses} pose={phase === 'jam' ? 'oops' : 'idle'} celebrate={phase === 'bloom'} /></span>

@@ -37,6 +37,7 @@ import { HERO_BAND_COPY } from './heroBandCopy';
 import { validDance, type MoveId } from './heroBandRules';
 import { HERO_BAND_FLAG_KEY, heroBandFlagOn, resetHeroBandFlagForTests } from '../../heroBandFlag';
 import { studioCopy } from '../../studioCopy';
+import { STUDIO_NEXT_FLAG_KEY, resetStudioNextFlagForTests } from '../../studioNextFlag';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 function nodes(node: unknown): ReactElement<Props>[] { if (Array.isArray(node)) return node.flatMap(nodes); if (!isValidElement<Props>(node)) return []; return [node, ...nodes(node.props.children)]; }
@@ -120,15 +121,16 @@ describe('Hero Band', () => {
     h.lang = 'he'; expect(heading(render())).toBe(he.ready);
   });
   it('leaves the Sound Orbit tile alone until a device opts in', () => {
-    const store = new Map<string, string>();
+    // A device that opted out of the next games (on by default since 16 Nov): Hero Band's own switch still works there.
+    const store = new Map<string, string>([[STUDIO_NEXT_FLAG_KEY, '0']]);
     vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
     vi.stubGlobal('location', { search: '' });
-    resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false); expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Sound Orbit');
+    resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false); expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Sound Orbit');
     vi.stubGlobal('location', { search: '?heroBand=1' }); resetHeroBandFlagForTests();
     expect(heroBandFlagOn()).toBe(true); expect(store.get(HERO_BAND_FLAG_KEY)).toBe('1');
     expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Hero Band'); expect(studioCopy('he').activities['rhythm-garden'].title).toBe(HERO_BAND_COPY.he.title);
     expect(studioCopy('en').activities.memory.title).toBe('Mind Vault');
     vi.stubGlobal('location', { search: '?heroBand=0' }); resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false);
-    vi.unstubAllGlobals(); resetHeroBandFlagForTests();
+    vi.unstubAllGlobals(); resetStudioNextFlagForTests(); resetHeroBandFlagForTests();
   });
 });

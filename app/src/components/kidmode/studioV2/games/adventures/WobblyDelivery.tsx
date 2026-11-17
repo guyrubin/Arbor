@@ -11,7 +11,7 @@ import { useAdventureVoice } from './AdventureGuide';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
-import { BopFriend, BopScene, BopSprite } from './BopArt';
+import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { WOBBLY_DELIVERY_COPY, requestLine, type WobblyDeliveryWords } from './wobblyDeliveryCopy';
 import { ASK_CARD_MS, BLOOM_MS, CARRY_MS, CARRY_STEP_MS, DELIVERY_FRIENDS, DELIVERY_ROUNDS, DELIVERY_TILES, OOPS_MS, THANKS_MS, askMs, cardsStayUp, deliveryPick, requestFor, shelfFor, tileTone, type DeliveryItem } from './wobblyDeliveryRules';
@@ -213,6 +213,7 @@ export default function WobblyDelivery() {
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={roundsDone} total={DELIVERY_ROUNDS} /></div>
         <AdventureHeading focusKey={`${round}:${phase === 'carry' ? 'fetch' : phase}`} onHear={hear} muted={guide.muted || busy}>{cue}</AdventureHeading>
         <div className="bop-stage delivery-stage" data-phase={phase} data-shelf={shelf.length}>
+          <BopCheer beat={phase === 'thanks' || phase === 'bloom' ? `${phase}:${roundsDone}` : null} big={phase === 'bloom'} />
           <BopScene scene="scene-delivery" />
           <div className="delivery-board">
             <div className="delivery-shelf" role="group" aria-label={w.shelf}>

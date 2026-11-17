@@ -9,7 +9,7 @@ import { kidSfx, onKidHush, useKidReadAloudMuted } from '../../../audio/kidAudio
 import { StudioPlayHero } from '../../StudioPlayHero';
 import { useStudioCreations } from '../../studioCreations';
 import { AdventureSprout, useAdventureVoice } from './AdventureGuide';
-import { BopScene } from './BopArt';
+import { BopCheer, BopScene } from './BopArt';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
@@ -159,6 +159,7 @@ export default function HeroBand() {
         <div className="band-stage" data-phase={phase} data-move={move ?? 'none'} data-playing={playing}>
           <BopScene scene="scene-band" />
           <span className="band-spot" aria-hidden="true" />
+          <BopCheer beat={phase === 'matched' ? round : phase === 'stage' ? 'stage' : null} big={phase === 'stage'} />
           <div className="band-floor">
             <span className="band-dancer" ref={dancer}><StudioPlayHero size={phase === 'stage' ? 250 : 190} kick={beat} pose={pose} celebrate={phase === 'matched'} /></span>
             <AdventureSprout className="band-sprout" size={84} speaking={guide.speaking} beat={beat} action={phase === 'matched' ? 'celebrate' : phase === 'show' ? 'show' : phase === 'copy' ? 'listen' : 'welcome'} />
