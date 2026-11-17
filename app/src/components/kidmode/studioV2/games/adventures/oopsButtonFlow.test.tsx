@@ -617,7 +617,7 @@ describe('Oops Button words', () => {
   it('fills the blanks of a line', () => {
     expect(oopsLine(en.watchStep, 2, 3, en.petals[1])).toBe('2 of 3: Blue petal.'); expect(oopsLine(en.copyNext, 1, 3)).toBe('1 of 3 open. Press the next petal.');
     expect(oopsLine(en.petalOpen, en.petals[0])).toBe('Orange petal, open'); expect(oopsLine(en.petalClosed, en.petals[4])).toBe('Purple petal, closed'); expect(oopsLine(en.petalStuck, en.petals[3])).toBe('Pink petal, stuck halfway');
-    expect(oopsLine(he.watchStep, 2, 3, he.petals[1])).toBe('2 מתוך 3: עלה כחול.'); expect(oopsLine(he.copyNext, 1, 3)).toBe('1 מתוך 3 פתוחים. לוחצים על הבא בתור.');
+    expect(oopsLine(he.watchStep, 2, 3, he.petals[1])).toBe('2 מתוך 3: עלה כותרת כחול.'); expect(oopsLine(he.copyNext, 1, 3)).toBe('1 מתוך 3 פתוחים. לוחצים על הבא בתור.');
     expect(oopsLine('{0}{1}{2}', 'a')).toBe('a'); expect(oopsLine(en.ready)).toBe(en.ready);
   });
 });

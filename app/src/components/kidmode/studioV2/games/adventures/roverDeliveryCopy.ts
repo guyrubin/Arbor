@@ -6,7 +6,7 @@
 export const ROVER_DELIVERY_COPY = {
   en: {
     hear: 'Hear it again',
-    title: 'Rover Delivery', description: 'Plan the way. Fix one thing.', instruction: 'Turn the signs so the rover reaches Pep, then press start.',
+    title: 'Rover Delivery', description: 'Plan the way. Fix one thing.', instruction: 'Turn the signs so the rover reaches Pep, then press Start.',
     plan: 'Turn the signs so the rover reaches Pep.', start: 'Start',
     drive: 'The rover is on its way.', parked: 'Change one thing, then press Start.', replan: 'Ready to go again. Press Start.',
     arrived: 'The rover reached Pep. Pep hops for joy.',
