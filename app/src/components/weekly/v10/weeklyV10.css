@@ -510,3 +510,5 @@ html[lang="he"] .ds .wk10-words.dayed [data-testid="weekly-what-worked-line"] > 
 .ds .wk10-mr.short .wk-mdh { white-space: nowrap; gap: 3px; font-size: 12px; overflow: visible; }
 .ds .wk10-mr.short .wk-mdh b { font-size: 14px; }
 .ds-phone .wk10-mr { grid-template-columns: 46px minmax(0, 1fr) minmax(44px, auto); }
+.ds-phone .wk10-words > .wk-tw { width: 28px; height: 28px; }
+.ds-phone .wk-tr.wk10-words { grid-template-columns: 28px minmax(0, 1fr); }
