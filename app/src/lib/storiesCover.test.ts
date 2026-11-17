@@ -235,7 +235,9 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).not.toContain("tonightStory.titleHe");
     // W2-SHELLPLAY r2: the art band is a min-height (it now holds the hero row).
     // SHIP-FIX r3: below sm it is ONE row (avatar + hero row side by side, 100 px)
-    expect(cover).toContain("flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px]");
+    // The phone art band is one 96 px row (56 px on a phone under 900 px tall, so Read it
+    // together clears the Ask bar); sm and up keep their column heights.
+    expect(cover).toContain('flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full ${phoneShort ? "min-h-[56px] py-1" : "min-h-[96px] py-2"} sm:min-h-[168px]');
     // NEGATIVE CONTROL: the r3 148 px column band is caught
     expect(cover).not.toContain("flex flex-col items-center justify-center gap-1 w-full min-h-[112px]");
     expect(cover).toContain("lg:grid-cols-[2fr_3fr]");
