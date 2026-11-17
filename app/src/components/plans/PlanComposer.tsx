@@ -30,10 +30,10 @@ import { composePlanBook, fillParentLine, fillStepLine, OWN_STEP, PLAN_TIMES, ty
 import type { PatternDef } from "../../lib/library/plans/patterns";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import type { BookLang, BookReaderChild } from "../../lib/library/types";
-import { heGender } from "../../lib/library/bookText";
+import { fillHero, heGender, lineFor } from "../../lib/library/bookText";
 import { screenForImmediateEscalation } from "../../safety/escalation";
 import { UrgentSupport } from "../safety/UrgentSupport";
-import { DsRoot } from "../../design/primitives";
+import { DsRoot, Fig, Guide, Route, RouteHead, RouteSection, Scene, SideRail, StartHere, Tile } from "../../design/primitives";
 import { useComposition, type Composition } from "../../design/useComposition";
 import { ChallengeBook } from "./v10/ChallengeBook";
 import { mirrorPoints, Road, zigzagPoints } from "./v10/Road";
@@ -91,9 +91,11 @@ export interface PlanComposerProps {
   initialState?: ComposerState;
   /** Test seam: the progress line's initial state. */
   initialPaint?: AutoPaintState;
+  /** Test seam: the composition (else the viewport's). */
+  composition?: Composition;
 }
 
-export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, ownerPaint = false, initialState, initialPaint }: PlanComposerProps) {
+export default function PlanComposer({ def, child, onSaved, onClose, onSafety, onPrint, ownerPaint = false, initialState, initialPaint, composition: compositionProp }: PlanComposerProps) {
   const { uiLang } = useLanguage();
   const lang: BookLang = uiLang === "he" ? "he" : "en";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -133,21 +135,30 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   };
 
   const c = plansCopy(lang);
-  const composition = useComposition();
+  const viewport = useComposition();
+  const composition = compositionProp ?? viewport;
   const stop = STOP_OF[state.stage];
+  /* CP-2-Agree-D: on a desktop the three steps, the box and the sources share one screen
+     (the guide, the scene, "What {name} hears" and "Make it yours"); the phone keeps its stages. */
+  const deskAgree = composition === "desk" && (state.stage === "steps" || state.stage === "the-box");
   const stopNames = [c.stops.recognise, c.stops.agree, c.stops.preview];
   return (
     <DsRoot composition={composition} className="ds-plans ds-plans-composer" dir={dir} data-plan-composer={def.id} data-stage={state.stage}>
       <div className="stack ds-col" style={{ gap: 14, maxWidth: composition === "desk" && state.stage !== "steps" ? 760 : undefined, marginInline: "auto", width: "100%" }}>
         <header className="line between" style={{ gap: 8, minHeight: 44 }}>
-          <button type="button" className="ds-link" style={{ paddingInlineStart: 0 }} onClick={() => (state.stage === "door" || state.stage === "approved" ? onClose() : dispatch({ type: "back" }))} data-plan-back="">
+          <button type="button" className="ds-link" style={{ paddingInlineStart: 0 }} onClick={() => {
+            if (state.stage === "door" || state.stage === "approved") return onClose();
+            dispatch({ type: "back" });
+            // Desktop: the box sits on the steps screen, so Back from the preview returns there.
+            if (composition === "desk" && state.stage === "preview") dispatch({ type: "back" });
+          }} data-plan-back="">
             <Icon name="chevron_left" size={18} className="rtl:-scale-x-100" />
             {/* CP-1: where the link goes — the Challenge Plans list from the door, else the stage before. */}
             {state.stage === "door" || state.stage === "approved" ? s("section.title") : s("back")}
           </button>
-          <span className="small">{c.stopOf(stop + 1, 5, stopNames[stop])}</span>
+          {!deskAgree && <span className="small">{c.stopOf(stop + 1, 5, stopNames[stop])}</span>}
         </header>
-        <JourneyStrip current={stop} lang={lang} />
+        {!deskAgree && <JourneyStrip current={stop} lang={lang} />}
         {/* S1 4(b): owner only — the shared plates paint themselves in the background; no button. */}
         {ownerPaint && paint.painting && (
           <p role="status" className="line small" style={{ gap: 8 }} data-plan-painting={paint.done}>
@@ -223,9 +234,9 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
           );
         })()}
 
-        {state.stage === "steps" && <StepsStage def={def} lang={lang} childName={name} state={state} dispatch={dispatch} problems={problems.length} onSafety={onSafety} composition={composition} />}
+        {(state.stage === "steps" || deskAgree) && <StepsStage def={def} lang={lang} childName={name} gender={heGender(child.gender)} state={state} dispatch={dispatch} problems={problems.length} onSafety={onSafety} composition={composition} />}
 
-        {state.stage === "the-box" && (
+        {state.stage === "the-box" && !deskAgree && (
           <section data-plan-stage="the-box" className="stack ds-col" style={{ gap: 14 }}>
             <div className="cp-card">
               <h1 className="cp-q">{s("stage.box.title")}</h1>
@@ -290,7 +301,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
   );
 }
 
-function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety, composition }: { def: PatternDef; lang: BookLang; childName: string; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number; onSafety?: () => void; composition: Composition }) {
+function StepsStage({ def, lang, childName, gender, state, dispatch, problems, onSafety, composition }: { def: PatternDef; lang: BookLang; childName: string; gender: ReturnType<typeof heGender>; state: ComposerState; dispatch: React.Dispatch<Parameters<typeof composerReducer>[2]>; problems: number; onSafety?: () => void; composition: Composition }) {
   const c = plansCopy(lang);
   const desk = composition === "desk";
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
@@ -327,6 +338,220 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
     const t = slot === 1 && item?.defaultMinutes != null ? state.time : item?.defaultTime;
     return t ? s(`time.${t}` as Parameters<typeof planString>[0]) : "";
   };
+  const ownFields = (
+    <>
+          <p className="cp-lede">{s("stage.steps.ownHint")}</p>
+          <div className="line" style={{ gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label={s("stage.steps.origin")} data-plan-own-origin-choice="">
+            {(["parent", "practitioner"] as const).map((o) => (
+              <button key={o} type="button" role="radio" aria-checked={ownOrigin === o} className={ownOrigin === o ? "cp-chip on ds-plans-chipbtn" : "cp-chip ds-plans-chipbtn"} data-plan-own-origin-pick={o} onClick={() => setOwnOrigin(o)}>
+                {o === "practitioner" ? s("stage.steps.origin.practitioner", { name: childName }) : s("stage.steps.origin.parent")}
+              </button>
+            ))}
+          </div>
+          <div className="line" style={{ gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>
+            <select className="cp-sel ds-plans-select" value={ownSlot} data-plan-own-slot="" aria-label={s("stage.steps.origin")} onChange={(e) => setOwnSlot(Number(e.target.value) as 1 | 2 | 3)}>
+              {([1, 2, 3] as const).map((n) => <option key={n} value={n}>{s("stage.steps.step", { n })}</option>)}
+            </select>
+            <textarea className="nx-in ds-plans-input ds-plans-textarea" rows={2} maxLength={240} value={ownText} data-plan-own-text="" dir="auto" aria-label={s("stage.steps.own")} onChange={(e) => setOwnText(e.target.value)} />
+          </div>
+          {refused && <p role="alert" className="cp-lede" style={{ color: "var(--ink)" }}>{s("stage.steps.ownRefused")}</p>}
+          {crisis && (
+            <div role="alert" className="stack ds-col" style={{ gap: 6 }} data-plan-own-crisis="">
+              <p style={{ fontSize: 14, color: "var(--ink)" }}>{s("stage.steps.ownCrisis")}</p>
+              {/* B-ASKJB-49: the helplines themselves, in the request's language
+                  (the shared crisis card's lines; this alert carries the words). */}
+              <UrgentSupport testId="plan-own-urgent-support" requestLang={lang} showInstructions={false} className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 t-sm" />
+              {onSafety && <button type="button" className="btn ghost sm" style={{ background: "var(--card)", alignSelf: "flex-start" }} onClick={onSafety}><Icon name="health_and_safety" size={18} />{s("stage.steps.ownCrisisDoor")}</button>}
+            </div>
+          )}
+          <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
+            <span className="ds-plans-draft"><Icon name="edit" size={15} />{plansCopy(lang).draftLabel}</span>
+            <button type="button" className="btn ghost sm" style={{ background: "var(--card)", marginInlineStart: "auto" }} disabled={phrasing || ownText.trim().length < 3} data-plan-own-phrase="" onClick={() => void phrase()}><Icon name="auto_awesome" size={18} />{phrasing ? s("stage.steps.ownPhrasing") : s("stage.steps.ownPhrase")}</button>
+          </div>
+    </>
+  );
+  const ownPending = state.ownStep && (
+                <div className="cp-own" data-plan-own-pending={state.ownStep.approvedAt ? undefined : ""}>
+                  <span className="by" data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="edit" size={15} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</span>
+                  <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
+                    {!state.ownStep.approvedAt && <button type="button" className="btn ink sm grow" data-plan-own-approve="" onClick={() => dispatch({ type: "ownStepApproved", at: new Date().toISOString() })}><Icon name="check" size={18} />{s("stage.steps.ownApprove")}</button>}
+                    <button type="button" className="btn ghost sm" style={{ background: "var(--card)" }} data-plan-own-drop="" onClick={() => dispatch({ type: "ownStepDropped" })}>{s("stage.steps.ownDrop")}</button>
+                  </div>
+                </div>
+  );
+
+  /* ── CP-2-Agree-D: the desktop composer ─────────────────────────────────
+     1 · the scene: the three steps side by side (what you do, when, the other choice) and
+         "Preview the book", which runs the steps and the box on to the preview in one tap;
+     2 · the rail: what {name} hears, word for word, with each step's page in the book;
+     3 · Make it yours: your own words, the box and how long, where the steps come from. */
+  if (desk) {
+    const book = (() => {
+      try {
+        return composePlanBook(def, { ...compositionOf(state, `${def.id}.preview`), approvedAt: "preview", approvedBy: "preview" });
+      } catch {
+        return null; // an own step still waiting for approval: the rail reads from the cards' words
+      }
+    })();
+    const pageCount = book?.pages.length ?? 0;
+    const pageOfSlot = (slot: number) => (book ? book.pages.findIndex((pg) => pg.id.startsWith(`s${slot}-`)) + 1 : 0);
+    const kid = (line: { en: string; he: { m: string; f: string } }) => fillHero(lineFor(line, lang, gender), childName, lang);
+    const slotText = (slot: 1 | 2 | 3) => {
+      const menuId = state.stepMenuIds[slot - 1];
+      const item = def.menu.find((m) => m.id === menuId);
+      const line = menuId === OWN_STEP && state.ownStep ? state.ownStep.text : item ? fillStepLine(item.text, state) : null;
+      return line ? kid(line) : "";
+    };
+    const last = book?.pages[book.pages.length - 1];
+    const guide = [
+      { id: "cp-agree", title: c.agreeGuide.steps, sub: c.agreeGuide.stepsSub },
+      { id: "cp-hears", title: c.agreeGuide.hears(childName), sub: c.agreeGuide.hearsSub(childName) },
+      { id: "cp-yours", title: c.agreeGuide.yours, sub: c.agreeGuide.yoursSub },
+    ];
+    const cards = ([1, 2, 3] as const).map((slot) => {
+      const menuId = state.stepMenuIds[slot - 1];
+      const isOwn = menuId === OWN_STEP;
+      const item = def.menu.find((m) => m.id === menuId);
+      const youDo = isOwn && state.ownStep ? state.ownStep.sourceText : item ? fillParentLine(item.parentLine, state)[lang] : undefined;
+      const menu = slotMenu(def, slot);
+      const others = menu.filter((m) => m.id !== menuId);
+      const timeKey = slot === 1 && item?.defaultMinutes != null ? null : item?.defaultTime;
+      return (
+        <li key={slot} className="cp-col cp-agcard" data-plan-step={slot} data-plan-step-own={isOwn ? "" : undefined}>
+          <div className="line" style={{ gap: 12 }}>
+            <span className="cp-n" aria-hidden="true"><b>{slot}</b><Icon name="check" size={18} /></span>
+            <h3 className="cp-stn">{s("stage.steps.step", { n: slot })}</h3>
+          </div>
+          {youDo && <div className="cp-pl" dir="auto"><small>{c.youDo}</small>{youDo}</div>}
+          {isOwn && <p className="small" data-plan-own-in-tile="">{c.ownInTile}</p>}
+          {slot === 1 && item?.defaultMinutes != null && (
+            <div className="cp-when2">
+              <label className="cp-when"><small>{c.when}</small>
+                <select className="ds-plans-select" value={state.time} data-plan-time="" onChange={(e) => dispatch({ type: "time", time: e.target.value as PlanTime })}>
+                  {PLAN_TIMES.map((t) => <option key={t} value={t}>{s(`time.${t}` as Parameters<typeof planString>[0])}</option>)}
+                </select>
+              </label>
+              <label className="cp-when"><small>{s("stage.steps.minutes")}</small>
+                <select className="ds-plans-select" value={state.minutes} data-plan-minutes="" onChange={(e) => dispatch({ type: "minutes", minutes: Number(e.target.value) })}>
+                  {Array.from({ length: def.minutesRange[1] - def.minutesRange[0] + 1 }, (_, i) => def.minutesRange[0] + i).map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
+          {/* The time of day a step carries in the pattern (per-step times are not settable: no data). */}
+          {timeKey && <div className="cp-when cp-when-ro"><small>{c.when}</small><b>{s(`time.${timeKey}` as Parameters<typeof planString>[0])}</b></div>}
+          {!isOwn && others.length === 1 && (
+            <div className="stack ds-col" style={{ gap: 6, paddingTop: 10, borderTop: "1px solid var(--rule)", marginTop: "auto" }}>
+              <p className="small" dir="auto" style={{ color: "var(--ink)" }}><b>{c.otherChoice}</b> {fillParentLine(others[0].parentLine, state)[lang]}</p>
+              <button type="button" className="ds-link min-h-11" style={{ paddingInline: 0, alignSelf: "flex-start" }} data-plan-swap={slot} data-plan-swap-to={others[0].id} onClick={() => dispatch({ type: "swap", slot, menuId: others[0].id })}>
+                <Icon name="swap_horiz" size={18} />{s("stage.steps.swap")}
+              </button>
+            </div>
+          )}
+          {!isOwn && others.length > 1 && (
+            <label className="stack ds-col" style={{ gap: 4, marginTop: "auto" }}>
+              <span className="small" style={{ fontWeight: 600 }}>{s("stage.steps.swap")}</span>
+              <select className="cp-sel ds-plans-select" value={menuId} data-plan-swap={slot} onChange={(e) => dispatch({ type: "swap", slot, menuId: e.target.value })}>
+                {menu.map((m) => <option key={m.id} value={m.id}>{fillParentLine(m.parentLine, state)[lang].slice(0, 80)}</option>)}
+              </select>
+            </label>
+          )}
+        </li>
+      );
+    });
+    const toPreview = () => {
+      dispatch({ type: "stepsDone" });
+      dispatch({ type: "boxDone" });
+    };
+    return (
+      <section data-plan-stage="steps" data-plan-agree-desk="" className="stack ds-col" style={{ gap: 0 }}>
+        <Guide stops={guide} label={c.onThisPage} />
+        <Route composition="desk">
+          <RouteSection id="cp-agree" n={1} on>
+            <div className="g12">
+              <div className="x8" style={{ display: "flex", flexDirection: "column" }}>
+                <Scene field="plan" style={{ padding: 0, gap: 0, flex: 1 }} orbs={[{ size: 440, left: -250, bottom: -280, opacity: 0.6 }, { size: 380, right: -180, top: -250, opacity: 0.8, b: true }]}>
+                  <div className="cp-aghead">
+                    <div className="stack ds-col" style={{ gap: 8, minWidth: 0 }}>
+                      <span className="gsec">
+                        <span className="kicker">{`${def.title[lang]} · ${c.stageOf(2, 5)}`}</span>
+                        <StartHere>{c.startHere}</StartHere>
+                      </span>
+                      <h1 className="hero" style={{ fontSize: 34, lineHeight: 1.08 }}>{s("stage.steps.title")}</h1>
+                      <p style={{ fontSize: 14, lineHeight: 1.42, color: "var(--ink-soft)", maxWidth: 420 }}>{s("stage.steps.body")}</p>
+                      {/* The board draws "Preview the book" under the cards; at 1280×800 that is below the
+                          dock, so the one primary sits under the lede (the sweep's fold bar). */}
+                  <div className="line" style={{ gap: 14, paddingTop: 6, flexWrap: "wrap" }}>
+                    <button type="button" className="btn primary" style={{ minWidth: 190 }} disabled={problems > 0} data-plan-steps-next="" data-plan-box-next="" data-primary-move="preview-plan" onClick={toPreview}>
+                      {s("stage.box.next")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />
+                    </button>
+                    <span className="small">{c.notSaved}</span>
+                  </div>
+                    </div>
+                    <div className="cp-agjr"><JourneyStrip current={1} lang={lang} /></div>
+                  </div>
+                  <ol className="ds-plans-agree" style={{ gap: 14, listStyle: "none", margin: 0, padding: "18px 28px 0" }}>{cards}</ol>
+                  <div style={{ height: 24 }} />
+                </Scene>
+              </div>
+              <SideRail id="cp-hears" n={2} title={c.agreeGuide.hears(childName)} sub={c.whatToSaySub} titleId="cp-hears-title" className="x4">
+                {([1, 2, 3] as const).map((slot) => (
+                  <article key={slot} className="cp-hear" data-plan-step-text="" data-plan-hears={slot}>
+                    <small>{pageCount && pageOfSlot(slot) > 0 ? c.stepOnPage(slot, pageOfSlot(slot), pageCount) : c.stepN(slot)}</small>
+                    <p dir="auto">{slotText(slot)}</p>
+                  </article>
+                ))}
+                {last && (
+                  <article className="cp-hear" data-plan-hears="last">
+                    <small>{c.lastPage(pageCount, pageCount)}</small>
+                    <p dir="auto">{kid(last.text)}</p>
+                  </article>
+                )}
+              </SideRail>
+            </div>
+          </RouteSection>
+          <RouteSection id="cp-yours" n={3} stopTop={2}>
+            <RouteHead title={c.makeItYours} sub={c.makeItYoursSub} />
+            <div className="g12">
+              <Tile className="x4" icon="edit" kind="plan" title={s("stage.steps.own")} titleId="cp-own-title">
+                {state.ownStep ? ownPending : <div className="stack ds-col" style={{ gap: 10 }} data-plan-own="">{ownFields}</div>}
+              </Tile>
+              <Tile className="x4" icon="bookmark" kind="plan" title={s("stage.box.title")} titleId="cp-box-title">
+                <p style={{ fontSize: 13, lineHeight: 1.45, color: "var(--ink-soft)" }} dir="auto">{c.boxLedeDesk(childName)}</p>
+                <ul className="line" style={{ gap: 8, flexWrap: "wrap", listStyle: "none", margin: 0, padding: 0 }}>
+                  {def.boxItems.map((b) => {
+                    const on = state.boxItemIds.includes(b.id);
+                    return (
+                      <li key={b.id}>
+                        <button type="button" className={on ? "cp-chip on ds-plans-chipbtn" : "cp-chip ds-plans-chipbtn"} aria-pressed={on} data-plan-box={b.id} onClick={() => dispatch({ type: "the-box", itemId: b.id, on: !on })}>{b.label[lang]}</button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="line between" style={{ gap: 10, marginTop: "auto", flexWrap: "wrap" }} role="radiogroup" aria-label={s("stage.box.duration")} data-plan-duration="">
+                  <Fig n={state.durationDays} unit={c.daysUnit} sub={c.firstAtBedtime} size="md" />
+                  <span className="line" style={{ gap: 6 }}>
+                    {[14, 21, 28].map((d) => (
+                      <button key={d} type="button" role="radio" aria-checked={state.durationDays === d} className={state.durationDays === d ? "cp-chip on ds-plans-chipbtn" : "cp-chip ds-plans-chipbtn"} data-plan-duration-pick={d} onClick={() => dispatch({ type: "duration", durationDays: d })}>{d}</button>
+                    ))}
+                  </span>
+                </div>
+              </Tile>
+              <Tile className="x4" icon="menu_book" title={c.whereFrom} titleId="cp-src-title">
+                <div className="cp-src">
+                  <b>{c.sourcesLabel}</b>
+                  <ul className="stack ds-col" style={{ gap: 8, margin: 0, padding: 0, listStyle: "none" }} data-plan-sources="">
+                    {def.sources.map((src) => <li key={src.id} dir="auto">{src.url ? <a href={src.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ink)", textDecoration: "underline", textUnderlineOffset: 2 }}>{src.label[lang]}</a> : src.label[lang]}</li>)}
+                  </ul>
+                </div>
+              </Tile>
+            </div>
+          </RouteSection>
+        </Route>
+      </section>
+    );
+  }
+
   return (
     <section data-plan-stage="steps" className="stack ds-col" style={{ gap: 14 }}>
       <div className="stack ds-col" style={{ gap: 6 }}>
@@ -365,15 +590,7 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
                   <div className="cp-kid" dir="auto" data-plan-step-text="">{lang === "he" ? text.he[heGender(undefined)] : text.en}</div>
                 </details>
               ))}
-              {isOwn && state.ownStep && (
-                <div className="cp-own" data-plan-own-pending={state.ownStep.approvedAt ? undefined : ""}>
-                  <span className="by" data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="edit" size={15} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</span>
-                  <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
-                    {!state.ownStep.approvedAt && <button type="button" className="btn ink sm grow" data-plan-own-approve="" onClick={() => dispatch({ type: "ownStepApproved", at: new Date().toISOString() })}><Icon name="check" size={18} />{s("stage.steps.ownApprove")}</button>}
-                    <button type="button" className="btn ghost sm" style={{ background: "var(--card)" }} data-plan-own-drop="" onClick={() => dispatch({ type: "ownStepDropped" })}>{s("stage.steps.ownDrop")}</button>
-                  </div>
-                </div>
-              )}
+              {isOwn && ownPending}
               {!isOwn && menu.length > 1 && (
                 <label className="stack ds-col" style={{ gap: 4, marginTop: desk ? "auto" : undefined }}>
                   <span className="small" style={{ fontWeight: 600 }}>{s("stage.steps.swap")}</span>
@@ -403,34 +620,7 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
       {!state.ownStep && (
         <section className="cp-card" data-plan-own="">
           <h2 className="cp-q">{s("stage.steps.own")}</h2>
-          <p className="cp-lede">{s("stage.steps.ownHint")}</p>
-          <div className="line" style={{ gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label={s("stage.steps.origin")} data-plan-own-origin-choice="">
-            {(["parent", "practitioner"] as const).map((o) => (
-              <button key={o} type="button" role="radio" aria-checked={ownOrigin === o} className={ownOrigin === o ? "cp-chip on ds-plans-chipbtn" : "cp-chip ds-plans-chipbtn"} data-plan-own-origin-pick={o} onClick={() => setOwnOrigin(o)}>
-                {o === "practitioner" ? s("stage.steps.origin.practitioner", { name: childName }) : s("stage.steps.origin.parent")}
-              </button>
-            ))}
-          </div>
-          <div className="line" style={{ gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>
-            <select className="cp-sel ds-plans-select" value={ownSlot} data-plan-own-slot="" aria-label={s("stage.steps.origin")} onChange={(e) => setOwnSlot(Number(e.target.value) as 1 | 2 | 3)}>
-              {([1, 2, 3] as const).map((n) => <option key={n} value={n}>{s("stage.steps.step", { n })}</option>)}
-            </select>
-            <textarea className="nx-in ds-plans-input ds-plans-textarea" rows={2} maxLength={240} value={ownText} data-plan-own-text="" dir="auto" aria-label={s("stage.steps.own")} onChange={(e) => setOwnText(e.target.value)} />
-          </div>
-          {refused && <p role="alert" className="cp-lede" style={{ color: "var(--ink)" }}>{s("stage.steps.ownRefused")}</p>}
-          {crisis && (
-            <div role="alert" className="stack ds-col" style={{ gap: 6 }} data-plan-own-crisis="">
-              <p style={{ fontSize: 14, color: "var(--ink)" }}>{s("stage.steps.ownCrisis")}</p>
-              {/* B-ASKJB-49: the helplines themselves, in the request's language
-                  (the shared crisis card's lines; this alert carries the words). */}
-              <UrgentSupport testId="plan-own-urgent-support" requestLang={lang} showInstructions={false} className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 t-sm" />
-              {onSafety && <button type="button" className="btn ghost sm" style={{ background: "var(--card)", alignSelf: "flex-start" }} onClick={onSafety}><Icon name="health_and_safety" size={18} />{s("stage.steps.ownCrisisDoor")}</button>}
-            </div>
-          )}
-          <div className="line" style={{ gap: 8, flexWrap: "wrap" }}>
-            <span className="ds-plans-draft"><Icon name="edit" size={15} />{plansCopy(lang).draftLabel}</span>
-            <button type="button" className="btn ghost sm" style={{ background: "var(--card)", marginInlineStart: "auto" }} disabled={phrasing || ownText.trim().length < 3} data-plan-own-phrase="" onClick={() => void phrase()}><Icon name="auto_awesome" size={18} />{phrasing ? s("stage.steps.ownPhrasing") : s("stage.steps.ownPhrase")}</button>
-          </div>
+          {ownFields}
         </section>
       )}
       <button type="button" className="btn primary block" style={{ minHeight: 52 }} disabled={problems > 0} data-plan-steps-next="" onClick={() => dispatch({ type: "stepsDone" })}>{s("stage.steps.next")}<Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" /></button>
