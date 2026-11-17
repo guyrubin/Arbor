@@ -329,3 +329,7 @@
 .ds .mcst.compact-stage .mcsh { min-height: 36px; }
 .ds .compact-stage .tgb { gap: 6px; }
 .ds .compact-stage .tgbh { min-height: 32px; }
+
+/* Stories › Worth knowing (N-Stories-D/M): the shared Now card, at the rail's size. */
+.ds .tg-know .nw-know, .ds .tg-know .nw-know.m { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; border-radius: 18px; }   /* no art here: one column (the .m grid keeps a column for art) */
+.ds .tg-know .nw-know .lead { font-size: 17px; line-height: 1.3; }

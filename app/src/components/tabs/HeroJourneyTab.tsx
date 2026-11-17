@@ -87,6 +87,10 @@ import { ChainStrip } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import StoriesPlanBook from "../together/StoriesPlanBook";
 import "../together/together.css";
+import NowWorthKnowing from "../companion/now10/NowWorthKnowing";
+import { NOW_COPY } from "../companion/nowViewCopy";
+import "../companion/now10/nowV10.css";
+import { storiesWorthCardId, storiesWorthKicker } from "../together/storiesWorth";
 
 // v10.1: Hero Comics and the family ritual are sections of Stories (embedded, no route stamps).
 const EmbeddedComics = React.lazy(() => import("./ComicsTab"));
@@ -228,6 +232,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // A phone under the boards' height: the cover's spacing tightens too (SHIP-FIX: Read it together above the Ask bar).
   const phoneShort = shortViewport && composition === "phone";
   const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
+  // Stories › Worth knowing: one reviewed read by the child's whole years (none outside the bands).
+  const childAgeMonths = ageMonthsFromProfile(childProfile);
+  const worthCard = storiesWorthCardId(childAgeMonths);
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
   // at the call site (never in ToastContext, which the parent shell relies on).
@@ -1246,7 +1253,18 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           </section>
         </RouteSection>
         <RouteSection id="family" n={3}>
-          <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
+          {/* N-Stories-D/M: the ritual, and beside it (under it on a phone) one reviewed read on reading and stories. */}
+          <div className={composition === "phone" || !worthCard ? "tg-stack" : "rowa"} style={composition === "phone" ? { gap: 16 } : undefined}>
+            <div className={composition === "phone" || !worthCard ? undefined : "stg"}>
+              <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
+            </div>
+            {worthCard && (
+              <div className={composition === "phone" ? "tg-know" : "rlc tg-know"} data-testid="stories-worth-knowing">
+                <NowWorthKnowing lang={uiLang === "he" ? "he" : "en"} kicker={storiesWorthKicker(childAgeMonths, uiLang)} readMinutes={NOW_COPY[uiLang === "he" ? "he" : "en"].readMinutes}
+                  cardId={worthCard} composition="phone" now={new Date()} source="stories-worth-knowing" />
+              </div>
+            )}
+          </div>
         </RouteSection>
         <RouteSection id="pictures" n={4}>
         <div className="space-y-6">
