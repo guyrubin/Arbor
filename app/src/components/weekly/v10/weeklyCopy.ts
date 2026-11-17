@@ -12,6 +12,14 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many.r
 
 export const WEEKLY_COPY = {
   en: {
+    kindPlan: "Plan step done",
+    tokenPlan: "plan step done",
+    markedSettled: "marked settled",
+    allAtHome: "all at home",
+    notThisTimeOn: (day: string) => `Not this time · ${day}`,
+    dayFoot: (home: number, onDay: number, weekday: string) =>
+      [home > 0 && `${home} at home`, onDay > 0 && `${onDay} on a ${weekday}`].filter(Boolean).join(", ") + ".",
+    settledNote: "you marked it settled",
     readTitle: "How to read this week",
     readOf: (i: number, n: number) => `${i} of ${n}`,
     readWeek: "A line joins a hard moment to the step you tried.",
@@ -101,6 +109,14 @@ export const WEEKLY_COPY = {
     seeHard: "See them in Hard moments",
   },
   he: {
+    kindPlan: "צעד בתוכנית בוצע",
+    tokenPlan: "צעד בתוכנית שבוצע",
+    markedSettled: "סומן כנרגע",
+    allAtHome: "כולם בבית",
+    notThisTimeOn: (day: string) => `לא הפעם · ${day}`,
+    dayFoot: (home: number, onDay: number, weekday: string) =>
+      [home > 0 && `${home} בבית`, onDay > 0 && `${onDay} ב${weekday}`].filter(Boolean).join(", ") + ".",
+    settledNote: "סימנתם שזה נרגע",
     readTitle: "איך לקרוא את השבוע",
     readOf: (i: number, n: number) => `${i} מתוך ${n}`,
     readWeek: "קו מחבר רגע קשה לצעד שניסיתם.",

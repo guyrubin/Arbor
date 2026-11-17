@@ -14,15 +14,16 @@ import type { WeeklyCopy } from "./weeklyCopy";
  * counts as a table.
  */
 
-const KIND_ORDER: readonly InstrumentKind[] = ["moment", "hard", "helped", "not", "date"];
+const KIND_ORDER: readonly InstrumentKind[] = ["moment", "hard", "helped", "not", "plan", "date"];
 const TOKEN_OF: Record<InstrumentKind, { kind: TokenKind; state?: TokenState }> = {
   moment: { kind: "moment" },
   hard: { kind: "hard" },
   helped: { kind: "stp" },
   not: { kind: "stp", state: "open" },
   date: { kind: "date" },
+  plan: { kind: "plan" },
 };
-const CHIP_CLASS: Record<InstrumentKind, string> = { moment: "k-moment", hard: "k-hard", helped: "k-stp", not: "k-not", date: "k-date" };
+const CHIP_CLASS: Record<InstrumentKind, string> = { moment: "k-moment", hard: "k-hard", helped: "k-stp", not: "k-not", plan: "k-plan", date: "k-date" };
 const EVENING = { from: 17, to: 21 };
 
 type Props = {
@@ -36,9 +37,11 @@ type Props = {
   beyond?: { label: string; sub?: string; ms: number; nobody?: boolean } | null;
   /** Today's step is taken and not yet answered: a ring in today's lane. */
   todayStep?: boolean;
+  /** Every hard moment of the week is one the parent marked settled. */
+  hardSettled?: boolean;
 };
 
-export default function WeekInstrument({ data, composition, copy, locale, footer, beyond = null, todayStep = false }: Props) {
+export default function WeekInstrument({ data, composition, copy, locale, footer, beyond = null, todayStep = false, hardSettled = false }: Props) {
   const [hidden, setHidden] = useState<ReadonlySet<InstrumentKind>>(new Set());
   const shown = (kind: InstrumentKind) => !hidden.has(kind);
   const toggle = (kind: InstrumentKind) =>
@@ -49,8 +52,8 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
       return next;
     });
 
-  const kindLabel: Record<InstrumentKind, string> = { moment: copy.kindMoment, hard: copy.kindHard, helped: copy.kindHelped, not: copy.kindNot, date: copy.kindDate };
-  const tokenLabel: Record<InstrumentKind, string> = { moment: copy.tokenMoment, hard: copy.tokenHard, helped: copy.tokenHelped, not: copy.tokenNot, date: copy.tokenDate };
+  const kindLabel: Record<InstrumentKind, string> = { moment: copy.kindMoment, hard: copy.kindHard, helped: copy.kindHelped, not: copy.kindNot, plan: copy.kindPlan, date: copy.kindDate };
+  const tokenLabel: Record<InstrumentKind, string> = { moment: copy.tokenMoment, hard: copy.tokenHard, helped: copy.tokenHelped, not: copy.tokenNot, plan: copy.tokenPlan, date: copy.tokenDate };
   const weekday = (ms: number) => new Date(ms).toLocaleDateString(locale, { weekday: "short" });
   const dayNum = (ms: number) => new Date(ms).toLocaleDateString(locale, { day: "numeric" });
   const lang = locale.startsWith("he") ? "he" : "en";
@@ -96,7 +99,10 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
             onClick={() => toggle(k)}
           >
             <i aria-hidden="true" className={["tok", t.kind, t.state, "sm"].filter(Boolean).join(" ")} />
-            <span>{kindLabel[k]}</span>
+            <span>
+              {kindLabel[k]}
+              {k === "hard" && hardSettled && <small>{copy.markedSettled}</small>}
+            </span>
             <b>{data.counts[k]}</b>
           </button>
         );
@@ -191,7 +197,7 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
             const lane = data.lane.filter((x) => x.day === i && shown(x.kind));
             const dates = shown("date") ? data.dates.filter((x) => x.day === i) : [];
             return (
-              <div key={d.startMs} className={`wk10-mr${d.isToday ? " today" : ""}${d.isAhead ? " ahead" : ""}`} aria-hidden="true">
+              <div key={d.startMs} className={`wk10-mr${d.isToday ? " today" : ""}${d.isAhead ? " ahead" : ""}${d.isAhead && dates.length === 0 && lane.length === 0 ? " short" : ""}`} aria-hidden="true">
                 <span className={`wk-mdh${d.isToday ? " today" : ""}`}>
                   <span>{weekday(d.startMs)}</span>
                   <b>{dayNum(d.startMs)}</b>
@@ -210,16 +216,17 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                   {data.timed
                     .filter((x) => x.day === i && shown(x.kind))
                     .map((tok) => timedToken(tok, "sm", { insetInlineStart: `calc(${pos(tok.hour)} - 11px + ${(seats.get(tok.id) ?? 0) * 14}px)`, top: 6 }))}
+                  {/* A date sits on its day as a pill inside the strip (N-Week-M). */}
+                  {dates.map((x) => (
+                    <span key={x.id} className="wk10-mdate">
+                      <Token kind="date" state={x.nobody ? "none" : "solid"} size="sm" label={`${copy.tokenDate}, ${x.label}`}>{dayNum(x.ms)}</Token>
+                      <span className="wk-pill">{x.sub ? `${x.label} · ${x.sub}` : x.label}</span>
+                    </span>
+                  ))}
                 </span>
                 <span className="wk10-mlane">
                   {lane.map((x) => laneToken(x.id, x.kind, "sm"))}
                   {d.isToday && todayLane("sm")}
-                  {dates.map((x) => (
-                    <span key={x.id} className="wk10-mdate">
-                      <Token kind="date" state={x.nobody ? "none" : "solid"} size="sm" label={`${copy.tokenDate}, ${x.label}`}>{dayNum(x.ms)}</Token>
-                      <span className="wk10-mdate-t"><b>{x.label}</b>{x.sub && <small>{x.sub}</small>}</span>
-                    </span>
-                  ))}
                 </span>
               </div>
             );
@@ -230,13 +237,10 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                 <span>{weekday(beyond.ms)}</span>
                 <b>{dayNum(beyond.ms)}</b>
               </span>
-              <span className="wk10-beyond-t">
-                <b>{`${clock(beyond.ms)} ${beyond.label}`}</b>
-                {beyond.sub && <small>{beyond.sub}</small>}
+              <span className="wk10-mstrip wk-ms wk10-beyond-t">
+                <span className="wk-pill">{`${clock(beyond.ms)} ${beyond.label}${beyond.sub ? ` · ${beyond.sub}` : ""}`}</span>
               </span>
-              <span className="wk10-mlane">
-                <Token kind="date" state={beyond.nobody ? "none" : "solid"} size="sm" label={`${copy.tokenDate}, ${beyond.label}`}>{dayNum(beyond.ms)}</Token>
-              </span>
+              <span className="wk10-mlane" />
             </div>
           )}
         </figure>
@@ -264,22 +268,13 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
         <p className="wk10-legend">{copy.legend}</p>
       </div>
       <div className="wk10-plotwrap">
-        <figure className="wk10-plot" aria-label={copy.weekAria}>
+        <figure className={`wk10-plot${beyond && shown("date") ? " has-beyond" : ""}`} aria-label={copy.weekAria}>
           {(data.dates.length > 0 || beyond) && shown("date") && (
             <div className="wk10-row wk10-dates" aria-hidden="true">
               <span className="wk-kick">{copy.datesAhead}</span>
               <span />
               {data.days.map((d, i) => (
                 <span key={d.startMs} className="wk10-cell">
-                  {beyond && i === 6 && (
-                    <span className="wk10-date beyond">
-                      <Token kind="date" state={beyond.nobody ? "none" : "solid"} size="md" label={`${copy.tokenDate}, ${beyond.label}`}>{dayNum(beyond.ms)}</Token>
-                      <span className="wk-lab">
-                        <span>{beyond.label}</span>
-                        <small>{new Date(beyond.ms).toLocaleDateString(locale, { weekday: "short", day: "numeric" })}</small>
-                      </span>
-                    </span>
-                  )}
                   {data.dates
                     .filter((x) => x.day === i)
                     .map((x) => (
@@ -293,6 +288,17 @@ export default function WeekInstrument({ data, composition, copy, locale, footer
                     ))}
                 </span>
               ))}
+              {beyond && (
+                <span className="wk10-cell wk10-beyondcell">
+                  <span className="wk10-date beyond">
+                      <Token kind="date" state={beyond.nobody ? "none" : "solid"} size="md" label={`${copy.tokenDate}, ${beyond.label}`}>{dayNum(beyond.ms)}</Token>
+                      <span className="wk-lab">
+                        <span>{beyond.label}</span>
+                        <small>{new Date(beyond.ms).toLocaleDateString(locale, { weekday: "short", day: "numeric" })}</small>
+                      </span>
+                    </span>
+                </span>
+              )}
             </div>
           )}
           <div className="wk10-row wk10-heads" aria-hidden="true">
