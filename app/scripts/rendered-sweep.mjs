@@ -1259,7 +1259,8 @@ const STATES = {
     {
       name: "search",
       run: async (h) => {
-        await h.click("[data-testid=ms-search-open]", [], "the search icon");
+        // V77 list: a desk shows the search field beside the area; a phone opens it from the icon leading the tiles.
+        if (!(await h.first("[data-testid=ms-search]", 1_500))) await h.click("[data-testid=ms-search-open]", [], "the search icon");
         await (await h.need("[data-testid=ms-search]", "the milestone search")).fill(h.lang === "he" ? "כדור" : "ball");
         await h.page.waitForTimeout(400);
         await h.need("[data-testid=ms-search-results]", "the search results across shelves");

@@ -290,3 +290,46 @@
 .ds .gd8.gdw i { background: var(--k-moment-w); }
 .ds .ms-check-link { align-items: flex-start; text-align: start; }
 .ds .ms-check-link .ms-check-chips, .ds .ms-check-link .ms-check-go-row { justify-content: flex-start; }
+
+/* V77 list (N-ChildList boards): the area's stage head, its search and All, and the card grid */
+.ds.ms-list .msl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.ds.ms-list .msl-head .tg { width: 40px; height: 40px; flex: none; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: var(--sapphire-deep); color: var(--paper); }
+.ds.ms-list .msl-head .msl-tt { margin: 0; font: 500 26px/1.15 var(--font-display) !important; color: var(--ink); }
+.ds.ms-list .msl-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ds.ms-list .msl-search { flex: 1; min-width: 0; }
+.ds.ms-list .msl-all { flex: none; gap: 6px; }
+.ds.ms-list .msl-all b { font-family: var(--font-display) !important; font-size: 17px; }
+.ds.ms-list .msl-lead { margin-bottom: 12px; }
+.ds.ms-list .msl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+.ds-desk.ms-list .msl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds.ms-list .msl-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 14px 6px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds.ms-list .msl-chip { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+.ds.ms-list .msl-chip b { font-weight: 700 !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+[dir="rtl"] .ds.ms-list .msl-chip b { letter-spacing: 0; }
+.ds.ms-list .msl-card .notice-object { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.ds.ms-list .msl-card .notice-object-art, .ds.ms-list .msl-card .notice-object-prompt, .ds.ms-list .msl-card [data-testid="notice-age-line"] { display: none; }
+.ds.ms-list .msl-card .notice-object-title { font-family: var(--font-display) !important; font-style: italic; font-size: 19px; line-height: 1.2; }
+[dir="rtl"] .ds.ms-list .msl-card .notice-object-title { font-style: normal; }
+.ds.ms-list .msl-card .notice-object-meaning { margin-top: 2px; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds.ms-list .msl-card .area-detail-around { margin-top: 4px; }
+.ds-desk.ms-list .msl-top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.ds-desk.ms-list .msl-top .msl-head, .ds-desk.ms-list .msl-top .msl-tools { margin-bottom: 0; }
+.ds-desk.ms-list .msl-top .msl-tools { flex: 1; }
+.ds.ms-list .ms-band .mci { margin-top: 10px; }
+/* the list's phone fold: the chosen tile names the area (the head stays for the outline only), a flatter stage */
+.ds-phone.ms-list .msl-head { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ds-phone.ms-list .ms-list-stage { padding: 10px; }
+.ds-phone.ms-list [data-testid="ms-shelf-map"] { padding: 0; box-shadow: none; background: transparent; border: 0; }
+.ds-phone.ms-list .mci.m .mcs { min-height: 92px; }
+.ds.ms-list .msl-head .msl-tt { color: var(--ink); }
+.ds-phone.ms-list .ms-band.compact .mch .mcl .title { font-size: 22px; }
+.ds-phone.ms-list .ms-band.compact .mch { gap: 6px; }
+.ds-phone.ms-list .msl-tools { margin-bottom: 8px; }
+.ds-phone.ms-list .msl-card { padding-top: 8px; gap: 2px; }
+.ds-phone.ms-list .msl-card .notice-object-title { font-size: 17px; }
+.ds .mci.m .mcs-item.mcs-lead { flex: 0 0 auto; }
+.ds .msl-lead-tools { display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center; }
+.ds .msl-icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; min-height: 44px; flex: 1; border: 0; border-radius: 14px; background: #ffffffdb; box-shadow: inset 0 0 0 1px var(--rule-strong); color: var(--ink-soft); }
+.ds .msl-lead-tools .msl-all { min-height: 44px; padding: 0 10px; flex-direction: column; gap: 0; font-size: 12px; }
+.ds .msl-icon:hover { background: var(--well); }
+.ds .msl-icon:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
