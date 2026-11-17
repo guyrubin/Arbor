@@ -192,3 +192,17 @@
 .ds-phone .fy-meta { flex: 1 1 100%; } .ds-phone .fy-meta [data-testid="trust-link"] { padding-inline: 0 !important; }
 .ds-phone .fy-meta > :first-child { gap: 4px !important; } .ds-phone .fy-meta [data-testid="trust-link"] { font-size: 12px !important; gap: 2px !important; } .ds-phone .fy-scene { padding-inline: 14px; }
 .ds-phone .fy-meta [data-testid="evidence-chip"] { padding-inline: 6px !important; }
+/* V77 N-ForYou-M: on a phone the area tiles sit straight under the heading (its sub carries the count). */
+.ds-phone .fy-areas { background: none; box-shadow: none; padding: 0; border-radius: 0; }
+.ds-phone .fy-areas > .small { display: none; }
+.ds-phone .fy-area-grid .topic { flex: 0 0 164px; max-width: 164px; }
+.ds .lib-more.ds-link { margin-inline-start: auto; min-height: 44px; display: inline-flex; align-items: center; gap: 2px; background: none; border: 0; padding: 0; font-weight: 600 !important; font-size: 13px !important; color: var(--sapphire-deep); cursor: pointer; }
+.ds .lib-forage { color: var(--ink-soft); }
+.ds-phone .snap > .lib-card { align-self: stretch; }
+.ds-phone .snap > .lib-card > .lib-rdc { height: 100%; }
+.ds-phone .lib-controls .segr { flex: 0 0 auto; }
+.ds-phone .lib-saved { margin-inline-start: auto; }
+.ds-phone .lib-count { flex: 1 1 60%; }
+.ds-phone .snap > .lib-card { height: auto; }
+.ds .lib-age > .small { display: none; }
+.ds-phone .lib-count { flex: 1 1 auto; }

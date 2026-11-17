@@ -62,6 +62,8 @@ const MASTERCLASS_VIRTUES: Record<string, DevelopmentMetricId[]> = {
 
 /** How many course rows the rail shows before the parent asks for all of them. */
 const RAIL_COURSES = 3;
+/** V77 N-ForYou-M: the phone lists two courses before "All N courses". */
+const PHONE_COURSES = 2;
 
 const DONE_KEY = "arbor.masterclasses.done";
 export const loadDone = (): Record<string, boolean> => {
@@ -249,9 +251,12 @@ export default function Masterclasses() {
   // parent can see (plain integers, never progress). A filter left on an area
   // the age switch has since emptied falls back to every area.
   const areaCounts = courseAreaCounts(catalog);
+  // V77: the areas with the most courses lead (N-ForYou-D/M).
+  const areaTiles = [...areaCounts].sort((a, b) => b.count - a.count);
   const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
   const courseList = catalog.filter((c) => !selectedArea || courseArea(c.id) === selectedArea);
-  const shownCourses = allCourses ? courseList : courseList.slice(0, RAIL_COURSES);
+  const firstCourses = desk ? RAIL_COURSES : PHONE_COURSES;
+  const shownCourses = allCourses ? courseList : courseList.slice(0, firstCourses);
 
   const goProgram = () => openProgramPage(setActiveTab as never);
   const openLibrary = () => requestLearnRead({ source: "foryou-library" });
@@ -353,7 +358,7 @@ export default function Masterclasses() {
         </span>
         {areaCounts.length > 1 && (
           <div className="fy-area-grid" role="group" aria-label={t("elev.learnCare.byArea")} data-testid="academy-by-area">
-            {areaCounts.map(({ area, count }) => (
+            {areaTiles.map(({ area, count }) => (
               <button
                 key={area}
                 type="button"
@@ -407,7 +412,7 @@ export default function Masterclasses() {
         );
       })}
       {!desk && <p className="small fy-legend">{copy.pipsLegend}</p>}
-      {courseList.length > RAIL_COURSES && (
+      {courseList.length > firstCourses && (
         <MoreLink onClick={() => setAllCourses((v) => !v)}>{allCourses ? copy.fewerCourses : copy.allCourses(courseList.length)}</MoreLink>
       )}
       {/* D3: courses that build the family's chosen virtues (Family Charter). */}
@@ -475,7 +480,7 @@ export default function Masterclasses() {
       <Tile className={desk ? "x6" : undefined} icon="menu_book" title={t("elev.learnCare.family.title")} titleId="fy-family-title">
         <div className="fy-door">
           <AreaForm art={TOGETHER_ART} width={desk ? 104 : 84} ratio={0.66} zoom={1.05} />
-          <p dir="auto"><b>{t("elev.learnCare.family.headline")}</b>{t("elev.learnCare.family.sub")}</p>
+          <p dir="auto">{t("elev.learnCare.family.sub")}</p>
         </div>
         <MoreLink onClick={() => setActiveTab("family")}>
           <span data-testid="academy-family-door">{t("elev.learnCare.family.cta")}</span>
