@@ -242,3 +242,15 @@ describe("Fidelity re-audit (N-Week-D/M)", () => {
     });
   }
 });
+
+describe("WhatHelped — the words card's glyph tile (N-Week-M)", () => {
+  const props = { copy: WEEKLY_COPY.en, t: t("en"), uiLang: "en" as const, locale: "en", childFirst: "Noa", hardCount: 0, steps: [], heldWords: <p>held</p>, hasHeldWords: true, words: [], onPlans: () => {}, onHardMoments: () => {} };
+  it("phone: the words card leads with a decorative music-note tile", () => {
+    const html = renderToStaticMarkup(<WhatHelped composition="phone" {...props} />);
+    expect(html).toMatch(/<span class="wk-tw" aria-hidden="true" data-testid="weekly-words-glyph">[\s\S]*?music_note/);
+  });
+  it("negative controls: no tile on desktop (the board draws none there), and none without held words", () => {
+    expect(renderToStaticMarkup(<WhatHelped composition="desk" {...props} />)).not.toContain("weekly-words-glyph");
+    expect(renderToStaticMarkup(<WhatHelped composition="phone" {...props} hasHeldWords={false} heldWords={null} />)).not.toContain("weekly-words-glyph");
+  });
+});

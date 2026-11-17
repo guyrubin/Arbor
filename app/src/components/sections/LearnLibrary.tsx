@@ -14,6 +14,7 @@
  * the bookmark (card id only). TOKEN-DRIVEN styling; HE/RTL via logical CSS.
  */
 import { fmtDayV10 } from "../../lib/formatDate";
+import { useShellCrumb } from "../../lib/shellSlots";
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
@@ -249,6 +250,10 @@ export default function LearnLibrary() {
     () => learnReadCount(readIds, LEARN_CARDS.map((c) => c.id)),
     [readIds]
   );
+
+  // V77 (N-Library-D): the breadcrumb's last level names the view showing,
+  // "Library › Reads" or "Library › Courses" (a hook, so before any early return).
+  useShellCrumb(filter === "courses" ? t("learn.courses") : copy.libReads);
 
   const openCourse = openCourseId ? MASTERCLASSES.find((m) => m.id === openCourseId) : undefined;
   if (openCourse) {
