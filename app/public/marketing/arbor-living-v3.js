@@ -405,7 +405,9 @@ if (fam) {
     /* below the fold it waits as a blank draft, and plays the first time it is well in view */
     if (fam.getBoundingClientRect().top > innerHeight * 0.6) {
       ready = false; plan.forEach(d => { d.added = false; d.holder = null; }); lines.forEach(l => l.classList.remove('hit')); say.textContent = ''; fam.classList.add('wait'); paint();
-      new IntersectionObserver((es, io) => es.forEach(e => { if (e.isIntersecting) { io.disconnect(); play(); } }), { threshold: 0.35 }).observe(fam);
+      /* watch the first panel, not the whole example: stacked on a short phone, or with large
+         text, the example can be taller than the screen and would never be a third in view */
+      new IntersectionObserver((es, io) => es.forEach(e => { if (e.isIntersecting) { io.disconnect(); play(); } }), { threshold: 0.5 }).observe($('.fam-msgp', fam));
     }
   }
 }
