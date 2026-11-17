@@ -585,7 +585,7 @@ export default function CoachAnswerCards({
       )}
 
       {/* V77 (N-Talk): what this answer was built from, read-only, ahead of the draft. */}
-      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} />}
+      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} program={contract.activeProgramUsed} />}
 
       {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">

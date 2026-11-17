@@ -167,3 +167,4 @@
 .coach-used-fact { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); font-size: 14px; font-style: italic; color: var(--arbor-ink); text-align: start; cursor: pointer; }
 .coach-used-fact:hover { background: var(--arbor-k-moment-w); }
 .coach-used-fact:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.coach-used-glyph.k-plan { background: var(--arbor-k-plan-w); color: var(--arbor-k-plan-i); }

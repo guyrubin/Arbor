@@ -37,7 +37,7 @@ import { renderActiveProgramLine } from "../ai/programContext.js";
 import { renderTodayPracticeLine } from "../ai/journalContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programEcho, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { firstSentence, gradesTheChild, oneSayableSentence, sanitizeJournalRequest, sayRelatesTo, stepFitsPractice, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
@@ -1115,6 +1115,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // whatever the model returns (contracts/coach toSeededFollowUpContract).
       const seededFollowUp = seededEscalation !== null && seededFollowUpLine(message, recentTurns) !== null;
 
+      // B-PROG-01: the active program's one context line — built ONCE, so the
+      // answer's provenance (V77 programEcho) is the object the prompt rendered.
+      const activeProgram = programPromptLine(companion.program);
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
       // to the old inline template; promptVersion is stamped into telemetry.
       const prompt = buildChatPrompt({
@@ -1137,7 +1140,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         familyTopic: companion.familyTopic,
         familyTopicStatus: companion.familyTopicStatus,
         // B-PROG-01 (coach_chat 1.6.0): the active program's one context line.
-        activeProgram: programPromptLine(companion.program),
+        activeProgram,
         // B-LOOP-13 (coach_chat 1.7.0): today's practice line (dose row > day pin).
         todayPractice: todayPracticeLine(companion.journal),
         // 1.5.0 (B-AI-14): only when the governed line resolved; else 1.4.1 bytes.
@@ -1252,6 +1255,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // ASK-6: integer count only (clinical firewall) — the model never emits
       // this; it is the number of approved facts injected into the prompt.
       structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
+      // V77: the program this prompt carried (id + week), server-set like the
+      // count above; absent when no program line was rendered.
+      const programUsed = programEcho(companion.program, activeProgram);
+      if (programUsed) structured.activeProgramUsed = programUsed;
 
       // B-AI-01 eval fix: no graded hypothesis confidence (low/medium/high)
       // reaches the parent, and the rendered labels follow the session language.

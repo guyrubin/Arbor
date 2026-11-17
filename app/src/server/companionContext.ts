@@ -56,6 +56,7 @@ import type { MemoryStore } from "../memory/types.js";
 import type { LocalizedText } from "../content/governance.js";
 import type { ShelfId } from "../lib/shelves/registry.js";
 import { programName } from "../content/programs/index.js";
+import { renderActiveProgramLine } from "../ai/programContext.js";
 import { activeProgramWeek } from "../lib/programs/enrolment.js";
 import { PRACTICES, type Practice } from "../content/practices.js";
 import { milestoneAgeLine } from "../lib/milestoneAgeLine.js";
@@ -256,6 +257,21 @@ export const projectActiveProgram = (rows: readonly unknown[], now: number = Dat
 /** The one context line the four program-aware prompts render (B-PROG-01). */
 export const programPromptLine = (program?: CompanionProgram | null): { name: string; week: number; skill: string } | undefined =>
   program ? { name: program.name.en, week: program.week, skill: program.skill.en } : undefined;
+
+/**
+ * V77 ("What Arbor used"): the program the answer's prompt actually carried,
+ * echoed back as provenance (id + week). Derived from the SAME input object
+ * passed to buildChatPrompt (no second lookup) and only when that object
+ * renders a program line; it changes nothing the model receives.
+ */
+export type ActiveProgramEcho = { id: string; week: number };
+export const programEcho = (
+  program: CompanionProgram | null | undefined,
+  rendered: ReturnType<typeof programPromptLine>,
+): ActiveProgramEcho | undefined =>
+  program && rendered && renderActiveProgramLine(rendered) !== ""
+    ? { id: program.id, week: Math.max(1, Math.floor(rendered.week)) }
+    : undefined;
 
 /* ── B-LOOP-13: the journal block ─────────────────────────────────────────── */
 
