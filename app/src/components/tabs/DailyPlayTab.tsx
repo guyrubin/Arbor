@@ -10,7 +10,7 @@ import Icon from "../ui/Icon";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
 import { ChainStrip, type ChainNode } from "../together/ChainStrip";
-import { PlayGames, PlayHandOver, PlayPreview, PlayTogetherIdeas, usePlayStudio } from "../together/PlayStudio";
+import { PlayDidThere, PlayGames, PlayHandOver, PlayPreview, PlayTogetherIdeas, usePlayStudio } from "../together/PlayStudio";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import { useLanguage } from "../../context/LanguageContext";
 import DailyPlayCard from "../overview/DailyPlayCard";
@@ -418,6 +418,7 @@ function ScopedDailyPlayTab() {
                 </div>
                 {guideTile}
                 {ideasRail}
+                {studio.kidAvailable && <PlayDidThere composition={composition} />}
               </div>
             ) : (
               <div className="rowa">
@@ -433,6 +434,7 @@ function ScopedDailyPlayTab() {
                 </div>
               </div>
             )}
+            {!phone && studio.kidAvailable && <PlayDidThere composition={composition} />}
           </RouteSection>
 
           {studio.kidAvailable && (

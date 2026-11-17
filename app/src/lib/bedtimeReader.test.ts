@@ -184,7 +184,15 @@ describe("B-PLAY-14 · the shared bedtime body", () => {
     expect(cover).toContain('aria-pressed={tonightMode === m}');
     expect(cover).toContain('t("elev.stories.tonight.mode.today")');
     expect(cover).toContain('t("elev.stories.tonight.mode.hero")');
-    expect(cover).toContain("<TonightFromToday />");
+    // V77: "From today" is its own section (A story of your own, drawn once); the
+    // switch takes you there, so the cover no longer swaps in the bedtime body.
+    expect(cover).not.toContain("<TonightFromToday />");
+    expect(cover).toContain('if (m === "today") scrollToSection("own")');
+    const own = stories.slice(stories.indexOf('<RouteSection id="own"'), stories.indexOf('<RouteSection id="family"'));
+    expect(own).toContain("<TonightFromToday />");
+    expect((stories.match(/<TonightFromToday \/>/g) ?? []).length).toBe(1);
+    // An evening entry asking for "today" lands on that section.
+    expect(stories).toContain('if (tonightMode !== "today") return;');
     // the hero cover (and its primary move) is still the default
     expect(cover).toContain('data-primary-move="read-tonights-story"');
     expect(stories).toContain('useState<TonightMode>(() => consumeTonightMode() ?? "hero")');

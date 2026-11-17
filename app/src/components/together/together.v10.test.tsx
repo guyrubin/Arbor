@@ -95,3 +95,22 @@ describe("routine faces and copy", () => {
     expect(all).not.toMatch(/\bAI\b|subscription|price/i);
   });
 });
+
+describe("Play · What <name> did there (V77)", () => {
+  const src = require("node:fs").readFileSync(require("node:path").resolve(__dirname, "PlayStudio.tsx"), "utf8") as string;
+  const block = src.slice(src.indexOf("export function PlayDidThere"));
+  it("reads the same Kids Studio observations Weekly counts, this week from the recap week start", () => {
+    expect(block).toContain("KID_ORIGINS.has(o.origin)");
+    expect(block).toContain("recapWeekStartMs(now)");
+    expect(block).toContain("fmtDayV10(latest, lang, now)");
+  });
+  it("draws counts only: a figure with its unit in words, kid tokens, the board's empty line with none", () => {
+    expect(block).toContain('kind="kid"');
+    expect(block).toContain("copy.didUnit(thisWeek)");
+    expect(block).toContain("thisWeek === 0 && copy.didNone");
+    expect(block).not.toMatch(/%|score|percent|level/i);
+    expect(TOGETHER_COPY.en.didNone).toBe("Nothing yet this week.");
+    expect(TOGETHER_COPY.en.didUnit(1)).toBe("Kids Studio session this week");
+    expect(TOGETHER_COPY.he.didUnit(2)).not.toBe(TOGETHER_COPY.en.didUnit(2));
+  });
+});
