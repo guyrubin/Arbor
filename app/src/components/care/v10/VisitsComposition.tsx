@@ -11,6 +11,7 @@ import VisitScene, { type PackedCounts } from "./VisitScene";
 import { openAddAppointment } from "./VisitTimeline";
 import { daysUntil } from "../CareVisitHead";
 import { careCopy } from "./careV10Copy";
+import { useShellRowEnd } from "../../../lib/shellSlots";
 import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
 import { fmtDayV10 } from "../../../lib/formatDate";
 import "./care.css";
@@ -155,6 +156,12 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
       )}
     </>
   );
+
+  // V77 (N-Care-D, N-Brief-D): the shell's pill row ends with the day and time, then "Add appointment"
+  // (the same action as section 4's head, which the board also draws). Not on #/handoff.
+  useShellRowEnd(landing || teacher ? {
+    action: { label: t("elev.careNet.appt.add"), onClick: () => openAddAppointment(setActiveTab), icon: "add", testId: "care-row-add-appointment" },
+  } : null);
 
   const addAppointment = (
     <button type="button" className="ds-link care-add" onClick={() => openAddAppointment(setActiveTab)}>
