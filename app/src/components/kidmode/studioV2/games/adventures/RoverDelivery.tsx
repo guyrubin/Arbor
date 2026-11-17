@@ -13,7 +13,7 @@ import { defaultChallenge, type Challenge } from './adventureRules';
 import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { ROVER_DELIVERY_COPY, roverLine, type RoverDeliveryWords } from './roverDeliveryCopy';
-import { ARRIVED_MS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, cellColumn, cellRow, faceToward, headingOf, initialTurns, levelFor, roverAtStart, roverHint, roverTone, runRover, type RoverHint, type RoverLevel, type RoverPlace, type RoverRun } from './roverDeliveryRules';
+import { ARRIVED_MS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_IDLE_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, cellColumn, cellRow, faceToward, headingOf, initialTurns, levelFor, roverAtStart, roverHint, roverTone, runRover, type RoverHint, type RoverLevel, type RoverPlace, type RoverRun } from './roverDeliveryRules';
 import './roverDelivery.css';
 
 type Phase = 'ready' | 'plan' | 'drive' | 'parked' | 'arrived' | 'done';
@@ -143,7 +143,16 @@ export default function RoverDelivery() {
   // B-GAME-46: the arrival is said aloud too; only the drive itself is left to the tones.
   const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${runs}:${changes}`, enabled: phase !== 'drive' && phase !== 'done' });
   // B-GAME-46: on the very first floor, before anything is touched, the sign to turn pulses so a child sees that signs turn.
-  const shownHint: RoverHint = hint ?? (round === 0 && phase === 'ready' && runs === 0 && changes === 0 ? roverHint(level, turns.map(headingOf), folded) : null);
+  // B-GAME-46: later, a quiet stretch while planning shows the same sign, so a stalled child is never left alone.
+  const [idle, setIdle] = useState(false);
+  const onPlan = phase === 'ready' || phase === 'plan' || phase === 'parked';
+  useEffect(() => {
+    setIdle(false);
+    if (!onPlan) return;
+    const id = setTimeout(() => setIdle(true), ROVER_IDLE_MS);
+    return () => clearTimeout(id);
+  }, [phase, round, runs, changes]);
+  const shownHint: RoverHint = hint ?? ((round === 0 && phase === 'ready' && runs === 0 && changes === 0) || (onPlan && idle) ? roverHint(level, turns.map(headingOf), folded) : null);
 
   return <GameShell fullBleed autoNarrate={false} worldId="river-rescue" title={w.title} instruction={w.instruction} hearIt={narration}>
     {phase === 'done'

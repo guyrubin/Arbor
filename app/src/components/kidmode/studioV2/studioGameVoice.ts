@@ -39,7 +39,7 @@ const NAMES: Record<StudioGuideId, { en: string; he: string }> = {
 };
 const BEATS_LABEL = { en: "How to play", he: "איך משחקים" } as const;
 type Lines = Record<"en" | "he", { transfer?: string; finish?: string }>;
-/** Each game's own carry-over line ("Try it for real: …"), from its copy. */
+/** Each game's own carry-over line ("Away from the screen: …"), from its copy. */
 const TRANSFER: Partial<Record<StudioActivityId, Lines>> = { pattern: FIVE_FRIEND_SUN_COPY, memory: WOBBLY_DELIVERY_COPY, puzzle: OOPS_BUTTON_COPY, "river-rescue": ROVER_DELIVERY_COPY, "rhythm-garden": HERO_BAND_COPY };
 /** The makers open on their own shot and finish with their own line; the shell adds
  *  the crew member each maker's copy names as its host (world host where none is). */

@@ -158,15 +158,15 @@ export default function FiveFriendSun() {
         <div className="adventure-actions">
           {phase === 'ready'
             ? <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={() => setPhase('spin')}><Play size={21} aria-hidden="true" />{w.start}</button>
-            : <button type="button" className="sun-spinner" data-face={spin} data-ready={phase === 'spin'} data-faces={spinMax(challenge)} disabled={phase !== 'spin'} aria-label={spin && phase !== 'turning' ? sunLine(w.spinnerShows, spin) : w.spinner} onClick={turn}>
+            : <button type="button" className="sun-spinner" data-face={spin} data-ready={phase === 'spin'} data-faces={spinMax(challenge)} disabled={phase !== 'spin'} aria-label={phase === 'turning' ? w.turning : spin ? sunLine(w.spinnerShows, spin) : w.spinner} onClick={turn}>
               {/* The wheel: one wedge per hop it can ask for, each marked with its dots. It turns, and the wedge under the pointer is the hop. */}
               <span className="sun-wheel" aria-hidden="true" style={{ '--wheel-turn': `${wheel}deg` } as CSSProperties}>
                 {Array.from({ length: spinMax(challenge) }, (_, wedge) => <span key={wedge} className="sun-wheel__wedge" style={{ '--wedge': wedge, '--wedges': spinMax(challenge) } as CSSProperties}>{Array.from({ length: wedge + 1 }, (_, dot) => <span key={dot} className="sun-wheel__dot" />)}</span>)}
               </span>
-              <span className="sun-spinner__hub" key={spin ? wheel : 'idle'}>
+              <span className="sun-spinner__hub" key={spin ? `hub-${wheel}` : 'hub-idle'}>
                 {spin ? <span className="sun-spinner__pips" aria-hidden="true">{Array.from({ length: spin }, (_, index) => <i key={index} />)}</span> : <RotateCw size={26} aria-hidden="true" />}
               </span>
-              {spin > 0 && <span className="bop-chip sun-spinner__count" key={wheel}>{String(spin)}</span>}
+              {spin > 0 && <span className="bop-chip sun-spinner__count" key={`count-${wheel}`}>{String(spin)}</span>}
             </button>}
         </div>
       </section>}
