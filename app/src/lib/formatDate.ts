@@ -165,6 +165,21 @@ export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
   }
 };
 
+/** v10 day and long month, no weekday — "8 October" / "8 באוקטובר" (year only outside the current year). */
+export const fmtDayMonthLongV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric", month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+  };
+  try {
+    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", options));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, options));
+  }
+};
+
 /** v10 day and time — "Wed 25 Nov, 10:00" / "יום ד׳, 25 בנוב׳, 10:00" (24-hour clock). */
 export const fmtDayTimeV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
   const d = toDate(input);
