@@ -98,10 +98,10 @@ export function NowChallengePlan({ plan, lang, childName, now, evening, onNight,
 }
 
 /** Later · Arbor's notebook: how many notes wait, and the way to About, where they are approved. Never inline approval. */
-export function NowNotebookBadge({ waiting, label, notebook, copy, onOpen }: { waiting: number; label: string; notebook: string; copy: NowV10Copy; onOpen: () => void }) {
+export function NowNotebookBadge({ waiting, remembered = 0, label, notebook, copy, onOpen }: { waiting: number; /** Notes already approved: a count beside a check, never a progress share. */ remembered?: number; label: string; notebook: string; copy: NowV10Copy; onOpen: () => void }) {
   const marks = Math.min(waiting, 6);
   return <button type="button" className="nw-badge" aria-label={`${notebook}: ${label}`} data-testid="now-notebook-badge" onClick={onOpen}>
-    <span className="fig"><b>{waiting}</b><span>{copy.notesWaiting(waiting)}<small>{notebook}</small></span></span>
+    <span className="fig"><b>{waiting}</b><span>{copy.notesWaiting(waiting)}<small>{notebook}</small>{remembered > 0 && <span className="nw-remembered" data-testid="now-notebook-remembered"><i className="tok plan sm" aria-hidden="true" />{copy.remembered(remembered)}</span>}</span></span>
     <span className="mini" aria-hidden="true">{Array.from({ length: marks }, (_, i) => <i key={i} className="tok ai sm" />)}</span>
     <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
   </button>;

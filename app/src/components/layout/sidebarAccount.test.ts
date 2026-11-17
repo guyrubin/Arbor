@@ -85,12 +85,13 @@ describe("v3 F-SHELL-2 · the account row is one button that opens Settings", ()
     expect(state.converse).not.toHaveBeenCalled();
   });
 
-  it.each(["en", "he"] as const)("shows the name, the plan and the settings glyph; no email, no Sign out, no menu (%s)", (lang) => {
+  it.each(["en", "he"] as const)("shows the name, the plan and the sliders glyph; no email, no Sign out, no menu (%s)", (lang) => {
     state.lang = lang;
     const { html, open, text, plan } = account();
     expect(text).toContain("Sam Example");
     expect(plan).toBe(translate(lang, "elev.sidebar.plan.family"));
-    expect(text).toContain("settings"); // the Material Symbols glyph
+    expect(text).toContain("tune"); // V77: the sliders glyph (Material Symbols ligature)
+    expect(text).not.toContain("settings"); // negative control: the gear is gone
     expect(text).toContain(translate(lang, "nav.popover.settings")); // its sr-only name
     expect(html).not.toContain("sam@example.test");
     expect(html).not.toContain(translate(lang, "nav.signout"));

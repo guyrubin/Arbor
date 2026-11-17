@@ -239,12 +239,97 @@
 .ds .mcst .area-detail-skill-words { margin: 2px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-soft); }
 .ds-desk .mcst .area-detail-skill > p.area-detail-skill-words:not(.x):not(.y) { grid-column: 1; align-self: start; }
 .ds-desk .mcst .area-detail-skill > [data-testid="segmented-answers"] { grid-column: 2; grid-row: 1 / span 2; }
-.ds .mcst .area-detail-around { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule); }
-.ds .mcst .area-detail-around > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600 !important; color: var(--ink); }
-.ds .mcst .area-detail-around > summary::-webkit-details-marker { display: none; }
-.ds .mcst .area-detail-around[open] > summary .msr { transform: rotate(180deg); }
-.ds .mcst .area-detail-age { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
-.ds .mcst .area-detail-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
-.ds .mcst .area-detail-cols dt { font-size: 13px; font-weight: 700 !important; color: var(--sapphire-deep); }
-.ds .mcst .area-detail-cols dd { margin: 0; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; color: var(--ink); }
-.ds .mcst .area-detail-by { color: var(--ink-soft); }
+.ds .area-detail-around { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--rule); }
+.ds .area-detail-around > summary { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600 !important; color: var(--ink); }
+.ds .area-detail-around > summary::-webkit-details-marker { display: none; }
+.ds .area-detail-around[open] > summary .msr { transform: rotate(180deg); }
+.ds .area-detail-age { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
+.ds .area-detail-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.ds .area-detail-cols dt { font-size: 13px; font-weight: 700 !important; color: var(--sapphire-deep); }
+.ds .area-detail-cols dd { margin: 0; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; color: var(--ink); }
+.ds .area-detail-by { color: var(--ink-soft); }
+
+/* V77 audit: In your words (three cards on desk: strength, kept moment, Worth knowing) */
+.ds-desk .ms-objs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ds .ms-objs .portrait-cards { display: contents; }
+.ds .obj .obj-when { margin: 0; display: flex; align-items: baseline; gap: 8px; color: var(--ink-soft); font-size: 13px; }
+.ds .obj .obj-when b { font-family: var(--font-display) !important; font-weight: 500 !important; font-size: 34px; line-height: 1.05; color: var(--ink); }
+.ds-phone .obj .obj-when { order: 3; }
+.ds-phone .obj .obj-when b { font-family: var(--font-sans) !important; font-size: 13px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds-phone .obj .oa { order: 4; }
+.ds .ms-know { min-width: 0; display: flex; }
+.ds .ms-know > * { flex: 1; }
+/* the check: its question line, and Start as the tonal button the boards draw */
+.ds .ms-check-line { display: block; font-weight: 600 !important; font-size: 15px; line-height: 1.25; color: var(--ink); }
+/* reading key: today as the timeline's plain ring */
+.ds .ms-key-today { display: inline-block; width: 12px; height: 12px; margin-inline-end: 6px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--sapphire); vertical-align: -1px; }
+/* an area with nothing dated: the phone's empty card, and the desk's line under the weeks */
+.ds .ms-tl-none { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--k-moment-w); }
+.ds .ms-tl-none-t { margin: 0; font-family: var(--font-display) !important; font-size: 22px; line-height: 1.2; color: var(--ink); }
+.ds .ms-tl-none-s, .ds .ms-tl-leafsub { margin: 0; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+/* the focus row's Change, the tonal pill the boards draw */
+.ds .ms-goal .oa.b { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 14px; background: var(--tint); color: var(--sapphire-deep); font-weight: 600 !important; }
+.ds .ms-know .nw-know { padding: 16px 18px; border-radius: 18px; }
+.ds .ms-know .nw-know .lead { font-size: 17px; line-height: 1.3; }
+.ds .ms-tl-empty { align-self: center; margin-bottom: 0; padding: 2px 14px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+
+/* V77 audit — the list: the latest card's head, Not on the list?, and the check section */
+.ds .ms-latest-h { margin: 0 0 4px; display: flex; align-items: center; gap: 10px; font: 600 17px/1.2 var(--font-display) !important; color: var(--ink); }
+.ds .ms-latest-h .ogi, .ds .ms-check-for .ogi { width: 32px; height: 32px; flex: none; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: var(--tint-2); color: var(--sapphire-deep); }
+.ds .ms-add-row { display: flex; align-items: center; gap: 12px; }
+.ds .ms-add-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds .ms-add-text b { font-size: 15px; font-weight: 600 !important; color: var(--ink); }
+.ds .ms-check-link { display: flex; flex-direction: column; gap: 12px; padding: 18px 22px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow-tile); }
+.ds .ms-check-link > p { margin: 0; }
+.ds .ms-check-for { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds .ms-check-body { font-size: 15px; line-height: 1.45; color: var(--ink); max-width: 64ch; }
+.ds .ms-check-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds .ms-check-go-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ds .ms-check-state { font-size: 13px; color: var(--ink-soft); }
+.ds .ms-check-basis { font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
+.ds .gd8.gdw i { background: var(--k-moment-w); }
+.ds .ms-check-link { align-items: flex-start; text-align: start; }
+.ds .ms-check-link .ms-check-chips, .ds .ms-check-link .ms-check-go-row { justify-content: flex-start; }
+
+/* V77 list (N-ChildList boards): the area's stage head, its search and All, and the card grid */
+.ds.ms-list .msl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.ds.ms-list .msl-head .tg { width: 40px; height: 40px; flex: none; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: var(--sapphire-deep); color: var(--paper); }
+.ds.ms-list .msl-head .msl-tt { margin: 0; font: 500 26px/1.15 var(--font-display) !important; color: var(--ink); }
+.ds.ms-list .msl-tools { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ds.ms-list .msl-search { flex: 1; min-width: 0; }
+.ds.ms-list .msl-all { flex: none; gap: 6px; }
+.ds.ms-list .msl-all b { font-family: var(--font-display) !important; font-size: 17px; }
+.ds.ms-list .msl-lead { margin-bottom: 12px; }
+.ds.ms-list .msl-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+.ds-desk.ms-list .msl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds.ms-list .msl-card { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 14px 6px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds.ms-list .msl-chip { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); }
+.ds.ms-list .msl-chip b { font-weight: 700 !important; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+[dir="rtl"] .ds.ms-list .msl-chip b { letter-spacing: 0; }
+.ds.ms-list .msl-card .notice-object { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.ds.ms-list .msl-card .notice-object-art, .ds.ms-list .msl-card .notice-object-prompt, .ds.ms-list .msl-card [data-testid="notice-age-line"] { display: none; }
+.ds.ms-list .msl-card .notice-object-title { font-family: var(--font-display) !important; font-style: italic; font-size: 19px; line-height: 1.2; }
+[dir="rtl"] .ds.ms-list .msl-card .notice-object-title { font-style: normal; }
+.ds.ms-list .msl-card .notice-object-meaning { margin-top: 2px; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
+.ds.ms-list .msl-card .area-detail-around { margin-top: 4px; }
+.ds-desk.ms-list .msl-top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.ds-desk.ms-list .msl-top .msl-head, .ds-desk.ms-list .msl-top .msl-tools { margin-bottom: 0; }
+.ds-desk.ms-list .msl-top .msl-tools { flex: 1; }
+.ds.ms-list .ms-band .mci { margin-top: 10px; }
+/* the list's phone fold: the chosen tile names the area (the head stays for the outline only), a flatter stage */
+.ds-phone.ms-list .msl-head { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ds-phone.ms-list .ms-list-stage { padding: 10px; }
+.ds-phone.ms-list [data-testid="ms-shelf-map"] { padding: 0; box-shadow: none; background: transparent; border: 0; }
+.ds-phone.ms-list .mci.m .mcs { min-height: 92px; }
+.ds.ms-list .msl-head .msl-tt { color: var(--ink); }
+.ds-phone.ms-list .ms-band.compact .mch .mcl .title { font-size: 22px; }
+.ds-phone.ms-list .ms-band.compact .mch { gap: 6px; }
+.ds-phone.ms-list .msl-tools { margin-bottom: 8px; }
+.ds-phone.ms-list .msl-card { padding-top: 8px; gap: 2px; }
+.ds-phone.ms-list .msl-card .notice-object-title { font-size: 17px; }
+.ds .mci.m .mcs-item.mcs-lead { flex: 0 0 auto; }
+.ds .msl-lead-tools { display: flex; flex-direction: column; gap: 8px; height: 100%; justify-content: center; }
+.ds .msl-icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; min-height: 44px; flex: 1; border: 0; border-radius: 14px; background: #ffffffdb; box-shadow: inset 0 0 0 1px var(--rule-strong); color: var(--ink-soft); }
+.ds .msl-lead-tools .msl-all { min-height: 44px; padding: 0 10px; flex-direction: column; gap: 0; font-size: 12px; }
+.ds .msl-icon:hover { background: var(--well); }
+.ds .msl-icon:focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }

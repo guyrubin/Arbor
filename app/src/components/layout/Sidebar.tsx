@@ -124,7 +124,7 @@ export default function Sidebar() {
       {/* v3 F-SHELL-2 (critic ruling 12): the account row is ONE button that
           opens Settings through the settings bus (B-SHELL-23: Shell's one
           SettingsModal, same Kid Mode gate as the More sheet's Settings row).
-          It shows the parent's avatar, name and plan, and a settings glyph; no
+          It shows the parent's avatar, name and plan, and the sliders glyph; no
           email in chrome and no popover. Sign out and the language switch live
           in Settings (OBJ-SHELL-02: languageSettingsCanonical.test.ts fails on
           any setUiLang call outside SettingsModal). The plan line prints
@@ -144,7 +144,8 @@ export default function Sidebar() {
             <span className="block text-[13px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</span>
             {planKey && <span data-testid="sidebar-plan" className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{t(planKey)}</span>}
           </span>
-          <Icon name="settings" size={18} style={{ color: "var(--arbor-muted)" }} />
+          {/* V77: the boards draw the sliders glyph here, not a gear. */}
+          <Icon name="tune" size={18} style={{ color: "var(--arbor-muted)" }} />
           <span className="sr-only">{t("nav.popover.settings")}</span>
         </button>
       </div>

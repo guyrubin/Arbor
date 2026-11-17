@@ -955,6 +955,21 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
       ) : null;
     }
+    // The page's one move: read tonight's story. V77: it sits in the header band beside the story's title.
+    const readTonight = (
+    <button
+      type="button"
+      data-primary-move="read-tonights-story"
+      onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
+      disabled={!tonightStory || !!loadingId}
+      className="btn primary nowrap disabled:opacity-60"
+    >
+      {tonightStory && loadingId === tonightStory.id
+        ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
+        : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
+    </button>
+    );
+    const tonightTitle = tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : null;
     // B-PLAY-14: "From today" · "A hero adventure" — the two-option switch. V77: it sits in
     // the header band, where the board draws it (above the figure); "From today" takes you to
     // A story of your own (the shared bedtime body, generate-and-discard).
@@ -984,8 +999,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           // The strip starts from what you noted; without a note it would only repeat the cover's title.
           nodes={!notedMoment ? [] : [
             ...(notedMoment ? [{ kind: "you" as const, tag: tCopy.chainNoted, text: t("elev.loop.ms.quoted", { text: notedMoment.text }), said: true }] : []),
-            ...(tonightStory ? [{ kind: "arbor" as const, tag: tCopy.arborSuggests, text: he ? tonightStory.titleHe : tonightStory.title, sub: tCopy.chainTonight }] : []),
-            ...(runs.length > 0 ? [{ kind: "back" as const, tag: tCopy.chainRead, text: t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length }) }] : []),
+            ...(tonightStory ? [{ kind: "arbor" as const, tag: tCopy.arborSuggests, text: tCopy.chainTonight, sub: tonightReasonLine || undefined }] : []),
+            ...(tonightAskAfter ? [{ kind: "back" as const, tag: t("elev.stories.tonight.askAfter"), text: tonightAskAfter }] : []),
           ]}
         />
     );
@@ -1034,8 +1049,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             kicker={tCopy.storiesKicker}
             switcher={composition === "desk" ? tonightSwitch : undefined}
             startHere={tCopy.startHere}
-            title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
-            figure={composition === "desk" && !showAllAges && displayStories.length > 0
+            title={tonightTitle ?? t("elev.stories.tonight.h1")}
+            sub={tonightStory ? `${tCopy.chainTonight} · ${he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}` : undefined}
+            action={readTonight}
+            figure={!showAllAges && displayStories.length > 0
               ? <FrameFigure n={displayStories.length} unit={tCopy.booksUnit(name)} sub={ageHiddenStories.length > 0 ? tCopy.booksMore(ageHiddenStories.length) : undefined} />
               : undefined}
           />
@@ -1130,9 +1147,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: notedMoment.text })}</bdi>
                 </p>
               )}
-              <h2 className="text-[22px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
-              </h2>
+              {/* V77: the story's title is the header band's h1 (said once). */}
               {/* B-PLAY-16: why THIS story tonight — from the family's own record. */}
               {tonightReasonLine && (
                 <p data-testid="stories-tonight-reason" className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
@@ -1167,18 +1182,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                     {he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}
                   </span>
                 )}
-                <button
-                  type="button"
-                  data-primary-move="read-tonights-story"
-                  onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
-                  disabled={!tonightStory || !!loadingId}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[44px] text-[13px] font-extrabold ms-auto transition active:scale-[0.98] disabled:opacity-60 focus:outline-none focus-visible:ring-2"
-                  style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-                >
-                  {tonightStory && loadingId === tonightStory.id
-                    ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
-                    : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
-                </button>
               </div>
             </div>
           </div>

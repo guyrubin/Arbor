@@ -15,10 +15,13 @@ import { careCopy } from "./careV10Copy";
 
 const ART = "/visuals/parent/v2/area-family-960.webp";
 
-export default function PeopleScene({ composition, title, sub, liveCount, loading, childName, children }: {
+export default function PeopleScene({ composition, title, sub, kicker, liveCount, loading, childName, children }: {
   composition: Composition;
   title: string;
-  sub: string;
+  /** A line under the heading (none on the V77 board). */
+  sub?: string;
+  /** The header row's kicker (V77: "Trusted sharing"). */
+  kicker?: React.ReactNode;
   liveCount: number;
   loading: boolean;
   childName: string;
@@ -33,10 +36,10 @@ export default function PeopleScene({ composition, title, sub, liveCount, loadin
       composition={composition}
       labelledBy="sharing-h1"
       className="care-people-scene"
-      kicker={t("nav.care")}
+      kicker={kicker ?? t("nav.care")}
       art={ART}
       artOnPhone
-      heading={<div className="stack care-heading"><h1 id="sharing-h1" className="hero care-h1">{title}</h1><p className="care-sub">{sub}</p></div>}
+      heading={<div className="stack care-heading"><h1 id="sharing-h1" className="hero care-h1">{title}</h1>{sub && <p className="care-sub">{sub}</p>}</div>}
       figure={loading ? null : liveCount > 0
         ? <Fig n={liveCount + 1} size={desk ? "xl" : "md"} unit={c.adultsSee(childName)} sub={c.youAnd(liveCount)} />
         : desk ? <p className="care-scene-when">{c.stopWhoNone}</p> : null}

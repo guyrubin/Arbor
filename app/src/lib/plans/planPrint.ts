@@ -16,7 +16,7 @@
  */
 import { deliverPrintableHtml, slugForFile } from "../reportExport";
 import { isolate } from "../i18n";
-import { fmtDay } from "../formatDate";
+import { fmtDayV10 } from "../formatDate";
 import { getPattern } from "../library/plans/planBooks";
 import { planBookFromDoc, type PlanBookDoc } from "../library/plans/planBookDoc";
 import { fillHero, heGender, lineFor } from "../library/bookText";
@@ -43,7 +43,7 @@ export function renderPlanPrintHtml({ doc, child, lang, now }: PlanPrintInput): 
   const gender = heGender(child.gender);
   const s = (key: Parameters<typeof planString>[0], vars?: Record<string, string | number>) => planString(key, lang, vars);
   const dir = lang === "he" ? "rtl" : "ltr";
-  const date = fmtDay(new Date(doc.approvedAt), lang);
+  const date = fmtDayV10(new Date(doc.approvedAt), lang, now);
   const pages = [book.cover, ...book.pages].map((p) => fillHero(lineFor(p.text, lang, gender), name, lang));
   const list = (items: readonly string[]) => `<ol>${items.map((t) => `<li dir="auto">${esc(t)}</li>`).join("")}</ol>`;
   const bullets = (items: readonly string[]) => `<ul>${items.map((t) => `<li dir="auto">${esc(t)}</li>`).join("")}</ul>`;
@@ -79,7 +79,7 @@ export function renderPlanPrintHtml({ doc, child, lang, now }: PlanPrintInput): 
   <section class="pages"><h2>${esc(s("print.pages", { name }))}</h2>${list(pages)}</section>
   <section><h2>${esc(s("print.watchFor"))}</h2>${bullets(book.parent.watchFor.map((w) => w[lang]))}</section>
   <section><h2>${esc(s("print.sources"))}</h2>${bullets(book.parent.sources.map((l) => l[lang]))}</section>
-  <p class="consent" dir="auto">${esc(s("print.consent", { name, date: fmtDay(now, lang) }))}</p>
+  <p class="consent" dir="auto">${esc(s("print.consent", { name, date: fmtDayV10(now, lang, now) }))}</p>
   <p class="footer">${esc(s("print.footer"))}</p>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
   </body></html>`;

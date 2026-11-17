@@ -9,6 +9,7 @@ import { SHELF_ART } from "../../lib/parentArt";
 import { shelfLabel } from "../../lib/shelves/registry";
 import { OBSERVED_WHEN } from "../../lib/milestones/observe";
 import { routeHash } from "../../lib/routes";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { NOTICE_OBJECT_COPY } from "./noticeObjectCopy";
 import type { NoticeCardProps } from "./NoticeCard";
 
@@ -27,7 +28,7 @@ function setup(lang: "en" | "he" = "en", overrides: Partial<NoticeCardProps> = {
   const slots: any[] = [], effects: (() => void)[] = [];
   const props: NoticeCardProps = { milestone: { ...ALL_MILESTONES[0], observedAt: "2026-10-18T10:00:00Z" }, shelf: "words", scopeKey: "parent:child-a", answers: "segmented", onAnswer: vi.fn(async () => {}), onKeepQuote: vi.fn(async () => {}), onWhen: vi.fn(async () => {}), onUndo: vi.fn(async () => {}), ...overrides };
   const env = {
-    React, NOTICE_OBJECT_COPY, SHELF_ART, milestoneText, milestoneAgeLine, shelfLabel, OBSERVED_WHEN, routeHash,
+    React, NOTICE_OBJECT_COPY, SHELF_ART, milestoneText, milestoneAgeLine, shelfLabel, OBSERVED_WHEN, routeHash, fmtDayV10,
     NOTICE_ANSWER_KEYS: { yes: "elev.loop.notice.seen", not_yet: "ms.observe.notYet", not_sure: "ms.observe.notSure" },
     useState: (initial: any) => { const index = at++; if (!(index in slots)) slots[index] = { value: typeof initial === "function" ? initial() : initial }; return [slots[index].value, (value: any) => { slots[index].value = typeof value === "function" ? value(slots[index].value) : value; }]; },
     useRef: (value: any) => slots[at++] ??= { current: value },
@@ -103,7 +104,8 @@ describe("the actual observation object lifecycle", () => {
     expect(receipts.find(el => el.props.testId === "notice-receipt")?.props.announce).toBe(true);
     expect(receipts.find(el => el.props.testId === "notice-kept-status")?.props.announce).toBe(false);
     h.props.savedAt = "2026-10-12T09:00:00Z"; h.render();
-    expect(React.Children.toArray(h.testId("notice-kept-status").children).join("")).toContain("12 Oct 2026");
+    // V10 day (the year only outside the current year): NoticeCard.held.test pins the year rule.
+    expect(React.Children.toArray(h.testId("notice-kept-status").children).join("")).toContain(fmtDayV10("2026-10-12T09:00:00Z", "en"));
     h.unmount();
   });
   it("a late acknowledgement cannot update an unmounted child's object", async () => {

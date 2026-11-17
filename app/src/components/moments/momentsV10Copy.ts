@@ -76,6 +76,9 @@ export type MomentsV10Copy = {
     guideLangsShort: string;
     guideKeptShort: string;
     profile: string;
+    /** N-SaidHe: under one language, the caption and the stage head say so. */
+    capOne: (language: string) => string;
+    onlyIn: (language: string) => string;
   };
   hard: {
     kicker: string;
@@ -93,6 +96,8 @@ export type MomentsV10Copy = {
     wordsKept: string;
     /** Section 3's line under its heading. */
     guidesSub: string;
+    /** N-Hard-D's pill-row end: the day, then since the first hard moment logged. */
+    sinceStarted: (date: string) => string;
     figureUnit: (n: number) => string;
     allSettled: string;
     someSettled: (n: number) => string;
@@ -194,6 +199,8 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       guideLangsShort: "Languages",
       guideKeptShort: "Kept",
       profile: "Language profile",
+      capOne: (language) => `Showing ${language} only. Each mark is one thing you kept.`,
+      onlyIn: (language) => `${language} only`,
     },
     hard: {
       kicker: "My child · Hard moments",
@@ -208,6 +215,7 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       lastUsed: "Last time you used these words",
       wordsKept: "The words you used · kept with the moment",
       guidesSub: "Short guides, a pilot: adapt them to your child.",
+      sinceStarted: (date) => `since you started on ${date}`,
       figureUnit: (n) => (n === 1 ? "hard moment" : "hard moments"),
       allSettled: "all settled, you marked each one",
       someSettled: (n) => (n === 1 ? "1 you marked settled" : `${n} you marked settled`),
@@ -307,6 +315,8 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       guideLangsShort: "שפות",
       guideKeptShort: "נשמרו",
       profile: "פרופיל שפה",
+      capOne: (language) => `מוצג רק ב${language}. כל סימן הוא דבר אחד ששמרתם.`,
+      onlyIn: (language) => `רק ב${language}`,
     },
     hard: {
       kicker: "הילד שלי · רגעים קשים",
@@ -321,6 +331,7 @@ export const MOMENTS_V10_COPY: Readonly<Record<"en" | "he", MomentsV10Copy>> = {
       lastUsed: "בפעם הקודמת השתמשתם במילים האלה",
       wordsKept: "המילים שבהן השתמשתם · נשמרו עם הרגע",
       guidesSub: "מדריכים קצרים, בפיילוט: התאימו לילד שלכם.",
+      sinceStarted: (date) => `מאז שהתחלתם ב־${date}`,
       figureUnit: (n) => (n === 1 ? "רגע קשה" : "רגעים קשים"),
       allSettled: "כולם נרגעו, סימנתם כל אחד",
       someSettled: (n) => (n === 1 ? "אחד שסימנתם שנרגע" : `${n} שסימנתם שנרגעו`),

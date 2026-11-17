@@ -1,5 +1,5 @@
 import { goalLabel } from "../../practice/goalBuilder";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Icon } from "../ui/Icon";
 import { useLanguage } from "../../context/LanguageContext";
 import { localizeActivity } from "../../playbank/content";
@@ -57,6 +57,10 @@ interface DailyPlanCardProps {
   ageYears: number;
   /** Called when parent taps "Choose what you're working on" in the no-goal state. */
   onSetGoal: () => void;
+  /** v10.1 (Together › Play): the page's header band carries the idea's title and its
+   *  "We did this" / "Coach me on this"; the card then draws neither (each once on the
+   *  page) and moves to the observation step when the band marks the idea done. */
+  titleInBand?: boolean;
 }
 
 type CardState = "plan" | "observing" | "done";
@@ -73,10 +77,16 @@ export default function DailyPlanCard({
   onSessionLengthChange,
   ageYears,
   onSetGoal,
+  titleInBand = false,
 }: DailyPlanCardProps) {
   const { t, uiLang } = useLanguage();
-  const [stepsOpen, setStepsOpen] = useState(false);
+  // In the band layout the steps are the card's content, so they start open (the board draws them).
+  const [stepsOpen, setStepsOpen] = useState(titleInBand);
   const [cardState, setCardState] = useState<CardState>(externalDone ? "done" : "plan");
+  // The band's "We did this" (titleInBand) marks the idea done from outside: go to the observation step.
+  useEffect(() => {
+    if (titleInBand && externalDone && cardState === "plan") setCardState("observing");
+  }, [titleInBand, externalDone, cardState]);
   const [observationText, setObservationText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sessionTapped, setSessionTapped] = useState(false);
@@ -293,8 +303,8 @@ export default function DailyPlanCard({
           </span>
         </div>
 
-        {/* Row 2: activity title */}
-        <h2
+        {/* Row 2: activity title (the header band carries it when titleInBand) */}
+        {!titleInBand && <h2
           className="text-[22px] font-extrabold leading-tight mt-2"
           style={{
             fontFamily: "var(--font-display)",
@@ -303,7 +313,7 @@ export default function DailyPlanCard({
           } as React.CSSProperties}
         >
           {activity.title}
-        </h2>
+        </h2>}
 
         {/* Row 3: why-line (pre-screened provenance, never causal claim on child) */}
         <p
@@ -403,8 +413,8 @@ export default function DailyPlanCard({
           </ol>
         )}
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2.5 mt-5">
+        {/* Actions (the header band carries them when titleInBand) */}
+        {!titleInBand && <div className="flex flex-wrap items-center gap-2.5 mt-5">
           {/* Primary CTA: "We did this" */}
           <button
             onClick={() => {
@@ -431,7 +441,7 @@ export default function DailyPlanCard({
             <Icon name="chat_bubble" size={16} />
             {t("play.coach")}
           </button>
-        </div>
+        </div>}
       </div>
     </section>
   );

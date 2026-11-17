@@ -34,7 +34,8 @@ import { activePlans, closePlan, keepPlan, nightMomentText, recordNight, unrecor
 import { composerFromDoc } from "../../lib/plans/composerFromDoc";
 import { openPrintablePlan } from "../../lib/plans/planPrint";
 import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
-import { readChallengeQuery } from "../../lib/plans/challengeLinks";
+import { openChallengeName, readChallengeQuery } from "../../lib/plans/challengeLinks";
+import { useShellCrumb } from "../../lib/shellSlots";
 import { DsRoot, Guide, Route, RouteHead, RouteSection, type GuideStop } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import { ActionPlanStage } from "../plans/v10/ActionPlanStage";
@@ -152,6 +153,8 @@ export default function PlansTab() {
 
   /* ── Challenge Plans: the composer and the plan's page ─────────────────── */
   const composerDef = target.kind === "pattern" && (target.compose || !runningIds.has(target.pattern)) ? getPattern(target.pattern) : undefined;
+  // The shell's breadcrumb ends with the plan this view has open ("Now › Plans › {plan}"); none on the home.
+  useShellCrumb(openChallengeName(target, running, composerDef, lang === "he" ? "he" : "en"));
   // One stable wrapper for every view of Plans (see the return below): the
   // shell's tab exit (AnimatePresence, wait mode) must never see this screen
   // swap its top-level motion element mid-exit, or the next tab never mounts
@@ -179,7 +182,7 @@ export default function PlansTab() {
   }
   const printing = target.kind === "pattern" && target.print ? running.find((r) => r.def.id === target.pattern) : undefined;
   if (printing) {
-    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} />);
+    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} onBack={() => openChallenge(printing.def.id)} />);
   }
   if (target.kind !== "none") {
     const focus = target.kind === "pattern" ? target.pattern : null;
@@ -395,7 +398,6 @@ export default function PlansTab() {
                 readyMade={<RoutineTemplates />}
                 onTogether={() => setActiveTab("practice")}
                 routines={routinesRow}
-                writeOwnTitle={t("plan.create")}
                 writeOwn={writeOwn}
               />
             </div>

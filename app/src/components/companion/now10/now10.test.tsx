@@ -73,12 +73,27 @@ describe("NowDayArc", () => {
       expect(html).toContain(copy.nowAt("17:40"));
       expect(html).toContain('class="g-win"');
       expect(html).toContain('class="nw-quiet"');
-      expect(html).toContain(copy.quietHours);
+      // Now's arc (board N-Now): the quiet stretch is drawn, never named in words.
+      expect(words(html)).not.toContain(copy.quietUntil("8:00"));
       expect(html).toContain("<p>face</p>");
       // Hour labels and the clock now only: no event times appear on the arc.
       const times = [...words(html).matchAll(/\b\d{1,2}:\d{2}\b/g)].map((m) => m[0]);
-      expect(new Set(times)).toEqual(new Set(["9:00", "12:00", "15:00", "18:00", "6:00", "21:00", "8:00", "17:40"]));
-      expect(words(html)).not.toMatch(/\d\s*%/);
+      expect(new Set(times)).toEqual(new Set(["9:00", "12:00", "15:00", "6:00", "21:00", "17:40"]));
+    });
+    it(`${lang}: the reminders arc marks 6:00, 13:30, 21:00 and names where the quiet ends`, () => {
+      const copy = NOW_V10_COPY[lang];
+      const desk = renderToStaticMarkup(<NowDayArc composition="desk" variant="reminders" now={new Date(2026, 10, 16, 17, 40)} quietStart={21} quietEnd={8} evening={false} copy={copy} />);
+      expect(words(desk)).toContain(copy.quietUntil("8:00"));
+      const times = [...words(desk).matchAll(/\b\d{1,2}:\d{2}\b/g)].map((m) => m[0]);
+      expect(new Set(times)).toEqual(new Set(["6:00", "13:30", "21:00", "8:00", "17:40"]));
+      const phone = renderToStaticMarkup(<NowDayArc composition="phone" variant="reminders" now={new Date(2026, 10, 16, 17, 40)} quietStart={21} quietEnd={8} evening={false} copy={copy} />);
+      expect(phone).toContain('class="g-hr nw-quiet-hour"');
+      expect(words(phone)).not.toContain(copy.quietUntil("8:00"));
+      // NEGATIVE CONTROL: an hour label never sits under the clock now (13:10 hides 13:30, keeps the ends).
+      const midday = words(renderToStaticMarkup(<NowDayArc composition="phone" variant="reminders" now={new Date(2026, 10, 16, 13, 10)} quietStart={21} quietEnd={8} evening={false} copy={copy} />));
+      expect(midday).not.toContain("13:30");
+      expect(midday).toContain("21:00");
+      expect(words(desk)).not.toMatch(/\d\s*%/);
     });
   }
   it("without moments in the evening there is no band", () => {
@@ -102,6 +117,18 @@ describe("NowThisWeek (counts, never verdicts)", () => {
     expect(words(html)).toContain("2 Moments");
     expect(html).toContain(`aria-label="${NOW_V10_COPY.en.weekStripAria}"`);
     expect(words(html)).not.toMatch(/\d\s*%|\d\s*\/\s*\d|score|level/i);
+  });
+
+  it("counts steps marked not this time under the helped figure, and draws none without one", () => {
+    const at = (d: number, h: number) => new Date(2026, 10, d, h).toISOString();
+    const loop = [{ outcome: "helped", outcomeAt: at(15, 9) }, { outcome: "not_this_time", outcomeAt: at(14, 9) }] as unknown as Parameters<typeof NowThisWeek>[0]["actionLoop"];
+    const withMiss = renderToStaticMarkup(<NowThisWeek composition="desk" observations={[]} actionLoop={loop} now={new Date(2026, 10, 16, 17, 40)} lang="en" copy={NOW_V10_COPY.en}
+      title="This week so far" labels={labels} emptyLine="-" reportLabel="Weekly report" onReport={() => {}} titleId="w" />);
+    const helpedOnly = renderToStaticMarkup(<NowThisWeek composition="desk" observations={[]} actionLoop={loop.slice(0, 1)} now={new Date(2026, 10, 16, 17, 40)} lang="en" copy={NOW_V10_COPY.en}
+      title="This week so far" labels={labels} emptyLine="-" reportLabel="Weekly report" onReport={() => {}} titleId="w" />);
+    expect(helpedOnly).not.toContain("now-week-not-this-time");
+    expect(withMiss).toContain("now-week-not-this-time");
+    expect(words(withMiss)).toContain(NOW_V10_COPY.en.notThisTime(1));
   });
 
   it("a new family sees production's empty line and empty columns, never a zero tile", () => {
@@ -172,16 +199,17 @@ describe("Coming up's Family plan slot (synthetic dates)", () => {
     ], "2026-11-16", "en", "parent-a", onOpen);
     expect(lines).toHaveLength(NOW_FAMILY_PLAN_ROWS);
     expect(lines.map((l) => l.id)).toEqual(["today", "next", "later"]);
-    expect(lines[0]).toMatchObject({ day: 16, nobody: false, title: "Date today", sub: "08:30 · You" });
-    expect(lines[1]).toMatchObject({ day: 18, nobody: false, sub: "Dana" });
-    expect(lines[2]).toMatchObject({ day: 20, nobody: true, sub: NOW_V10_COPY.en.familyPlanNobody });
+    expect(lines[0]).toMatchObject({ day: 16, nobody: false, title: "Date today, 08:30", sub: "Family plan: You" });
+    // NEGATIVE CONTROL: a date with no time keeps its title as written (no invented clock time).
+    expect(lines[1]).toMatchObject({ day: 18, nobody: false, title: "Date next", sub: "Family plan: Dana" });
+    expect(lines[2]).toMatchObject({ day: 20, nobody: true, sub: NOW_V10_COPY.en.familyPlanWho(NOW_V10_COPY.en.familyPlanNobody) });
     lines[1].onOpen();
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("speaks Hebrew for a Hebrew reader", () => {
     const [line] = familyPlanLinesForNow([date("x", "2026-11-18")], "2026-11-16", "he", "parent-a", onOpen);
-    expect(line.sub).toBe(NOW_V10_COPY.he.familyPlanNobody);
+    expect(line.sub).toBe(NOW_V10_COPY.he.familyPlanWho(NOW_V10_COPY.he.familyPlanNobody));
     expect(/[\u0590-\u05FF]/.test(line.weekday)).toBe(true);
   });
 

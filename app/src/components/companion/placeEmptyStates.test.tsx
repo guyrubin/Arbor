@@ -84,6 +84,7 @@ import ChildPortrait from "./ChildPortrait";
 import TogetherView from "./TogetherView";
 import { NowWeekSoFar } from "./NowDayPanels";
 import { NOW_COPY } from "./nowViewCopy";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 import { translate } from "../../lib/i18n";
 
 const LANGS = ["en", "he"] as const;
@@ -129,7 +130,9 @@ describe("VIS-07 · My child: the first-time Milestones page (v3 F-CHILD-1)", ()
     // v10.1: the goal invitation is the rail's focus row.
     expect(readText(html.slice(html.indexOf('data-testid="portrait-goals-edit"')))).toContain(t("elev.goal.profile.empty"));
     expect(occurrences(rows, 'data-testid="dev-map-tile"')).toBe(8);
-    expect(occurrences(readText(rows), t("companion.devMap.none"))).toBe(8);
+    // V77: the boards' "Nothing recorded yet" on every area.
+    expect(occurrences(readText(rows), milestonesV10Copy(lang).nothingYet)).toBe(8);
+    expect(occurrences(readText(rows), t("companion.devMap.none"))).toBe(0);
     expect(html).not.toContain('data-testid="dev-map-seen"');
     expect(html).not.toContain('data-testid="dev-map-last"');
     expectNoNumbers(readText(cards));

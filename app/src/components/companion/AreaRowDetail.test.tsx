@@ -273,8 +273,12 @@ describe("v3 F-CHILD-1 — AreaRowDetail", () => {
   });
 
   it("V77 rows: Next to notice, each skill's words and an Earlier and later disclosure; no area sentence", () => {
-    const html = render({ v10: true });
+    // Nothing Seen in the area yet: the quiet board's "Mark what you have seen".
+    expect(render({ v10: true })).toContain(">Mark what you have seen<");
+    const seenOne = catalogue().map((m) => m.id === EARLIER[0].id ? { ...m, checked: true, observationStatus: "yes" as const } : m);
+    const html = render({ v10: true, milestones: seenOne });
     expect(html).toContain(">Next to notice<");
+    expect(html).not.toContain(">Mark what you have seen<");
     expect(html).not.toContain(">" + esc(translate("en", "ms.currentBand")) + "<");
     expect(html).not.toContain('class="area-detail-why"');
     expect(html.match(/data-testid="area-detail-skill-words"/g)?.length ?? 0).toBeGreaterThan(0);

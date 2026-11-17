@@ -5,6 +5,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { kidModeOpenFor } from "../../lib/age/playGate";
 import { useHashQuery } from "../../hooks/useHashQuery";
 import { routeHash } from "../../lib/routes";
+import { useChildCollection } from "../../hooks/useChildCollection";
+import { fmtDayV10 } from "../../lib/formatDate";
+import type { HeroJourneyRun } from "../../types";
 import { usePracticeData } from "../../practice/usePracticeData";
 import { focusGoal, goalLabel } from "../../practice/goalBuilder";
 import { ageMonthsFromProfile } from "../../lib/childAge";
@@ -102,6 +105,13 @@ function ScopedTogetherView() {
   const planFor = (routineId: string) => actionPlans.find((p) => routineIdOfPlan(p) === routineId) ?? null;
   const fits = routineForPart(todaysRhythm(templates, planFor, routineDayKey(now), lang), dayPart(now.getHours()));
   const week = routineStepsThisWeek(actionPlans, now);
+  // The last story read together (the Stories runs: finished, else started), for the week line.
+  const storyRuns = useChildCollection<HeroJourneyRun>(childProfile.id, "heroRuns");
+  const lastStoryMs = storyRuns.items.reduce((max, r) => {
+    const ms = Date.parse(r.completedAt || r.startedAt);
+    return Number.isFinite(ms) && ms <= now.getTime() && ms > max ? ms : max;
+  }, Number.NEGATIVE_INFINITY);
+  const lastStory = Number.isFinite(lastStoryMs) ? fmtDayV10(lastStoryMs, lang, now) : null;
   const dayFmt = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { weekday: "short", day: "numeric" });
   const listFmt = new Intl.ListFormat(lang === "he" ? "he" : "en", { style: "long", type: "conjunction" });
   const weekDays = listFmt.format(week.days.map((d) => dayFmt.format(d)));
@@ -128,7 +138,7 @@ function ScopedTogetherView() {
     door("together-door-story", "/visuals/worlds/v2/story-quest-v2-480.webp", t("companion.together-view.door-create-story"), copy.doorStorySub(name), () => setActiveTab("bedtime-stories")),
     ...(gamesOpen ? [
       door("together-door-continue", "/visuals/worlds/v2/play-together-v2-480.webp", t("companion.together-view.door-continue-favorite"), copy.doorContinueSub(name), continueFavorite),
-      door("together-door-find", "/visuals/worlds/v2/mood-mountain-v2-480.webp", t("companion.together-view.door-find-play"), copy.doorFindSub, () => setActiveTab("daily-play")),
+      door("together-door-find", "/visuals/worlds/v2/mood-mountain-v2-480.webp", t("companion.together-view.door-find-play"), copy.doorFindSub(worlds.length), () => setActiveTab("daily-play")),
     ] : []),
   ];
 
@@ -170,14 +180,17 @@ function ScopedTogetherView() {
       />
     </RailTile>
   );
-  const doneTile = week.steps > 0 && (
+  const doneTile = (week.steps > 0 || lastStory !== null) && (
     <section className={phone ? "tgdone m" : "tgdone"} data-testid="together-done-week">
       <span className="ct"><i className="tg" aria-hidden="true"><Icon name="check" size={15} /></i>{copy.doneTitle}</span>
       <span className="line" style={{ gap: 10, flexWrap: "wrap" }}>
-        <span style={{ display: "inline-flex", gap: 5, flex: "none" }} aria-hidden="true">
+        {week.steps > 0 && <span style={{ display: "inline-flex", gap: 5, flex: "none" }} aria-hidden="true">
           {week.days.map((d) => <Token key={d.toISOString()} kind="plan" size="sm" label={dayFmt.format(d)} />)}
+        </span>}
+        <span className="s" style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+          {week.steps > 0 && <><b className="strong" style={{ color: "var(--ink)" }}>{copy.doneSteps(week.steps)}</b> {copy.doneDays(weekDays)}{lastStory ? " " : ""}</>}
+          {lastStory && copy.lastStory(lastStory)}
         </span>
-        <span className="s" style={{ fontSize: 13, color: "var(--ink-soft)" }}><b className="strong" style={{ color: "var(--ink)" }}>{copy.doneSteps(week.steps)}</b> {copy.doneDays(weekDays)}</span>
       </span>
       <MoreLink onClick={() => setActiveTab("weekly")}>{t("nav.tab.weekly")}</MoreLink>
     </section>

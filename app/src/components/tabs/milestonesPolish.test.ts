@@ -112,7 +112,8 @@ describe("B-GROWTH-13 — Milestones h1 and touch floor", () => {
   it("exactly one h1 (the route title) on the hero step of the type scale (B-DESIGN-03)", () => {
     expect((src.match(/<h1\b/g) ?? []).length).toBe(0);
     // v10.1 RE-PIN: the h1 is the shared header band's (MilestonesBand), titled with the route's own words.
-    expect(src).toContain('title={t("ms.title")} titleId="ms-list-title"');
+    // V77 RE-PIN: the desk band names the child; the phone keeps the route title (fold law).
+    expect(src).toContain('title={desk ? bandTitle : t("ms.title")} titleId="ms-list-title"');
     expect(src).not.toContain("md:text-[2rem]");
     const band = fs.readFileSync(path.join(__dirname, "..", "companion", "MilestonesBand.tsx"), "utf8");
     expect((band.match(/<h1\b/g) ?? []).length).toBe(1);

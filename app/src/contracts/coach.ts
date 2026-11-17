@@ -113,6 +113,8 @@ export type CoachResponse = z.infer<typeof coachResponseZodSchema> & {
   document?: FileTurnDocument;
   /** B-AI-14 (route): server-set, like governedEscalation — see types.ts CoachContract. */
   todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
+  /** V77: server-set provenance — the active program this answer's prompt carried (never model-emitted). */
+  activeProgramUsed?: { id: string; week: number };
 };
 
 /**

@@ -11,6 +11,7 @@ import "./coachReport.css";
 import { TrustLink } from "../trust/TrustLink";
 import type { BasedOnModel } from "../trust/BasedOnReceipt";
 import WhatArborUsed from "./WhatArborUsed";
+import { GUIDANCE_ART } from "../../lib/parentArt";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
 import { toDomains, domainLabel } from "../../lib/domains/registry";
@@ -585,11 +586,13 @@ export default function CoachAnswerCards({
       )}
 
       {/* V77 (N-Talk): what this answer was built from, read-only, ahead of the draft. */}
-      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} />}
+      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} program={contract.activeProgramUsed} />}
 
       {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
           {/* v10 (COPY-RULES): Arbor wrote this text — its one voice label. */}
+          {/* V77 (N-Talk-D): the answer's picture beside the draft (decorative; wide layout only). */}
+          <span className="coach-report__art" aria-hidden="true"><img src={GUIDANCE_ART.src} srcSet={GUIDANCE_ART.srcSet} alt="" loading="lazy" decoding="async" width={112} height={84} /></span>
           <span className="coach-report__draft"><Icon name="edit" size={14} />{t("coach.report.draftLabel")}</span>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
@@ -614,6 +617,8 @@ export default function CoachAnswerCards({
 
       {contract.parentScript && (
         <section className="coach-report__section coach-report__script" id={`${reportId}-script`}>
+          {/* V77 (N-Talk): the words card carries its visible heading, as the board draws it. */}
+          <h3 className="coach-report__script-title"><Icon name="forum" size={17} />{t("coach.cards.sayThis")}</h3>
           {/* F-TALK-2 (mock L405): the say-quote, display face behind a navy
               inline-start rule, never the sans card. */}
           <SayThis

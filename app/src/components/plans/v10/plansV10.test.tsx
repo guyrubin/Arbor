@@ -61,7 +61,9 @@ describe("Challenge Plans page (N-Challenge)", () => {
     expect(text(html)).toMatch(/\b3\s+nights you answered yes/);
     expect((text(html).match(/nights you answered yes/g) ?? []).length).toBe(1);
     expect(html).toContain("tok plan md none");
-    expect(text(html)).toContain("No answer");
+    // Fidelity audit: the legend reads as N-Challenge-D words it ("no answer: unknown, not a miss").
+    expect(text(html)).toContain(PLANS_COPY.en.noAnswerLegend);
+    expect(PLANS_COPY.en.noAnswerLegend).toBe("no answer: unknown, not a miss");
     expect(text(html.replace(/ style="[^"]*"/g, ""))).not.toMatch(/\d\s*%|missed|score|streak/i);
   });
 
@@ -99,9 +101,13 @@ describe("Challenge Plans page (N-Challenge)", () => {
     expect(Number(firstStop?.[1])).toBeGreaterThan(50);
   });
 
-  it("phone: the same sections in the same order, one tree", () => {
+  it("phone: N-Challenge-M's sections in its order (plan, steps, nights, all), one tree", () => {
     const html = screen({ composition: "phone" });
-    const order = ["cp-stage", "cp-today", "cp-page", "cp-all"].map((id) => html.indexOf(`id="${id}"`));
+    // N-Challenge-M: the night question shares the stage's card; no Today rail and no "on one page" snap.
+    expect(html).not.toContain('id="cp-today"');
+    expect(html).not.toContain('id="cp-page"');
+    expect((html.match(/data-plan-step-card=/g) ?? []).length).toBe(3);
+    const order = ["cp-stage", "cp-steps", "cp-nights", "cp-all"].map((id) => html.indexOf(`id="${id}"`));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect((html.match(/data-plan-open=""/g) ?? []).length).toBe(1);
@@ -189,6 +195,31 @@ describe("the composer on the journey road (CP-1 to CP-3)", async () => {
   const render = (state?: ReturnType<typeof run>) => renderToStaticMarkup(
     <PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={state} />,
   );
+  it("CP-2-Agree-D (desktop): guide, scene, the rail with each step's page, Make it yours — every control kept", () => {
+    const steps = run({ type: "open" }, { type: "redLinesDone" });
+    const html = renderToStaticMarkup(
+      <PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={steps} composition="desk" />,
+    );
+    expect(html).toContain("data-plan-agree-desk");
+    for (const id of ["cp-agree", "cp-hears", "cp-yours"]) expect(html).toContain(`id="${id}"`);
+    // the rail: the steps on their book pages (5–7 of 8) and the last page
+    expect(text(html)).toContain("Step 1 · Page 5 of 8");
+    expect(text(html)).toContain("Step 3 · Page 7 of 8");
+    expect(text(html)).toContain("The last page · Page 8 of 8");
+    // the box, the duration, the own words, the sources and the swaps share the screen
+    for (const b of dropoff.boxItems) expect(html).toContain(`data-plan-box="${b.id}"`);
+    expect(html).toContain('data-plan-duration-pick="21"');
+    expect(html).toContain("data-plan-own-text");
+    expect(html).toContain("data-plan-sources");
+    expect(html).toContain('data-plan-swap="1"');
+    // one primary: Preview the book
+    expect((html.match(/data-primary-move=/g) ?? []).length).toBe(1);
+    expect(html).toContain('data-primary-move="preview-plan"');
+    // the phone keeps its stages: no box on its steps screen
+    const phone = render(steps);
+    expect(phone).not.toContain("data-plan-agree-desk");
+    expect(phone).not.toContain("data-plan-box=");
+  });
   it("Recognise: the typographic cover, the stop counter, the red lines first", () => {
     const door = render();
     expect(door).toContain('class="cp-book"');
@@ -202,7 +233,9 @@ describe("the composer on the journey road (CP-1 to CP-3)", async () => {
     expect(text(steps)).toContain("2 of 5 · Agree");
     expect(steps).not.toMatch(/\{time\}|\{minutes\}/);
     expect((steps.match(/class="cp-kid"/g) ?? []).length).toBe(3);
-    expect(text(steps)).toContain("In Noa's book");
+    // CP-2: the first step's words open ("Noa hears, exactly"); the others fold to "Noa hears".
+    expect(text(steps)).toContain("Noa hears, exactly");
+    expect((steps.match(/<details class="cp-kidd/g) ?? []).length).toBe(2);
   });
   it("Agree: the box and the duration are real toggles", () => {
     const box = render(run({ type: "open" }, { type: "redLinesDone" }, { type: "stepsDone" }));

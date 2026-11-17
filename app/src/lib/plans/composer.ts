@@ -156,13 +156,14 @@ export function composerReducer(def: PatternDef, s: ComposerState, a: ComposerAc
       // an unapproved own step, a bad swap or a bad bound holds the stage
       return s.stage === "steps" && composerProblems(def, s).length === 0 ? { ...s, stage: "the-box" } : s;
     case "the-box": {
-      if (s.stage !== "the-box") return s;
+      // The desktop composer (CP-2-Agree-D) shows the box beside the steps; the phone keeps its own stage.
+      if (s.stage !== "the-box" && s.stage !== "steps") return s;
       if (!def.boxItems.some((b) => b.id === a.itemId)) return s;
       const boxItemIds = a.on ? [...new Set([...s.boxItemIds, a.itemId])] : s.boxItemIds.filter((id) => id !== a.itemId);
       return { ...s, boxItemIds };
     }
     case "duration": {
-      if (s.stage !== "the-box") return s;
+      if (s.stage !== "the-box" && s.stage !== "steps") return s;
       const [min, max] = DURATION_DAYS_RANGE;
       return Number.isInteger(a.durationDays) && a.durationDays >= min && a.durationDays <= max ? { ...s, durationDays: a.durationDays } : s;
     }

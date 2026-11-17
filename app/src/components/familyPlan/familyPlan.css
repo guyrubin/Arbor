@@ -93,6 +93,8 @@
 .ds .fp-sheet { display: flex; flex-direction: column; gap: 14px; padding-bottom: 8px; }
 .ds .fp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ds .fp-actions .btn { min-height: 48px; }
+/* The primary takes its own row when the row is narrow (FA-Change / FA-Review: no squeezed primary). */
+.ds .fp-actions .btn.grow { flex: 1 1 200px; }
 .ds .fp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px 0 4px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 600 !important; }
 .ds .fp-chip .av { background: #fff; color: var(--ink); }
 .ds .fp-receipt { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow-tile); }
@@ -146,3 +148,6 @@
 .ds button.nx-fc { min-height: 44px; }
 .ds button.nx-fc:hover { background: var(--tint); }
 .ds .nx-rb.m button.fp-tok { min-width: 44px; min-height: 44px; margin-inline: -4px; }
+
+/* N-Plan-D: the dates rail's "one change to review" line. */
+.ds .fp-pl { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--sapphire-deep); }

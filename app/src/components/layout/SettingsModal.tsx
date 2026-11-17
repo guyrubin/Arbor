@@ -232,7 +232,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            {/* V77 (N-Settings): Cancel / Save show only while a language choice waits to be saved. */}
+            {languageDirty && <div className="flex items-center gap-2">
               <button
                 onClick={handleCancelLanguage}
                 disabled={!languageDirty}
@@ -249,7 +250,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               >
                 {t("set.language.save")}
               </button>
-            </div>
+            </div>}
           </div>
           <ReceiptNoteLine note={langReceipt.note} testId="settings-language-receipt" size="sm" className="mt-2" />
         </Row>
@@ -293,8 +294,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             onClick={() => setToneOpen(true)}
             className="set-act min-h-11"
             data-testid="settings-tone-row"
+            aria-label={t("coach.tone.change")}
           >
-            {t("coach.tone.change")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
+            {/* V77 (N-Settings): the short "Change", as the board draws it; the full sentence stays the button's name. */}
+            {t("elev.coachcontract.notice.change")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
           </button>
         </Row>
         <ToneSheet open={toneOpen} onClose={() => setToneOpen(false)} selectedLens={selectedLens} onSelect={setSelectedLens} t={t} />
@@ -372,6 +375,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Section>
 
         <Section title={t("set.section.kidModePin")} sub={t("set.section.kidModePinSub")}>
+        {/* V77 (N-Settings): the lock leads its section (Parental gate, then the looks and books). */}
+        <div className="pt-1" data-testid="settings-pin-row">
+          <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
+            <span />
+          </Row>
+          <ParentalGatePanel />
+        </div>
 
         {/* B-SHELL-01: the AI-rail switch is gone with the rail; Privacy &
             trust is the PIN row only. */}
@@ -415,12 +425,6 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
         </Row>
         </div>
         )}
-        <div className="pt-1" data-testid="settings-pin-row">
-          <Row icon={<Icon name="lock" size={18} />} title={t("elev.gate.set.title")} sub={t("elev.gate.set.sub")}>
-            <span />
-          </Row>
-          <ParentalGatePanel />
-        </div>
         </Section>
 
       </div>

@@ -68,8 +68,15 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
     // P5 critic r1: the stamp rides the first Notice card's answers group (answersAttrs).
     // P5 critic r2 (P1-4): the stamp rides the first UNANSWERED card's answers.
-    expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{shelf === stampShelf \? \{ "data-primary-move": "notice-milestone" \} : undefined\}[\s\S]{0,300}observeMilestone\(card, status\)/);
-    expect(MS).toContain("const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);");
+    // V77 RE-PIN: the stamp rides the area grid's FIRST UNANSWERED card's answers
+    // (the shelf's Notice card through renderPick, or a row through renderRow), and
+    // both write through observeMilestone (the one seam).
+    expect(MS).toContain('const stamp = m.id === gridStampId ? { "data-primary-move": "notice-milestone" } : undefined;');
+    // The held card (just answered) keeps it; otherwise the first unanswered card.
+    expect(MS).toMatch(/const gridStampId = heldId \?\? gridCards\.find\(\(c\) => c\.kind === "next" && !c\.m\.observationStatus && !c\.m\.checked/);
+    expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{answersAttrs\}[\s\S]{0,400}observeMilestone\(card, status\)/);
+    // Negative control: the old per-shelf stamp is gone (one stamp, not two).
+    expect(MS).not.toMatch(/answersAttrs=\{shelf === stampShelf \?/);
     expect(MS).not.toMatch(/var\(--gradient-cta\)/);
   });
 
@@ -123,10 +130,11 @@ describe("P5-LOOP c2 r1 — no scoreboard at zero, one column at 1280, no watch-
 
   it("the Split renders only with its rail (under 2); otherwise ONE start-aligned 760 px column shared by the header, the map and the cards", () => {
     expect(MS).toContain("const hasRail = comparisonMonths < 24;");
-    expect(MS).toMatch(/\{hasRail \? \(\s*<Split[\s\S]*right=\{shelfMap\}\s*\/>\s*\) : shelfMap\}/);
-    // v10.1 RE-PIN: the page is the design system's frame (guide, scene, rail); the Split still waits for its rail.
+    // V77 RE-PIN: no Split; the under-2 lead opens the area's stage (one column at every width).
+    expect(MS).toContain("{hasRail && underTwoLead}");
+    expect(MS).toContain('data-testid="ms-under-two"');
+    expect(MS).not.toMatch(/<Split\b/);
     expect(MS).toContain('<DsRoot composition={composition} className="ms-v10 ms-list"');
-    expect(MS).toMatch(/\{hasRail \? \(\s*<Split/);
     expect(MS).not.toMatch(/max-w-\[1180px\] space-y-5 sm:space-y-6/);
   });
 
@@ -231,7 +239,9 @@ describe("P1-NEXTLEVEL critic r2 — the latest card names its area; the map is 
     const map = MS.slice(MS.indexOf('t("elev.loop.shelfMap.title")') - 300, MS.indexOf('t("ms.playIdeas"'));
     expect(map).not.toMatch(/text-\[(?:11|12|12\.5|13|13\.5|15|17|26)px\]/);
     // B-DESIGN-03: the map title is the title step (22 px), the shelf heads the section step (t-lg).
-    expect(MS).toContain('<h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>');
+    // V77 RE-PIN: the stage heading names the chosen area (the design system's title step, CSS .msl-tt).
+    expect(MS).toContain('<h2 id="ms-map-title" className="msl-tt">');
+    expect(MS).not.toContain('className="arbor-type-title sr-only sm:not-sr-only"');
     expect(map).toContain('<SectionHead as="h3" id={`ms-shelf-${shelf}`} title={shelfLabel(shelf, t)} className="min-w-0 flex-1" />');
     expect(read("components/ui/SectionHead.tsx")).toContain('className="m-0 min-w-0 t-lg"');
     expect(MS).not.toContain("text-[26px]");
