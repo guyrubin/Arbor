@@ -168,3 +168,12 @@
 .coach-used-fact:hover { background: var(--arbor-k-moment-w); }
 .coach-used-fact:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
 .coach-used-glyph.k-plan { background: var(--arbor-k-plan-w); color: var(--arbor-k-plan-i); }
+/* V77 (N-Talk): the words card's heading; the draft's picture shows only in the wide layout. */
+.coach-report__script-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--arbor-ink); }
+.coach-report__art { display: none; }
+@container (min-width: 860px) {
+  .coach-report__opening:has(.coach-report__art) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 20px; align-items: center; }
+  .coach-report__opening .coach-report__art { display: block; grid-row: 1 / span 2; }
+  .coach-report__opening .coach-report__draft, .coach-report__opening .coach-report__lead { grid-column: 2; }
+}
+.coach-report__art img { display: block; inline-size: 112px; block-size: 84px; object-fit: cover; }

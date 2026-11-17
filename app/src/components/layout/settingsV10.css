@@ -51,3 +51,11 @@
 .ds-settings.ds-desk [data-testid="settings-pause-arbor"] [role="group"] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-inline-start: 44px; }
 .ds-settings.ds-desk [data-testid="settings-pause-arbor"] [role="group"] > button { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding: 8px 12px; border-radius: 14px; font-size: 14px; }
 .ds-settings.ds-desk [data-testid="settings-pause-arbor"] [role="group"] > button > span + span { font-size: 13px; font-weight: 500; }
+/* V77 audit (N-Settings-M): on the phone a row keeps its control at the end,
+   as the board draws it, and the pause choices sit three across. */
+.ds-settings.ds-phone .set-row:has(> .set-row-act > .set-act:only-child) { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.ds-settings.ds-phone .set-row:has(> .set-row-act > .set-act:only-child) > .set-row-act { grid-column: auto; align-items: flex-end; max-width: 45vw; }
+.ds-settings.ds-phone .set-row:has(> .set-row-act > .set-act:only-child) .set-act { white-space: normal; text-align: center; }
+.ds-settings.ds-phone [data-testid="settings-pause-arbor"] [role="group"] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ds-settings.ds-phone [data-testid="settings-pause-arbor"] [role="group"] > button { flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 6px 8px; border-radius: 14px; font-size: 13px; text-align: center; }
+.ds-settings.ds-phone [data-testid="settings-pause-arbor"] [role="group"] > button > span + span { font-size: 12px; font-weight: 500; }
