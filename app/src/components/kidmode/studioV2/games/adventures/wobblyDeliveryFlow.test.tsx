@@ -656,7 +656,7 @@ describe('Wobbly Delivery words', () => {
   it('keeps the tile words and the closing words of the brief', () => {
     expect(en.title).toBe('Wobbly Delivery'); expect(en.description).toBe('Listen. Remember. Deliver.');
     expect(en.instruction).toBe('Listen to what a friend needs, then bring each thing in order.');
-    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Try it for real: ask a grown-up for two things to bring, and carry them in order.');
+    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Away from the screen: ask a grown-up for two things to bring, and carry them in order.');
     expect(en.notYet).toBe('Not that one yet. You can ask again.'); expect(en.askAgain).toBe('Ask again'); expect(en.goodAsking).toBe('Good asking.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });

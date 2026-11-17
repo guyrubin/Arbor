@@ -80,6 +80,8 @@ export function undoCheck(opened: readonly PetalId[], pressed: number): UndoChec
 
 /** After this many presses on a petal that must wait, the right one is ringed. */
 export const UNDO_HINT_AFTER = 1;
+/** B-GAME-46: how long a child may sit still on their turn before the next petal is ringed. */
+export const IDLE_NUDGE_MS = 6000;
 export function undoHint(opened: readonly PetalId[], waits: number): PetalId | null {
   return waits >= UNDO_HINT_AFTER && opened.length > 0 ? opened[opened.length - 1] : null;
 }

@@ -34,7 +34,7 @@
 .sun-seat[data-seat='3'] { z-index: 3; inset-inline-start: 32px; inset-block-start: 112px; }
 .sun-seat[data-seat='4'] { inset-inline-start: 2px; inset-block-start: 76px; }
 /* The gap in the circle: a place is marked, and its pad is somewhere else. */
-.sun-seat[data-seat='3'][data-here=false]::before { content: ''; grid-area: 1 / 1; inline-size: 42px; block-size: 26px; margin-block-end: 9px; border-radius: 50%; border: 2px dashed var(--bop-teal-ink); background: color-mix(in srgb, var(--arbor-on-accent) 55%, transparent); }
+.sun-seat[data-seat='3'][data-here=false]::before { content: ''; grid-area: 1 / 1; inline-size: 42px; block-size: 26px; margin-block-end: 9px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--studio-graphite) 40%, transparent); background: color-mix(in srgb, var(--arbor-on-accent) 55%, transparent); }
 .sun-seat[data-seat='3'][data-here=false][data-gap=true]::before { border-style: solid; border-color: var(--bop-amber); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; }
 .sun-seat[data-seat='3'][data-fresh=true] { animation: sun-bring .6s var(--studio-ease-soft); }
 .adventure--sun .sun-seat .studio-play-hero { filter: drop-shadow(0 4px 3px var(--bop-shade)); }

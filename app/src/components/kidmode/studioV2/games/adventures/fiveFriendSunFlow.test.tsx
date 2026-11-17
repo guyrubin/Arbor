@@ -195,7 +195,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true);
     spinner(tree).props.onClick!(); tree = render();
     // The wheel clicks and turns; the hop is not named and no pad works until it stops.
-    expect(phase(tree)).toBe('turning'); expect(heading(tree)).toBe(w.turning); expect(spinner(tree).props['aria-label']).toBe(w.spinner); expect(h.sound.mock.calls).toEqual([['tap']]);
+    expect(phase(tree)).toBe('turning'); expect(heading(tree)).toBe(w.turning); expect(spinner(tree).props['aria-label']).toBe(w.turning); expect(h.sound.mock.calls).toEqual([['tap']]);
     expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true); h.sound.mockClear();
     vi.advanceTimersByTime(TURN_MS - 1); expect(phase(render())).toBe('turning'); vi.advanceTimersByTime(1); tree = render();
     expect(phase(tree)).toBe('count'); expect(heading(tree)).toBe(w.hopFirst[1]);

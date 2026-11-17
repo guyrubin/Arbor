@@ -51,6 +51,8 @@ export const PRESS_MS = 480;
 export const ARRIVED_MS = 3200;
 /** The hero shrugging off a run that parked somewhere else. */
 export const OOPS_MS = 700;
+/** B-GAME-46: how long the plan may sit untouched before the sign to turn is shown. */
+export const ROVER_IDLE_MS = 7000;
 /** Parked runs on one floor before one thing to change is pointed out. */
 export const HINT_AFTER = 2;
 

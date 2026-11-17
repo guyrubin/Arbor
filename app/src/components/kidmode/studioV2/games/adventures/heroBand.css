@@ -98,3 +98,10 @@ button.band-step { min-inline-size: 44px; max-inline-size: 52px; }
   .band-track:has(> button.band-step) { display: grid; grid-template-columns: repeat(4, 52px); justify-content: center; }
   button.band-step { inline-size: 52px; max-inline-size: 52px; }
 }
+/* B-GAME-46: on a phone the own-dance view carries eight steps, the tempo and three buttons; a lower floor keeps Show time on the first screen of a 390×844 phone. */
+@media (max-width: 600px) {
+  .adventure--band[data-phase=jam] .band-floor { min-block-size: 128px; }
+  .adventure--band[data-phase=jam] .band-floor > .band-dancer { zoom: .72; }
+  .adventure--band[data-phase=jam] .band-pad { min-block-size: 78px; }
+  .adventure--band[data-phase=jam] .band-tempo { margin-block-start: 8px; }
+}

@@ -36,7 +36,7 @@ import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import type { Challenge } from './adventureRules';
 import { ROVER_DELIVERY_COPY, roverLine, type RoverDeliveryWords } from './roverDeliveryCopy';
-import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
+import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_IDLE_MS, ROVER_ROUNDS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -542,9 +542,18 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     expect(unique.filter(text => text.endsWith(` ${w.hintHere}`)).length).toBeGreaterThanOrEqual(3);
   });
 
+  it('shows the next sign again when a child sits still on the plan (B-GAME-46)', () => {
+    const level = levelFor('gentle', 0);
+    // Turned once, still the wrong way: the first-floor pulse is gone, and nothing rings yet.
+    mount(); point(0, 's'); let tree = render(); expect(hints(tree)).toEqual([]);
+    vi.advanceTimersByTime(ROVER_IDLE_MS - 1); tree = render(); expect(hints(tree)).toEqual([]);
+    vi.advanceTimersByTime(1); tree = render(); expect(hints(tree).map(n => n.props['data-cell'])).toEqual([level.signs[0].cell]);
+  });
+
   it('leaves no timer running when the game closes', () => {
     const level = levelFor('gentle', 0);
-    render(); expect(vi.getTimerCount()).toBe(1);
+    // The voice and the idle nudge.
+    render(); expect(vi.getTimerCount()).toBe(2);
     unmount(); expect(vi.getTimerCount()).toBe(0); expect(h.tones.dispose).toHaveBeenCalledTimes(1);
     // Closed in the middle of a run.
     let tree = mount(); startButton(tree, w).props.onClick!(); tree = render();
