@@ -63,6 +63,50 @@ describe("kidBooks — the one list", () => {
     expect(film.every((b) => film3dCover(b.story.id))).toBe(true);
   });
 
+  it("B-BOOK-51: orders opened books by actual instants across timezone offsets", () => {
+    const books = kidBooks({
+      lang: "en", ageMonths: null, showAllAges: true, hasCover: () => true,
+      nowMs: Date.parse("2026-11-17T08:00:00Z"),
+      runs: [
+        // Textual 08:00 is actually earlier than 07:00 UTC.
+        { storyId: "noahs-ark", startedAt: "2026-11-01T08:00:00+02:00" },
+        { storyId: "jonah-and-the-great-fish", startedAt: "2026-11-01T07:00:00Z" },
+      ],
+    });
+    expect(books.slice(0, 2).map(b => b.story.id)).toEqual(["jonah-and-the-great-fish", "noahs-ark"]);
+  });
+
+  it("B-BOOK-51: imported invalid and future timestamps neither displace books nor invent completion", () => {
+    const books = kidBooks({
+      lang: "en", ageMonths: null, showAllAges: true, hasCover: () => true,
+      nowMs: Date.parse("2026-11-17T08:00:00Z"),
+      runs: [
+        { storyId: "noahs-ark", completedAt: "2099-01-01T00:00:00Z" },
+        { storyId: "jonah-and-the-great-fish", startedAt: "broken" },
+        { storyId: "joseph-and-his-brothers", startedAt: "2026-11-16T11:00:00Z", completedAt: "not-a-date" },
+        { storyId: "moses-and-pharaoh", completedAt: "2026-11-16T10:00:00Z" },
+      ],
+    });
+    expect(books.slice(0, 2).map(b => [b.story.id, b.state])).toEqual([
+      ["joseph-and-his-brothers", "started"],
+      ["moses-and-pharaoh", "finished"],
+    ]);
+    expect(books.find(b => b.story.id === "noahs-ark")?.state).toBe("new");
+    expect(books.find(b => b.story.id === "jonah-and-the-great-fish")?.state).toBe("new");
+  });
+
+  it("B-BOOK-51: later rereading never removes genuine prior completion", () => {
+    const books = kidBooks({
+      lang: "en", ageMonths: null, showAllAges: true, hasCover: () => true,
+      nowMs: Date.parse("2026-11-17T08:00:00Z"),
+      runs: [
+        { storyId: "noahs-ark", completedAt: "2026-11-11T10:00:00Z" },
+        { storyId: "noahs-ark", startedAt: "2026-11-16T10:00:00Z" },
+      ],
+    });
+    expect(books[0]).toMatchObject({ story: { id: "noahs-ark" }, state: "finished" });
+  });
+
   it("every story appears at most once (a re-read is one book)", () => {
     const books = kidBooks({ lang: "en", ageMonths: null, showAllAges: true, hasCover: film3dCover, runs: [
       { storyId: "noahs-ark", completedAt: "2026-09-01T18:00:00Z" },
