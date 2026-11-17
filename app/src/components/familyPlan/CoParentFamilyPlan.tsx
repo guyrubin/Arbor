@@ -6,6 +6,7 @@ import { familyPlanToIcs } from "../../lib/familyPlan/ics";
 import { defaultIcsEgressDeps, saveIcsFile } from "../../lib/careTrack";
 import { track } from "../../lib/analytics";
 import { DsRoot, Token } from "../../design/primitives";
+import { Icon } from "../ui/Icon";
 import { familyPlanCopy } from "./familyPlanCopy";
 import { ThreadLine } from "./ReviewSheet";
 import { dayNum, momentLabel, weekdayShort, whenLabel, type Lang } from "./format";
@@ -78,7 +79,9 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
   const forYou = plan.dates.filter((d) => d.status === "open" && d.request?.forYou && d.request.status === "asked");
   const yours = plan.dates.filter((d) => d.holderIsYou && d.status !== "cancelled");
   const others = plan.dates.filter((d) => !forYou.includes(d) && !yours.includes(d));
-  const who = plan.ownerEmail ? plan.ownerEmail.split("@")[0] : c.coParent;
+  // A name from a sign-in email starts with a capital, as the boards draw it ("Maya").
+  const nameOf = (email?: string | null) => { const n = email ? email.split("@")[0] : ""; return n ? n.charAt(0).toUpperCase() + n.slice(1) : c.coParent; };
+  const who = nameOf(plan.ownerEmail);
 
   return (
     <DsRoot className="fp" data-testid="coparent-family-plan">
@@ -88,6 +91,7 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
         {forYou.map((d) => (
           <article key={d.id} className="scene plan" style={{ padding: 16, gap: 12 }} aria-labelledby={`cp-${d.id}`}>
             <span className="kicker"><bdi>{c.coAsksYou(who)}</bdi></span>
+            <h3 className="title" style={{ fontSize: 26, lineHeight: 1.15 }}>{c.coCanYou}</h3>
             <div className="line" style={{ gap: 14, alignItems: "center" }}>
               <div className="fp-big" aria-hidden="true"><small>{weekdayShort(d.date, lang)}</small><b>{dayNum(d.date)}</b>{d.time && <span>{d.time}</span>}</div>
               <div className="fp-col" style={{ gap: 4, minWidth: 0 }}>
@@ -102,13 +106,28 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
                 <span><span className="small"><bdi>{who}</bdi> · {momentLabel(d.request.askedAt, lang)}</span><q dir="auto" style={{ display: "block" }}>{d.request.note}</q></span>
               </div>
             )}
-            {d.sourceLine && <ThreadLine line={d.sourceLine} quote={d.sourceLine} />}
-            <div className="fp-actions">
-              <button type="button" className="btn primary grow" disabled={busy === d.id} onClick={() => void answer(d, "yes")}>{c.coTakeIt}</button>
-              <button type="button" className="btn ghost" disabled={busy === d.id} onClick={() => void answer(d, "no")}>{c.coCant}</button>
+            {d.sourceLine && (
+              <div className="fp-col" style={{ gap: 4 }}>
+                <span className="small" style={{ fontWeight: 600 }}>{c.coFromMessage(d.request?.forVersion ?? d.version)}</span>
+                <ThreadLine line={d.sourceLine} quote={d.sourceLine} />
+              </div>
+            )}
+            {/* FA-Accept: the answers stacked, the yes first. */}
+            <div className="fp-col" style={{ gap: 8 }}>
+              <button type="button" className="btn primary block" style={{ minHeight: 52 }} disabled={busy === d.id} onClick={() => void answer(d, "yes")}><Icon name="check" size={18} />{c.coTakeIt}</button>
+              <button type="button" className="btn ghost block" style={{ minHeight: 52, background: "var(--card)" }} disabled={busy === d.id} onClick={() => void answer(d, "no")}>{c.coCant}</button>
             </div>
             <label className="fp-check"><input type="checkbox" checked={calendar} onChange={(e) => setCalendar(e.target.checked)} />{c.coAddCalendar}</label>
-            <p className="small">{c.coYesFor(d.version)} {c.coYesMeans}</p>
+            {/* FA-Accept: what the yes means — asked, accepted, done — then the version it is for. */}
+            <section className="fp-col" style={{ gap: 8 }} aria-labelledby={`cp-yes-${d.id}`}>
+              <h4 className="h3" id={`cp-yes-${d.id}`}>{c.coYesTitle}</h4>
+              <div className="nx-yes s0" role="list" aria-label={`${c.asked}, ${c.accepted}, ${c.done}`}>
+                <div className="stp" role="listitem"><span className="nd on" aria-hidden="true"><Icon name="upload" size={22} /></span><b>{c.asked}</b><span>{c.coStepAsked}</span></div>
+                <div className="stp" role="listitem"><span className="nd off" aria-hidden="true"><Icon name="check" size={22} /></span><b>{c.accepted}</b><span>{c.coStepAccepted}</span></div>
+                <div className="stp" role="listitem"><span className="nd off" aria-hidden="true"><Icon name="flag" size={22} /></span><b>{c.done}</b><span>{c.coStepDone}</span></div>
+              </div>
+              <p className="small">{c.coYesFor(d.request?.forVersion ?? d.version)} {c.coYesMeans}</p>
+            </section>
             {notice?.id === d.id && <p role={notice.error ? "alert" : "status"} className={notice.error ? "fp-err" : "small"}>{notice.text}</p>}
           </article>
         ))}
@@ -118,7 +137,7 @@ export default function CoParentFamilyPlan({ grantId, lang }: { grantId: string;
             <span className="cp"><Token kind="date" state={d.state === "has" ? "solid" : d.state === "asked" ? "open" : "none"} size="lg" label={`${d.title}, ${whenLabel(d, lang)}`}>{dayNum(d.date)}</Token></span>
             <span className="ct">
               <b dir="auto">{d.title}</b>
-              <span>{whenLabel(d, lang)} · {d.status === "done" ? c.done : d.holderIsYou ? c.coYouHaveIt : d.state === "has" ? c.stateHas(d.holderEmail?.split("@")[0] ?? c.coParent) : c.stateNone}</span>
+              <span>{whenLabel(d, lang)} · {d.status === "done" ? c.done : d.holderIsYou ? c.coYouHaveIt : d.state === "has" ? c.stateHas(nameOf(d.holderEmail)) : c.stateNone}</span>
               {notice?.id === d.id && <span role={notice.error ? "alert" : "status"} className={notice.error ? "fp-err" : "small"}>{notice.text}</span>}
             </span>
             {d.holderIsYou && d.status === "open" ? (

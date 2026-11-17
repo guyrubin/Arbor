@@ -6,7 +6,9 @@ import { Icon } from "../ui/Icon";
 import { FpDialog } from "./FpDialog";
 import { DateFields, ThreadLine } from "./ReviewSheet";
 import type { FamilyPlanCopy } from "./familyPlanCopy";
-import { adultInitial, adultLabel, dayNum, momentLabel, weekdayShort, whenLabel, type Lang } from "./format";
+import { adultInitial, adultLabel, dayNum, daysFrom, momentLabel, weekdayShort, whenLabel, type Lang } from "./format";
+import { HeldChangeCard } from "./PlanChange";
+import { dayKey } from "../../lib/familyPlan/model";
 
 /** Asked → Accepted → Done for one date (the adult's actions, never the child). */
 export function YesSteps({ item, c, lang, meUid }: { item: FamilyPlanDate; c: FamilyPlanCopy; lang: Lang; meUid: string }) {
@@ -36,7 +38,13 @@ export function YesSteps({ item, c, lang, meUid }: { item: FamilyPlanDate; c: Fa
   );
 }
 
+/** A history line starts with its actor; the line itself starts with a capital (EN "You asked Yoav"). */
 function historyLine(h: FamilyPlanHistory, item: FamilyPlanDate, c: FamilyPlanCopy, lang: Lang, meUid: string, plan: FamilyPlanApi): string {
+  const line = historyText(h, item, c, lang, meUid, plan);
+  return line.charAt(0).toUpperCase() + line.slice(1);
+}
+
+function historyText(h: FamilyPlanHistory, item: FamilyPlanDate, c: FamilyPlanCopy, lang: Lang, meUid: string, plan: FamilyPlanApi): string {
   const who = (uid?: string) => {
     if (!uid) return "";
     const adult = plan.roster.adults.find((a) => a.uid === uid) ?? (item.holder?.uid === uid ? item.holder : null) ?? (item.request?.toUid === uid ? { uid, email: item.request.toEmail } : null);
@@ -76,6 +84,7 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
   const open = item.status === "open";
   return (
     <FpDialog open={!!item} onClose={onClose} title={item.title}>
+      {open && Math.abs(daysFrom(dayKey(plan.now), item.date)) <= 7 && <span className="kicker">{c.relDay(daysFrom(dayKey(plan.now), item.date))}</span>}
       <div className="line" style={{ gap: 14, alignItems: "center" }}>
         <div className={`fp-big ${s === "has" ? "has" : s === "none" ? "none" : ""}`} aria-hidden="true">
           <small>{weekdayShort(item.date, lang)}</small>
@@ -95,6 +104,7 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
         </div>
       </div>
       <YesSteps item={item} c={c} lang={lang} meUid={plan.me.uid} />
+      {open && item.pendingChange && <ChangeConsequences item={item} plan={plan} lang={lang} c={c} onAsk={onAsk} />}
 
       {editing ? (
         <div className="fp-col" style={{ gap: 10 }}>
@@ -162,5 +172,64 @@ export function DateSheet({ item, onClose, plan, lang, c, onAsk, onCalendar }: {
         {open && <button type="button" className="btn ghost sm" disabled={plan.busy} onClick={async () => { if (await plan.cancel(item.id)) onClose(); }}>{c.cancelDate}</button>}
       </div>
     </FpDialog>
+  );
+}
+
+/**
+ * FA-Change, inside the date: the held change, what applying it does (the
+ * open request, the reminder, the message's other dates), and both versions.
+ * Built only from the date and the plan; nothing moves until the parent applies it.
+ */
+function ChangeConsequences({ item, plan, lang, c, onAsk }: { item: FamilyPlanDate; plan: FamilyPlanApi; lang: Lang; c: FamilyPlanCopy; onAsk: (id: string) => void }) {
+  const p = item.pendingChange!;
+  const nw = whenLabel({ date: p.date, time: p.time }, lang);
+  const old = whenLabel(item, lang);
+  const asked = item.request?.status === "asked" ? adultLabel({ uid: item.request.toUid, email: item.request.toEmail }, plan.me.uid, c) : null;
+  const holder = item.holder && item.holder.uid !== plan.me.uid ? adultLabel(item.holder, plan.me.uid, c) : null;
+  const who = holder ?? asked;
+  const reminder = plan.reminders.find((r) => r.dateId === item.id);
+  const siblings = item.messageId ? plan.all.filter((d) => d.id !== item.id && d.messageId === item.messageId && d.status === "open") : [];
+  const added = item.history.find((h) => h.kind === "added");
+  return (
+    <>
+      <HeldChangeCard item={item} plan={plan} lang={lang} c={c} onAsk={onAsk} />
+      <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-does-h">
+        <h3 className="h3" id="fp-does-h">{c.whatThisDoes} <span className="small" style={{ fontWeight: 400 }}>{c.ifYouApplyIt}</span></h3>
+        <ol className="fp-hist">
+          {who && (
+            <li>
+              <Token kind="date" state="open" size="sm" label="">{dayNum(item.date)}</Token>
+              <span><b dir="auto">{c.doesRequest(who, old)}</b>{c.doesRequestSub(old, nw)} {c.doesReask(who, nw)}.</span>
+            </li>
+          )}
+          {reminder && (
+            <li>
+              <span className="gi" aria-hidden="true"><Icon name="notifications" size={18} /></span>
+              <span><b dir="auto">{c.doesReminder(momentLabel(reminder.atMs, lang))}</b>{c.doesReminderSub}</span>
+            </li>
+          )}
+          {siblings.map((d) => (
+            <li key={d.id}>
+              <Token kind="date" state={stateOf(d) === "has" ? "solid" : "none"} size="sm" label="">{dayNum(d.date)}</Token>
+              <span><b dir="auto">{c.notAffected(d.title)}</b>{c.stillWhen(whenLabel(d, lang))}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+      <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-ver-h">
+        <h3 className="h3" id="fp-ver-h">{c.versionsTitle}</h3>
+        <ol className="fp-hist">
+          <li>
+            <Token kind="date" state="open" size="sm" label="">{dayNum(item.date)}</Token>
+            <span><b dir="auto">{c.versionLine(item.version, old)}</b>{added ? momentLabel(added.at, lang) : ""}</span>
+          </li>
+          <li>
+            <Token kind="date" state="ai" size="sm" label="">{dayNum(p.date)}</Token>
+            <span><b dir="auto">{c.versionLine(item.version + 1, nw)}</b>{momentLabel(p.receivedAt, lang)} · {c.versionWaiting}</span>
+          </li>
+        </ol>
+        <span className="small">{c.versionsKeep}</span>
+      </section>
+    </>
   );
 }
