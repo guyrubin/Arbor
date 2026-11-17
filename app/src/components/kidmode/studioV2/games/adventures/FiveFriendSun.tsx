@@ -13,11 +13,11 @@ import { defaultChallenge, type Challenge } from './adventureRules';
 import { BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { FIVE_FRIEND_SUN_COPY, countAlong, countOnLine, sunLine, turnLine } from './fiveFriendSunCopy';
-import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, TURN_MS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn } from './fiveFriendSunRules';
 import './fiveFriendSun.css';
 
 /** `make-room` is the beat where the child brings Chock's far pad into the circle. */
-type Phase = 'ready' | 'spin' | 'count' | 'hop' | 'make-room' | 'sun' | 'done';
+type Phase = 'ready' | 'spin' | 'turning' | 'count' | 'hop' | 'make-room' | 'sun' | 'done';
 
 export default function FiveFriendSun() {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
@@ -68,7 +68,9 @@ export default function FiveFriendSun() {
     if (phaseRef.current !== 'spin') return;
     const next = spinFor(challenge, position);
     if (next < 1) return;
-    void selectionHaptic(); setWheel(from => wheelTurn(from, next, spinMax(challenge))); setSpin(next); setMisses(0); setWobble(0); setStatus(''); setPhase('count');
+    // The wheel clicks as it turns; the hop is only named once it stops (B-GAME-46).
+    void selectionHaptic(); kidSfx('tap'); setWheel(from => wheelTurn(from, next, spinMax(challenge))); setSpin(next); setMisses(0); setWobble(0); setStatus(''); setPhase('turning');
+    later(TURN_MS, () => setPhase('count'));
   };
   const tapPad = (pad: number) => {
     if (phaseRef.current !== 'count') return;
@@ -96,10 +98,10 @@ export default function FiveFriendSun() {
 
   const hopping = phase === 'hop' && fresh === null;
   const cue = phase === 'ready' ? w.ready : phase === 'make-room' ? w.roomCue : phase === 'sun' || phase === 'done' ? w.sun
-    : fresh !== null ? w.arrived[Math.min(fresh, w.arrived.length - 1)] : turnLine(w, position, spin);
+    : fresh !== null ? w.arrived[Math.min(fresh, w.arrived.length - 1)] : turnLine(w, position, phase === 'turning' ? 0 : spin);
   // A hop is counted by its tones and the written count; the voice waits for the landing.
   const narration = phase === 'count' && status ? status : cue;
-  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${phase}:${position}:${spin}:${fresh ?? -1}:${misses}`, enabled: phase !== 'done' && !hopping });
+  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${phase}:${position}:${spin}:${fresh ?? -1}:${misses}`, enabled: phase !== 'done' && phase !== 'turning' && !hopping });
   const hinted = phase === 'count' && hintShown(challenge, misses) ? position + spin : 0;
   const here = padCell(at), before = padCell(Math.max(0, at - 1));
 

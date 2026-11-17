@@ -34,7 +34,7 @@ import { GameFinish, GameShell } from '../../../game/GameShell';
 import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { FIVE_FRIEND_SUN_COPY, countAlong, countOnLine, sunLine, turnLine, type FiveFriendSunWords } from './fiveFriendSunCopy';
-import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SUN_MS, WOBBLE_MS } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SUN_MS, TURN_MS, WOBBLE_MS } from './fiveFriendSunRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -63,6 +63,8 @@ const hinted = (tree: unknown) => PADS.filter(at => pad(tree, at).props['data-hi
 /** The hero is between pads: the hop is counted by tones and by the written count. */
 const hopping = (tree: unknown) => phase(tree) === 'hop' && !nodes(tree).some(n => n.props['data-fresh'] === true);
 
+/** Taps the spinner, hears its click, and waits for the wheel to stop. */
+function spinOn(tree: unknown) { spinner(tree).props.onClick!(); expect(h.sound).toHaveBeenLastCalledWith('tap'); h.sound.mock.calls.pop(); vi.advanceTimersByTime(TURN_MS); }
 /** Fixes the spinner: each spin takes the next roll, and the last one repeats. */
 function rolls(...values: number[]) { let turn = 0; vi.spyOn(Math, 'random').mockImplementation(() => values[Math.min(turn++, values.length - 1)]); }
 /** A replayable run of spins. */
@@ -73,7 +75,7 @@ function seededRolls(seed: number) { let state = seed >>> 0; vi.spyOn(Math, 'ran
 function act(tree: unknown, w: FiveFriendSunWords, fumble: boolean): void {
   const now = phase(tree);
   if (now === 'ready') button(tree, w.start).props.onClick!();
-  else if (now === 'spin') spinner(tree).props.onClick!();
+  else if (now === 'spin') spinOn(tree);
   else if (now === 'count') {
     const from = position(tree), target = from + face(tree);
     if (fumble && status(tree) !== countOnLine(w, from, face(tree))) pad(tree, target === PATH_END ? 1 : PATH_END).props.onClick!();
@@ -192,6 +194,10 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     expect(spinner(tree).props).toMatchObject({ type: 'button', disabled: false, 'aria-label': w.spinner, 'data-face': 0, 'data-ready': true });
     expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true);
     spinner(tree).props.onClick!(); tree = render();
+    // The wheel clicks and turns; the hop is not named and no pad works until it stops.
+    expect(phase(tree)).toBe('turning'); expect(heading(tree)).toBe(w.spinFirst); expect(h.sound.mock.calls).toEqual([['tap']]);
+    expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true); h.sound.mockClear();
+    vi.advanceTimersByTime(TURN_MS - 1); expect(phase(render())).toBe('turning'); vi.advanceTimersByTime(1); tree = render();
     expect(phase(tree)).toBe('count'); expect(heading(tree)).toBe(w.hopFirst[1]);
     // The spinner shows its hop three ways: pips, a numeral and its name.
     expect(spinner(tree).props).toMatchObject({ disabled: true, 'aria-label': sunLine(w.spinnerShows, 2), 'data-face': 2, 'data-ready': false });
@@ -203,7 +209,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     expect(one(tree, 'the heading', n => 'focusKey' in n.props).props.muted).toBe(true);
     // Input is locked while the hero hops.
     expect(PADS.every(at => pad(tree, at).props.disabled === true)).toBe(true); expect(spinner(tree).props.disabled).toBe(true);
-    pad(tree, 3).props.onClick!(); spinner(tree).props.onClick!(); farPad(tree)!.props.onClick!();
+    pad(tree, 3).props.onClick!(); spinner(tree).props.onClick!();; farPad(tree)!.props.onClick!();
     vi.advanceTimersByTime(HOP_MS); tree = render();
     expect(phase(tree)).toBe('hop'); expect(status(tree)).toBe(countAlong(w, 0, 2, 2)); expect(pad(tree, 2).props['data-here']).toBe(true); expect(lit(tree)).toBe(0);
     expect(one(tree, 'the hero on the path', classed('sun-walker')).props.style).toMatchObject({ gridColumn: 3, gridRow: 2, '--hop-x': -1, '--hop-y': 0 });
@@ -220,7 +226,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
 
   it('a tap on another pad changes nothing, shows how to count on, and never blocks the landing pad', () => {
     rolls(0.999999);
-    button(render(), w.start).props.onClick!(); spinner(render()).props.onClick!();
+    button(render(), w.start).props.onClick!(); spinOn(render());
     let tree = render(); expect(hinted(tree)).toEqual([]);
     pad(tree, 5).props.onClick!(); tree = render();
     expect(phase(tree)).toBe('count'); expect(position(tree)).toBe(0); expect(lit(tree)).toBe(0); expect(face(tree)).toBe(2); expect(finish(tree)).toBeUndefined();
@@ -238,7 +244,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     pad(tree, 2).props.onClick!(); vi.advanceTimersByTime(2 * HOP_MS + JOIN_MS); tree = render();
     expect(position(tree)).toBe(2); expect(lit(tree)).toBe(1); expect(phase(tree)).toBe('spin');
     // From a pad on the path: the hero's own pad and the pads behind it do nothing either.
-    spinner(tree).props.onClick!(); tree = render();
+    spinOn(tree); tree = render();
     expect(heading(tree)).toBe(sunLine(w.hopMore, 2, 2)); expect(status(tree)).toBe(''); expect(hinted(tree)).toEqual([]);
     expect(pad(tree, 2).props['aria-label']).toBe(sunLine(w.padHero, 2)); expect(pad(tree, 3).props['aria-label']).toBe(sunLine(w.pad, 3));
     for (const behind of [2, 1]) {
@@ -267,7 +273,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     let tree = render();
     expect(one(tree, 'the challenge picker', n => n.type === ChallengePicker).props.value).toBe('explore'); expect(phase(tree)).toBe('ready');
     rolls(0.999999, 0.999999, 0, 0.999999);
-    button(tree, w.start).props.onClick!(); spinner(render()).props.onClick!(); tree = render();
+    button(tree, w.start).props.onClick!(); spinOn(render()); tree = render();
     expect(heading(tree)).toBe(w.hopFirst[2]); expect(face(tree)).toBe(3); expect(nodes(spinner(tree)).filter(n => n.type === 'i')).toHaveLength(3);
     // Two other taps before the landing pad is pointed out.
     pad(tree, 1).props.onClick!(); tree = render(); expect(status(tree)).toBe(countOnLine(w, 0, 3)); expect(hinted(tree)).toEqual([]);
@@ -279,16 +285,16 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     expect(position(tree)).toBe(3); expect(lit(tree)).toBe(1); expect(heading(tree)).toBe(w.arrived[0]);
     vi.advanceTimersByTime(JOIN_MS); tree = render(); expect(phase(tree)).toBe('spin');
     // 3 to 6 passes two friends: they come one at a time, in order.
-    spinner(tree).props.onClick!(); tree = render(); expect(heading(tree)).toBe(sunLine(w.hopMore, 3, 3));
+    spinOn(tree); tree = render(); expect(heading(tree)).toBe(sunLine(w.hopMore, 3, 3));
     pad(tree, 6).props.onClick!(); vi.advanceTimersByTime(3 * HOP_MS); tree = render();
     expect(position(tree)).toBe(6); expect(lit(tree)).toBe(2); expect(heading(tree)).toBe(w.arrived[1]);
     vi.advanceTimersByTime(JOIN_MS); tree = render(); expect(lit(tree)).toBe(3); expect(heading(tree)).toBe(w.arrived[2]); expect(phase(tree)).toBe('hop');
     vi.advanceTimersByTime(JOIN_MS); tree = render(); expect(phase(tree)).toBe('spin'); expect(lit(tree)).toBe(3);
     // 6 to 7 brings nobody; 7 to 10 needs Chock's place first, then the child's own seat.
-    spinner(tree).props.onClick!(); tree = render(); expect(face(tree)).toBe(1); expect(heading(tree)).toBe(sunLine(w.hopMore, 6, 1));
+    spinOn(tree); tree = render(); expect(face(tree)).toBe(1); expect(heading(tree)).toBe(sunLine(w.hopMore, 6, 1));
     pad(tree, 7).props.onClick!(); vi.advanceTimersByTime(HOP_MS); tree = render();
     expect(position(tree)).toBe(7); expect(phase(tree)).toBe('spin'); expect(lit(tree)).toBe(3);
-    spinner(tree).props.onClick!(); tree = render(); expect(face(tree)).toBe(3);
+    spinOn(tree); tree = render(); expect(face(tree)).toBe(3);
     pad(tree, 10).props.onClick!(); vi.advanceTimersByTime(3 * HOP_MS); tree = render();
     expect(position(tree)).toBe(PATH_END); expect(phase(tree)).toBe('make-room'); expect(heading(tree)).toBe(w.roomCue); expect(lit(tree)).toBe(3);
     farPad(tree)!.props.onClick!(); tree = render(); expect(lit(tree)).toBe(4); expect(heading(tree)).toBe(w.arrived[3]);
@@ -319,7 +325,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     far.props.onClick!(); expect(lit(render())).toBe(4); expect(h.sound).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(JOIN_MS); tree = render();
     expect(phase(tree)).toBe('spin'); expect(spinner(tree).props.disabled).toBe(false); expect(heading(tree)).toBe(sunLine(w.spinOn, 8));
-    spinner(tree).props.onClick!(); tree = render(); expect(heading(tree)).toBe(sunLine(w.hopMore, 8, 2));
+    spinOn(tree); tree = render(); expect(heading(tree)).toBe(sunLine(w.hopMore, 8, 2));
     pad(tree, 10).props.onClick!(); vi.advanceTimersByTime(2 * HOP_MS); tree = render();
     expect(phase(tree)).toBe('sun'); expect(position(tree)).toBe(PATH_END); expect(lit(tree)).toBe(FRIEND_TOTAL); expect(heading(tree)).toBe(w.sun);
     // The hero has stepped off the path onto the navy pad.
@@ -341,7 +347,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     // A new start in the middle of a hop: nothing of the old game lands afterwards.
     finish(render())!.props.onPlayAgain(); tree = render();
     const restart = one(tree, 'the challenge picker', n => n.type === ChallengePicker).props.onChange as (level: 'gentle' | 'explore') => void;
-    rolls(0.999999); button(tree, w.start).props.onClick!(); spinner(render()).props.onClick!(); tree = render();
+    rolls(0.999999); button(tree, w.start).props.onClick!(); spinOn(render()); tree = render();
     pad(tree, 5).props.onClick!(); pad(render(), 2).props.onClick!(); expect(phase(render())).toBe('hop');
     restart('gentle'); h.sound.mockClear(); h.tones.play.mockClear();
     vi.advanceTimersByTime(30_000); tree = render();
@@ -408,7 +414,7 @@ describe.each(['en', 'he'] as const)('Five-Friend Sun (%s)', lang => {
     render(); expect(vi.getTimerCount()).toBe(1);
     unmount(); expect(vi.getTimerCount()).toBe(0); expect(h.tones.dispose).toHaveBeenCalledTimes(1);
     // Closed in the middle of a hop, with a wobble still under way.
-    button(mount(), w.start).props.onClick!(); spinner(render()).props.onClick!();
+    button(mount(), w.start).props.onClick!(); spinOn(render());
     let tree = render(); pad(tree, 5).props.onClick!(); tree = render(); pad(tree, 2).props.onClick!(); tree = render();
     expect(phase(tree)).toBe('hop'); expect(vi.getTimerCount()).toBeGreaterThanOrEqual(3);
     unmount(); expect(vi.getTimerCount()).toBe(0); expect(h.tones.dispose).toHaveBeenCalledTimes(2);
@@ -457,7 +463,7 @@ describe('Five-Friend Sun words', () => {
     expect(turnLine(en, 3, 2)).toBe('You are on 3. Hop 2 more.');
     expect(countOnLine(en, 3, 2)).toBe('Count on from 3: four, five.'); expect(countOnLine(en, 0, 3)).toBe('Count from the start: one, two, three.'); expect(countOnLine(en, 9, 1)).toBe('Count on from 9: ten.');
     expect(countAlong(en, 3, 1, 2)).toBe('four…'); expect(countAlong(en, 3, 2, 2)).toBe('four… five.'); expect(countAlong(en, 7, 3, 3)).toBe('eight… nine… ten.');
-    expect(sunLine(en.friendsHere, 3)).toBe('3 of 5 friends are here.'); expect(sunLine(en.pad, 7)).toBe('Pad 7'); expect(sunLine(en.spinnerShows, 2)).toBe('The spinner shows 2.');
+    expect(sunLine(en.friendsHere, 3)).toBe('3 of 5 friends here.'); expect(sunLine(en.pad, 7)).toBe('Pad 7'); expect(sunLine(en.spinnerShows, 2)).toBe('The spinner shows 2.');
     expect(en.roomCue).toBe('Chock’s pad is far away. Bring it into the circle.');
     expect(turnLine(he, 3, 2)).toBe('עומדים על 3. קופצים עוד 2.'); expect(countOnLine(he, 3, 2)).toBe('ממשיכים לספור מ־3: ארבע, חמש.');
     expect(countAlong(he, 3, 2, 2)).toBe('ארבע… חמש.'); expect(sunLine(he.friendsHere, 3)).toBe('3 מתוך 5 חברים כאן.');

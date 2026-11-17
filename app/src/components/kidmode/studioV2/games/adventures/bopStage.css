@@ -18,7 +18,7 @@
 .bop-piece:active:not(:disabled) { transform: scale(.94); }
 .bop-piece:disabled { cursor: default; }
 .adventure--bop .bop-piece:focus-visible { outline: 3px solid var(--bop-teal-ink); outline-offset: 3px; }
-.bop-piece[data-hint=true]::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3px solid var(--bop-teal-ink); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; pointer-events: none; }
+.bop-piece[data-hint=true]::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3px solid var(--bop-amber, var(--studio-signal)); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; pointer-events: none; }
 .bop-piece[data-wobble=true] { animation: bop-wobble .45s ease-in-out; }
 
 /* A number or count shown on a toy. Graphite on pearl, large enough to read. */
@@ -39,7 +39,7 @@
    burst from its middle; a won game adds a shower of petals. Tokens only,
    decoration only, and gone with motion off or forced colours. */
 .bop-cheer { position: absolute; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; }
-.bop-cheer__ring { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 120px; block-size: 120px; margin: -60px; border-radius: 50%; border: 6px solid var(--bop-amber, var(--studio-signal)); opacity: 0; animation: bop-cheer-ring .9s var(--studio-ease-soft); }
+.bop-cheer__ring { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 120px; block-size: 120px; margin: -60px; border-radius: 50%; border: 6px solid var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-ring .9s var(--studio-ease-soft); }
 .bop-cheer__spark { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 12px; block-size: 12px; margin: -6px; border-radius: 50%; background: var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-spark .85s var(--studio-ease-soft); }
 .bop-cheer__spark:nth-child(3n) { background: var(--bop-teal, var(--studio-teal)); }
 .bop-cheer__spark:nth-child(3n + 1) { background: var(--arbor-on-accent); box-shadow: 0 0 0 2px var(--bop-teal-ink, var(--studio-teal-ink)); }

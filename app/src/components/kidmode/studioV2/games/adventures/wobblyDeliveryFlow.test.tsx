@@ -124,7 +124,7 @@ function act(tree: unknown, w: Words, mind: Mind, how: Play): void {
   if (now !== 'fetch') { vi.advanceTimersToNextTimer(); return; }
   const next = mind.request[landed(tree).length];
   if (!next || (how.ask && !mind.asked)) { mind.asked = true; askAgain(tree).props.onClick!(); return; }
-  const other = onShelf(tree).find(item => item !== next)!;
+  const other = onShelf(tree).find(item => item !== next && !landed(tree).includes(item))!;
   shelfItem(tree, how.fumble && status(tree) !== w.notYet ? other : next).props.onClick!();
 }
 function playOut(w: Words, seen?: (tree: unknown) => void, how: Play = {}) {
@@ -343,11 +343,11 @@ describe.each(['en', 'he'] as const)('Wobbly Delivery (%s)', lang => {
     // The right thing still works.
     tree = carry(request[0]);
     expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(''); expect(askAgain(tree).props['data-hint']).toBe(false);
-    // A thing that is already on the rug: the same kind answer, and nothing moves.
+    // A thing that is already on the rug is not "not yet": it only wobbles, with no line and no sound, and nothing moves.
     h.sound.mockClear();
     shelfItem(tree, request[0]).props.onClick!(); tree = render();
-    expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(w.notYet); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(true);
-    expect(hero(tree).props.pose).toBe('oops'); expect(sounds()).toEqual(['tryAgain']); expect(pictures(tree)).toEqual([request[0], null]);
+    expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(''); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(true);
+    expect(hero(tree).props.pose).not.toBe('oops'); expect(sounds()).toEqual([]); expect(pictures(tree)).toEqual([request[0], null]);
     // No waiting: the next thing can be carried while the hero is still shrugging.
     shelfItem(tree, request[1]).props.onClick!(); tree = render();
     expect(phase(tree)).toBe('carry'); expect(hero(tree).props.pose).toBe('hold-up'); expect(status(tree)).toBe(''); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(false);

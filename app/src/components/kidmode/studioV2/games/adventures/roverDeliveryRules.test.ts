@@ -2,7 +2,7 @@
  * floor is solved before the child changes something, each has exactly one
  * answer, and no setting of the signs can keep the rover driving for ever. */
 import { describe, expect, it } from 'vitest';
-import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, STEP_MS, cellColumn, cellRow, faceToward, fixSigns, headingOf, initialSigns, initialTurns, isHeading, levelFor, quarterTurn, roverAtStart, roverHint, roverStep, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel } from './roverDeliveryRules';
+import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, cellColumn, cellRow, faceToward, fixSigns, headingOf, initialSigns, initialTurns, isHeading, levelFor, quarterTurn, roverAtStart, roverHint, roverStep, roverTone, runRover, spinLevel, turnsOf, type Heading, type RoverEnd, type RoverLevel } from './roverDeliveryRules';
 
 const CHALLENGES = ['gentle', 'explore'] as const;
 const ROUNDS = [0, 1, 2] as const;
@@ -335,5 +335,39 @@ describe('Rover Delivery helpers', () => {
     // The longest finished route still runs in a few seconds.
     const longest = Math.max(...FLOORS.map(floor => runRover(floor.level, fixSigns(floor.level), true).path.length));
     expect(RETURN_MS + STEP_MS * longest).toBeLessThan(6000);
+  });
+});
+
+describe('Rover Delivery replays (B-GAME-46)', () => {
+  it('turns every floor a quarter clockwise per play again, and back after four', () => {
+    expect(ROVER_SPINS).toBe(4);
+    const first = levelFor('gentle', 0);
+    expect(levelFor('gentle', 0, 0)).toBe(first);
+    expect(levelFor('gentle', 0, 1)).toEqual({ size: 3, start: 0, heading: 'e', goal: 8, signs: [{ cell: 2, initial: 'e', fix: 's' }], planters: [] });
+    expect(spinLevel(first, 4)).toEqual(first);
+    for (const { level } of FLOORS) expect(spinLevel(spinLevel(level, 1), 3)).toEqual(level);
+  });
+
+  it('keeps each turned floor as written: same end for every setting, one answer, unsolved at first, same presses per sign', () => {
+    for (const { name, challenge, round, level } of FLOORS) {
+      for (let spin = 1; spin < ROVER_SPINS; spin++) {
+        const turned = levelFor(challenge, round, spin);
+        let answers = 0;
+        for (const set of settings(level)) {
+          const spun = set.map(heading => { let next = heading; for (let at = 0; at < spin; at++) next = quarterTurn(next); return next; });
+          for (const folded of [false, true]) {
+            const plain = runRover(level, set, folded), moved = runRover(turned, spun, folded);
+            expect(moved.end, `${name} spin ${spin}`).toBe(plain.end);
+            expect(moved.path.length, `${name} spin ${spin}`).toBe(plain.path.length);
+            if (moved.end === 'goal' && folded) answers += 1;
+          }
+        }
+        expect(answers, `${name} spin ${spin}`).toBeGreaterThan(0);
+        expect(runRover(turned, fixSigns(turned), true).end, `${name} spin ${spin}`).toBe('goal');
+        expect(runRover(turned, initialSigns(turned), false).end, `${name} spin ${spin}`).not.toBe('goal');
+        expect(turned.signs.map(sign => (turnsOf(sign.fix) - turnsOf(sign.initial) + 4) % 4)).toEqual(level.signs.map(sign => (turnsOf(sign.fix) - turnsOf(sign.initial) + 4) % 4));
+        expect(roverHint(turned, initialSigns(turned), false)).toEqual(roverHint(level, initialSigns(level), false));
+      }
+    }
   });
 });

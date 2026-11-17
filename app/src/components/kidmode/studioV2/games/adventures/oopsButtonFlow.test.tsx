@@ -210,7 +210,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
       else if (now === 'jam') expect(live(seen)).toEqual(['oops-pause']);
       else if (now === 'reset') expect(live(seen)).toEqual(['oops-restart']);
       else if (now === 'copy') { expect(live(seen)).toEqual(PETALS.filter(id => !open.includes(id)).map(id => `petal-${id}`)); expect(live(seen).length).toBeGreaterThan(0); }
-      else { expect(now).toBe('undo'); expect(live(seen)).toEqual(open.map(id => `petal-${id}`)); expect(open.length).toBeGreaterThan(0); }
+      else { expect(now).toBe('undo'); expect(live(seen)).toEqual([`petal-${open.at(-1)}`]); expect(open.length).toBeGreaterThan(0); }
     });
     const end = finish(tree)!; expect(end).toBeDefined();
     expect(end.props).toMatchObject({ title: w.finishTitle, subtitle: w.transfer, playAgainLabel: shared.again, homeLabel: shared.home });
@@ -300,7 +300,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     // The whole order is open: the whole flower opens, the hub glows, Chock is glad.
     expect(phase(tree)).toBe('bloom'); expect(heading(tree)).toBe(w.bloom); expect(status(tree)).toBe(w.bloomNext); expect(steps(tree)).toBe(1);
     expect(openPetals(tree)).toEqual([...PETALS]); expect(one(tree, 'the toy', classed('oops-toy')).props['data-bloom']).toBe(true);
-    expect(nodes(one(tree, 'the rays', classed('oops-rays')).props.children)).toHaveLength(10); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
+    expect(nodes(tree).some(classed('oops-rays'))).toBe(false); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
     expect(chock(tree)).toBe('happy'); expect(hero(tree).celebrate).toBe(true); expect(h.sound.mock.calls).toEqual([['correct']]); expect(live(tree)).toEqual([]);
     petal(tree, second).props.onClick!(); control(tree, 'oops-pause').props.onClick!(); control(tree, 'oops-restart').props.onClick!();
     vi.advanceTimersByTime(BLOOM_MS - 1); expect(phase(render())).toBe('bloom');
@@ -336,7 +336,8 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(phase(tree)).toBe('undo'); expect(heading(tree)).toBe(w.undo); expect(status(tree)).toBe(oopsLine(w.undoFirst, openPetals(tree).length)); expect(shell(tree).hearIt).toBe(w.undo);
     expect(hero(tree).pose).toBe('idle'); expect(hinted(tree)).toEqual([]);
     expect(control(tree, 'oops-pause').props.disabled).toBe(true); expect(control(tree, 'oops-restart').props.disabled).toBe(true);
-    expect(live(tree)).toEqual([order[0], order[1], spare[0]].sort().map(id => `petal-${id}`));
+    // Only the newest petal is invited back; the others still answer with a wobble.
+    expect(live(tree)).toEqual([`petal-${spare[0]}`]);
     expect(PETALS.every(id => petal(tree, id).props.disabled === false)).toBe(true);
     // An open petal that is not the last one must wait: a clear next step, and then the right petal is ringed.
     h.sound.mockClear();
@@ -604,7 +605,7 @@ describe('Oops Button words', () => {
     expect(en.title).toBe('Oops Button'); expect(en.description).toBe('Pause. Put back. Try again.');
     expect(en.instruction).toBe('Copy the flower. If it gets stuck, press Oops, put the petals back and start again.');
     expect(en.jam).toBe('Oops. The flower got stuck. Press Oops.'); expect(en.jamToy).toBe('Oops. The flower got stuck by itself. That happens. Press Oops.'); expect(en.pause).toBe('Oops!');
-    expect(en.undo).toBe('Put the petals back. Biggest number first.'); expect(oopsLine(en.undoWait, 3)).toBe('Not yet. Press number 3.'); expect(en.reset).toBe('All back. Press Start again.');
+    expect(en.undo).toBe('Put the petals back. The last one goes first.'); expect(oopsLine(en.undoWait, 3)).toBe('Not yet. Press number 3.'); expect(en.reset).toBe('All back. Press Start again.');
     expect(en.finishTitle).toBe('It bloomed!'); expect(en.transfer).toBe('Away from the screen: when a block tower wobbles, say oops, stop, take the top block off first, then build again.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });
