@@ -432,6 +432,14 @@ const mountForms = () => import('./arbor-living-scene-v3.js').then(({ mountLivin
   forms = mountLivingForms(canvas, { reduced, manual: filmOnly });
   if (!forms) return;
   forms.setPaused(state.paused);
+  /* With motion, the form travels with the reader: it docks in each [data-form] place in turn
+     (a shape number) and rests by the page edge through the sections marked "rest". Reduced motion
+     and the film recorder keep it glued to whichever stage is on screen. */
+  if (!reduced && !filmOnly && forms.setPath) {
+    forms.setPath($$('[data-form]').map(el => el.dataset.form === 'rest' ? { el, rest: true } : { el, n: +el.dataset.form }));
+    paintLens();
+    return;
+  }
   const seen = new Map();
   const choose = () => {
     let best = null, most = 0;

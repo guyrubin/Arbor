@@ -1,8 +1,11 @@
-/* Arbor Living Forms, live. One sculpture, four shapes: the four brand
+/* Arbor Living Forms, live. One sculpture, eight shapes: the four brand
    ribbons and the coral orb are rebuilt every frame from blended control
-   points. The sculpture is glued to a "stage" element on the page, so it
-   scrolls with the section it belongs to and stops rendering when no stage
-   is on screen. No model files; geometry is generated here.
+   points. No model files; geometry is generated here.
+   Two ways to place it. setStage glues it to one "stage" element (reduced
+   motion and the film recorder use this). setPath gives it a journey: the
+   places on the page where it docks, in order, and the stretches where it
+   rests at the page edge; scrolling scrubs it from one to the next, so it
+   travels and reshapes with the reader and plays backwards on the way up.
    Version 3 sits on the light canvas: the pearl ribbon is a shade deeper so
    it reads against paper, and `manual` lets a recorder draw one frame for a
    given time (renderAt). */
@@ -18,6 +21,20 @@ const arc = (cx, cy, r, a0, a1, z0 = 0, z1 = z0, ry = 1) => Array.from({ length:
   return [cx + Math.cos(a) * r, cy + Math.sin(a) * r * ry, z0 + (z1 - z0) * t];
 });
 const R = (pts, tw, w, cup = 0.22) => ({ pts, tw, w, cup });
+/* one lane across the form: a wave in y, a wave in depth, so lanes pass over and under each other */
+const lane = (y0, amp, ph, z0, zAmp) => Array.from({ length: N }, (_, i) => {
+  const t = i / (N - 1), a = t * Math.PI * 2 + ph;
+  return [-2.6 + 5.2 * t, y0 + amp * Math.sin(a), z0 + zAmp * Math.cos(a)];
+});
+/* one strand of the resting column, turning around the vertical axis */
+const strand = (ph, r, z0) => Array.from({ length: N }, (_, i) => {
+  const t = i / (N - 1), a = t * Math.PI * 1.6 + ph;
+  return [Math.sin(a) * r, -2.5 + 5 * t, z0 + Math.cos(a) * r];
+});
+const helix = (r, y0, y1, a0, turns, cx = 0) => Array.from({ length: N }, (_, i) => {
+  const t = i / (N - 1), a = a0 + turns * Math.PI * 2 * t, rr = r * (1 - t * 0.35);
+  return [cx + Math.cos(a) * rr, y0 + (y1 - y0) * t, Math.sin(a) * rr];
+});
 
 /* Ribbon order: sapphire, pearl, mint, periwinkle. */
 /* The hero form stands behind the phone: a tall halo whose ribbons show at its sides. */
@@ -54,7 +71,40 @@ const SCENES = [
       R([[0.2, 2.0, -0.7], [1.2, 1.9, -0.6], [2.1, 1.4, -0.5], [2.7, 0.6, -0.4], [2.8, -0.2, -0.4], [2.5, -0.9, -0.4], [2.0, -1.4, -0.4]], [0.8, 0.9, 0.8], 0.3, 0.2),
     ], orb: [0, 0.05, 0.6, 0.56], lens: 0, glow: 1.5, box: [0.2, 0.1, 5.6, 4.3],
   },
+  { // 4 · beside "six parts": the ribbons gathered in one loose knot
+    rib: [
+      R([[-1.45, -1.2, 0], [-2.2, -0.55, 0.1], [-2.05, 0.4, 0.2], [-1.3, 1.0, 0.2], [-0.4, 1.25, 0.1], [0.4, 1.4, 0], [1.05, 1.6, -0.1]], [0.5, 0.85, 0.4], 0.62, 0.22),
+      R([[-1.5, -1.15, 0.2], [-0.9, -0.9, 0.5], [-0.2, -1.0, 0.6], [0.5, -1.12, 0.5], [1.1, -1.05, 0.3], [1.6, -0.9, 0.1], [2.0, -0.75, 0]], [1.15, 1.3, 1.2], 0.5, 0.2),
+      R([[-0.95, -0.8, 0.5], [-0.35, -1.02, 0.72], [0.3, -0.9, 0.62], [0.8, -0.45, 0.35], [1.3, -0.3, 0.18], [1.95, -0.05, 0.1], [2.6, 0.45, 0]], [1.0, 0.7, 0.85], 0.44, 0.3),
+      R([[0.3, -0.98, 0.05], [0.9, -0.92, 0.05], [1.4, -0.72, 0], [1.9, -0.42, 0], [2.3, -0.12, -0.1], [2.6, 0.14, -0.1], [2.8, 0.3, -0.1]], [1.0, 0.9, 0.8], 0.38, 0.22),
+    ], orb: [-0.3, -0.3, 0.42, 0.38], lens: 0, glow: 0.9, box: [0.3, 0.2, 5.8, 3.6],
+  },
+  { // 5 · the family plan: lanes that weave past each other, a week shared out
+    rib: [
+      R(lane(0.62, 0.36, 0.0, 0.0, 0.42), [0.25, 1.35, 0.25], 0.36, 0.18),
+      R(lane(0.0, 0.36, 2.1, 0.0, 0.42), [1.35, 0.35, 1.35], 0.32, 0.18),
+      R(lane(-0.62, 0.36, 4.2, 0.0, 0.42), [0.35, 1.2, 0.35], 0.32, 0.22),
+      R(lane(0.05, 0.95, 1.0, -0.55, 0.18), [1.0, 1.05, 1.0], 0.18, 0.2),
+    ], orb: [0.95, 0.12, 0.28, 0.3], lens: 0, glow: 0.8, box: [0, 0, 6.0, 2.9],
+  },
+  { // 6 · at rest by the page edge: a slender column of strands
+    rib: [
+      R(strand(0.0, 0.55, 0.0), [0.4, 1.2, 0.4], 0.42, 0.2),
+      R(strand(2.1, 0.5, 0.0), [1.2, 0.4, 1.2], 0.36, 0.2),
+      R(strand(4.2, 0.45, 0.0), [0.6, 1.0, 0.6], 0.32, 0.24),
+      R(strand(1.0, 0.78, -0.3), [1.0, 1.0, 1.0], 0.18, 0.2),
+    ], orb: [0.08, 1.95, 0.2, 0.26], lens: 0, glow: 0.6, box: [0, 0, 2.3, 5.6],
+  },
+  { // 7 · beside privacy: the ribbons wind up around the orb, keeping it
+    rib: [
+      R(helix(1.25, -1.45, -0.35, 4.4, 0.8), [0.9, 1.0, 0.8], 0.38, 0.2),
+      R(helix(0.98, -1.2, 0.7, 0, 1.1), [0.5, 0.7, 0.5], 0.38, 0.22),
+      R(helix(0.72, -1.0, 1.0, 3.1, 1.05), [0.5, 0.6, 0.5], 0.32, 0.22),
+      R(helix(0.5, -1.2, 0.3, 1.6, 0.9), [0.6, 0.7, 0.6], 0.3, 0.2),
+    ], orb: [0.1, 0.05, 0.1, 0.42], lens: 0, glow: 1.0, box: [0, -0.15, 3.4, 3.4],
+  },
 ];
+const REST = 6;
 
 const pack = scene => {
   const out = new Float32Array(STRIDE * 4 + 6);
@@ -120,8 +170,48 @@ export function mountLivingForms(canvas, { reduced = false, manual = false } = {
 
   const packed = SCENES.map(pack);
   const cur = new Float32Array(packed[0]);
+  const mix = new Float32Array(packed[0].length);
   const box = [...SCENES[0].box];
-  const state = { scene: 0, stage: null, shown: false, sel: -1, lit: new Set(), intro: reduced ? 1 : 0, px: 0, py: 0, tpx: 0, tpy: 0, w: 0, h: 0, visible: true, woke: performance.now(), paused: false, lost: false };
+  const state = { scene: 0, stage: null, path: null, shown: false, sel: -1, lit: new Set(), intro: reduced ? 1 : 0, px: 0, py: 0, tpx: 0, tpy: 0, w: 0, h: 0, visible: true, woke: performance.now(), paused: false, lost: false, alpha: 1, sy: scrollY, lean: 0 };
+
+  /* The journey. Each docking place is an element the form fits inside; each resting stretch is a
+     section where it waits small at the page edge (wide screens) or out of sight (narrow ones).
+     A reading line across the window (the middle, lowered near the end so the last place can be
+     reached) says which two points the reader is between and how far; the form blends their
+     shape, place and size by that fraction, holding still at each end for a moment so it settles. */
+  const journey = (vw, vh, u) => {
+    const rtl = document.documentElement.dir === 'rtl';
+    const fit = (r, bx) => { const s = Math.min(r.width * u / bx[2], r.height * u / bx[3]); return { x: (r.left + r.width / 2 - vw / 2) * u - bx[0] * s, y: (vh / 2 - r.top - r.height / 2) * u - bx[1] * s, s, al: 1 }; };
+    const rest = bx => {
+      const hp = Math.min(340, Math.max(220, vh * 0.38)), s = hp * u / bx[3], wp = bx[2] / bx[3] * hp;
+      const margin = (vw - Math.min(1180, vw - 80)) / 2, show = Math.min(wp * 0.62, Math.max(48, margin + 6));
+      const xp = rtl ? show - wp / 2 : vw - show + wp / 2;
+      return { x: (xp - vw / 2) * u - bx[0] * s, y: -bx[1] * s, s, al: vw > 1020 ? (margin >= 96 ? 0.8 : 0.5) : 0 };
+    };
+    const pts = [];
+    for (const it of state.path) {
+      const r = it.el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      if (it.rest) {
+        const a = r.top + vh * 0.3, b = r.bottom - vh * 0.3;
+        if (b - a > 40) pts.push({ c: a, n: REST }, { c: b, n: REST }); else pts.push({ c: (r.top + r.bottom) / 2, n: REST });
+      } else pts.push({ c: r.top + r.height / 2, n: it.n, r });
+    }
+    if (!pts.length) return null;
+    const left = document.documentElement.scrollHeight - (scrollY + vh);
+    const line = vh * (0.5 + 0.28 * clamp01(1 - left / (vh * 0.7)));
+    let i = 0, f = 0;
+    if (line > pts[0].c) {
+      if (line >= pts[pts.length - 1].c) i = pts.length - 1;
+      else { while (line >= pts[i + 1].c) i++; f = (line - pts[i].c) / Math.max(1, pts[i + 1].c - pts[i].c); }
+    }
+    const A = pts[i], B = pts[Math.min(pts.length - 1, i + 1)];
+    const g = smooth(clamp01((f - 0.12) / 0.76));
+    const pa = A.r ? fit(A.r, SCENES[A.n].box) : rest(SCENES[A.n].box);
+    const pb = B.r ? fit(B.r, SCENES[B.n].box) : rest(SCENES[B.n].box);
+    const m = (p, q) => p + (q - p) * g;
+    return { a: A.n, b: B.n, g, x: m(pa.x, pb.x), y: m(pa.y, pb.y), s: m(pa.s, pb.s), al: m(pa.al, pb.al), turn: A.n === B.n ? 0 : Math.sin(Math.PI * g) * 0.42 * (i % 2 ? -1 : 1) };
+  };
 
   const P = new THREE.Vector3(), Q = new THREE.Vector3(), T = new THREE.Vector3(), B = new THREE.Vector3(), Nn = new THREE.Vector3(), W = new THREE.Vector3(), Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
   const curveAt = (o, u, out) => {
@@ -176,18 +266,41 @@ export function mountLivingForms(canvas, { reduced = false, manual = false } = {
     const live = state.paused ? 0 : idle < 9 ? 1 : Math.max(0, 1 - (idle - 9) / 5);
     if (!reduced && !manual) time += dt * live;
     resize();
-    /* nothing to draw unless a stage is on screen */
-    const el = state.stage, r = el && el.getBoundingClientRect();
-    if (!r || !r.width || r.bottom < -60 || r.top > state.h + 60) {
-      if (state.shown) { canvas.style.visibility = 'hidden'; state.shown = false; }
-      return;
+    const vw = state.w, vh = state.h;
+    /* world units per pixel at the z = 0 plane */
+    const u = 2 * camera.position.z * Math.tan(camera.fov * Math.PI / 360) / vh;
+    const hide = () => { if (state.shown) { canvas.style.visibility = 'hidden'; state.shown = false; } };
+    let want, X, Yw, S, alpha = 1, turn = 0;
+    if (state.path) {
+      /* the journey: where the scroll is between two docking places, and the form between them */
+      const j = journey(vw, vh, u);
+      alpha = j ? j.al : 0;
+      if (!j || alpha < 0.02) { hide(); return; }
+      const A = packed[j.a], Bk = packed[j.b];
+      for (let n = 0; n < mix.length; n++) mix[n] = A[n] + (Bk[n] - A[n]) * j.g;
+      want = mix; X = j.x; Yw = j.y; S = j.s; turn = j.turn;
+    } else {
+      /* glued to one stage: nothing to draw unless it is on screen */
+      const el = state.stage, r = el && el.getBoundingClientRect();
+      if (!r || !r.width || r.bottom < -60 || r.top > vh + 60) { hide(); return; }
+      want = packed[state.scene];
+      const wantBox = SCENES[state.scene].box, kb = reduced || manual ? 1 : 1 - Math.exp(-dt * 3.4);
+      for (let n = 0; n < 4; n++) box[n] += (wantBox[n] - box[n]) * kb;
+      S = Math.min(r.width * u / box[2], r.height * u / box[3]);
+      X = (r.left + r.width / 2 - vw / 2) * u - box[0] * S;
+      Yw = (vh / 2 - r.top - r.height / 2) * u - box[1] * S;
     }
-    const want = packed[state.scene], wantBox = SCENES[state.scene].box;
-    const k = reduced || manual ? 1 : 1 - Math.exp(-dt * 3.4);
     if (!state.shown) { canvas.style.visibility = 'visible'; state.shown = true; }
+    if (Math.abs(alpha - state.alpha) > 0.005) { state.alpha = alpha; canvas.style.opacity = alpha > 0.995 ? '' : alpha.toFixed(3); }
+    /* the shape follows the scroll with a short ease, so a morph feels poured, not stepped */
+    const k = reduced || manual ? 1 : 1 - Math.exp(-dt * (state.path ? 6.5 : 3.4));
     for (let n = 0; n < cur.length; n++) cur[n] += (want[n] - cur[n]) * k;
-    for (let n = 0; n < 4; n++) box[n] += (wantBox[n] - box[n]) * k;
-    state.px += (state.tpx - state.px) * k; state.py += (state.tpy - state.py) * k;
+    const kp = reduced || manual ? 1 : 1 - Math.exp(-dt * 3.4);
+    state.px += (state.tpx - state.px) * kp; state.py += (state.tpy - state.py) * kp;
+    /* a slight lean with the scroll speed, gone as soon as the page stops */
+    const sy = scrollY, vel = dt > 0 ? (sy - state.sy) / dt : 0; state.sy = sy;
+    const lean = reduced || manual || !state.path ? 0 : Math.max(-1, Math.min(1, vel / 2600)) * 0.08;
+    state.lean += (lean - state.lean) * Math.min(1, dt * 5);
     if (manual) state.intro = Math.min(1, 0.55 + time / 2.4); else if (state.intro < 1) state.intro = Math.min(1, state.intro + dt / 2.4);
     const grow = 1 - Math.pow(1 - state.intro, 4);
 
@@ -207,13 +320,12 @@ export function mountLivingForms(canvas, { reduced = false, manual = false } = {
       m.visible = m.scale.x > 0.004;
     });
 
-    /* glue the form to its stage: world units per pixel at the z = 0 plane */
-    const d = camera.position.z, H = 2 * d * Math.tan(camera.fov * Math.PI / 360), u = H / state.h;
-    const sc = Math.min(r.width * u / box[2], r.height * u / box[3]);
-    root.scale.setScalar(sc * (0.72 + 0.28 * grow));
-    root.position.set((r.left + r.width / 2 - state.w / 2) * u - box[0] * sc, (state.h / 2 - r.top - r.height / 2) * u - box[1] * sc, 0);
-    root.rotation.y = state.px * 0.22 + (reduced ? 0 : Math.sin(time * 0.31) * 0.09) + (1 - grow) * -0.9;
-    root.rotation.x = -state.py * 0.12 + (reduced ? 0 : Math.sin(time * 0.23) * 0.03);
+    root.scale.setScalar(S * (0.72 + 0.28 * grow));
+    root.position.set(X, Yw, 0);
+    /* between two places the form turns a little, so its depth shows; docked, it faces the reader */
+    root.rotation.y = state.px * 0.22 + (reduced ? 0 : Math.sin(time * 0.31) * 0.09) + turn + (1 - grow) * -0.9;
+    root.rotation.x = -state.py * 0.12 + (reduced ? 0 : Math.sin(time * 0.23) * 0.03) + state.lean;
+    root.rotation.z = state.lean * -0.5;
     renderer.render(scene, camera);
     if (!reduced && !manual && state.visible && (live > 0 || idle < 16)) raf = requestAnimationFrame(frame);
   };
@@ -231,6 +343,9 @@ export function mountLivingForms(canvas, { reduced = false, manual = false } = {
   return {
     /* el: the element the form should sit in (null hides it); n: which shape */
     setStage(el, n = 0) { state.stage = el; state.scene = Math.min(SCENES.length - 1, Math.max(0, n)); wake(); },
+    /* list: [{ el, n }] to dock inside el with shape n, or [{ el, rest: true }] to rest by the edge
+       while el is read; in page order. An empty list goes back to the stage. */
+    setPath(list) { state.path = list && list.length ? list : null; wake(); },
     setLens(n) { state.sel = n; wake(); },
     setLit(list) { state.lit = new Set(list); wake(); },
     /* the film's pause control also holds the form still */
