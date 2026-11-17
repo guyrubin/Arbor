@@ -130,19 +130,22 @@ export default function RoverDelivery() {
     later(() => land(level, run), lead + STEP_MS * run.path.length);
   };
 
-  const level = levelFor(challenge, round), cells = Array.from({ length: level.size * level.size }, (_, cell) => cell);
+  const level = levelFor(challenge, round), startTurns = initialTurns(level), cells = Array.from({ length: level.size * level.size }, (_, cell) => cell);
   // Short beats that the tones and the board carry: the voice waits for the next prompt.
   const busy = phase === 'drive' || phase === 'arrived';
   const cue = phase === 'done' ? w.finishTitle : phase === 'arrived' ? w.arrived : phase === 'drive' ? w.drive : phase === 'parked' ? w.parked : parks > 0 ? w.replan : w.plan;
   const narration = status || cue;
-  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${runs}:${changes}`, enabled: !busy && phase !== 'done' });
+  // B-GAME-46: the arrival is said aloud too; only the drive itself is left to the tones.
+  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${runs}:${changes}`, enabled: phase !== 'drive' && phase !== 'done' });
+  // B-GAME-46: on the very first floor, before anything is touched, the sign to turn pulses so a child sees that signs turn.
+  const shownHint: RoverHint = hint ?? (round === 0 && phase === 'ready' && runs === 0 && changes === 0 ? roverHint(level, turns.map(headingOf), folded) : null);
 
   return <GameShell fullBleed autoNarrate={false} worldId="river-rescue" title={w.title} instruction={w.instruction} hearIt={narration}>
     {phase === 'done'
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--rover" data-adventure="rover" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={levelsDone} total={ROVER_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${runs}:${busy ? phase : 'plan'}`} onHear={guide.replay} muted={guide.muted || busy}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${runs}:${busy ? phase : 'plan'}`} onHear={guide.replay} muted={guide.muted || busy} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage rover-stage" data-phase={phase} data-size={level.size}>
           <BopCheer beat={phase === 'arrived' ? levelsDone : null} big={phase === 'arrived' && levelsDone >= ROVER_ROUNDS} />
           <BopScene scene="scene-floor" />
@@ -151,27 +154,31 @@ export default function RoverDelivery() {
             {cells.map(cell => {
               const sign = level.signs.findIndex(item => item.cell === cell), driven = trail.includes(cell);
               if (sign >= 0) {
-                const heading = headingOf(turns[sign]), hinted = hint === sign && !busy && heading !== level.signs[sign].fix;
+                const heading = headingOf(turns[sign]), hinted = shownHint === sign && !busy && heading !== level.signs[sign].fix;
                 return <button type="button" key={cell} className="bop-piece rover-cell rover-sign" data-cell={cell} data-sign={sign} data-heading={heading} data-trail={driven} data-hint={hinted}
                   disabled={busy} aria-disabled={busy} aria-label={`${roverLine(w.sign, w.directions[heading])}${hinted ? ` ${w.hintHere}` : ''}`} onClick={() => turn(sign)}>
                   <span className="rover-spin" style={{ '--rover-turn': turns[sign] } as CSSProperties}><BopSprite name="rover-sign" /></span>
+                  {/* B-GAME-45: a turned sign answers with a swirl of light. */}
+                  {turns[sign] !== startTurns[sign] && <i className="rover-swirl" key={turns[sign]} aria-hidden="true" />}
                 </button>;
               }
               if (cell === level.bloom) {
-                const hinted = hint === 'bloom' && !busy && !folded;
+                const hinted = shownHint === 'bloom' && !busy && !folded;
                 return <button type="button" key={cell} className="bop-piece rover-cell rover-bloom" data-cell={cell} data-folded={folded} data-trail={driven} data-hint={hinted}
                   disabled={busy} aria-disabled={busy} aria-pressed={folded} aria-label={`${folded ? w.bloomFolded : w.bloomOpen}${hinted ? ` ${w.hintHere}` : ''}`} onClick={fold}>
                   <BopSprite name={folded ? 'rover-bloom-folded' : 'rover-bloom-open'} />
                 </button>;
               }
               if (level.planters.includes(cell)) return <span key={cell} className="rover-cell rover-planter" data-cell={cell} role="img" aria-label={w.planter}><BopSprite name="rover-planter" /></span>;
-              if (cell === level.goal) return <span key={cell} className="rover-cell rover-goal" data-cell={cell} data-trail={driven} role="img" aria-label={w.goal}><BopSprite name="rover-rug" flat /></span>;
+              if (cell === level.goal) return <span key={cell} className="rover-cell rover-goal" data-cell={cell} data-trail={driven} data-arrived={phase === 'arrived'} role="img" aria-label={w.goal}><BopSprite name="rover-rug" flat /></span>;
               if (cell === level.start) return <span key={cell} className="rover-cell rover-start" data-cell={cell} data-trail={driven} role="img" aria-label={w.startMat}><i className="rover-mat" aria-hidden="true" /></span>;
               return <span key={cell} className="rover-cell" data-cell={cell} data-trail={driven} aria-hidden="true" />;
             })}
             <span className="rover-car" data-at={car.cell} data-heading={headingOf(car.turn)} data-parked={phase === 'parked'} role="img" aria-label={roverLine(w.rover, w.directions[headingOf(car.turn)])} style={placed(car.cell, level.size, car.turn)}>
               <span className="rover-spin"><BopSprite name="rover-car" /></span>
             </span>
+            {/* B-GAME-45: a puff of dust where the rover rolls onto each tile. */}
+            {phase === 'drive' && <span className="rover-puff" key={`${runs}:${trail.length}`} aria-hidden="true" style={placed(car.cell, level.size, 0)} />}
             {/* Pep waits on the rug, in front of the rover when it pulls up. */}
             <span className="rover-pep" aria-hidden="true" style={placed(level.goal, level.size, 0)}>
               <BopFriend friend="pep" mood={phase === 'arrived' ? 'happy' : 'idle'} size={level.size === 3 ? 44 : 34} />

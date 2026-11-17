@@ -39,13 +39,13 @@
    burst from its middle; a won game adds a shower of petals. Tokens only,
    decoration only, and gone with motion off or forced colours. */
 .bop-cheer { position: absolute; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; }
-.bop-cheer__ring { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 120px; block-size: 120px; margin: -60px; border-radius: 50%; border: 6px solid var(--bop-amber, var(--studio-signal)); box-shadow: 0 0 24px color-mix(in srgb, var(--bop-amber, var(--studio-signal)) 60%, transparent); opacity: 0; animation: bop-cheer-ring .9s var(--studio-ease-soft); }
-.bop-cheer__spark { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 12px; block-size: 12px; margin: -6px; border-radius: 50%; background: var(--bop-amber, var(--studio-signal)); opacity: 0; animation: bop-cheer-spark .85s var(--studio-ease-soft); }
+.bop-cheer__ring { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 120px; block-size: 120px; margin: -60px; border-radius: 50%; border: 6px solid var(--bop-amber, var(--studio-signal)); opacity: 0; animation: bop-cheer-ring .9s var(--studio-ease-soft); }
+.bop-cheer__spark { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 12px; block-size: 12px; margin: -6px; border-radius: 50%; background: var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-spark .85s var(--studio-ease-soft); }
 .bop-cheer__spark:nth-child(3n) { background: var(--bop-teal, var(--studio-teal)); }
-.bop-cheer__spark:nth-child(3n + 1) { background: var(--arbor-on-accent); box-shadow: 0 0 6px var(--bop-amber, var(--studio-signal)); }
-.bop-cheer__petal { position: absolute; inset-block-start: -6%; inset-inline-start: calc(3% + var(--petal) * 6%); inline-size: 14px; block-size: 20px; border-radius: 80% 10% 80% 10%; background: var(--bop-amber, var(--studio-signal)); opacity: 0; animation: bop-cheer-petal 2.6s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 60ms) forwards; }
+.bop-cheer__spark:nth-child(3n + 1) { background: var(--arbor-on-accent); box-shadow: 0 0 0 2px var(--bop-teal-ink, var(--studio-teal-ink)); }
+.bop-cheer__petal { position: absolute; inset-block-start: -6%; inset-inline-start: calc(3% + var(--petal) * 6%); inline-size: 14px; block-size: 20px; border-radius: 80% 10% 80% 10%; background: var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-petal 2.6s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 60ms) forwards; }
 .bop-cheer__petal:nth-child(3n) { background: var(--bop-teal, var(--studio-teal)); }
-.bop-cheer__petal:nth-child(3n + 1) { background: color-mix(in srgb, var(--bop-amber, var(--studio-signal)) 55%, var(--arbor-on-accent)); }
+.bop-cheer__petal:nth-child(3n + 1) { background: color-mix(in srgb, var(--bop-teal, var(--studio-teal)) 45%, var(--arbor-on-accent)); }
 .bop-cheer[data-big] .bop-cheer__ring { inline-size: 180px; block-size: 180px; margin: -90px; }
 
 @keyframes bop-cheer-ring { 0% { opacity: .95; scale: .3; } 100% { opacity: 0; scale: 2.4; } }

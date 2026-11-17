@@ -108,7 +108,7 @@ export default function FiveFriendSun() {
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--sun" data-adventure="sun" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={seated} total={FRIEND_TOTAL} /></div>
-        <AdventureHeading focusKey={`${phase}:${position}:${spin}:${fresh ?? -1}`} onHear={guide.replay} muted={guide.muted || hopping}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${phase}:${position}:${spin}:${fresh ?? -1}`} onHear={guide.replay} muted={guide.muted || hopping} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage sun-stage">
           <BopScene scene="scene-sun" />
           <div className="sun-board">

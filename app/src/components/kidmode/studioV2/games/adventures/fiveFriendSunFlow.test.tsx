@@ -448,7 +448,7 @@ describe('Five-Friend Sun words', () => {
   it('keeps the tile words and the closing words of the brief', () => {
     expect(en.title).toBe('Five-Friend Sun'); expect(en.description).toBe('Count on. Make room.');
     expect(en.instruction).toBe('Hop along the number path and bring every friend into the circle.');
-    expect(en.finishTitle).toBe('Everyone is here!'); expect(en.transfer).toBe('Try it for real: count your steps from the door to your bed.');
+    expect(en.finishTitle).toBe('Everyone is here!'); expect(en.transfer).toBe('Away from the screen: count your steps from the door to your bed.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });
   it('writes the lines of a turn', () => {
