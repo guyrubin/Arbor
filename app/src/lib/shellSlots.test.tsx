@@ -8,7 +8,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetShellSlotsForTest, setShellSlots, subscribeShellSlots, useShellSlots } from "./shellSlots";
-import { ShellRowEndView } from "../components/layout/Shell";
+import { ShellRowEndView } from "../components/layout/ShellRowEnd";
 
 const MON_16_NOV_1740 = new Date(2026, 10, 16, 17, 40);
 
