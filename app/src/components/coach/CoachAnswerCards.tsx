@@ -9,7 +9,8 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import type { KeepableField } from "../../lib/captureProposals";
 import "./coachReport.css";
 import { TrustLink } from "../trust/TrustLink";
-import BasedOnReceipt, { type BasedOnModel } from "../trust/BasedOnReceipt";
+import type { BasedOnModel } from "../trust/BasedOnReceipt";
+import WhatArborUsed from "./WhatArborUsed";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
 import { toDomains, domainLabel } from "../../lib/domains/registry";
@@ -407,7 +408,7 @@ export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
   todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance, basedOn, onOpenFact,
-  onPrepareVisit, goDeeperReads, onRead,
+  onPrepareVisit, goDeeperReads, onRead, childName,
 }: {
   contract: CoachContract;
   /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
@@ -416,6 +417,8 @@ export default function CoachAnswerCards({
   /** Settled-answer receipt: approved fact names, profile field names, weekly counts. Absent → no receipt. */
   basedOn?: BasedOnModel;
   onOpenFact?: (memoryId: string) => void;
+  /** V77: the child's first name for the "What Arbor used" child line. */
+  childName?: string;
   /** F-TALK-2: the visit handoff ("Build a summary") left the row under the
    *  Talk thread for the answer's actions, next to Teacher note. */
   onPrepareVisit?: () => void;
@@ -580,6 +583,9 @@ export default function CoachAnswerCards({
           <ul>{escalation.map((e, i) => <li key={i}>{e}</li>)}</ul>
         </section>
       )}
+
+      {/* V77 (N-Talk): what this answer was built from, read-only, ahead of the draft. */}
+      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} />}
 
       {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
@@ -779,7 +785,6 @@ export default function CoachAnswerCards({
       {!door && sourcesPanel}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
-        {basedOn && onOpenFact && !prominentHelp && <BasedOnReceipt model={basedOn} onOpenFact={onOpenFact} />}
         {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
             answer led by the urgent-help panel carries no "you decide" line. */}
         {provenance && !prominentHelp && (

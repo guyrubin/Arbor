@@ -78,10 +78,11 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
-import { DsRoot, Guide, Route, RouteSection, Token } from "../../design/primitives";
+import { DsRoot, Guide, Route, RouteSection, scrollToSection, Token } from "../../design/primitives";
 import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
 import "../moments/mychild.css";
 import { useComposition } from "../../design/useComposition";
+import { useShortViewport } from "../together/useShortViewport";
 import { ChainStrip } from "../together/ChainStrip";
 import { TOGETHER_COPY } from "../together/togetherCopy";
 import StoriesPlanBook from "../together/StoriesPlanBook";
@@ -207,6 +208,13 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // one stamp); with no hero, the cover's FIRST act is the in-place hero row in
   // its art band, Play second — and the shell drops "starring".
   const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
+  // An evening entry that asks for "today" lands on A story of your own (V77: its own section).
+  useEffect(() => {
+    if (tonightMode !== "today") return;
+    const id = window.setTimeout(() => scrollToSection("own"), 120);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
@@ -215,6 +223,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const { toast } = useToast();
   // v10.1: Stories' composition and its words.
   const composition = useComposition();
+  // Under the boards' height the band goes compact ("Read it together" above the Ask bar).
+  const shortViewport = useShortViewport();
+  // A phone under the boards' height: the cover's spacing tightens too (SHIP-FIX: Read it together above the Ask bar).
+  const phoneShort = shortViewport && composition === "phone";
   const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
@@ -943,10 +955,31 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
       ) : null;
     }
+    // B-PLAY-14: "From today" · "A hero adventure" — the two-option switch. V77: it sits in
+    // the header band, where the board draws it (above the figure); "From today" takes you to
+    // A story of your own (the shared bedtime body, generate-and-discard).
+    const tonightSwitch = (
+      <div role="group" aria-label={t("elev.stories.tonight.mode.label")} data-testid="stories-tonight-mode" className="inline-flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+        {(["today", "hero"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={tonightMode === m}
+            onClick={() => { setTonightMode(m); if (m === "today") scrollToSection("own"); }}
+            data-testid={`stories-tonight-mode-${m}`}
+            className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
+            style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
+          >
+            {m === "today" ? t("elev.stories.tonight.mode.today") : t("elev.stories.tonight.mode.hero")}
+          </button>
+        ))}
+      </div>
+    );
     // The chain strip (desk only): on a phone the cover already carries the note, the reason and Ask after (size pass).
     const storiesChain = (
       <ChainStrip
           composition={composition}
+          line={shortViewport}
           label={tCopy.chainLabel(name)}
           // The strip starts from what you noted; without a note it would only repeat the cover's title.
           nodes={!notedMoment ? [] : [
@@ -986,6 +1019,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           mini={composition === "phone"}
           stops={[
             { id: "tonight", title: tCopy.stopTonight, sub: tCopy.stopTonightSub },
+            { id: "own", title: tCopy.stopOwn, sub: tCopy.stopOwnSub },
             { id: "family", title: tCopy.stopRitual, sub: tCopy.stopRitualSub },
             { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
           ]}
@@ -993,11 +1027,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         <Route composition={composition}>
         <RouteSection id="tonight" n={1} on>
         {/* V77: the header band, as on Now and My child — the page's h1, the books figure and (desk) the chain. */}
-        <div className="scene now" style={{ padding: composition === "phone" ? "14px 14px 12px" : "22px 28px 18px", gap: composition === "phone" ? 10 : 16 }}>
+        <div className={shortViewport ? "scene now compact-band" : "scene now"} style={{ padding: composition === "phone" ? (shortViewport ? "10px 12px 8px" : "14px 14px 12px") : (shortViewport ? "16px 24px 14px" : "22px 28px 18px"), gap: shortViewport ? 6 : composition === "phone" ? 10 : 16 }}>
           <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
           <FrameHead
             phone={composition === "phone"}
             kicker={tCopy.storiesKicker}
+            switcher={composition === "desk" ? tonightSwitch : undefined}
             startHere={tCopy.startHere}
             title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
             figure={composition === "desk" && !showAllAges && displayStories.length > 0
@@ -1006,9 +1041,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           />
           {composition === "desk" && storiesChain}
         </div>
-        <div className={composition === "phone" ? "tg-stack" : "rowa"}>
+        <div className={composition === "phone" ? "tg-stack" : "rowa"} style={phoneShort ? { gap: 6, marginTop: -6 } : undefined}>
         <div className={composition === "phone" ? undefined : "stg"}>
-        <div className={composition === "phone" ? "space-y-3" : "mcst space-y-6"}>
+        <div className={composition === "phone" ? (phoneShort ? "space-y-2" : "space-y-3") : shortViewport ? "mcst space-y-3" : "mcst space-y-6"} style={composition === "desk" && shortViewport ? { padding: "14px 18px 12px", gap: 10 } : undefined}>
         {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue ("Starring" only once
             the child has a hero). V77: it is the header band's h1 above. */}
         {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
@@ -1019,24 +1054,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             the kid home in 02e04b42, reused verbatim) already picks ONE story
             per local day, so the kid banner and this cover name the same one. */}
         <section data-module="stories-tonight">
-          {/* B-PLAY-14: "From today" · "A hero adventure" — a two-option switch
-              on the cover. "From today" renders the shared bedtime body inline
-              (generate-and-discard, the same code as #/bedtime-stories). */}
-          <div role="group" aria-label={t("elev.stories.tonight.mode.label")} data-testid="stories-tonight-mode" className="inline-flex items-center gap-1 rounded-xl p-1 mb-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            {(["today", "hero"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={tonightMode === m}
-                onClick={() => setTonightMode(m)}
-                data-testid={`stories-tonight-mode-${m}`}
-                className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
-                style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
-              >
-                {m === "today" ? t("elev.stories.tonight.mode.today") : t("elev.stories.tonight.mode.hero")}
-              </button>
-            ))}
-          </div>
+          {/* Phone: the switch opens the stage card, as N-Stories-M draws it (desk: in the band). */}
+          {composition === "phone" && <div className={phoneShort ? "mb-1.5" : "mb-3"}>{tonightSwitch}</div>}
           {/* W2-SHELLPLAY critic r1: the cover is a card, not one 586 px
               button — the declared move is stamped on the ONE control that
               plays it. Phone: a 112 px art band (avatar only), title, the
@@ -1044,13 +1063,15 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               all inside 812 px. ≥1024: two columns, art at inline-start, the
               text column held to 60ch. The archetype essay lives in the reader
               (reflection beat), not on the cover. */}
-          {tonightMode === "today" ? <TonightFromToday /> : (
+          {/* V77: "From today" is its own section below (A story of your own, drawn
+              once); the switch takes you there and the cover stays tonight's story. */}
+          {(
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
             {/* SHIP-FIX (W2-SHELLPLAY r3 F1): below sm the art band is ONE row —
                 avatar at inline-start, the hero row beside it (100 px, was a
                 148 px column) — so Play clears the fixed bottom nav at 375. */}
             <div
-              className="flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2 px-3"
+              className={`flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full ${phoneShort ? "min-h-[56px] py-1" : "min-h-[96px] py-2"} sm:min-h-[168px] lg:h-full lg:min-h-[220px] px-3`}
               style={{ background: tonightStory ? STORY_PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
               {/* B-KID-87 (KB-29): the cover shows the BOOK — its own cover in
@@ -1069,10 +1090,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                     decoding="async"
                     fetchPriority="high"
                     data-testid="stories-tonight-book-cover"
-                    className="block w-[72px] sm:w-[132px] lg:w-[200px] aspect-[3/4] rounded-xl object-cover"
+                    className={`block ${phoneShort ? "w-[48px]" : "w-[72px]"} sm:w-[132px] lg:w-[200px] aspect-[3/4] rounded-xl object-cover`}
                     style={{ objectPosition: tonightCover.objectPosition, border: "1px solid var(--arbor-rule)" }}
                   />
-                ) : <HeroAvatar size={84} ring animate={false} />}
+                ) : <HeroAvatar size={phoneShort ? 56 : 84} ring animate={false} />}
               </span>
               {/* W2-SHELLPLAY critic r2: hero-first is ONE quiet 44 px text row
                   inside the art band (was a kid-register PlayPanel/PlayButton
@@ -1123,7 +1144,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   language. A row with no text in that language is not drawn
                   (never English in the Hebrew UI). */}
               {(tonightBuilds || tonightAskAfter) && (
-                <dl data-testid="stories-tonight-insight" className="mt-3 rounded-[14px] p-4 space-y-1.5 text-[13px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <dl data-testid="stories-tonight-insight" className={phoneShort ? "mt-2 rounded-[14px] p-3 space-y-1 text-[13px]" : "mt-3 rounded-[14px] p-4 space-y-1.5 text-[13px]"} style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                   {tonightBuilds && (
                     <div className="flex gap-2">
                       <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.builds")} ·</dt>
@@ -1199,7 +1220,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               phone={composition === "phone"}
               steps={[
                 { drawing: Draw.cards(), label: tCopy.stopTonight },
-                { drawing: Draw.list(), label: tCopy.stopRitual },
+                { drawing: Draw.list(), label: tCopy.stopOwn },
                 { drawing: Draw.pick(6), label: tCopy.stopPictures },
               ]}
               keyItems={[
@@ -1211,10 +1232,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
         </div>
         </RouteSection>
-        <RouteSection id="family" n={2}>
+        {/* V77: A story of your own (the bedtime story from a moment you kept), where the board draws it. */}
+        <RouteSection id="own" n={2} aria-labelledby="stories-own-title">
+          <section className="vt" data-testid="stories-own" style={{ borderRadius: 18, gap: 10, padding: composition === "phone" ? "12px 12px 14px" : "16px 20px" }}>
+            <div className="line" style={{ gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              <h2 className="kicker" id="stories-own-title" style={{ margin: 0 }}>{tCopy.stopOwn}</h2>
+              <span className="small">{tCopy.stopOwnSub}</span>
+            </div>
+            <TonightFromToday />
+          </section>
+        </RouteSection>
+        <RouteSection id="family" n={3}>
           <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
         </RouteSection>
-        <RouteSection id="pictures" n={3}>
+        <RouteSection id="pictures" n={4}>
         <div className="space-y-6">
           <React.Suspense fallback={null}><EmbeddedComics embedded /></React.Suspense>
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE

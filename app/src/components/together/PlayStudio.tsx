@@ -19,6 +19,11 @@ import Icon from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import type { Composition } from "../../design/useComposition";
+import { Token } from "../../design/primitives";
+import { useObservations } from "../../hooks/useObservations";
+import { recapWeekStartMs } from "../../hooks/useWeeklyRecap";
+import { KID_ORIGINS } from "../../lib/weekGlance";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { TOGETHER_COPY } from "./togetherCopy";
 import "../companion/companionExperience.css";
 import "./together.css";
@@ -255,5 +260,49 @@ export function PlayPreview({ studio }: { studio: PlayStudio }) {
       </div>}
       {studio.saveError && <p role="alert" className="companion-caption">{t("companion.together-view.the-moment-wasn-t-saved-please-try-again")}</p>}
     </PreviewSurface>
+  );
+}
+
+/**
+ * What <name> did there: the Kids Studio sessions this week and the latest day,
+ * from the same observations Weekly counts as Kids Studio (KID_ORIGINS). Counts
+ * of what was done, never how well; with none this week, the board's empty line.
+ */
+export function PlayDidThere({ composition }: { composition: Composition }) {
+  const { childProfile } = useArbor();
+  const { t, uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
+  const copy = TOGETHER_COPY[lang];
+  const name = childProfile.name?.split(" ")[0] || t("companion.together-view.your-child");
+  const observations = useObservations();
+  const now = new Date();
+  const weekStart = recapWeekStartMs(now);
+  const kidAt = observations
+    .filter((o) => KID_ORIGINS.has(o.origin))
+    .map((o) => Date.parse(o.at))
+    .filter((ms) => Number.isFinite(ms) && ms <= now.getTime());
+  const thisWeek = kidAt.filter((ms) => ms >= weekStart).length;
+  const latest = kidAt.length > 0 ? Math.max(...kidAt) : null;
+  const phone = composition === "phone";
+  return (
+    <section className="vt pl-game" data-testid="play-did-there" aria-labelledby="play-did-title" style={{ borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 20px" }}>
+      <div className={phone ? "tg-stack" : "line between"} style={{ gap: phone ? 8 : 20, alignItems: phone ? undefined : "center" }}>
+        <div className="tg-stack" style={{ gap: 6, minWidth: 0 }}>
+          <h2 className="pl-k" id="play-did-title" style={{ margin: 0 }}><span className="pl-ico"><Icon name="check" size={17} /></span>{copy.didThere(name)}</h2>
+          <p className="pl-p" dir="auto">
+            {thisWeek === 0 && copy.didNone}
+            {latest !== null && <>{thisWeek === 0 ? " " : ""}{copy.didLatest(fmtDayV10(latest, lang, now))}</>}
+          </p>
+        </div>
+        {thisWeek > 0 && (
+          <div className="line" style={{ gap: 14, flexWrap: "wrap" }}>
+            <div className="fig md"><b className="arbor-num">{thisWeek}</b><span>{copy.didUnit(thisWeek)}</span></div>
+            <span className="pl-did-tok" aria-hidden="true">
+              {Array.from({ length: Math.min(thisWeek, 7) }, (_, i) => <Token key={i} kind="kid" size="sm" label="" />)}
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

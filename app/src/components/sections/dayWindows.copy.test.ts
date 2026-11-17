@@ -90,7 +90,9 @@ describe("TJB-14 — Day Windows (now Weekly report › Your day at a glance)", 
 
   it("the route lands on the stop: day-windows scrolls Weekly report to Your day", () => {
     expect(tab).toContain('if (activeTab !== "day-windows") return;');
-    expect(tab).toContain("scrollToSection(STOP.day)");
+    // The landing is measured: the stamped primary move ends fully above the
+    // screen or fully below the shell's top strip (weekly/v10/landing).
+    expect(tab).toContain("landOnStop(STOP.day, root)");
     expect(read("components/layout/Shell.tsx")).toContain('const DayWindowsPanel = lazy(() => import("../tabs/WeeklyTab"));');
   });
 
