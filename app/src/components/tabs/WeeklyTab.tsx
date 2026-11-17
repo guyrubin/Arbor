@@ -22,7 +22,7 @@ import { predictRhythm } from "../../rhythm/predict";
 import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
 import { ageYearsOf } from "../../lib/age/forChild";
 import { EMPTY_ART } from "../../lib/parentArt";
-import { DsRoot, Fig, Guide, LivingForm, Route, RouteSection, Scene, StartHere, scrollToSection, type GuideStop } from "../../design/primitives";
+import { DsRoot, Fig, Guide, LivingForm, Route, RouteSection, Scene, StartHere, type GuideStop } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import QuickLogModal from "../overview/QuickLogModal";
 import { weeklyChipIds, isEmptyCurrentWeek, reportWeekBounds } from "../weekly/weeklySelection";
@@ -32,6 +32,7 @@ import WhatHelped from "../weekly/v10/WhatHelped";
 import CarryNextWeek from "../weekly/v10/CarryNextWeek";
 import YourDay from "../weekly/v10/YourDay";
 import WeekReadGuide from "../weekly/v10/WeekReadGuide";
+import { landOnStop } from "../weekly/v10/landing";
 import { weeklyCopy } from "../weekly/v10/weeklyCopy";
 import InviteCard from "../referral/InviteCard";
 import "../weekly/v10/weeklyV10.css";
@@ -207,10 +208,12 @@ export default function WeeklyTab() {
   }, [shownDigestWeek, recap.recapUnopened]);
 
   // `day-windows` folds into this page: land on "Your day at a glance".
+  //   The landing is measured (weekly/v10/landing): the stamped primary move
+  //   ends fully above the screen or fully below the shell's top strip.
   useEffect(() => {
     if (activeTab !== "day-windows") return;
-    const id = window.setTimeout(() => scrollToSection(STOP.day), 120);
-    return () => window.clearTimeout(id);
+    const root = document.querySelector<HTMLElement>('[data-testid="weekly-v10"]');
+    return root ? landOnStop(STOP.day, root) : undefined;
   }, [activeTab]);
 
   const carry = shownDigestWeek && selected?.digest ? selected.digest.tryThisWeek.trim() : "";
