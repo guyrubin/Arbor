@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import type { DomainId } from "../../lib/domains/registry";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 import { tGCare } from "../../lib/growthCareText";
 import { milestoneText } from "../../lib/milestoneData";
 import type { ObserveStatus } from "../../lib/milestones/observe";
@@ -80,6 +80,33 @@ export function shelfNeighbours(m: Milestone, shelfItems: readonly Milestone[]):
   };
 }
 
+/**
+ * V77 "Earlier and later" (reading only): the production age line, then the
+ * nearest earlier and later skill on the same shelf, each with "by <age>".
+ * Nothing when none of the three exists.
+ */
+export function EarlierLater({ milestone: m, milestones, gender = null }: { milestone: Milestone; milestones: readonly Milestone[]; gender?: string | null }) {
+  const { t, uiLang } = useLanguage();
+  const v10Copy = milestonesV10Copy(uiLang);
+  const shelf = shelfOfMilestone(m);
+  const items = useMemo(() => (shelf ? groupMilestonesByShelf([...milestones])[shelf] : []), [milestones, shelf]);
+  const { earlier, later } = shelfNeighbours(m, items);
+  const age = milestoneAgeLine(m, t);
+  if (!earlier && !later && !age) return null;
+  const col = (label: string, n: Milestone | null) => {
+    if (!n) return null;
+    const by = bandLabel(n.ageMonths, t);
+    return <div><dt>{label}</dt><dd><span dir="auto">{milestoneText(n, "title", t, { gender })}</span>{by && <span className="area-detail-by">{v10Copy.byAge.replace("{age}", by)}</span>}</dd></div>;
+  };
+  return (
+    <details className="area-detail-around" data-testid="area-detail-around">
+      <summary><span>{v10Copy.earlierLater}</span><Icon name="expand_more" size={18} /></summary>
+      {age && <p className="area-detail-age">{age}</p>}
+      {(earlier || later) && <dl className="area-detail-cols">{col(v10Copy.earlier, earlier)}{col(v10Copy.later, later)}</dl>}
+    </details>
+  );
+}
+
 export interface AreaWatch {
   milestoneId: string;
   /** The saved re-check date from the Development Check, if any. */
@@ -142,6 +169,8 @@ export default function AreaRowDetail({
   const isSeen = (m: Milestone) => m.observationStatus === "yes" || (!m.observationStatus && m.checked === true);
   const shelves = shelvesOfDomain(domain);
   const watched = watch ? shelves.flatMap((shelf) => byShelf[shelf]).find((m) => m.id === watch.milestoneId) ?? null : null;
+  // V77: an area with nothing marked Seen yet asks "Mark what you have seen".
+  const areaSeen = shelves.some((shelf) => byShelf[shelf].some(isSeen));
   const sections = shelves.map((shelf) => {
     const bands = shelfBands(byShelf[shelf], currentBandMonths);
     const pick = (keep: (b: (typeof bands)[number]) => boolean) =>
@@ -198,22 +227,7 @@ export default function AreaRowDetail({
         disabled={pending !== null}
         onAnswer={(status) => answer(m, status)}
       />
-      {v10 && (() => {
-        const shelf = shelfOfMilestone(m);
-        const { earlier, later } = shelfNeighbours(m, shelf ? byShelf[shelf] : []);
-        const age = milestoneAgeLine(m, t);
-        if (!earlier && !later && !age) return null;
-        const col = (label: string, n: Milestone | null) => n ? (
-          <div><dt>{label}</dt><dd><span dir="auto">{title(n)}</span>{bandLabel(n.ageMonths, t) && <span className="area-detail-by">{v10Copy.byAge.replace("{age}", bandLabel(n.ageMonths, t)!)}</span>}</dd></div>
-        ) : null;
-        return (
-          <details className="area-detail-around" data-testid="area-detail-around">
-            <summary><span>{v10Copy.earlierLater}</span><Icon name="expand_more" size={18} /></summary>
-            {age && <p className="area-detail-age">{age}</p>}
-            {(earlier || later) && <dl className="area-detail-cols">{col(v10Copy.earlier, earlier)}{col(v10Copy.later, later)}</dl>}
-          </details>
-        );
-      })()}
+      {v10 && <EarlierLater milestone={m} milestones={milestones} gender={gender} />}
       {pending === m.id && <p role="status" className="notice-object-note" data-testid="area-detail-saving">{noticeCopy.saving}</p>}
       {written?.id === m.id && (written.saved
         ? confirmed && <Receipt testId="area-detail-saved" size="sm" className="mt-1">{t("companion.devMap.saved")}</Receipt>
@@ -268,7 +282,7 @@ export default function AreaRowDetail({
           ))}
           <li className="area-detail-watch-meta">
             {watch?.recheckDueAt && (
-              <p className="area-detail-recheck" data-testid="area-detail-recheck">{t("elev.growth.recheck.date", { date: fmtDay(watch.recheckDueAt, uiLang) })}</p>
+              <p className="area-detail-recheck" data-testid="area-detail-recheck">{t("elev.growth.recheck.date", { date: fmtDayV10(watch.recheckDueAt, uiLang) })}</p>
             )}
             <button type="button" className="area-detail-text" data-testid="area-detail-unwatch" onClick={watch?.onStop}>
               <Icon name="visibility_off" size={16} />
@@ -292,7 +306,7 @@ export default function AreaRowDetail({
           {shown.length > 1 && <h3>{shelfLabel(shelf, t)}</h3>}
           {now.length > 0 && (
             <>
-              <p className="area-detail-band">{v10 ? v10Copy.nextToNotice : t("ms.currentBand")}</p>
+              <p className="area-detail-band">{v10 ? (areaSeen ? v10Copy.nextToNotice : v10Copy.markSeen) : t("ms.currentBand")}</p>
               <ul className="area-detail-skills">{now.map((m) => skill(m))}</ul>
             </>
           )}

@@ -38,7 +38,7 @@ import AreaTimeline, { daysBetween, timelineCalendar } from "./AreaTimeline";
 import { DOMAIN_IDS, domainName } from "../../lib/domains/registry";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { translate } from "../../lib/i18n";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { ALL_MILESTONES } from "../../lib/milestoneData";
 import { groupMilestonesByShelf } from "../../lib/milestones/shelfMap";
 import { toObservations } from "../../lib/observations";
@@ -80,7 +80,8 @@ describe("v10.1 — DevelopmentMap, the index of eight areas", () => {
       const ter = terOf(html, d);
       expect(ter).toContain(`>${DOMAIN_ICONS[d]}</span>`);
       expect(ter).toContain(esc(domainName(d, (key: string) => translate(lang, key))));
-      expect(ter).toContain(esc(translate(lang, "companion.devMap.none")));
+      expect(ter).toContain(esc(milestonesV10Copy(lang).nothingYet));
+      expect(ter).not.toContain(esc(translate(lang, "companion.devMap.none")));
     }
     // V77: one hint under the tiles, the board's sentence (not production's two lines).
     expect(html).toContain(esc(milestonesV10Copy(lang).tilesHint));
@@ -297,15 +298,27 @@ describe("v10.1 — DevelopmentCheckCard", () => {
   it.each(["en", "he"] as const)("never checked: its name, not done yet, Start (%s)", lang => {
     state.lang = lang;
     const html = card();
-    for (const key of ["companion.milestones.checkTitle", "companion.milestones.checkNever", "companion.milestones.checkStart"]) expect(html, key).toContain(esc(translate(lang, key)));
+    // V77: the boards' name and "not done yet" line, and Start.
+    const v10 = milestonesV10Copy(lang);
+    for (const text of [v10.checkName, v10.checkNotYet, translate(lang, "companion.milestones.checkStart")]) expect(html, text).toContain(esc(text));
+    expect(html).not.toContain(esc(translate(lang, "companion.milestones.checkNever")));
     expect(html).not.toContain("dev-map-recheck");
   });
+  it("V77: the check names its question count (the band's items) and Start is the tonal button", () => {
+    const html = card({ questions: 7 });
+    expect(html).toContain('data-testid="dev-map-check-line"');
+    expect(html).toContain(esc(milestonesV10Copy("en").checkLine.replace("{n}", "7")));
+    expect(html).toMatch(/class="btn sm ms-check-go"/);
+    // Negative control: no count known, no line (never an invented number).
+    expect(card()).not.toContain("dev-map-check-line");
+  });
+
   it("a saved check: its day and Check again; the re-check day is plain text in the same card", () => {
     const html = card({ lastCheckAt: "2026-06-01T10:00:00.000Z", recheckDueAt: "2026-06-22T10:00:00.000Z" });
-    expect(html).toContain(esc(translate("en", "companion.milestones.checkLast", { date: fmtDay("2026-06-01T10:00:00.000Z", "en") })));
+    expect(html).toContain(esc(translate("en", "companion.milestones.checkLast", { date: fmtDayV10("2026-06-01T10:00:00.000Z", "en") })));
     expect(html).toContain(translate("en", "companion.milestones.checkAgain"));
     expect(html).toMatch(/<span class="ms-obj-src ms-check-recheck" data-testid="dev-map-recheck">[^<]+<\/span>/);
-    expect(html).not.toContain(translate("en", "companion.milestones.checkNever"));
+    expect(html).not.toContain(milestonesV10Copy("en").checkNotYet);
   });
   it("Start opens the check, and the page's primary-move stamp lands on it, once", () => {
     const onCheck = vi.fn();

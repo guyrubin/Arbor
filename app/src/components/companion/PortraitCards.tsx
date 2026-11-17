@@ -2,11 +2,13 @@ import React, { useMemo, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayMonth } from "../../lib/formatDate";
 import { routeHash } from "../../lib/routes";
 import { keptThings } from "../../lib/kept/keptThings";
 import { milestoneText } from "../../lib/milestoneData";
-import type { ObservationSources } from "../../lib/observations";
+import type { Observation, ObservationSources } from "../../lib/observations";
+import { shelfLabel } from "../../lib/shelves/registry";
+import { milestonesV10Copy } from "./milestonesV10Copy";
 import { focusGoal, focusNextStep, goalLabel } from "../../practice/goalBuilder";
 import TellArborMore from "../describe/TellArborMore";
 import { Icon } from "../ui/Icon";
@@ -32,12 +34,16 @@ import { latestKeptMoment, latestStrength } from "./milestonesModel";
 export interface PortraitCardsProps {
   /** The record the page already loaded (useObservationRecord), read, never refetched. */
   sources: ObservationSources;
+  /** The same record's entries, to name the shelf a kept moment is filed on (when it is). */
+  observations?: readonly Observation[];
 }
 
-export default function PortraitCards({ sources }: PortraitCardsProps) {
+export default function PortraitCards({ sources, observations = [] }: PortraitCardsProps) {
   const { childProfile, openCaptureSheet } = useArbor();
   const { t, uiLang } = useLanguage();
   const [telling, setTelling] = useState(false);
+  const v10 = milestonesV10Copy(uiLang);
+  const firstName = (childProfile.name || "").split(/\s+/)[0] || childProfile.name;
   const gender = childProfile.gender ?? null;
   const strength = useMemo(() => latestStrength(childProfile), [childProfile]);
   const kept = useMemo(() => latestKeptMoment(keptThings({
@@ -64,10 +70,13 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
         </div>
         {strength ? (
           <>
+            {strength.at && <p className="obj-when" data-testid="portrait-card-strength-when"><b>{fmtDayMonth(strength.at, uiLang)}</b> <span>{v10.inYourWords}</span></p>}
             <p className="ol" dir="auto">{strength.text}</p>
-            <p className="ms-obj-src">
-              {strength.at ? t("companion.milestones.srcWords", { date: fmtDay(strength.at, uiLang) }) : t("companion.milestones.srcWordsUndated")}
-            </p>
+            {!strength.at && <p className="ms-obj-src">{t("companion.milestones.srcWordsUndated")}</p>}
+            <a className="oa" data-testid="portrait-card-strength-open" href={`#${routeHash("profile")}`}>
+              <bdi>{v10.openAbout.replace("{name}", firstName)}</bdi>
+              <Icon name="chevron_right" size={18} className="rtl:-scale-x-100" />
+            </a>
           </>
         ) : notTold("portrait-card-strength-tell", () => setTelling(true))}
       </article>
@@ -78,8 +87,11 @@ export default function PortraitCards({ sources }: PortraitCardsProps) {
         </div>
         {kept ? (
           <>
+            {kept.at && (() => {
+              const shelf = observations.find((o) => o.id === kept.id)?.shelf;
+              return <p className="obj-when" data-testid="portrait-card-kept-when"><b>{fmtDayMonth(kept.at, uiLang)}</b>{shelf ? <span>{" "}{v10.onShelf.replace("{shelf}", shelfLabel(shelf, t))}</span> : null}</p>;
+            })()}
             <p className="ol" dir="auto">{kept.text}</p>
-            {kept.at && <p className="ms-obj-src">{t("companion.milestones.srcParent", { date: fmtDay(kept.at, uiLang) })}</p>}
             {/* B-ASKJB-36 (critic r1): the card opens the Kept reader, where
                 every kept moment sits by month. */}
             <a className="oa" data-testid="portrait-card-kept-open" href={`#${routeHash("timeline", { kind: "kept", reader: "book" })}`}>

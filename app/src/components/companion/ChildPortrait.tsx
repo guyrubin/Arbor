@@ -24,9 +24,13 @@ import MilestonesReadGuide from "./MilestonesReadGuide";
 import { milestonesV10Copy } from "./milestonesV10Copy";
 import PortraitCards, { GoalFocus } from "./PortraitCards";
 import ThenAndNow from "./ThenAndNow";
+import NowWorthKnowing from "./now10/NowWorthKnowing";
+import { NOW_COPY } from "./nowViewCopy";
+import { ageYearsFromProfile } from "../../lib/childAge";
 import { useNowClock } from "./useNowClock";
 import "./childPortrait.css";
 import "./milestonesV10.css";
+import "./now10/nowV10.css";
 
 /**
  * v10.1 — My child › Milestones (#/development), the map: one tree, two
@@ -71,6 +75,9 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
   // "since …": the first day this child's record holds (the earliest loaded entry).
   const firstAt = useMemo(() => recordSince(observations), [observations]);
   const since = firstAt === null ? null : fmtDayV10(firstAt, uiLang);
+  // "Worth knowing at three": the child's whole years in words (1–6), else the plain kicker.
+  const years = Math.floor(ageYearsFromProfile(childProfile) ?? 0);
+  const worthKicker = years >= 1 && years < v10.ageWords.length ? v10.worthKnowingAt.replace("{age}", v10.ageWords[years]) : v10.worthKnowing;
   const name = (childProfile.name || "").split(/\s+/)[0] || childProfile.name;
   const [titleBefore, titleAfter = ""] = t("companion.milestones.title").split("{name}");
   // A territory quotes the newest moment in the parent's own words (never the stored type).
@@ -139,7 +146,7 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
                     </div>
                   </div>
                   <div className="rlc">
-                    <MilestonesReadGuide />
+                    <MilestonesReadGuide suggests={!!suggest} />
                     {suggest}
                     <div className="mcc ms-focus-check">
                       <GoalFocus onEditGoal={() => setGoalOwner(childProfile.id)} />
@@ -151,7 +158,13 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
               <RouteSection id="ms-words" n={3} aria-labelledby="ms-words-title">
                 <div data-module="child-milestones-portrait">
                   <RouteHead id="ms-words-title" title={v10.wordsTitle} />
-                  <div className="ms-objs"><PortraitCards sources={record.sources} /></div>
+                  <div className="ms-objs">
+                    <PortraitCards sources={record.sources} observations={observations} />
+                    <div className="ms-know" data-testid="ms-worth-knowing">
+                      <NowWorthKnowing lang={uiLang === "he" ? "he" : "en"} kicker={worthKicker} readMinutes={NOW_COPY[uiLang === "he" ? "he" : "en"].readMinutes}
+                        topicText={domainName(openDomain, t)} composition="phone" now={now} source="milestones-worth-knowing" />
+                    </div>
+                  </div>
                   <ThenAndNow observations={observations} logs={record.sources.behaviorLogs ?? []} now={now} />
                 </div>
               </RouteSection>
