@@ -17,6 +17,7 @@ import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
 import { fmtDayV10 } from "../../lib/formatDate";
+import { useShellCrumb, useShellRowEnd } from "../../lib/shellSlots";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
@@ -74,6 +75,9 @@ export default function LanguageLabTab() {
   const view = hashQuery.get("view");
   // v10.3: the language index (`?lang=`) narrows the kept sayings to one language.
   const langFilter = langs.find((l) => l.toLowerCase() === (hashQuery.get("lang") ?? "").toLowerCase()) ?? null;
+  // N-Said-D: the pill row ends with the day alone; N-SaidHe-D: the picked language is the crumb's last level.
+  useShellRowEnd({ dateOnly: true });
+  useShellCrumb(langFilter ? ln(langFilter) : null);
 
   // Read-only over the SAME parent-logged phrase observations the vocabulary
   // log below writes ("langObs") — a count per language, nothing derived.

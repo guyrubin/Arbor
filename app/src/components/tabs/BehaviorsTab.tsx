@@ -12,7 +12,8 @@ import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { parentWritten } from "../../lib/kept/parentWritten";
 import { ContentActionBar } from "../ui/ContentActionBar";
-import { fmtDay, fmtDayShort } from "../../lib/formatDate";
+import { fmtDay, fmtDayMonthLongV10, fmtDayShort } from "../../lib/formatDate";
+import { useShellRowEnd } from "../../lib/shellSlots";
 import { patternEchoFor } from "../../lib/patternEcho";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import KindSwitch from "../moments/v10/KindSwitch";
@@ -46,6 +47,9 @@ export default function BehaviorsTab() {
   const hardLogs = useMemo(() => [...behaviorLogs].filter((l) => isIncidentType(l.behaviorType))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [behaviorLogs]);
   const behFirst = (childProfile.name || "").split(" ")[0];
+  // N-Hard-D: the pill row ends with the day and "since you started on <the first hard moment logged>"; nothing logged, no suffix.
+  const firstLogged = hardLogs.length ? hardLogs[hardLogs.length - 1].timestamp : null;
+  useShellRowEnd(firstLogged ? { suffix: v.hard.sinceStarted(fmtDayMonthLongV10(firstLogged, uiLang)) } : null);
   const analysisWhy = t("beh.analysis.why", {
     n: behaviorAnalysisRecord?.inputs?.logCount ?? behaviorLogs.length,
     date: fmtDay(behaviorAnalysisRecord?.createdAt ?? Date.now(), uiLang),

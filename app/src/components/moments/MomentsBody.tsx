@@ -30,6 +30,7 @@ import { useComposition } from "../../design/useComposition";
 import { shelfLabel } from "../../lib/shelves/registry";
 import MomentsAreas from "./v10/MomentsAreas";
 import { fmtDayMonth, fmtDayTimeV10, fmtDayV10 } from "../../lib/formatDate";
+import { useShellRowEnd } from "../../lib/shellSlots";
 import { languageName } from "../../lib/languageName";
 import MomentsNewest, { type NewestLabels } from "./v10/MomentsNewest";
 import { STAGE_ORBS } from "./v10/stageOrbs";
@@ -125,6 +126,8 @@ export default function MomentsBody({ primaryMoveProps, toolbarModule, viewModul
   // screening's answers and a measurement never enter a card or a count.
   const observations = useMemo(() => record.observations.filter(o => o.childId === childProfile.id && isMomentRecord(o)), [record.observations, childProfile.id]);
   // v10: newest first, for The newest moment and Latest, by date.
+  // N-Moments-D: the pill row ends with the Professional view link (the same view the rail's door opens).
+  useShellRowEnd({ link: { label: t("elev.shelfJournal.flip"), onClick: () => goToRoute("journal", { view: "pro" }), testId: "moments-row-pro" } });
   const newestFirst = useMemo(() => [...observations].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [observations]);
   const newest = newestFirst[0] ?? null;
   const parentInitial = (user?.displayName || "").trim().charAt(0).toUpperCase();
