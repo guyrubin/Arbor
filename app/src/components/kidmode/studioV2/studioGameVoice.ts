@@ -60,8 +60,8 @@ const GLAD: Record<StudioGuideId, { en: string; he: string }> = {
 /** The Bop games that the Next Studio switch puts on the host tiles. */
 const NEXT: Partial<Record<StudioActivityId, GameVoice>> = {
   pattern: { guide: "sprout",
-    en: { intro: "Five empty seats around the sun. Every friend who sits down lights a petal.", beats: ["Spin the dial", "Count the dots and hop that far", "Bring Chock in"], finish: "Everyone is here!", finishLine: "Five friends in the circle, five petals lit. Every hop counted, all the way to ten." },
-    he: { intro: "חמישה מקומות ריקים סביב השמש. כל חבר שמתיישב מדליק עלה כותרת.", beats: ["מסובבים את החץ", "סופרים את הנקודות וקופצים", "מביאים את צ׳וק"], finish: "כולם כאן!", finishLine: "חמישה חברים במעגל, חמישה עלי כותרת דולקים. כל קפיצה נספרה, עד עשר." } },
+    en: { intro: "Five empty seats around the sun. Every friend who sits down lights a petal.", beats: ["Spin the wheel", "Count the dots and hop that far", "Bring Chock in"], finish: "Everyone is here!", finishLine: "Five friends in the circle, five petals lit. Every hop counted, all the way to ten." },
+    he: { intro: "חמישה מקומות ריקים סביב השמש. כל חבר שמתיישב מדליק עלה כותרת.", beats: ["מסובבים את הגלגל", "סופרים את הנקודות וקופצים", "מביאים את צ׳וק"], finish: "כולם כאן!", finishLine: "חמישה חברים במעגל, חמישה עלי כותרת דולקים. כל קפיצה נספרה, עד עשר." } },
   memory: { guide: "aya",
     en: { intro: "Aya's ears are up and turned your way. Three friends are about to ask for things.", beats: ["Listen to the order", "Pick up each thing", "Carry them in that order"], finish: "Delivered!", finishLine: "Three rugs, everything on them in the order it was asked for." },
     he: { intro: "האוזניים של איה זקופות ומופנות אליכם. שלושה חברים עומדים לבקש דברים.", beats: ["מקשיבים לבקשה", "מרימים כל דבר", "מביאים לפי הסדר"], finish: "המשלוח הגיע!", finishLine: "שלושה שטיחים, ועליהם כל דבר לפי הסדר שבו ביקשו." } },
@@ -69,8 +69,8 @@ const NEXT: Partial<Record<StudioActivityId, GameVoice>> = {
     en: { intro: "Chock sits right by the toy flower, nose an inch from the petals.", beats: ["Watch it open", "Copy the petals", "Jammed? Pause, put back, restart"], finish: "It bloomed!", finishLine: "When it jammed, the petals went back and it opened. Chock's tail is drumming the floor." },
     he: { intro: "האף של צ׳וק כמעט נוגע בעלי הכותרת של פרח הצעצוע.", beats: ["מסתכלים איך הוא נפתח", "חוזרים על עלי הכותרת", "נתקע? עוצרים, מחזירים, מתחילים"], finish: "הפרח פורח!", finishLine: "כשהוא נתקע, עלי הכותרת חזרו למקום והוא נפתח. הזנב של צ׳וק מתופף על הרצפה." } },
   "river-rescue": { guide: "pep",
-    en: { intro: "Pep waits at the far end of the road. The rover has a delivery for Pep.", beats: ["Turn the signs", "Press start", "Stuck? Change one sign"], finish: "Delivered!", finishLine: "The rover rolled all the way to Pep. One sign at a time, the road opened up." },
-    he: { intro: "בקצה השני של הדרך, השטיח של פפ. לרובר יש משלוח בשביל פפ.", beats: ["מסובבים את השלטים", "יוצאים לדרך", "נתקע? משנים שלט אחד"], finish: "המשלוח הגיע!", finishLine: "הרובר נסע עד פפ. שלט אחרי שלט, הדרך נפתחה." } },
+    en: { intro: "Pep waits at the far end of the road. Turn the signs and the rover rolls there.", beats: ["Turn the signs", "Press Start", "Stuck? Change one sign"], finish: "The rover made it to Pep!", finishLine: "The rover rolled all the way to Pep. One sign at a time, the road opened up." },
+    he: { intro: "בקצה השני של הדרך, השטיח של פפ. מסובבים את השלטים, והרובר נוסע לשם.", beats: ["מסובבים את השלטים", "יוצאים לדרך", "נתקע? משנים שלט אחד"], finish: "הרובר הגיע אל פפ!", finishLine: "הרובר נסע עד פפ. שלט אחרי שלט, הדרך נפתחה." } },
   "rhythm-garden": { guide: "sprout",
     en: { intro: "I'll keep the beat. Your hero has the moves.", beats: ["Watch the dance", "Tap the move pads", "Dance it back"], finish: "A dance of its own", finishLine: "Two dances copied move by move, then one made up from scratch." },
     he: { intro: "אני שומר על הקצב. לדמות שלך יש את התנועות.", beats: ["מסתכלים בריקוד", "נוגעים בכפתורי התנועה", "רוקדים אותו בחזרה"], finish: "ריקוד משלה", finishLine: "שני ריקודים, תנועה אחרי תנועה, ואחר כך אחד חדש לגמרי." } },
