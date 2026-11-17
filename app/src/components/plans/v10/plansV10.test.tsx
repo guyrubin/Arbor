@@ -195,6 +195,31 @@ describe("the composer on the journey road (CP-1 to CP-3)", async () => {
   const render = (state?: ReturnType<typeof run>) => renderToStaticMarkup(
     <PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={state} />,
   );
+  it("CP-2-Agree-D (desktop): guide, scene, the rail with each step's page, Make it yours — every control kept", () => {
+    const steps = run({ type: "open" }, { type: "redLinesDone" });
+    const html = renderToStaticMarkup(
+      <PlanComposer def={dropoff} child={{ id: "c1", name: "Noa", gender: "female" } as never} onSaved={noop} onClose={noop} initialState={steps} composition="desk" />,
+    );
+    expect(html).toContain("data-plan-agree-desk");
+    for (const id of ["cp-agree", "cp-hears", "cp-yours"]) expect(html).toContain(`id="${id}"`);
+    // the rail: the steps on their book pages (5–7 of 8) and the last page
+    expect(text(html)).toContain("Step 1 · Page 5 of 8");
+    expect(text(html)).toContain("Step 3 · Page 7 of 8");
+    expect(text(html)).toContain("The last page · Page 8 of 8");
+    // the box, the duration, the own words, the sources and the swaps share the screen
+    for (const b of dropoff.boxItems) expect(html).toContain(`data-plan-box="${b.id}"`);
+    expect(html).toContain('data-plan-duration-pick="21"');
+    expect(html).toContain("data-plan-own-text");
+    expect(html).toContain("data-plan-sources");
+    expect(html).toContain('data-plan-swap="1"');
+    // one primary: Preview the book
+    expect((html.match(/data-primary-move=/g) ?? []).length).toBe(1);
+    expect(html).toContain('data-primary-move="preview-plan"');
+    // the phone keeps its stages: no box on its steps screen
+    const phone = render(steps);
+    expect(phone).not.toContain("data-plan-agree-desk");
+    expect(phone).not.toContain("data-plan-box=");
+  });
   it("Recognise: the typographic cover, the stop counter, the red lines first", () => {
     const door = render();
     expect(door).toContain('class="cp-book"');

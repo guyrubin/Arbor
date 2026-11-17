@@ -390,3 +390,18 @@
 .ds-plans .cp-kidt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600 !important; color: var(--kid-ink); }
 .ds-plans .cp-kidd[open] .cp-kidt { visibility: hidden; }
 .ds-plans .cp-kidd > .cp-kid { box-shadow: none; padding-top: 0; }
+
+/* CP-2-Agree-D: the desktop composer (scene, rail, Make it yours). */
+.ds-plans .cp-aghead { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; padding: 22px 28px 0; }
+.ds-plans .cp-agjr { margin-top: -6px; }
+.ds-plans .cp-agjr .cp-jr { margin-bottom: 26px !important; }
+.ds-plans .cp-agcard { background: var(--card); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px #1b2a4a14; }
+.ds-plans .cp-stn { margin: 0; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 20px; line-height: 1.15; color: var(--ink); }
+.ds-plans .cp-when2 { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.ds-plans .cp-when { display: flex; flex-direction: column; gap: 2px; min-height: 44px; padding: 6px 12px; border-radius: 12px; background: var(--tint-2); }
+.ds-plans .cp-when small { font-size: 12px; color: var(--ink-soft); }
+.ds-plans .cp-when select { border: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--ink); padding: 0; min-height: 24px; }
+.ds-plans .cp-when-ro b { font-size: 14px; font-weight: 600 !important; color: var(--ink); }
+.ds-plans .cp-hear { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-plans .cp-hear small { font-size: 12px; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; color: var(--note-ink); }
+.ds-plans .cp-hear p { margin: 0; font-family: var(--font-kid) !important; font-weight: 600 !important; font-size: 15px; line-height: 1.4; color: var(--kid-ink); }
