@@ -38,6 +38,7 @@ import { useComposition, type Composition } from "../../design/useComposition";
 import { ChallengeBook } from "./v10/ChallengeBook";
 import { mirrorPoints, Road, zigzagPoints } from "./v10/Road";
 import { plansCopy } from "./v10/plansCopy";
+import { stepName } from "../../lib/plans/planNames";
 import { fmtDayV10 } from "../../lib/formatDate";
 import "./v10/plans.css";
 
@@ -333,6 +334,12 @@ function StepsStage({ def, lang, childName, gender, state, dispatch, problems, o
       setPhrasing(false);
     }
   };
+  /* CP-2: the step's name (planNames); an own-words step reads as such; else "Step n". */
+  const slotName = (slot: 1 | 2 | 3) => {
+    const menuId = state.stepMenuIds[slot - 1];
+    if (menuId === OWN_STEP) return s("stage.steps.origin.parent");
+    return stepName(def.id, menuId, lang) ?? s("stage.steps.step", { n: slot });
+  };
   const stepTime = (slot: 1 | 2 | 3) => {
     const item = def.menu.find((m) => m.id === state.stepMenuIds[slot - 1]);
     const t = slot === 1 && item?.defaultMinutes != null ? state.time : item?.defaultTime;
@@ -420,7 +427,7 @@ function StepsStage({ def, lang, childName, gender, state, dispatch, problems, o
         <li key={slot} className="cp-col cp-agcard" data-plan-step={slot} data-plan-step-own={isOwn ? "" : undefined}>
           <div className="line" style={{ gap: 12 }}>
             <span className="cp-n" aria-hidden="true"><b>{slot}</b><Icon name="check" size={18} /></span>
-            <h3 className="cp-stn">{s("stage.steps.step", { n: slot })}</h3>
+            <h3 className="cp-stn" data-plan-step-name="">{slotName(slot)}</h3>
           </div>
           {youDo && <div className="cp-pl" dir="auto"><small>{c.youDo}</small>{youDo}</div>}
           {isOwn && <p className="small" data-plan-own-in-tile="">{c.ownInTile}</p>}
@@ -572,7 +579,7 @@ function StepsStage({ def, lang, childName, gender, state, dispatch, problems, o
                 <span className="cp-n" aria-hidden="true"><b>{slot}</b><Icon name="check" size={18} /></span>
                 {/* CP-2: the step and its time of day (the board's step names are not in the data). */}
                 <span className="stack ds-col" style={{ gap: 0 }}>
-                  <b style={{ fontSize: 15, fontWeight: 600 }}>{s("stage.steps.step", { n: slot })}</b>
+                  <b style={{ fontSize: 15, fontWeight: 600 }} data-plan-step-name="">{slotName(slot)}</b>
                   {stepTime(slot) && <small style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{stepTime(slot)}</small>}
                 </span>
               </div>
