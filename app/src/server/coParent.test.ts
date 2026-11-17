@@ -51,7 +51,7 @@ let base = "";
 beforeAll(async () => {
   const app = express(); app.use(express.json());
   app.use((req, _res, next) => {
-    if (req.header("x-uid")) (req as any).user = { uid: req.header("x-uid"), email: req.header("x-email"), emailVerified: req.header("x-verified") === "true" };
+    if (req.header("x-uid")) (req as any).user = { uid: req.header("x-uid"), email: req.header("x-email"), emailVerified: req.header("x-verified") === "true", ...(req.header("x-name") ? { name: req.header("x-name") } : {}) };
     next();
   });
   app.use("/api", createCoParentRouter({ config: createTestConfig(), shareStore: store, source, requireOwnership: (req, res, next) => { if ((req as any).user?.uid !== "owner") { res.status(403).end(); return; } next(); } }));
@@ -60,6 +60,7 @@ beforeAll(async () => {
 });
 afterAll(async () => { await new Promise<void>((resolve, reject) => server.close((err) => err ? reject(err) : resolve())); });
 const call = (path: string, actor = recipient, body?: unknown) => fetch(`${base}/${path}`, { method: body === undefined ? "GET" : "POST", headers: { "Content-Type": "application/json", "x-uid": actor.uid, "x-email": actor.email, "x-verified": String(actor.emailVerified) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+const callNamed = (path: string, actor: typeof owner, name: string, body: unknown) => fetch(`${base}/${path}`, { method: "POST", headers: { "Content-Type": "application/json", "x-uid": actor.uid, "x-email": actor.email, "x-verified": "true", "x-name": name }, body: JSON.stringify(body) });
 const invite = () => call("invitations", owner, { childId: "child-one", childName: "Invented child", recipientEmail: " PARENT@example.test " });
 
 describe("free co-parent joins the existing child", () => {
@@ -229,5 +230,20 @@ describe("production Firestore write boundary", () => {
     firestore.rows.delete("users/owner/children/child-one");
     await expect(source.addMoment(grant, recipient, "Denied", "n1")).rejects.toThrow("access_ended");
     expect(firestore.writes).toEqual([]);
+  });
+});
+
+describe("E-Invite: the inviter's name on the invitation", () => {
+  it("an invite created by a signed-in parent carries their token name to the invitee; one without a name keeps the email line (negative control)", async () => {
+    const named = { uid: "named-invitee", email: "named.invitee@example.test", emailVerified: true };
+    const plain = { uid: "plain-invitee", email: "plain.invitee@example.test", emailVerified: true };
+    const made = await (await callNamed("invitations", owner, "Maya Example", { childId: "child-one", childName: "Invented child", recipientEmail: named.email })).json() as ShareGrant;
+    expect(made.ownerName).toBe("Maya Example");
+    const seen = await (await call("invitations", named)).json() as { shares: ShareGrant[] };
+    expect(seen.shares.find((g) => g.id === made.id)).toMatchObject({ ownerName: "Maya Example", ownerEmail: owner.email });
+    const old = await (await call("invitations", owner, { childId: "child-one", childName: "Invented child", recipientEmail: plain.email })).json() as ShareGrant;
+    expect(old.ownerName).toBeUndefined();
+    const seenOld = await (await call("invitations", plain)).json() as { shares: ShareGrant[] };
+    expect(seenOld.shares.find((g) => g.id === old.id)?.ownerName).toBeUndefined();
   });
 });

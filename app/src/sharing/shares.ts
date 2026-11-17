@@ -19,6 +19,9 @@ export type ShareGrant = {
   id: string;
   ownerUid: string;
   ownerEmail: string | null;
+  /** E-Invite: the inviting adult's signed-in display name, set at creation from
+   *  the verified token. Absent on older invites (the invitee sees the email). */
+  ownerName?: string;
   childId: string;
   childName: string | null;
   recipientEmail: string;
@@ -77,6 +80,7 @@ export const expiryFromDuration = (duration: string | undefined, now: number = D
 export type NewShare = {
   ownerUid: string;
   ownerEmail: string | null;
+  ownerName?: string | null;
   childId: string;
   childName?: string | null;
   recipientEmail: string;
@@ -97,12 +101,19 @@ const grantDomains = (input: NewShare, scopes: string[]): { domains?: string[] }
   return fallback ? { domains: fallback } : {};
 };
 
+/** A display name, one line, at most 80 characters; nothing when there is none. */
+const ownerNameOf = (name: unknown): { ownerName?: string } => {
+  const n = typeof name === "string" ? name.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+  return n ? { ownerName: n } : {};
+};
+
 export const buildGrant = (input: NewShare, now: number = Date.now()): ShareGrant => {
   const scopes = input.scopes?.length ? normalizeScopes(input.scopes) : ["story_timeline" satisfies ShareScopeId];
   return {
   id: randomUUID(),
   ownerUid: input.ownerUid,
   ownerEmail: input.ownerEmail ?? null,
+  ...ownerNameOf(input.ownerName),
   childId: input.childId,
   childName: input.childName ?? null,
   recipientEmail: input.recipientEmail.trim().toLowerCase(),

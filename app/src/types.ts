@@ -203,6 +203,8 @@ export interface ShareGrant {
   id: string;
   ownerUid: string;
   ownerEmail: string | null;
+  /** E-Invite: the inviter's display name, on invites created since it was stored. */
+  ownerName?: string;
   childId: string;
   childName: string | null;
   recipientEmail: string;
