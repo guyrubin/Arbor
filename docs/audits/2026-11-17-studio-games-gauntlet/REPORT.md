@@ -153,7 +153,7 @@ Every game was played from its Playbank or Studio tile to its ending, in the loc
 |---|---|---|
 | Hero Band | Own dance: eight steps filled, beat started, Show time, then the ending | Ends on "A dance of its own". Show time runs with the amber ring on the current step. `scrollWidth` 390 |
 | Oops Button | Three rounds: round 1 clean, then the toy's own jam, Oops, undo newest first, Start again, copy, then round 3 | Ends on "It bloomed!" |
-| Rover Delivery | Three floors, each solved by following the hint ring | Ends on "Delivered!" |
+| Rover Delivery | Three floors, each solved by following the hint ring | Ends on the card's finish ("Delivered!" before the copy fix below) |
 | Five-Friend Sun | Spin, count on, hop to the pad, bring Chock's pad in, until all five rays are lit | Ends on "Everyone is here!" |
 | Wobbly Delivery | Three friends' requests delivered in order, through to the bloom | Ends on "Delivered!" |
 
@@ -161,6 +161,7 @@ Every game was played from its Playbank or Studio tile to its ending, in the loc
 - **Five-Friend Sun:** the spinner's hub and its number chip shared one React key. Every spin left a stale hub behind, so by the third spin a column of hubs ran down past the card at 390px. With distinct keys there is one hub on every spin; rendered after 8 spins: 1.
 - **Hero Band:** on a 390×844 phone the own-dance view hid "Show time!" below the fold, with the inner scroller 884px tall against 768px. A lower floor on phones puts the button's bottom at 804px.
 - **Wobbly Delivery:** the ending's carry-over line still began "Try it for real:", unlike the other four games. It now starts "Away from the screen:" / "מחוץ למסך:".
+- **Rover and Sun card copy** (the Studio card around the game): Rover's card still said the rover had a delivery and ended "Delivered!", though no parcel shows. It now ends "The rover made it to Pep!", as the game does. Sun's first beat says the wheel, not a dial.
 
 **Added:**
 - **Idle nudges.** These are rendered, and rules tests pin them.
