@@ -14,6 +14,7 @@
  * are stubbed so only the title zone is under test.
  */
 import React from "react";
+import { setShellSlots, resetShellSlotsForTest } from "../../lib/shellSlots";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ROUTE_IDS, type ActiveTab } from "../../lib/routes";
@@ -130,16 +131,36 @@ describe("v10 · the breadcrumb continues the title: place › pill › view", (
     const decode = (t: string) => t.replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
     return [...nav.matchAll(/<(?:span|button)[^>]*class="[^"]*truncate[^"]*"[^>]*>([^<]*)</g)].map((m) => decode(m[1]));
   };
-  it.each(["en", "he"] as const)("a home's first pill shows the place alone; later pills and folded views add levels (%s)", (lang) => {
+  it.each(["en", "he"] as const)("V77: Now's first pill shows the place alone; every other lit pill and folded view adds a level (%s)", (lang) => {
     expect(crumbText(titleOf("overview", lang).html)).toEqual([]);
-    expect(crumbText(titleOf("development", lang).html)).toEqual([]);
+    expect(crumbText(titleOf("development", lang).html)).toEqual([translate(lang, "nav.pill.development")]);
+    // Negative control: the pre-V77 rule left My child's first pill out.
+    expect(crumbText(titleOf("development", lang).html)).not.toEqual([]);
     expect(crumbText(titleOf("weekly", lang).html)).toEqual([translate(lang, "nav.pill.weekly")]);
     expect(crumbText(titleOf("day-windows", lang).html)).toEqual([translate(lang, "nav.pill.weekly"), translate(lang, "nav.view.day-windows")]);
     expect(crumbText(titleOf("behaviors", lang).html)).toEqual([translate(lang, "nav.pill.portrait"), translate(lang, "nav.view.behaviors")]);
     expect(crumbText(titleOf("profile", lang).html)).toEqual([translate(lang, "nav.pill.profile.named", { name: "Sam" })]);
-    expect(crumbText(titleOf("safety", lang).html)).toEqual([translate(lang, "nav.view.safety")]);
+    // V77 N-Safety-D: the lit Safety ring says where you are; no crumb.
+    expect(crumbText(titleOf("safety", lang).html)).toEqual([]);
     // Talk is a panel over Now: no crumb.
     expect(crumbText(titleOf("coach", lang).html)).toEqual([]);
+  });
+
+  it("V77: a route's own last level follows the pill and view, and is the only current level", () => {
+    setShellSlots({ crumb: "Saying goodbye at drop-off" });
+    try {
+      const { html } = titleOf("plans", "en");
+      expect(crumbText(html)).toEqual([translate("en", "nav.pill.plans"), "Saying goodbye at drop-off"]);
+      const nav = html.slice(html.indexOf('data-testid="topbar-crumb"'), html.indexOf("</nav>", html.indexOf('data-testid="topbar-crumb"')));
+      expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
+      expect(nav).toMatch(/data-testid="topbar-crumb-own"[^]*aria-current="page"/);
+      // The pill is the route itself here: plain text, not a dead button.
+      expect(nav).not.toContain("<button");
+    } finally {
+      resetShellSlotsForTest();
+    }
+    // Negative control: without the route's level the crumb is the pill alone.
+    expect(crumbText(titleOf("plans", "en").html)).toEqual([translate("en", "nav.pill.plans")]);
   });
 
   it("the pill level is a button back to the pill only when a view follows it; the last level is the current page", () => {
