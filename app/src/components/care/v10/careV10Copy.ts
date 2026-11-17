@@ -96,7 +96,7 @@ export type CareV10Copy = {
     nothingReaches: string;
     staysLine: (name: string) => string;
     previewHead: string;
-    stopShort: { visit: string; summary: string; dates: string };
+    stopShort: { visit: string; summary: string; dates: string; note: string };
     packedPlan: (n: number) => string;
     packedPlanSub: string;
     summaryGroups: (n: number) => string;
@@ -201,7 +201,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       nothingReaches: "Nothing reaches your care team until you choose.",
       staysLine: (name) => `Stays in Arbor: ${isolate(name)}'s whole record. Leaves when you choose: one page, the lines you ticked.`,
       previewHead: "Preview the visit summary",
-      stopShort: { visit: "Visit", summary: "Summary", dates: "Dates" },
+      stopShort: { visit: "Visit", summary: "Summary", dates: "Dates", note: "Note" },
       packedPlan: (n) => plural(n, "plan step done", "plan steps done"),
       packedPlanSub: "in the action plan",
       uncheckPrivate: "Uncheck to keep private",
@@ -350,7 +350,7 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
       nothingReaches: "שום דבר לא מגיע לצוות הטיפול עד שתבחרו.",
       staysLine: (name) => `נשאר ב-Arbor: כל התיעוד של ${isolate(name)}. יוצא כשאתם בוחרים: עמוד אחד, השורות שסימנתם.`,
       previewHead: "תצוגה מקדימה של סיכום הביקור",
-      stopShort: { visit: "ביקור", summary: "סיכום", dates: "תאריכים" },
+      stopShort: { visit: "ביקור", summary: "סיכום", dates: "תאריכים", note: "לדעת" },
       packedPlan: (n) => (n === 1 ? "צעד בתוכנית שבוצע" : "צעדים בתוכנית שבוצעו"),
       packedPlanSub: "בתוכנית הפעולה",
       summaryGroups: (n) => `${n} קבוצות, שורה אחר שורה`,
@@ -457,3 +457,8 @@ export const careV10Copy: Record<"en" | "he", CareV10Copy> = {
 export function careCopy(uiLang: string): CareV10Copy {
   return careV10Copy[uiLang === "he" ? "he" : "en"];
 }
+
+/** Design V77 (N-Care "Worth knowing"): the words today's reviewed Learn pick is
+ *  leaned toward on Visits — matched against reads' titles and shelves only,
+ *  never shown (lib learnLibrary.topicBoost). Not a sentence the parent reads. */
+export const CARE_WORTH_TOPIC = "when to ask a professional: speech, talking, doctor, therapist, teacher, gan, school";
