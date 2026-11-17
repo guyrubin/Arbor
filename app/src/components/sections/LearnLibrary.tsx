@@ -304,9 +304,11 @@ export default function LearnLibrary() {
   });
   const linkedRead = forYouPick?.card ?? linked.reads[0] ?? null;
   const linkedNote = forYouPick && !forYouPick.fromSaved && forYouPick.fromConcerns ? forYouPick.fromMoment : null;
+  // V77: areas in the order of their best-ranked read (the same ranking as the shelf).
   const areaGroups = LEARN_CATEGORIES
     .map((cat) => ({ cat, reads: gridAll.filter((c) => c.category === cat.id) }))
-    .filter((g) => g.reads.length > 0);
+    .filter((g) => g.reads.length > 0)
+    .sort((a, b) => gridAll.indexOf(a.reads[0]) - gridAll.indexOf(b.reads[0]));
   // V77: on a phone section 1 is the Library stage and section 2 "Picked for
   // {name}" (the picks and the read linked from For you), one-word stops.
   const stops: GuideStop[] = [
@@ -377,6 +379,7 @@ export default function LearnLibrary() {
       </button>
       <span className="lib-count">
         {filter === "courses" ? t("learn.courses.count", { n: courses.length }) : t("learn.count", { n: inScope.length })}
+        {filter !== "courses" && !showAllAges && <span className="lib-forage"> {copy.libForAge(firstName)}</span>}
         {filter !== "courses" && readCount > 0 && ` · ${t("elev.learnCare.read.count", { n: readCount })}`}
       </span>
       {/* OBJ-LEARN-01 — the Masterclasses toggle, verbatim: rendered only when
@@ -446,7 +449,7 @@ export default function LearnLibrary() {
     <>
       {linkedRead && (
         <button key={linkedRead.id} type="button" className="rdc lib-rdc lib-linked" data-testid="learn-linked-read" onClick={() => openCard(linkedRead.id)}>
-          <AreaForm art={DOMAIN_ART[readArea(linkedRead.category)]} width={desk ? 120 : 44} ratio={desk ? 0.57 : 0.7} zoom={desk ? 1.13 : 1.25} />
+          {desk && <AreaForm art={DOMAIN_ART[readArea(linkedRead.category)]} width={120} ratio={0.57} zoom={1.13} />}
           <span className="meta">
             <span className="lib-on">{forYouPick ? copy.libOnForYou : pick(he, learnCategoryById(linkedRead.category).label)}</span>
             <span className="line" style={{ gap: 4 }}><Icon name="schedule" size={15} />{t("learn.minutes", { n: linkedRead.minutes })}</span>
@@ -550,15 +553,15 @@ export default function LearnLibrary() {
       }}
       data-testid="learn-shelf-more"
       aria-expanded={showAllShelf}
-      className="ghostb lib-more"
+      className="ds-link lib-more"
     >
-      <Icon name={showAllShelf ? "expand_less" : "expand_more"} size={16} />
       {showAllShelf ? copy.libByArea : copy.libAllReads}
+      <Icon name={showAllShelf ? "expand_less" : "chevron_right"} size={16} className={showAllShelf ? undefined : "rtl:-scale-x-100"} />
     </button>
   );
 
   // The shelf: Courses, the browse, or the narrowed results (search, Saved, an area).
-  const shelfTitle = filter === "courses" ? t("learn.courses") : browsing ? t("learn.allReads") : filter === "saved" ? t("learn.saved") : filter !== "all" ? pick(he, learnCategoryById(filter).label) : copy.libResults(visible.length);
+  const shelfTitle = filter === "courses" ? t("learn.courses") : browsing ? (desk ? t("learn.allReads") : copy.stopBrowse) : filter === "saved" ? t("learn.saved") : filter !== "all" ? pick(he, learnCategoryById(filter).label) : copy.libResults(visible.length);
   const shelf = (
     <div data-module="learn-shelf" className="stack fy-col" style={{ gap: 12 }} aria-label={shelfTitle}>
       {!desk || !browsing ? <RouteHead id="lib-browse-title" title={shelfTitle} sub={filter === "courses" ? t("learn.courses.count", { n: courses.length }) : !browsing && visible.length > 0 ? copy.libResults(visible.length) : undefined} link={browsing ? shelfToggle : undefined} /> : null}
@@ -633,7 +636,7 @@ export default function LearnLibrary() {
                     {featured.map((c, i) => card(c, i, i === 0, true))}
                     {linkedRead && <div className="lib-card featured">{linkedCard}</div>}
                   </Snap>
-                  <SnapDots count={featured.length + (linkedRead ? 1 : 0)} />
+                  <SnapDots count={featured.length + (linkedRead ? 1 : 0)} caption={copy.swipe(featured.length + (linkedRead ? 1 : 0))} />
                   {/* On a phone the why-line follows the picks, so the first pick clears the capture dock. */}
                   {whyLine}
                 </div>
@@ -642,12 +645,12 @@ export default function LearnLibrary() {
           )}
           <RouteSection id="lib-areas" n={3} stopTop={desk ? 0 : 4} aria-labelledby="lib-areas-title">
             <div className="stack fy-col" style={{ gap: 12 }}>
-              <RouteHead id="lib-areas-title" title={copy.libGuideAreas} sub={copy.libGuideAreasSub} />
+              <RouteHead id="lib-areas-title" title={copy.libGuideAreas} />
               {areaTiles}
             </div>
           </RouteSection>
           <RouteSection id="lib-browse" n={4} stopTop={desk ? 0 : 4} aria-labelledby="lib-browse-title">
-            {desk && <RouteHead id="lib-browse-title" title={t("learn.allReads")} sub={copy.libGuideBrowseSub} link={shelfToggle} />}
+            {desk && <RouteHead id="lib-browse-title" title={t("learn.allReads")} link={shelfToggle} />}
             {shelf}
           </RouteSection>
         </Route>
@@ -720,7 +723,6 @@ function LearnGridCard({
         {/* Keep the full 44px bookmark footprint above the title, even when
             this metadata fits on one line. */}
         <div className="meta flex min-h-11 items-center gap-2 flex-wrap pe-12">
-          {featured && desk && <AreaForm art={DOMAIN_ART[readArea(card.category)]} width={44} ratio={0.7} zoom={1.25} />}
           {!inArea && <span>{pick(he, cat.label)}</span>}
           <span className="inline-flex items-center gap-1">
             <Icon name="schedule" size={15} />
