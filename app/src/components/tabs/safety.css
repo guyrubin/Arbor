@@ -14,6 +14,7 @@
 .ds.safety-page [data-module="safety-one-tap"] { background: var(--sapphire) !important; align-items: center; gap: 16px; border-radius: 22px !important; }
 .ds.safety-page [data-module="safety-one-tap"] > .msr { width: 52px; height: 52px; margin: 0 !important; border-radius: 999px; background: #ffffff29; display: inline-grid; place-items: center; }
 .ds.safety-page [data-module="safety-one-tap"] .t-lg { font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 34px; line-height: 1.05; }
-.ds-phone.safety-page [data-module="safety-one-tap"] .t-lg { font-size: 26px; }
+.ds-phone.safety-page [data-module="safety-one-tap"] .t-lg { font-size: 34px; }
+.ds-phone.safety-page [data-module="safety-one-tap"] { padding-block: 22px !important; }
 .ds.safety-page [data-module="safety-one-tap"] .t-sm { font-weight: 500 !important; font-size: 14px; }
 .ds.safety-page [data-module="safety-crisis-language"] { border-radius: 22px !important; }

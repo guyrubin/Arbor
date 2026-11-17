@@ -15,6 +15,7 @@ import AspectCard from "../about/AspectCard";
 import { PendingNote, RememberedNote, SHOWN_PENDING, StageCard, aboutAskedPendingIds, useAboutNotebook } from "../about/AboutAnswer";
 import AboutChildTile from "../about/AboutChildTile";
 import AboutAreaIndex from "../about/AboutAreaIndex";
+import { useShellRowEnd } from "../../lib/shellSlots";
 import AboutHowToRead from "../about/AboutHowToRead";
 import AboutLastVisit from "../about/AboutLastVisit";
 import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
@@ -70,6 +71,8 @@ export default function ChildProfile() {
   const { childProfile, approvedMemoryItems, pendingMemoryItems, activeTab, memoryReviewError, retryMemoryReview, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const copy = aboutCopy(uiLang);
+  // V77 (N-About-D): the pill row ends "Monday 16 November · nothing is remembered without your approval".
+  useShellRowEnd({ suffix: copy.rowEndSuffix });
   const composition = useComposition();
   const desk = composition === "desk";
   const first = childProfile.name.split(" ")[0] || childProfile.name;

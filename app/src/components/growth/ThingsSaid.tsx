@@ -212,7 +212,8 @@ export function SaidList({ childId, first, gender, max = 8, language = null, row
         {quotes.map((q) => {
           const lang = langs.get(q.id);
           return (
-            <li key={q.id} className="sqr">
+            /* N-SaidHe: under one language, a right-to-left saying is its own card, set large and right to left. */
+            <li key={q.id} className={language && /[\u0590-\u05FF\u0600-\u06FF]/.test(q.note) ? "sqr he" : "sqr"}>
               <span className="sqg" aria-hidden="true"><Icon name="format_quote" size={16} /></span>
               <span className="min-w-0">
                 <span className="q" dir="auto">“{q.note}”</span>

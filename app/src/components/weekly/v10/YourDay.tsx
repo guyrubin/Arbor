@@ -35,6 +35,7 @@ export default function YourDay({
   summary,
   onHardMoments,
   aside,
+  foot = "",
 }: {
   composition: Composition;
   copy: WeeklyCopy;
@@ -46,6 +47,8 @@ export default function YourDay({
   onHardMoments: () => void;
   /** Rendered under the hour strip (the invite disclosure). */
   aside?: React.ReactNode;
+  /** The lead line from the same logs ("12 at home, 4 on a Saturday."), or "". */
+  foot?: string;
 }) {
   const phone = composition === "phone";
   const partName: Record<DayPart, string> = { morning: copy.morning, afternoon: copy.afternoon, evening: copy.eveningPart, night: copy.night };
@@ -193,7 +196,10 @@ export default function YourDay({
       <section className="vt wk10-tile wk10-daycard">
         {dayFieldView}
         {hourStrip}
-        <p className="line1 wk10-guard" role="note" data-testid="dw-determinism-guard">{t("dw.guard")}</p>
+        <p className="line1 wk10-guard" role="note">
+          {foot && <b data-testid="weekly-day-foot">{foot} </b>}
+          <span data-testid="dw-determinism-guard">{t("dw.guard")}</span>
+        </p>
       </section>
       {aside}
     </div>

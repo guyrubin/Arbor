@@ -18,7 +18,7 @@ import { PARENT_SOURCES } from "./weekGlance";
  */
 
 export type TimedKind = "moment" | "hard";
-export type LaneKind = TimedKind | "helped" | "not";
+export type LaneKind = TimedKind | "helped" | "not" | "plan";
 export type InstrumentKind = LaneKind | "date";
 
 export type InstrumentDay = {
@@ -105,7 +105,7 @@ export function weekInstrument({
   }));
 
   const hardIds = new Set(logs.filter((l) => typeof l.intensity === "number").map((l) => `behaviorLogs:${l.id}`));
-  const counts: Record<InstrumentKind, number> = { moment: 0, hard: 0, helped: 0, not: 0, date: 0 };
+  const counts: Record<InstrumentKind, number> = { moment: 0, hard: 0, helped: 0, not: 0, plan: 0, date: 0 };
   const timed: TimedToken[] = [];
   const lane: LaneToken[] = [];
 
@@ -129,7 +129,8 @@ export function weekInstrument({
     .sort((a, b) => a.ms - b.ms);
   const hardStepDays = new Set<number>();
   for (const { row, ms } of steps) {
-    const kind: LaneKind = row.outcome === "helped" ? "helped" : "not";
+    // A step from a plan that helped is a plan step done (its own kind, green).
+    const kind: LaneKind = row.outcome === "helped" ? (row.source === "plan" ? "plan" : "helped") : "not";
     counts[kind] += 1;
     lane.push({ id: `step:${row.id}`, kind, day: dayIndex(ms) });
     if (row.source === "hard-moment") hardStepDays.add(dayIndex(ms));

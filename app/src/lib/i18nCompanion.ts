@@ -458,7 +458,7 @@ export const companionEn = {
   "companion.about.moments": "Open the moments",
   "companion.about.details": "Details",
   "companion.about.detailsEdit": "Edit details",
-  "companion.about.birthDate": "Birth date {date}",
+  "companion.about.birthDate": "Born {date}",
   "companion.about.bornEarly": "Born at {weeks} weeks",
   // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
   // area: no number, no badge.
@@ -595,7 +595,7 @@ export const companionEn = {
   // three items a quiet second line; the history list opens from the menu.
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
-  "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  "companion.launcher.label": "Ask Arbor: text, photo or voice",
   "companion.launcher.short": "Ask Arbor",
   // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
   "companion.launcher.voice-aria": "Talk it through by voice",
@@ -1205,7 +1205,7 @@ export const companionHe = {
   "companion.together-view.set-a-pin": "להגדיר קוד",
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
-  "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.label": "שואלים את ארבור: טקסט, תמונה או קול",
   "companion.launcher.short": "שואלים את ארבור",
   "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",

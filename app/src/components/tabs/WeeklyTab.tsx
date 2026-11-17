@@ -18,7 +18,10 @@ import { adultLabel } from "../familyPlan/format";
 import { familyPlanCopy } from "../familyPlan/familyPlanCopy";
 import { NOW_V10_COPY } from "../companion/now10/nowV10Copy";
 import { dayField } from "../../lib/dayField";
-import { predictRhythm } from "../../rhythm/predict";
+import { parentWords } from "../../lib/recordCounts";
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
+import type { DomainId } from "../../lib/domains/registry";
+import { predictRhythm, RHYTHM_WINDOW_DAYS } from "../../rhythm/predict";
 import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
 import { ageYearsOf } from "../../lib/age/forChild";
 import { EMPTY_ART } from "../../lib/parentArt";
@@ -33,6 +36,8 @@ import CarryNextWeek from "../weekly/v10/CarryNextWeek";
 import YourDay from "../weekly/v10/YourDay";
 import WeekReadGuide from "../weekly/v10/WeekReadGuide";
 import { landOnStop } from "../weekly/v10/landing";
+import { weekRowEndText } from "../weekly/v10/rowEnd";
+import { useShellRowEnd } from "../../lib/shellSlots";
 import { weeklyCopy } from "../weekly/v10/weeklyCopy";
 import InviteCard from "../referral/InviteCard";
 import "../weekly/v10/weeklyV10.css";
@@ -161,6 +166,42 @@ export default function WeeklyTab() {
   }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, railDates]);
   const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);
 
+  // N-Week-D: the pill row ends with the week's own sentence (only for this week).
+  const rowEndText = week && isCurrent ? weekRowEndText(week.glance.perDay.map((d) => d.startMs), week.glance.today, locale) : "";
+  useShellRowEnd(rowEndText ? { text: rowEndText } : null);
+
+  /* The week's hard-moment logs (the hard kind's "marked settled" line) and,
+     per area, the newest record the parent kept: its day and their own words
+     (lib/recordCounts parentWords), or the kind they picked; a hard moment
+     the parent marked settled says so. By area draws them as N-Week-D does. */
+  const weekHardLogs = useMemo(() => {
+    if (!week) return [];
+    return behaviorLogs.filter((l) => {
+      const ms = Date.parse(l.timestamp);
+      return typeof l.intensity === "number" && Number.isFinite(ms) && ms >= week.startMs && ms <= week.endMs;
+    });
+  }, [behaviorLogs, week]);
+  const areaDetail = useMemo(() => {
+    const out: Partial<Record<DomainId, { ms: number; text: string; hard: boolean; settled: boolean }>> = {};
+    if (!week) return out;
+    const logById = new Map(behaviorLogs.map((l) => [`behaviorLogs:${l.id}`, l]));
+    for (const o of observations) {
+      if (o.kind !== "moment" || o.origin !== "behaviorLogs") continue;
+      const ms = Date.parse(o.at);
+      if (!Number.isFinite(ms) || ms < week.startMs || ms > week.endMs) continue;
+      const log = logById.get(o.id);
+      if (!log) continue;
+      const own = parentWords(log);
+      const hard = typeof log.intensity === "number";
+      for (const d of o.domains) {
+        const prev = out[d];
+        if (prev && prev.ms >= ms) continue;
+        out[d] = { ms, text: own ? `“${own}”` : behaviorTypeLabel(log.behaviorType, t), hard, settled: hard && !!log.resolved };
+      }
+    }
+    return out;
+  }, [week, behaviorLogs, observations, t]);
+
   // The kicker's dates, day first as the boards write them ("14 to 20 Nov").
   const range = useMemo(() => {
     const fallback = selected ? labelFor(selected) : currentLabel;
@@ -191,6 +232,18 @@ export default function WeeklyTab() {
     return buildDayWindowsSummary(rhythm, Date.now(), logs);
   }, [behaviorLogs, ageYears]);
   const field = useMemo(() => dayField(behaviorLogs, Date.now()), [behaviorLogs]);
+  // Your day's lead line, from the same window: logs at home, and the weekday most logged.
+  const dayFoot = useMemo(() => {
+    const since = Date.now() - RHYTHM_WINDOW_DAYS * 86_400_000;
+    const inWindow = behaviorLogs.filter((l) => { const ms = Date.parse(l.timestamp); return Number.isFinite(ms) && ms >= since; });
+    if (inWindow.length === 0) return "";
+    const home = inWindow.filter((l) => (l.context ?? "").toLowerCase() === "home").length;
+    const byDay = Array.from({ length: 7 }, () => 0);
+    for (const l of inWindow) byDay[new Date(l.timestamp).getDay()] += 1;
+    const top = byDay.indexOf(Math.max(...byDay));
+    const weekday = new Date(1970, 0, 4 + top).toLocaleDateString(dateLocale, { weekday: "long" });
+    return copy.dayFoot(home, byDay[top], weekday);
+  }, [behaviorLogs, dateLocale, copy]);
 
   // The next visit inside its Prepare window (the visit Care › Visits anchors on).
   const visit = nextPrepareVisit(appointments.items, nowMs);
@@ -268,7 +321,11 @@ export default function WeeklyTab() {
     ? week.glance.perDay.filter((d) => d.milestones > 0).map((d) => new Date(d.startMs).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric" })).join(", ")
     : "";
   const notThisTime = week?.instrument.counts.not ?? 0;
-  const placesLine = week ? week.lines.places.map((p) => t(PLACE_KEY[p.place], { n: p.n })).join(" · ") : "";
+  const placesLine = !week
+    ? ""
+    : week.lines.places.length === 1 && week.lines.places[0].place === "home" && week.lines.places[0].n === week.glance.counts.moments
+      ? copy.allAtHome
+      : week.lines.places.map((p) => t(PLACE_KEY[p.place], { n: p.n })).join(" · ");
   const figures = counts && (counts.moments > 0 || counts.helped > 0 || notThisTime > 0) && (
     <div className="wk10-figs">
       {counts.moments > 0 && <Fig n={counts.moments} unit={copy.momentsKept(counts.moments)} sub={placesLine} size="md" />}
@@ -346,6 +403,7 @@ export default function WeeklyTab() {
                   locale={dateLocale}
                   beyond={beyond}
                   todayStep={isCurrent && !!activeTodayAction && !activeTodayAction.outcome}
+                  hardSettled={weekHardLogs.length > 0 && weekHardLogs.every((l) => !!l.resolved)}
                   footer={
                     <div className="line wk10-chiprow">
                       <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
@@ -415,6 +473,7 @@ export default function WeeklyTab() {
               uiLang={uiLang}
               locale={dateLocale}
               areas={week?.lines.areas ?? []}
+              areaDetail={areaDetail}
               visit={visit && visitStart !== null ? { startMs: visitStart, role: appointmentRoleLabel(visit, t) } : null}
               nowMs={nowMs}
               onHardMoments={() => setActiveTab("behaviors")}
@@ -490,6 +549,7 @@ export default function WeeklyTab() {
               locale={dateLocale}
               field={field}
               summary={daySummary}
+              foot={dayFoot}
               onHardMoments={() => setActiveTab("behaviors")}
               aside={
                 /* B-SHELL-29: the invite (the ONE place a link leaves the app;

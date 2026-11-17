@@ -200,8 +200,16 @@ describe("B-PLAY-14 · the shared bedtime body", () => {
     expect((stories.match(/<TonightFromToday \/>/g) ?? []).length).toBe(1);
     // An evening entry asking for "today" lands on that section.
     expect(stories).toContain('if (tonightMode !== "today") return;');
-    // the hero cover (and its primary move) is still the default
-    expect(cover).toContain('data-primary-move="read-tonights-story"');
+    // the hero cover is still the default; V77: its primary move is the header
+    // band's action (FrameHead `action={readTonight}`), drawn before the cover.
+    const move = stories.slice(stories.indexOf("const readTonight = ("), stories.indexOf("const tonightTitle"));
+    expect(move).toContain('data-primary-move="read-tonights-story"');
+    expect((stories.match(/data-primary-move="read-tonights-story"/g) ?? []).length).toBe(1);
+    expect(stories).toContain("action={readTonight}");
+    expect(stories.indexOf("action={readTonight}")).toBeLessThan(stories.indexOf('<section data-module="stories-tonight">'));
+    // NEGATIVE CONTROL: the cover itself no longer carries the move
+    expect(cover).not.toContain('data-primary-move="read-tonights-story"');
+    expect(cover).not.toContain("readTonight");
     expect(stories).toContain('useState<TonightMode>(() => consumeTonightMode() ?? "hero")');
   });
 

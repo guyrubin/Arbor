@@ -98,7 +98,6 @@ export const en: Record<string, string> = {
   // W2-SHELLPLAY critic r1: the H1 names tonight (not the catalogue); the
   // cover's recessed well — what the story builds, the one thing to ask after.
   "elev.stories.tonight.h1": "Tonight's story",
-  "elev.stories.tonight.h1.starring": "Tonight, starring {name}",
   "elev.stories.tonight.builds": "Builds",
   "elev.stories.tonight.askAfter": "Ask after",
   "elev.stories.sub": "One story for tonight, starring {name}. The whole shelf is below when you want it.",
@@ -334,7 +333,6 @@ export const he: Record<string, string> = {
   "elev.stories.tonight.eyebrow": "הסיפור של הערב",
   "elev.stories.tonight.cta": "קוראים יחד",
   "elev.stories.tonight.h1": "הסיפור של הערב",
-  "elev.stories.tonight.h1.starring": "הערב, בכיכוב {name}",
   "elev.stories.tonight.builds": "מה מתרגלים",
   "elev.stories.tonight.askAfter": "שאלה אחרי הקריאה",
   "elev.stories.sub": "סיפור אחד לערב, בכיכוב {name}. כל המדף מחכה מתחת כשתרצו.",

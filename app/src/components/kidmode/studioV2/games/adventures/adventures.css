@@ -374,7 +374,7 @@
 .arbor-play .adventure .studio-play-hero img[data-hero-pose] { object-fit:contain; object-position:center bottom; border-radius:0; }
 .adventure-prompt { position:relative; align-items:stretch; gap:0; }
 .arbor-play .adventure .adventure-heading { padding-inline-end:48px; border:1px solid #decbae; border-radius:18px; font-size:20px!important; line-height:1.35; }
-.adventure-guide-replay { position:absolute; inset-inline-end:5px; top:calc(50% - 22px); width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:#84613c; }
+.adventure-guide-replay { position:absolute; inset-inline-end:5px; top:calc(50% - 22px); width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:var(--studio-graphite); }
 .adventure-guide-replay:disabled { opacity:.35; }
 .adventure-sprout { position:relative; display:inline-block; flex-shrink:0; isolation:isolate; }
 .adventure-sprout__actor { position:absolute; inset:0; display:block; transform-origin:50% 90%; filter:drop-shadow(3px 8px 4px #25392744); }

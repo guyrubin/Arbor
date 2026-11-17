@@ -122,3 +122,17 @@
 .ds-phone .sr-stage > .sr-subtitle { padding: 8px 16px 14px; }
 .ds-phone .sr-stage-head { padding-top: 12px; }
 .ds-phone .sr-kinds > .nx-ctl { align-items: start; }
+
+/* ── Fidelity re-audit (N-Remind-D) ── */
+/* The bowl holds the next nudge and, under it, the count and its two slots. */
+.ds-desk .sr-stage .nw-arc > .nw-arc-face { flex-direction: column; align-items: center; gap: 10px; }
+.ds-desk .sr-stage .nw-arc-face > .sr-slots { padding: 0; justify-content: center; }
+.ds-desk .sr-stage .nw-arc-face > .sr-slots > .nx-bells { margin-inline-start: 0; }
+/* Delivery: the channels side by side on desktop, as the board sets them (a channel that draws nothing takes no column). */
+.ds-desk .sr-delivery { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: start; }
+.ds-desk .sr-delivery > * { min-width: 0; margin: 0; }
+/* N-Remind-D: the Today stage is as tall as the rail beside it, and its content fills it the way the board draws it:
+   the head at the top, the arc in the middle, the subtitle at the foot. No empty field under the subtitle. */
+.ds-desk .sr-stage { display: flex; flex-direction: column; }
+.ds-desk .sr-stage > .sr-today { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+.ds-desk .sr-stage > .sr-subtitle { margin-top: auto; padding-bottom: 28px; }

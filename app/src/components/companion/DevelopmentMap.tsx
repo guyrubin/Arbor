@@ -79,7 +79,7 @@ export default function DevelopmentMap({ milestones, observations, openDomain, o
                   {count > 0 ? (
                     <span className="mcu">{count === 1 ? copy.seenUnitOne : copy.seenUnitMany}</span>
                   ) : !moment ? (
-                    <span data-testid="dev-map-none">{t("companion.devMap.none")}</span>
+                    <span data-testid="dev-map-none">{copy.nothingYet}</span>
                   ) : null}
                   {moment && (
                     <span className="mcl-last" data-testid="dev-map-last">

@@ -11,6 +11,7 @@ import { Icon } from "../ui/Icon";
 import { SegmentedAnswers } from "../ui/SegmentedAnswers";
 import { PencilChip } from "../../design/primitives";
 import { milestonesV10Copy } from "./milestonesV10Copy";
+import { EarlierLater } from "./AreaRowDetail";
 
 /**
  * v10.1 — the skills Arbor picks for the parent to notice next, from the
@@ -63,9 +64,11 @@ export interface NoticePickCardProps {
   onAnswer: (milestoneId: string, status: ObserveStatus) => Promise<unknown> | undefined;
   /** Called before the first answer, so the picks stay in place. */
   onHold: () => void;
+  /** The child's milestones, for the card's Earlier and later (reading only). */
+  milestones?: readonly Milestone[];
 }
 
-export function NoticePickCard({ pick, gender = null, suggested = false, onAnswer, onHold }: NoticePickCardProps) {
+export function NoticePickCard({ pick, gender = null, suggested = false, onAnswer, onHold, milestones }: NoticePickCardProps) {
   const { t, uiLang } = useLanguage();
   const copy = milestonesV10Copy(uiLang);
   const [pending, setPending] = useState(false);
@@ -97,6 +100,7 @@ export function NoticePickCard({ pick, gender = null, suggested = false, onAnswe
         disabled={pending}
         onAnswer={answer}
       />
+      {milestones && <EarlierLater milestone={m} milestones={milestones} gender={gender} />}
     </div>
   );
 }
@@ -106,10 +110,11 @@ export interface NoticeNextProps {
   gender?: string | null;
   onAnswer: (milestoneId: string, status: ObserveStatus) => Promise<unknown> | undefined;
   onHold: () => void;
+  milestones?: readonly Milestone[];
 }
 
 /** What to notice next: the picks after Arbor's suggestion. */
-export default function NoticeNext({ picks, gender = null, onAnswer, onHold }: NoticeNextProps) {
+export default function NoticeNext({ picks, gender = null, onAnswer, onHold, milestones }: NoticeNextProps) {
   const { t } = useLanguage();
   if (picks.length === 0) {
     return <p className="ms-next-empty" data-testid="ms-next-empty">{t("companion.devMap.empty")}</p>;
@@ -118,7 +123,7 @@ export default function NoticeNext({ picks, gender = null, onAnswer, onHold }: N
     <ul className="ms-next" role="list" data-testid="ms-next">
       {picks.map((pick) => (
         <li key={pick.milestone.id}>
-          <NoticePickCard pick={pick} gender={gender} onAnswer={onAnswer} onHold={onHold} />
+          <NoticePickCard pick={pick} gender={gender} onAnswer={onAnswer} onHold={onHold} milestones={milestones} />
         </li>
       ))}
     </ul>

@@ -84,8 +84,8 @@ export function ForYouPrograms({ state, copy, composition, onOpen }: { state: Fo
         <ProgramStones rows={model.weekRows} copy={copy} />
         <p className="skill" dir="auto">{model.skill}</p>
         <div className="fy-prog-foot">
-          <button type="button" className="ghostb" data-testid="foryou-program-open" onClick={onOpen} aria-label={models.length > 1 ? copy.openProgram(model.name) : undefined}>
-            {copy.openThisWeek}
+          <button type="button" className="ghostb" data-testid="foryou-program-open" onClick={onOpen} >
+            {i === 0 ? copy.openThisWeek : copy.openProgram(model.name)}
           </button>
         </div>
       </Tile>
@@ -96,7 +96,7 @@ export function ForYouPrograms({ state, copy, composition, onOpen }: { state: Fo
     ) : (
       <>
         <Snap label={copy.guidePrograms}>{tiles}</Snap>
-        <SnapDots count={models.length} />
+        <SnapDots count={models.length} caption={copy.swipe(models.length)} />
       </>
     );
   }

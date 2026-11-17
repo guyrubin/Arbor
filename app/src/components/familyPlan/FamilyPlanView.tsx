@@ -213,7 +213,7 @@ export default function FamilyPlanView() {
       <ReviewSheet open={sheet?.at === "message"} onClose={close} plan={plan} childName={childProfile.name} lang={lang} c={c} onSafety={() => setActiveTab("safety")} />
       <AddDateSheet open={sheet?.at === "manual"} onClose={close} plan={plan} lang={lang} c={c} />
       <DateSheet item={sheet?.at === "date" ? byId(sheet.id) : null} onClose={close} plan={plan} lang={lang} c={c} onAsk={ask} onCalendar={(items) => void addToCalendar(items)} />
-      <AskSheet item={sheet?.at === "ask" ? byId(sheet.id) : null} onClose={close} plan={plan} lang={lang} c={c} onInvite={() => { close(); setActiveTab("sharing"); }} />
+      <AskSheet childName={childProfile.name} item={sheet?.at === "ask" ? byId(sheet.id) : null} onClose={close} plan={plan} lang={lang} c={c} onInvite={() => { close(); setActiveTab("sharing"); }} />
     </DsRoot>
   );
 }

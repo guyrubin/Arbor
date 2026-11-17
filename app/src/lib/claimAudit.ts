@@ -153,6 +153,7 @@ export const CLAIM_REGISTRY: Readonly<Record<string, ClaimBasis>> = {
   "set.plan.price.perMonthAnnual": { kind: "storePrice" },
   // co-parent sharing is free
   "elev.coParent.free": { kind: "freeSharing" },
+  "elev.coParent.notDo1": { kind: "freeSharing" },
   "elev.plan.free.3": { kind: "freeSharing" },
   "elev.plan.family.1": { kind: "freeSharing" },
   "set.plan.familyDesc": { kind: "freeSharing" },
