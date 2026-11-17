@@ -76,7 +76,8 @@ import { useComposition } from "../../design/useComposition";
 import MilestonesBand from "../companion/MilestonesBand";
 import DevelopmentMap from "../companion/DevelopmentMap";
 import { EarlierLater } from "../companion/AreaRowDetail";
-import { recordSince } from "../companion/milestonesModel";
+import { firstMilestoneRecord } from "../companion/milestonesModel";
+import { useMilestonesRowEnd } from "../companion/useMilestonesRowEnd";
 import { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
 import { DOMAIN_ICONS } from "../../lib/domains/icons";
 import { bandForAgeMonths as screeningBand } from "../../lib/screening";
@@ -143,6 +144,7 @@ export default function MilestonesTab() {
   const { t, uiLang, aiLang } = useLanguage();
   const composition = useComposition();
   const desk = composition === "desk";
+  useMilestonesRowEnd(milestones, uiLang);
   const v10 = milestonesV10Copy(uiLang);
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
@@ -1201,7 +1203,7 @@ export default function MilestonesTab() {
   // The band names the child as the map's does ("Dylan's growth, in your words.").
   const [bandBefore, bandAfter = ""] = t("companion.milestones.title").split("{name}");
   const bandTitle = <>{bandBefore}<bdi dir="auto">{firstName || t("ms.watch.childFallback")}</bdi>{bandAfter || null}</>;
-  const sinceAt = recordSince(observations);
+  const sinceAt = firstMilestoneRecord(milestones);
   const recordSinceDay = sinceAt === null ? null : fmtDayV10(sinceAt, uiLang);
   const stops = [
     { id: "ms-list", title: desk ? v10.listGuideList : v10.listShort, sub: v10.listGuideListSub },

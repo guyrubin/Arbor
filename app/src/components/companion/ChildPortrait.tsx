@@ -17,7 +17,8 @@ import { PORTRAIT_COPY } from "./portraitCopy";
 import { trackCompanionPlaceOpen } from "../../lib/kpiEvents";
 import { Icon } from "../ui/Icon";
 import MilestoneAreas from "./MilestoneAreas";
-import { recordSince, seenTotals } from "./milestonesModel";
+import { firstMilestoneRecord, seenTotals } from "./milestonesModel";
+import { useMilestonesRowEnd } from "./useMilestonesRowEnd";
 import AreaTimeline from "./AreaTimeline";
 import MilestonesBand from "./MilestonesBand";
 import MilestonesReadGuide from "./MilestonesReadGuide";
@@ -73,7 +74,8 @@ export default function ChildPortrait({ onDiscuss }: ChildPortraitProps) {
   const logMap = useMemo(() => new Map((record.sources.behaviorLogs ?? []).map(log => [`behaviorLogs:${log.id}`, log])), [record.sources.behaviorLogs]);
   const totals = useMemo(() => seenTotals(milestones), [milestones]);
   // "since …": the first day this child's record holds (the earliest loaded entry).
-  const firstAt = useMemo(() => recordSince(observations), [observations]);
+  const firstAt = useMemo(() => firstMilestoneRecord(milestones), [milestones]);
+  useMilestonesRowEnd(milestones, uiLang);
   const since = firstAt === null ? null : fmtDayV10(firstAt, uiLang);
   // "Worth knowing at three": the child's whole years in words (1–6), else the plain kicker.
   const years = Math.floor(ageYearsFromProfile(childProfile) ?? 0);
