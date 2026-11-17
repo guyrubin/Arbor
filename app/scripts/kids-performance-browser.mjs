@@ -67,7 +67,8 @@ try {
         assert.ok(![...chunks].some(url => MAKER_CHUNKS.test(url)), 'Home does not fetch maker modules');
         await page.goto(`${base}/?lang=${lang}&studioNext=0`);
       }
-      await page.goto(`${base}/?lang=${lang}`);
+      // These checks measure the legacy games, so the next-games switch (on by default) is turned off.
+      await page.goto(`${base}/?lang=${lang}&studioNext=0`);
       await page.locator('[data-studio-home]').waitFor();
       await page.waitForTimeout(450);
       assert.ok(![...chunks].some(url => /RiverRescue-|RhythmGarden-|FeelingsForest-|SneakFreeze-/.test(url) || MAKER_CHUNKS.test(url)), 'Home does not fetch unrelated game modules');

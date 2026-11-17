@@ -19,7 +19,8 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); });
 
 describe("B-GAME-42 studio game voice", () => {
-  it("gives every game on today's menu its own guide, three beats and a finish, in both languages", () => {
+  it("gives every legacy menu game its own guide, three beats and a finish, in both languages", () => {
+    localStorage.setItem(STUDIO_NEXT_FLAG_KEY, "0"); resetStudioNextFlagForTests();
     for (const id of STUDIO_GAME_SELECTION) for (const lang of LANGS) {
       const voice = studioGameVoice(id, lang, studioActivity(id)?.worldId);
       expect(STUDIO_GAME_VOICES.base[id], id).toBeDefined();
