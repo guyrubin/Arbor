@@ -11,7 +11,8 @@ import { adultLabel, dayNum, daysFrom, momentLabel, whenLabel, type Lang } from 
 
 type Common = { plan: FamilyPlanApi; lang: Lang; c: FamilyPlanCopy; onOpen: (id: string) => void };
 
-const tokState = (d: FamilyPlanDate) => (stateOf(d) === "has" ? "solid" : stateOf(d) === "asked" ? "open" : "none") as "solid" | "open" | "none";
+// N-Plan-D: two token states; an asked date is still "nobody yet" until a yes.
+const tokState = (d: FamilyPlanDate) => (stateOf(d) === "has" ? "solid" : "none") as "solid" | "none";
 
 /* ── 2 · The dates ─────────────────────────────────────────────────────────── */
 
@@ -23,7 +24,7 @@ export function DateCards({ plan, lang, c, onOpen }: Common) {
     <>
       {list.map((d) => {
         const s = stateOf(d);
-        const who = s === "has" ? (d.holder?.uid === plan.me.uid ? c.stateHasYou : c.stateHas(adultLabel(d.holder, plan.me.uid, c))) : s === "asked" && d.request ? c.stateAsked(adultLabel({ uid: d.request.toUid, email: d.request.toEmail }, plan.me.uid, c)) : c.stateNone;
+        const who = s === "has" ? (d.holder?.uid === plan.me.uid ? c.stateHasYou : c.stateHas(adultLabel(d.holder, plan.me.uid, c))) : c.stateNone;
         const days = daysFrom(plan.window.today, d.date);
         const rel = d.status === "done" ? c.done : days === 0 ? c.today : days === 1 ? c.tomorrow : days > 1 ? c.inDays(days) : "";
         const last = d.previous?.[d.previous.length - 1];
@@ -37,6 +38,7 @@ export function DateCards({ plan, lang, c, onOpen }: Common) {
                 {last ? ` (${c.wasTime(whenLabel(last, lang))})` : ""}
                 {s === "asked" ? `. ${c.askedNoAnswer}` : rel ? `. ${rel}.` : "."}
               </span>
+              {d.pendingChange && <span className="fp-pl"><Icon name="edit" size={14} />{c.oneChangeToReview}</span>}
             </span>
             <span className="cc" aria-hidden="true"><Icon name="chevron_right" size={18} className="rtl:-scale-x-100" /></span>
           </button>
@@ -58,6 +60,11 @@ function latestMessage(all: FamilyPlanDate[]) {
 
 export function MessageTile({ plan, lang, c, onOpen }: Common) {
   const m = latestMessage(plan.all);
+  const items = [...m.latest].sort((a, b) => (a.sourceLineNo ?? 99) - (b.sourceLineNo ?? 99));
+  const rows = [
+    ...items.map((d) => ({ key: d.id, id: d.id, note: false, title: d.title, sub: d.kind === "deadline" ? c.dueOn(whenLabel(d, lang)) : d.kind === "join" ? `${whenLabel(d, lang)} · ${c.kinds.join.toLowerCase()}` : whenLabel(d, lang) })),
+    ...items.flatMap((d) => (d.prep ?? []).map((p) => ({ key: `${d.id}:${p.id}`, id: d.id, note: true, title: p.text, sub: c.staysNote }))),
+  ];
   return (
     <Tile icon="description" kind="date" title={c.theMessage} titleId="fp-msg-h">
       {m.messages ? (
@@ -65,17 +72,18 @@ export function MessageTile({ plan, lang, c, onOpen }: Common) {
           <div className="line" style={{ gap: 22, alignItems: "center", padding: "6px 0 2px 6px" }}>
             <span className="nx-paper" aria-hidden="true">
               <i className="s" /><i />
-              {m.latest.slice(0, 3).map((_, i) => <i key={i} className="hi"><b>{i + 1}</b></i>)}
+              {rows.slice(0, 3).map((_, i) => <i key={i} className="hi"><b>{i + 1}</b></i>)}
               <i />
             </span>
             <Fig size="md" n={m.dates} unit={c.figDates(m.dates)} sub={c.messagesKept(m.dates, m.messages)} />
           </div>
+          {/* N-Plan-D: the message's items in line order, then what it asked to bring (kept as notes). */}
           <ol className="fp-lines" aria-label={c.theMessage}>
-            {m.latest.map((d, i) => (
-              <li key={d.id}>
-                <button type="button" className="nx-found" style={{ width: "100%", textAlign: "start", font: "inherit", cursor: "pointer", minHeight: 44 }} onClick={() => onOpen(d.id)}>
+            {rows.map((r, i) => (
+              <li key={r.key}>
+                <button type="button" className={`nx-found${r.note ? " nod" : ""}`} style={{ width: "100%", textAlign: "start", font: "inherit", cursor: "pointer", minHeight: 44 }} onClick={() => onOpen(r.id)}>
                   <span className="nx-n" aria-hidden="true">{i + 1}</span>
-                  <span><b dir="auto">{d.title}</b>{whenLabel(d, lang)}</span>
+                  <span><b dir="auto">{r.title}</b>{r.sub}</span>
                 </button>
               </li>
             ))}
@@ -111,7 +119,7 @@ export function ChangeTile({ plan, lang, c, onOpen }: Common) {
   );
 }
 
-export function RequestsTile({ plan, lang, c, onOpen, figures = true, children }: Common & { figures?: boolean; children?: React.ReactNode }) {
+export function RequestsTile({ plan, lang, c, onOpen, figures = false, children }: Common & { figures?: boolean; children?: React.ReactNode }) {
   const requests = plan.openRequests;
   const queued = plan.reminders;
   const forWhom = (uid: string | null) => (uid ? (uid === plan.me.uid ? c.forYou : c.forAdult(adultLabel(plan.roster.adults.find((a) => a.uid === uid) ?? { uid, email: null }, plan.me.uid, c))) : c.forYou);

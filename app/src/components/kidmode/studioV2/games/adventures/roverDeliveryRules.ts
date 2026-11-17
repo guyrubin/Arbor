@@ -48,7 +48,7 @@ export const RETURN_MS = 300;
 /** How long the hero holds the start press. */
 export const PRESS_MS = 480;
 /** Pep and the rover together, long enough to enjoy, before the next floor. */
-export const ARRIVED_MS = 2400;
+export const ARRIVED_MS = 3200;
 /** The hero shrugging off a run that parked somewhere else. */
 export const OOPS_MS = 700;
 /** Parked runs on one floor before one thing to change is pointed out. */
@@ -58,7 +58,8 @@ export const HINT_AFTER = 2;
  * one setting that reaches the rug, and its first setting never does.
  *
  * Little adventure, 3 by 3: one sign a quarter turn away; one sign two turns
- * away with a planter on the first try; two signs, one of them already right.
+ * away (the first try stops at the edge, a planter blocks a wrong guess); two
+ * signs, one of them already right.
  * Bigger adventure, 4 by 4: two signs, one to turn; two signs behind a wall of
  * planters, both to turn; three signs and a flower to fold on the only way. */
 const LEVELS: Record<Challenge, readonly RoverLevel[]> = {

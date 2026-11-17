@@ -80,7 +80,8 @@ const button = (testId: string) => state.buttons.find((b) => b["data-testid"] ==
 const DOORS = [
   ["together-door-story", "/visuals/worlds/v2/story-quest-v2-480.webp", "companion.together-view.door-create-story", (lang: "en" | "he") => TOGETHER_COPY[lang].doorStorySub("Noa")],
   ["together-door-continue", "/visuals/worlds/v2/play-together-v2-480.webp", "companion.together-view.door-continue-favorite", (lang: "en" | "he") => TOGETHER_COPY[lang].doorContinueSub("Noa")],
-  ["together-door-find", "/visuals/worlds/v2/mood-mountain-v2-480.webp", "companion.together-view.door-find-play", (lang: "en" | "he") => TOGETHER_COPY[lang].doorFindSub],
+  ["together-door-find", "/visuals/worlds/v2/mood-mountain-v2-480.webp", "companion.together-view.door-find-play", // V77 board: the door counts the games the child is offered ("7 games, and a play idea for today").
+  (lang: "en" | "he") => TOGETHER_COPY[lang].doorFindSub(studioWorldsForChild(lang, state.childProfile as never).worlds.length)],
 ] as const;
 /** Section 2: from its module to the end of the page. */
 const doorsSection = (html: string) => html.slice(html.indexOf('data-module="together-doors"'));
@@ -253,7 +254,9 @@ describe("v3 F-TOG-1 · the stylesheet and the copy (v10.1)", () => {
       expect(he, key).not.toMatch(/[A-Za-z]/);
       expect(he, key).toMatch(/[֐-׿]/);
     }
-    const lines = (lang: "en" | "he") => [TOGETHER_COPY[lang].doorsTitle, TOGETHER_COPY[lang].doorsSub("Noa"), TOGETHER_COPY[lang].doorStorySub("Noa"), TOGETHER_COPY[lang].doorContinueSub("Noa"), TOGETHER_COPY[lang].doorFindSub];
+    const lines = (lang: "en" | "he") => [TOGETHER_COPY[lang].doorsTitle, TOGETHER_COPY[lang].doorsSub("Noa"), TOGETHER_COPY[lang].doorStorySub("Noa"), TOGETHER_COPY[lang].doorContinueSub("Noa"), TOGETHER_COPY[lang].doorFindSub(7)];
+    // Negative control: the uncounted v10.1 line is gone.
+    expect(TOGETHER_COPY.en.doorFindSub(7)).not.toBe("The games, and a play idea for today.");
     lines("he").forEach((he, i) => {
       expect(he).not.toBe(lines("en")[i]);
       expect(he.replace("Noa", "")).not.toMatch(/[A-Za-z]/);

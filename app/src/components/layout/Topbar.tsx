@@ -7,6 +7,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { homeForTab, chromeLitHome } from "../../lib/companionPlaces";
 import { HOME_PILLS, homeIdForTab, shellCrumbFor } from "../../lib/navigation";
+import { useShellSlots } from "../../lib/shellSlots";
 import type { ActiveTab } from "../../lib/routes";
 import { Icon } from "../ui/Icon";
 
@@ -43,6 +44,9 @@ export default function Topbar() {
   const { t, uiLang } = useLanguage();
   const childName = childProfile?.name?.trim().split(/\s+/)[0] ?? "";
   const crumb = shellCrumbFor(activeTab);
+  // V77: one last level the route names itself (a plan, Reads, a language).
+  const { crumb: routeCrumb } = useShellSlots();
+  const own = !!routeCrumb;
   // v3 F-SHELL-2 (critic ruling 6): ONE title on every route, the home's name.
   const home = homeForTab(activeTab);
   const lit = chromeLitHome(home);
@@ -92,18 +96,21 @@ export default function Topbar() {
           >
             {uiLang === "he" ? named.he : named.en}
           </span>
-          {/* v10: the breadcrumb continues the title: place › pill › view. The
-              pill is a link back to it; the last level is where you are. */}
-          {(crumb.pill || crumb.view) && (
+          {/* v10: the breadcrumb continues the title: place › pill › view, then
+              the route's own last level if it names one (V77). A level that
+              leads elsewhere is a link back to it; the last is where you are. */}
+          {(crumb.pill || crumb.view || own) && (
             <nav aria-label={t("nav.crumb.aria")} data-testid="topbar-crumb" className="min-w-0">
               <ol className="flex items-center gap-1 min-w-0 text-[14px] font-semibold" style={{ color: "var(--arbor-ink-soft)" }}>
                 {crumb.pill && (
                   <li className="flex items-center gap-1 min-w-0">
                     <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
-                    {crumb.view ? (
+                    {(crumb.view || own) && crumb.pill !== activeTab ? (
                       <button type="button" onClick={() => setActiveTab(crumb.pill!)} className="min-h-11 min-w-11 px-1 truncate text-center hover:underline underline-offset-2">
                         {crumbLabel(crumb.pill, true, t, childName)}
                       </button>
+                    ) : crumb.view || own ? (
+                      <span className="px-1 truncate">{crumbLabel(crumb.pill, true, t, childName)}</span>
                     ) : (
                       <span aria-current="page" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{crumbLabel(crumb.pill, true, t, childName)}</span>
                     )}
@@ -112,7 +119,17 @@ export default function Topbar() {
                 {crumb.view && (
                   <li className="flex items-center gap-1 min-w-0">
                     <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
-                    <span aria-current="page" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{crumbLabel(crumb.view, false, t, childName)}</span>
+                    {own ? (
+                      <span className="px-1 truncate">{crumbLabel(crumb.view, false, t, childName)}</span>
+                    ) : (
+                      <span aria-current="page" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{crumbLabel(crumb.view, false, t, childName)}</span>
+                    )}
+                  </li>
+                )}
+                {own && (
+                  <li className="flex items-center gap-1 min-w-0" data-testid="topbar-crumb-own">
+                    <Icon name="chevron_right" size={16} className="rtl:-scale-x-100 flex-none" style={{ color: "var(--arbor-muted)" }} />
+                    <span aria-current="page" dir="auto" className="px-1 truncate" style={{ color: "var(--arbor-ink)" }}>{routeCrumb}</span>
                   </li>
                 )}
               </ol>

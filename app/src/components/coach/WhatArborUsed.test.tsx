@@ -19,6 +19,22 @@ const guides = [{ id: "transitions", title: "Why transitions are hard" }];
 const strip = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
 describe("What Arbor used (V77, read-only)", () => {
+  it("the program line: the program's own localized name and its week, when the server echoed it", () => {
+    const html = renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} program={{ id: "steady-nights", week: 2 }} />);
+    expect(strip(html)).toContain("Steady Nights · week 2");
+    h.lang = "he";
+    const he = strip(renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} program={{ id: "steady-nights", week: 2 }} />));
+    expect(he).toContain("שבוע 2");
+    expect(he).not.toContain("Steady Nights");
+    h.lang = "en";
+  });
+  it("negative controls: no program in the context → no line; an old answer without the field renders as before", () => {
+    const old = renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} />);
+    expect(old).not.toContain('data-testid="coach-used-program"');
+    expect(renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} program={null} />)).toBe(old);
+    // an unknown id names nothing (never a guessed program)
+    expect(renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} program={{ id: "no-such", week: 1 }} />)).toBe(old);
+  });
   it("lists the child line, the guides, the remembered notes and this week — only what the answer carried", () => {
     const html = renderToStaticMarkup(<WhatArborUsed basedOn={basedOn} guides={guides} childName="Dylan" onOpenFact={() => {}} />);
     const text = strip(html);

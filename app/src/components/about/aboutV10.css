@@ -193,7 +193,7 @@
 /* v10.3 frame: the band, the index, the area panel, the rail, the child row */
 .ds-about .about-band { padding: 22px 28px 18px; gap: 16px; border-radius: 22px; }
 .ds-about.ds-phone .about-band { padding: 16px 14px 14px; gap: 12px; }
-.ds-about .mch .hero { font-size: 34px; margin: 0; }
+.ds-about .mch .hero { font-size: 32px; margin: 0; } /* the board sets this title at 32 px inline */
 .ds-about.ds-phone .mch .hero { font-size: 26px; line-height: 1.1; }
 .ds-about .mch .mcl p { margin: 0; }
 .ds-about .mci button.mcs { border: 0; text-align: start; font: inherit; cursor: pointer; }
@@ -248,3 +248,8 @@
 /* the parent's kept words stay in the editorial face (parentScriptTypography) */
 .ds-about .a8-quote { font-family: var(--font-editorial) !important; font-style: italic; font-weight: 400 !important; }
 html[lang="he"] .ds-about .a8-quote { font-style: normal; }
+/* V77 audit (N-About-D): the title keeps one line, as the board draws it; the
+   right column gives way first (the figure's lines may wrap, never the title's). */
+.ds-about .mch:not(.m) .mcl { flex: 1 1 auto; }
+.ds-about .mch:not(.m) .mcr { flex: 0 1 auto; min-width: 0; }
+.ds-about .mch:not(.m) .mcf .fig > span { max-width: 210px; }

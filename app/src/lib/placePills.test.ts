@@ -151,19 +151,28 @@ describe("2 · pillRowFor: the home's row on the home and on every route it hold
 });
 
 describe("3 · the breadcrumb: place › pill › view", () => {
-  it("a home's first pill is the place alone; a later pill adds itself", () => {
+  it("V77: the lit pill shows, the first one too, except where it is the home's own name (Now, For you)", () => {
     expect(shellCrumbFor("overview")).toEqual({ pill: null, view: null });
+    expect(shellCrumbFor("masterclasses")).toEqual({ pill: null, view: null });
     expect(shellCrumbFor("weekly")).toEqual({ pill: "weekly", view: null });
-    expect(shellCrumbFor("development")).toEqual({ pill: null, view: null });
+    expect(shellCrumbFor("development")).toEqual({ pill: "development", view: null });
+    expect(shellCrumbFor("practice")).toEqual({ pill: "practice", view: null });
+    expect(shellCrumbFor("consult")).toEqual({ pill: "consult", view: null });
     expect(shellCrumbFor("timeline")).toEqual({ pill: "timeline", view: null });
+    // Negative control: the pre-V77 rule hid every first pill ("My child" alone).
+    expect(shellCrumbFor("development")).not.toEqual({ pill: null, view: null });
   });
 
   it("a folded route adds its own view after the pill it lights", () => {
     expect(shellCrumbFor("day-windows")).toEqual({ pill: "weekly", view: "day-windows" });
     expect(shellCrumbFor("behaviors")).toEqual({ pill: "timeline", view: "behaviors" });
-    expect(shellCrumbFor("school-brief")).toEqual({ pill: null, view: "school-brief" });
+    expect(shellCrumbFor("milestones")).toEqual({ pill: "development", view: "milestones" });
+    expect(shellCrumbFor("school-brief")).toEqual({ pill: "consult", view: "school-brief" });
     expect(shellCrumbFor("smart-reminders")).toEqual({ pill: null, view: "smart-reminders" });
-    expect(shellCrumbFor("safety")).toEqual({ pill: null, view: "safety" });
+  });
+
+  it("V77 N-Safety-D: Safety has no crumb, its ring is lit", () => {
+    expect(shellCrumbFor("safety")).toEqual({ pill: null, view: null });
   });
 
   it("Talk has no crumb: it is a panel", () => {

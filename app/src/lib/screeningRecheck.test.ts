@@ -179,9 +179,12 @@ describe("re-check reminder source contract", () => {
     const row = readSrc("components/companion/AreaRowDetail.tsx");
     const areas = readSrc("components/companion/MilestoneAreas.tsx");
     expect(map).toContain('data-testid="dev-map-recheck"');
-    expect(map).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
+    // V77: the date in the boards' V10 form (still text, still the one date seam).
+    expect(map).toContain('t("elev.growth.recheck.date", { date: fmtDayV10(recheckDueAt, uiLang) })');
+    expect(map).not.toContain('date: fmtDay(recheckDueAt');
     expect(row).toContain('data-testid="area-detail-recheck"');
-    expect(row).toContain('t("elev.growth.recheck.date", { date: fmtDay(watch.recheckDueAt, uiLang) })');
+    expect(row).toContain('t("elev.growth.recheck.date", { date: fmtDayV10(watch.recheckDueAt, uiLang) })');
+    expect(row).not.toContain('date: fmtDay(watch.recheckDueAt');
     expect(areas).toContain("latestRecheckDueAt");
     // the yellow proactive chip is gone
     for (const src of [map, row, areas]) {

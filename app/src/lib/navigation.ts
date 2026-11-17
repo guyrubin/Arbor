@@ -490,19 +490,29 @@ export function litPillFor(tab: ActiveTab): ActiveTab | null {
   return HOME_PILLS[homeIdForTab(tab)].some((it) => it.tab === lit) ? lit : null;
 }
 
+/** Homes whose first pill is the home's own name ("Now", "For you"). */
+const FIRST_PILL_IS_HOME: ReadonlySet<HomeId> = new Set<HomeId>(["now", "learn"]);
+
 /**
- * v10 — the top bar's breadcrumb after the home's title: place › pill › view,
- * three levels at most. On the home's first pill the place stands alone ("Now",
- * not "Now › Now"); a folded route adds its own view name (nav.view.<route>)
- * after the pill it lights. Talk is a panel and has no crumb.
+ * v10 — the top bar's breadcrumb after the home's title: place › pill › view.
+ * V77: the lit pill always shows, except on the first pill of Now and For you,
+ * where the place stands alone ("Now", not "Now › Now"); a folded route adds
+ * its own view name (nav.view.<route>) after the pill it lights. A route may
+ * add one last level of its own (lib/shellSlots useShellCrumb). Talk is a
+ * panel and Safety lights its ring, so neither has a crumb.
  */
 export function shellCrumbFor(tab: ActiveTab): { pill: ActiveTab | null; view: ActiveTab | null } {
   const home = homeIdForTab(tab);
   // Talk is a panel; a rowless admin route keeps its Back link instead.
   if (home === "talk" || NO_PILL_ROW_TABS.has(tab)) return { pill: null, view: null };
+  // V77 N-Safety-D: the lit Safety ring already says where you are.
+  if (tab === "safety") return { pill: null, view: null };
   const row = HOME_PILLS[home];
   const lit = litPillFor(tab);
-  const pill = lit && row[0]?.tab !== lit ? lit : null;
+  // V77: the crumb names the lit pill, the first one too (My child › Milestones,
+  // Together › Routines, Care, together › Visits), except where the first pill
+  // is the home's own name (Now, For you): the title already says it.
+  const pill = lit && !(row[0]?.tab === lit && FIRST_PILL_IS_HOME.has(home)) ? lit : null;
   const view = lit === tab ? null : tab === row[0]?.tab ? null : tab;
   return { pill, view };
 }

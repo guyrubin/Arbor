@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import React, { useRef, useState, type ReactNode } from "react";
 import { Token, MoreLink, RouteHead, LivingForm } from "../../../design/primitives";
 import Icon from "../../ui/Icon";
 import type { Composition } from "../../../design/useComposition";
@@ -56,7 +56,9 @@ export default function WhatHelped({
   const stepLine = (line: WeekStepLine) => {
     const parts: string[] = [];
     if (line.helped > 0) parts.push(`${helpedTimes(line.helped)} · ${line.helpedDays.map((ms) => new Date(ms).toLocaleDateString(locale, { weekday: "short", day: "numeric" })).join(", ")}`);
-    if (line.notThisTime > 0) parts.push(t("elev.wk.helped.not", { n: line.notThisTime }));
+    // One "not this time" names its day (N-Week-D: "Not this time · Sun 15"); more keep the count.
+    if (line.notThisTime === 1 && line.helped === 0) parts.push(copy.notThisTimeOn(new Date(line.latest).toLocaleDateString(locale, { weekday: "short", day: "numeric" })));
+    else if (line.notThisTime > 0) parts.push(t("elev.wk.helped.not", { n: line.notThisTime }));
     return parts.join(" · ");
   };
   const art = guideArtFor("big-feelings", uiLang);
@@ -64,6 +66,14 @@ export default function WhatHelped({
   /* Phone (N-Week-M): the newest step as the violet "Step you tried" card,
      the others in a sideways row under "Other steps you tried". */
   const [lead, ...rest] = steps;
+  const [at, setAt] = useState(0);
+  const othersRow = useRef<HTMLUListElement>(null);
+  const onOthersScroll = () => {
+    const el = othersRow.current;
+    const card = el?.firstElementChild as HTMLElement | null;
+    if (!el || !card) return;
+    setAt(Math.min(rest.length - 1, Math.max(0, Math.round(Math.abs(el.scrollLeft) / (card.offsetWidth + 8)))));
+  };
   const phoneSteps = lead ? (
     <>
       <article className={`wk-tr stp${lead.helped > 0 ? "" : " not"}`} data-testid="weekly-step" data-helped={lead.helped > 0 ? "" : undefined}>
@@ -74,10 +84,24 @@ export default function WhatHelped({
           <span className={`wk-out ${lead.helped > 0 ? "wk10-out-step" : "wk10-out-not"}`}>{stepLine(lead)}</span>
         </div>
       </article>
-      {rest.length > 0 && (
+    </>
+  ) : null;
+  const phoneOthers = rest.length > 0 ? (
         <>
-          <span className="kicker wk10-others-k">{copy.otherSteps}</span>
-          <ul className="wk10-srs ds-snap-scroll" data-testid="weekly-steps">
+          <div className="line wk10-others-head">
+            <span className="kicker wk10-others-k">{copy.otherSteps}</span>
+            {rest.length > 1 && (
+              <>
+                <span className="sdots" aria-hidden="true">
+                  {rest.map((_, i) => (
+                    <i key={i} className={i === at ? "on" : undefined} />
+                  ))}
+                </span>
+                <span className="small" aria-live="polite">{copy.readOf(at + 1, rest.length)}</span>
+              </>
+            )}
+          </div>
+          <ul className="wk10-srs ds-snap-scroll" data-testid="weekly-steps" ref={othersRow} onScroll={onOthersScroll}>
             {rest.map((line) => (
               <li key={line.step} className={`wk-sr${line.helped > 0 ? "" : " not"}`} data-testid="weekly-step" data-helped={line.helped > 0 ? "" : undefined}>
                 <Token kind="stp" state={line.helped > 0 ? "solid" : "open"} size="md" label={line.helped > 0 ? copy.tokenHelped : copy.tokenNot} />
@@ -89,8 +113,6 @@ export default function WhatHelped({
             ))}
           </ul>
         </>
-      )}
-    </>
   ) : null;
 
   const stepsList = steps.length > 0 ? (
@@ -112,7 +134,7 @@ export default function WhatHelped({
   const side = (
     <div className="stack wk10-helped-side">
       {hasHeldWords && (
-        <article className="wk-node words wk10-words" data-testid="weekly-thread-words">
+        <article className={`wk-node words wk10-words${wordsDay ? " dayed" : ""}`} data-testid="weekly-thread-words">
           <span className="k">{wordsDay ? copy.wordsYouUsedOn(wordsDay) : copy.wordsYouUsed}</span>
           {heldWords}
         </article>
@@ -145,8 +167,10 @@ export default function WhatHelped({
       <RouteHead id="wk-helped-title" title={copy.stopHelped} sub={copy.helpedSub} link={<MoreLink onClick={onPlans}>{t("nav.pill.plans")}</MoreLink>} />
       {phone ? (
         <div className="stack wk10-next-stack">
+          {/* N-Week-M order: the step you tried, the words you used, Hard moments, then the other steps. */}
           {lead ? phoneSteps : stepsList}
           {side}
+          {lead && phoneOthers}
         </div>
       ) : (
         <div className="g12">

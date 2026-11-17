@@ -10,7 +10,8 @@ import { sectionForTab, pillRowFor, litPillFor } from "../../lib/navigation";
 import { useComposition } from "../../design/useComposition";
 import { NewTag } from "../../design/primitives";
 import { useNowClock } from "../companion/useNowClock";
-import { fmtShellNow } from "../../lib/formatDate";
+import { fmtShellDay, fmtShellNow } from "../../lib/formatDate";
+import { useShellSlots, type ShellRowEnd } from "../../lib/shellSlots";
 import { contractFor } from "../../lib/surfaceContract";
 import Sidebar from "./Sidebar";
 import CompanionWorkspace from "../companion/CompanionWorkspace";
@@ -232,6 +233,40 @@ function SurfaceFrame({ route, children }: { route: ActiveTab; children: React.R
   );
 }
 
+/**
+ * V77 — the end of the desktop pill row. By default the day and the time
+ * ("Monday 16 November · 17:40"); a route may put its own words there instead
+ * (lib/shellSlots useShellRowEnd): the day and a suffix, the day alone, its own
+ * sentence, a link, or an action after the day and time.
+ */
+export function ShellRowEndView({ now, uiLang, end }: { now: Date; uiLang: "en" | "he"; end: ShellRowEnd | null }) {
+  if (end?.link && !end.suffix && !end.dateOnly && !end.text) {
+    return (
+      <button type="button" className="ds-link ds-shellrow-when" data-testid={end.link.testId ?? "shell-row-link"} onClick={end.link.onClick}>
+        {end.link.label}
+      </button>
+    );
+  }
+  const when = end?.text
+    ? end.text
+    : end?.suffix
+      ? `${fmtShellDay(now, uiLang)} · ${end.suffix}`
+      : end?.dateOnly
+        ? fmtShellDay(now, uiLang)
+        : fmtShellNow(now, uiLang);
+  return (
+    <span className="ds-shellrow-end line" style={{ gap: 12, flex: "none" }}>
+      <span className="small ds-shellrow-when" data-testid="shell-now" dir="auto">{when}</span>
+      {end?.action && (
+        <button type="button" className="btn ghost sm" data-testid={end.action.testId ?? "shell-row-action"} onClick={end.action.onClick}>
+          {end.action.icon && <Icon name={end.action.icon} size={18} />}
+          {end.action.label}
+        </button>
+      )}
+    </span>
+  );
+}
+
 export default function Shell() {
   const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
@@ -265,6 +300,8 @@ export default function Shell() {
   const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);
   const composition = useComposition();
   const now = useNowClock();
+  // V77: what the route puts at the end of its pill row (lib/shellSlots).
+  const { rowEnd } = useShellSlots();
   // v4: the About pill names the child ("About Mia"); without a name it is "About".
   const childFirstName = childProfile.name?.trim().split(/\s+/)[0] ?? "";
 
@@ -522,9 +559,7 @@ export default function Shell() {
                   );
                 })}
               </div>
-              {composition === "desk" && (
-                <span className="small ds-shellrow-when" data-testid="shell-now">{fmtShellNow(now, uiLang)}</span>
-              )}
+              {composition === "desk" && <ShellRowEndView now={now} uiLang={uiLang} end={rowEnd} />}
             </div>
           )}
 

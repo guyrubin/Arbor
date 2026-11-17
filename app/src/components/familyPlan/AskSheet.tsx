@@ -14,7 +14,7 @@ import { adultInitial, adultLabel, dayNum, weekdayShort, whenLabel, type Lang } 
  * cannot answer yet, so their card is shown and disabled). Sent is not
  * accepted: the date shows "asked, no answer yet" until they say yes.
  */
-export function AskSheet({ item, onClose, plan, lang, c, onInvite }: { item: FamilyPlanDate | null; onClose: () => void; plan: FamilyPlanApi; lang: Lang; c: FamilyPlanCopy; onInvite: () => void }) {
+export function AskSheet({ item, onClose, plan, lang, c, onInvite, childName }: { item: FamilyPlanDate | null; onClose: () => void; plan: FamilyPlanApi; lang: Lang; c: FamilyPlanCopy; onInvite: () => void; childName?: string }) {
   const { roster, me } = plan;
   const others = roster.adults.filter((a) => a.uid !== me.uid);
   const [pick, setPick] = useState<FamilyPlanAdult | null>(null);
@@ -45,7 +45,10 @@ export function AskSheet({ item, onClose, plan, lang, c, onInvite }: { item: Fam
         </div>
         <div className="fp-col" style={{ gap: 4, minWidth: 0 }}>
           <b dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 19, lineHeight: 1.2 }}>{item.title}</b>
-          <span className="small">{c.kinds[item.kind]} · {whenLabel(item, lang)}</span>
+          {/* FA-Ask: the child it is for, then what is asked (the day is in the tile). */}
+          {childName ? (
+            <span className="small line" style={{ gap: 6, alignItems: "center" }}><span className="av sm" aria-hidden="true">{adultInitial(childName)}</span><bdi>{childName}</bdi> · {c.kinds[item.kind]}</span>
+          ) : <span className="small">{c.kinds[item.kind]} · {whenLabel(item, lang)}</span>}
         </div>
       </div>
       <span className="kicker">{c.askOne}</span>
