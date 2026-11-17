@@ -78,7 +78,10 @@ describe("#/stories — Tonight shows the book; More stories is the library grid
   it("the Tonight art band renders the manifest cover of tonight's book, the avatar only without one", () => {
     expect(HERO).toContain("const tonightCover = tonightStory ? storyCover(tonightStory.id) : null;");
     const band = HERO.slice(HERO.indexOf('data-testid="stories-cover"'), HERO.indexOf('data-testid="hero-first-gate"'));
-    expect(band).toMatch(/\{tonightCover \? \([\s\S]*src=\{tonightCover\.src480\}[\s\S]*data-testid="stories-tonight-book-cover"[\s\S]*\) : <HeroAvatar size=\{84\} ring animate=\{false\} \/>\}/);
+    expect(band).toMatch(/\{tonightCover \? \([\s\S]*src=\{tonightCover\.src480\}[\s\S]*data-testid="stories-tonight-book-cover"[\s\S]*\) : <HeroAvatar size=\{phoneShort \? 56 : 84\} ring animate=\{false\} \/>\}/);
+    // A phone under 900 px tall draws the art band smaller (56 px avatar, 48 px cover) so
+    // Read it together clears the Ask bar; elsewhere the 84 px avatar and 72 px cover stand.
+    expect(band).toContain('${phoneShort ? "w-[48px]" : "w-[72px]"} sm:w-[132px] lg:w-[200px] aspect-[3/4]');
     // the hero row stays in the band (B-PLAY-15), Play stays the one stamp
     expect(HERO).toContain('data-primary-move="read-tonights-story"');
   });

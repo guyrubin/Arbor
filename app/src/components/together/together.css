@@ -313,7 +313,7 @@
 .ds .compact-band .mci .mcs { min-height: 92px; }
 .ds.ds-desk .compact-band .mci .mcs { min-height: 92px; }
 .ds .compact-band .mch .mcl p { font-size: 13px; }
-.ds .compact-band .mch .hero { font-size: 26px !important; line-height: 1.1; }
+.ds .compact-band .mch .hero { font-size: 24px !important; line-height: 1.1; }
 .ds.ds-desk .compact-band .mch .hero { font-size: 30px !important; }
 /* Phone, compact: the title keeps the full width; the figure sits beside the sub-line. */
 .ds .compact-band .mch.m { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 4px; align-items: center; }
@@ -322,3 +322,10 @@
 .ds .compact-band .mch.m .mcl p { grid-column: 1; }
 .ds .compact-band .mch.m .mcf { grid-column: 2; justify-content: flex-end; }
 .ds .compact-band .mch.m .fig b { font-size: 34px; }
+/* Compact, desk: the band's switch and figure share one row. */
+.ds.ds-desk .compact-band .mch .mcr { flex-direction: row; align-items: center; gap: 20px; }
+/* Compact, desk: the stage's padding and the first band tighten too (first routine card above the Ask bar). */
+.ds .mcst.compact-stage { padding: 12px 18px 12px; gap: 8px; }
+.ds .mcst.compact-stage .mcsh { min-height: 36px; }
+.ds .compact-stage .tgb { gap: 6px; }
+.ds .compact-stage .tgbh { min-height: 32px; }

@@ -239,7 +239,7 @@ function ScopedTogetherView() {
             ) : (
               <div className="rowa">
                 <div className="stg">
-                  <StageCard icon="wb_sunny" title={copy.byTimeOfDay} className="together-stage">
+                  <StageCard icon="wb_sunny" title={copy.byTimeOfDay} className={short ? "together-stage compact-stage" : "together-stage"}>
                     {routinesModule}
                   </StageCard>
                 </div>
