@@ -25,6 +25,8 @@ export const JOIN_MS = 1500;
 export const SUN_MS = 4200;
 /** How long the spinner wheel turns (its CSS rotate transition); the hop is named once it stops. */
 export const TURN_MS = 1050;
+/** B-GAME-46: the soft clicks of the turning wheel, slowing and quieter as it settles, all before it stops. */
+export const TURN_TICKS: readonly { at: number; gain: number }[] = [{ at: 220, gain: 0.45 }, { at: 480, gain: 0.35 }, { at: 780, gain: 0.25 }];
 export const WOBBLE_MS = 460;
 
 const onPath = (position: number) => Number.isInteger(position) && position >= 0 && position <= PATH_END;
