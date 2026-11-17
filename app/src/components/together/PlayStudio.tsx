@@ -283,6 +283,9 @@ export function PlayDidThere({ composition }: { composition: Composition }) {
     .filter((ms) => Number.isFinite(ms) && ms <= now.getTime());
   const thisWeek = kidAt.filter((ms) => ms >= weekStart).length;
   const latest = kidAt.length > 0 ? Math.max(...kidAt) : null;
+  // "Last time": what was done on the latest Kids Studio day (the board's "5 things last time").
+  const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
+  const lastTime = latest === null ? 0 : kidAt.filter((ms) => sameDay(ms, latest)).length;
   const phone = composition === "phone";
   return (
     <section className="vt pl-game" data-testid="play-did-there" aria-labelledby="play-did-title" style={{ borderRadius: 18, gap: 8, padding: phone ? "12px 12px 14px" : "14px 20px" }}>
@@ -291,14 +294,16 @@ export function PlayDidThere({ composition }: { composition: Composition }) {
           <h2 className="pl-k" id="play-did-title" style={{ margin: 0 }}><span className="pl-ico"><Icon name="check" size={17} /></span>{copy.didThere(name)}</h2>
           <p className="pl-p" dir="auto">
             {thisWeek === 0 && copy.didNone}
-            {latest !== null && <>{thisWeek === 0 ? " " : ""}{copy.didLatest(fmtDayV10(latest, lang, now))}</>}
+            {latest !== null && thisWeek > 0 && <> {copy.didLatest(fmtDayV10(latest, lang, now))}</>}
           </p>
         </div>
-        {thisWeek > 0 && (
+        {(thisWeek > 0 || lastTime > 0) && (
           <div className="line" style={{ gap: 14, flexWrap: "wrap" }}>
-            <div className="fig md"><b className="arbor-num">{thisWeek}</b><span>{copy.didUnit(thisWeek)}</span></div>
+            {thisWeek > 0
+              ? <div className="fig md"><b className="arbor-num">{thisWeek}</b><span>{copy.didUnit(thisWeek)}</span></div>
+              : <div className="fig md"><b className="arbor-num">{lastTime}</b><span>{copy.didLastTime(lastTime)}{latest !== null && <small>{fmtDayV10(latest, lang, now)}</small>}</span></div>}
             <span className="pl-did-tok" aria-hidden="true">
-              {Array.from({ length: Math.min(thisWeek, 7) }, (_, i) => <Token key={i} kind="kid" size="sm" label="" />)}
+              {Array.from({ length: Math.min(thisWeek > 0 ? thisWeek : lastTime, 7) }, (_, i) => <Token key={i} kind="kid" size="sm" label="" />)}
             </span>
           </div>
         )}
