@@ -203,6 +203,19 @@ export default function Reports() {
     nowMs,
     copy: c,
   }).filter((row) => row.count > 0 || row.marks.length > 0); // a kind with no records yet prints no zero
+  // The page's one primary action (one tree per composition: placed once, by composition).
+  const saveButton = (
+    <button
+      type="button"
+      data-primary-move="export-report"
+      onClick={saveLead}
+      className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
+      style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+      aria-label={t("elev.reports.exportAria", { title: t("elev.reports.record.title", { name: first }) })}
+    >
+      <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
+    </button>
+  );
   const stops = [
     { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDayV10(startIso, uiLang)) : undefined },
     { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
@@ -241,25 +254,23 @@ export default function Reports() {
               counts sentence and the quote card (the quote is offered once,
               in Visits). B-CAREPRO-NEW-2e: a second fact appears ONLY when new
               moments exist since the parent last opened the PDF. */}
+          {/* V77 phone composition (thumb order, as Play's and Stories' one action under their
+              header band): Save leads the ledger. Desktop keeps N-Records-D's order. Rendered once. */}
+          {!desk && saveButton}
           <RecordLedger composition={composition} rows={ledger} copy={c} uiLang={uiLang} labelledBy="reports-h1" onOpen={setActiveTab} />
           {lastSaved && counts.moments > 0 ? (
             <p data-testid="reports-lead-new" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
               {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDayV10(lastSaved, uiLang) })}
             </p>
           ) : null}
-          <div className={desk ? "line care-records-save" : "stack care-records-save"}>
-          <button
-            type="button"
-            data-primary-move="export-report"
-            onClick={saveLead}
-            className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
-            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-            aria-label={t("elev.reports.exportAria", { title: t("elev.reports.record.title", { name: first }) })}
-          >
-            <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
-          </button>
-          <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
-          </div>
+          {desk ? (
+            <div className="line care-records-save">
+              {saveButton}
+              <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
+            </div>
+          ) : (
+            <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
+          )}
         </div>
         </CareStage>
         <SideRail id="records-docs" n={2} title={c.docsHead} titleId="records-docs-title" className={desk ? "x4 care-rail" : "care-rail"}>
