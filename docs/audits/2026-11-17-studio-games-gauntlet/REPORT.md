@@ -145,14 +145,46 @@ These come from the local preview at 390×1000, in English with sound off, on th
 | Hint ring colour (`.bop-piece[data-hint]::after`) | rgb(217, 122, 43), which is signal amber |
 | Hero Band ready screen | No yellow wash or glow; pads named Jump, Zoom, Pose and Wobble; `scrollWidth` 390 |
 
+## Round 6: rendered play-throughs and idle nudges (`353e2a7d`)
+
+Every game was played from its Playbank or Studio tile to its ending, in the local preview at 390×844, in English with sound off. Each run went through the real buttons, from a script that reads the board the way a child sees it.
+
+| Game | Path played | Result |
+|---|---|---|
+| Hero Band | Own dance: eight steps filled, beat started, Show time, then the ending | Ends on "A dance of its own". Show time runs with the amber ring on the current step. `scrollWidth` 390 |
+| Oops Button | Three rounds: round 1 clean, then the toy's own jam, Oops, undo newest first, Start again, copy, then round 3 | Ends on "It bloomed!" |
+| Rover Delivery | Three floors, each solved by following the hint ring | Ends on "Delivered!" |
+| Five-Friend Sun | Spin, count on, hop to the pad, bring Chock's pad in, until all five rays are lit | Ends on "Everyone is here!" |
+| Wobbly Delivery | Three friends' requests delivered in order, through to the bloom | Ends on "Delivered!" |
+
+**Defects the play-throughs found, now fixed:**
+- **Five-Friend Sun:** the spinner's hub and its number chip shared one React key. Every spin left a stale hub behind, so by the third spin a column of hubs ran down past the card at 390px. With distinct keys there is one hub on every spin; rendered after 8 spins: 1.
+- **Hero Band:** on a 390×844 phone the own-dance view hid "Show time!" below the fold, with the inner scroller 884px tall against 768px. A lower floor on phones puts the button's bottom at 804px.
+- **Wobbly Delivery:** the ending's carry-over line still began "Try it for real:", unlike the other four games. It now starts "Away from the screen:" / "מחוץ למסך:".
+
+**Added:**
+- **Idle nudges.** These are rendered, and rules tests pin them.
+  - **Oops Button:** after 6 s with no press on the child's turn, the next petal in the order gets the amber ring. Rendered: ring rgb(217, 122, 43) on the right petal.
+  - **Rover Delivery:** after 7 s untouched on any floor, the sign to turn gets the ring. Rendered: amber ring after 7 s, absent at 6.8 s.
+- **Sun advisories from round 5:**
+  - The spinner reads "The wheel is turning…" while it turns.
+  - Chock's empty-seat placeholder is ink at 40%.
+
+**Tests at `353e2a7d`:**
+- Oops: flow 30, rules 58.
+- Rover: flow 29, rules 44.
+- Sun: flow 28.
+- Wobbly: flow 34, voice 14.
+- Hero Band: 6.
+- studioGameVoice 4, studioNextFlag 13.
+- Guards: kidDesign 101, childSignalsLanguage 9, tokens 75, contrast 63, layoutTokens 32.
+
 ## Open list (residual P2s)
 
 | Item | Why it is open |
 |---|---|
 | Wobbly's voiced lines (item words, separate wrong and early "not yet") | Need a voice re-render; held under "no Google API" |
 | Rover: a parcel sprite, and floors beyond the three turned layouts | Art generation is held, and more floors are design work |
-| Hero Band: on a phone the jam view stacks the dancer, track, six pads and the buttons, and may scroll; move 0's pad is teal-soft | Layout pass |
-| Idle prompts while a child stalls (Oops, Rover) | Small behaviour pass |
 | Sun: separate clicks during the turn, beyond the single tap at the start | Sound pass |
 | iPhone pass and a native Hebrew read | B-BOOK-34 |
 
@@ -174,4 +206,4 @@ These come from the local preview at 390×1000, in English with sound off, on th
   - `071d5a5c`: Arbor Deploy run 44132184828, live, health 200.
   - `244267fb`: Arbor CI green, then main fast-forwarded. Arbor Deploy run 44135146268 passed deploy-candidate and promote. Live `timestamp.txt` reads `244267fb…-44135146268-1`, and `/api/health` returns 200 (17 Nov).
 
-final result: passed. All five games clear 20/24 with no zero and a clean G0 on critic reading of the source. The rendered checks cover the shared rings and Hero Band at 390px. Each game's full play-through at 390px was not rendered this round. The residual P2s are in the open list.
+final result: passed. All five games clear 20/24 with no zero and a clean G0 on critic reading of the source. Each game was then played through to its ending at 390×844 in round 6. The three defects that pass found are fixed and were rendered again. The residual P2s are in the open list. Two are held by Guy's no-Google-API rule (voice and art); the iPhone and native Hebrew pass is B-BOOK-34.
