@@ -72,7 +72,8 @@ describe("NEXTLEVEL r1 — the primary move is a control", () => {
     // (the shelf's Notice card through renderPick, or a row through renderRow), and
     // both write through observeMilestone (the one seam).
     expect(MS).toContain('const stamp = m.id === gridStampId ? { "data-primary-move": "notice-milestone" } : undefined;');
-    expect(MS).toMatch(/const gridStampId = gridCards\.find\(\(c\) => c\.kind === "next" && !c\.m\.observationStatus && !c\.m\.checked/);
+    // The held card (just answered) keeps it; otherwise the first unanswered card.
+    expect(MS).toMatch(/const gridStampId = heldId \?\? gridCards\.find\(\(c\) => c\.kind === "next" && !c\.m\.observationStatus && !c\.m\.checked/);
     expect(MS).toMatch(/<NoticeCard[\s\S]{0,400}answersAttrs=\{answersAttrs\}[\s\S]{0,400}observeMilestone\(card, status\)/);
     // Negative control: the old per-shelf stamp is gone (one stamp, not two).
     expect(MS).not.toMatch(/answersAttrs=\{shelf === stampShelf \?/);
