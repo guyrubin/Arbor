@@ -287,6 +287,8 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(phase(tree)).toBe('copy'); expect(openPetals(tree)).toEqual([first]); expect(status(tree)).toBe(oopsLine(w.copyNext, 1, 2));
     expect(petal(tree, first).props).toMatchObject({ disabled: false, 'aria-disabled': true, 'aria-pressed': true, 'data-open': true, 'data-half': false, 'aria-label': oopsLine(w.petalOpen, w.petals[first]) });
     expect(mark(tree, first)).toBe(0); expect(h.tones.play.mock.calls).toEqual([[first]]);
+    // B-GAME-45: the opened petal pops a ring; a closed one does not, and no rays before the bloom.
+    expect(nodes(petal(tree, first)).some(classed('oops-pop'))).toBe(true); expect(nodes(petal(tree, second)).some(classed('oops-pop'))).toBe(false); expect(nodes(tree).some(classed('oops-rays'))).toBe(false);
     // An open petal pressed again does nothing at all.
     petal(tree, first).props.onClick!(); tree = render();
     expect(openPetals(tree)).toEqual([first]); expect(phase(tree)).toBe('copy'); expect(h.sound).not.toHaveBeenCalled(); expect(h.tones.play).toHaveBeenCalledTimes(1);
@@ -294,6 +296,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     // The whole order is open: the whole flower opens, the hub glows, Chock is glad.
     expect(phase(tree)).toBe('bloom'); expect(heading(tree)).toBe(w.bloom); expect(status(tree)).toBe(w.bloomNext); expect(steps(tree)).toBe(1);
     expect(openPetals(tree)).toEqual([...PETALS]); expect(one(tree, 'the toy', classed('oops-toy')).props['data-bloom']).toBe(true);
+    expect(nodes(one(tree, 'the rays', classed('oops-rays')).props.children)).toHaveLength(10); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
     expect(chock(tree)).toBe('happy'); expect(hero(tree).celebrate).toBe(true); expect(h.sound.mock.calls).toEqual([['correct']]); expect(live(tree)).toEqual([]);
     petal(tree, second).props.onClick!(); control(tree, 'oops-pause').props.onClick!(); control(tree, 'oops-restart').props.onClick!();
     vi.advanceTimersByTime(BLOOM_MS - 1); expect(phase(render())).toBe('bloom');

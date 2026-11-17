@@ -203,12 +203,17 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     for (let round = 0; round < ROVER_ROUNDS; round++) {
       const level = levelFor('gentle', round);
       expect(pointing(tree, level)).toEqual(initialSigns(level)); expect(at(tree)).toBe(level.start); expect(done(tree)).toBe(round); expect(trail(tree)).toEqual([]);
+      expect(nodes(tree).some(classed('rover-swirl'))).toBe(false);
       plan(fixSigns(level), true);
+      // B-GAME-45: every sign the child turned answers with a swirl.
+      const turned = pointing(render(), level).filter((heading, sign) => heading !== initialSigns(level)[sign]).length;
+      expect(nodes(render()).filter(classed('rover-swirl'))).toHaveLength(turned);
       const sent = send(level, w); tree = sent.tree;
       expect(sent.run.end).toBe('goal'); expect(phase(tree)).toBe('arrived'); expect(heading(tree)).toBe(w.arrived); expect(status(tree)).toBe(''); expect(shell(tree).props.hearIt).toBe(w.arrived);
       expect(at(tree)).toBe(level.goal); expect(done(tree)).toBe(round + 1); expect(trail(tree)).toEqual(ordered(sent.run.path));
       // Pep's welcome is a wag and a hop, never a word; the hero joins in.
       expect(pep(tree).props.mood).toBe('happy'); expect(hero(tree).props.celebrate).toBe(true);
+      expect(one(tree, 'the rug', classed('rover-goal')).props['data-arrived']).toBe(true); expect(nodes(tree).some(classed('rover-puff'))).toBe(false);
       expect(buttons(tree).every(n => n.props.disabled === true && n.props['aria-disabled'] === true)).toBe(true);
       vi.advanceTimersByTime(ARRIVED_MS - 1); tree = render(); expect(finish(tree)).toBeUndefined(); expect(phase(tree)).toBe('arrived');
       vi.advanceTimersByTime(1); tree = render();

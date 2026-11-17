@@ -77,6 +77,8 @@ describe('Hero Band', () => {
     expect(steps(tree).every(step => step.props['data-move'] === 'none')).toBe(true);
     const wrong = ([0, 1, 2, 3] as const).find(move => move !== target[0])!;
     pad(tree, wrong).props.onClick!(); tree = render();
+    // B-GAME-45: the pad that was tapped rings, and a note goes up from the dancer.
+    expect(nodes(pad(tree, wrong).props.children).some(n => n.props.className === 'band-ripple')).toBe(true); expect(nodes(tree).filter(n => n.props.className === 'band-note')).toHaveLength(1);
     expect(words(nodes(tree).find(n => n.props.role === 'status'))).toBe(en.retry);
     expect(steps(tree).map(step => step.props['data-move'])).toEqual(target);
     for (const move of target) { pad(render(), move).props.onClick!(); }
@@ -94,7 +96,7 @@ describe('Hero Band', () => {
     h.elapsed = 640 * 4 - 120; pad(render(), 3).props.onClick!();
     expect(h.engine.played).toHaveBeenCalledWith(4); expect(steps(render())[4].props['data-move']).toBe(3);
     h.run.onStep(4, 4, true); expect(steps(render())[4].props['data-now']).toBe(true);
-    button(render(), en.showTime).props.onClick!(); expect(h.run.steps).toBe(16); expect(nodes(render()).some(n => n.props.className === 'band-pad')).toBe(false);
+    button(render(), en.showTime).props.onClick!(); expect(h.run.steps).toBe(16); expect(nodes(render()).some(n => n.props.className === 'band-beams')).toBe(true); expect(nodes(render()).some(n => n.props.className === 'band-pad')).toBe(false);
     h.running = false; h.run.onEnd(); tree = render();
     const finish = nodes(tree).find(n => n.type === GameFinish)!; expect(finish).toBeDefined();
     expect(finish.props.creation).toEqual({ kind: 'dance', moves: [2, null, null, null, 3, null, null, null], tempo: 640 });

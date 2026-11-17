@@ -125,3 +125,23 @@
   .delivery-card[data-next=true], .delivery-tile[data-lit=true], .delivery-stage[data-phase=fetch] .delivery-shelf, .adventure--delivery .adventure-actions .delivery-ask[data-hint=true] { outline: 3px solid Highlight; }
   .delivery-item[data-away=true] > .bop-sprite { opacity: .2; }
 }
+
+/* B-GAME-45: the room answers the carry. Each musical tile throws up a note
+   and a ring as the hero lands on it; each thing that lands on the rug kicks
+   up a puff; a row of lanterns over the rug lights one a delivery. Decoration
+   only, tokens only; with motion off the lanterns stay, still, and with forced
+   colours they use system colours. */
+.delivery-note { position: absolute; z-index: 6; inset-block-end: 70%; inset-inline-start: calc(50% - 13px); inline-size: 26px; block-size: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--arbor-on-accent); color: var(--bop-teal-ink); box-shadow: 0 0 0 2px var(--bop-amber), 0 4px 8px var(--bop-shade); opacity: 0; animation: delivery-note .62s var(--studio-ease-soft); pointer-events: none; }
+.delivery-tile[data-tile='1'] .delivery-note { color: var(--studio-deep-ink); }
+.delivery-tile[data-tile='2'] .delivery-note { box-shadow: 0 0 0 2px var(--bop-teal), 0 4px 8px var(--bop-shade); }
+.delivery-note__ring { position: absolute; inset-block-start: 160%; inset-inline-start: 50%; inline-size: 40px; block-size: 16px; margin-inline-start: -20px; border-radius: 50%; border: 3px solid var(--bop-amber); opacity: 0; animation: delivery-ring .5s var(--studio-ease-soft); }
+.delivery-landed > span { position: relative; }
+.delivery-puff { position: absolute; inset-block-end: -2px; inset-inline-start: 50%; inline-size: 44px; block-size: 14px; margin-inline-start: -22px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--arbor-on-accent) 90%, transparent) 0 40%, color-mix(in srgb, var(--bop-amber) 40%, transparent) 60%, transparent 72%); opacity: 0; animation: delivery-puff .5s var(--studio-ease-soft); }
+.delivery-lanterns { position: absolute; z-index: 3; inset-inline-end: 12px; inset-block-end: 134px; inline-size: 108px; display: flex; justify-content: center; gap: 7px; pointer-events: none; }
+.delivery-lanterns > i { inline-size: 16px; block-size: 20px; border-radius: 45% 45% 50% 50%; border: 2px solid color-mix(in srgb, var(--bop-teal-ink) 55%, transparent); background: color-mix(in srgb, var(--bop-teal) 22%, var(--arbor-on-accent)); box-shadow: 0 2px 3px var(--bop-shade); transition: background-color .3s var(--studio-ease-soft), box-shadow .3s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
+.delivery-lanterns > i[data-on=true] { border-color: var(--bop-teal-ink); background: radial-gradient(circle at 50% 40%, var(--arbor-on-accent), var(--bop-amber) 70%); box-shadow: 0 0 10px var(--bop-amber), 0 2px 3px var(--bop-shade); transform: translateY(-2px) scale(1.1); }
+@keyframes delivery-note { 0% { opacity: 0; translate: 0 10px; scale: .5; } 25% { opacity: 1; scale: 1.1; } 100% { opacity: 0; translate: 0 -34px; scale: .9; } }
+@keyframes delivery-ring { 0% { opacity: .9; scale: .4; } 100% { opacity: 0; scale: 1.6; } }
+@keyframes delivery-puff { 0% { opacity: .95; scale: .4 .6; } 100% { opacity: 0; scale: 1.5 1; } }
+@media (prefers-reduced-motion: reduce) { .delivery-note, .delivery-puff { display: none; } .delivery-lanterns > i { transition: none; transform: none !important; } }
+@media (forced-colors: active) { .delivery-note, .delivery-puff { display: none; } .delivery-lanterns > i { border-color: ButtonText; } .delivery-lanterns > i[data-on=true] { background: Highlight; } }

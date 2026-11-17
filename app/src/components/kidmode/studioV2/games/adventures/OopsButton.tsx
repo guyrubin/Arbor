@@ -166,10 +166,13 @@ export default function OopsButton() {
                 const half = stuck === petal;
                 const live = phase === 'copy' ? !open : phase === 'undo' && open;
                 return <button type="button" key={petal} className="bop-piece oops-petal" style={{ '--petal': petal } as CSSProperties} data-petal={petal} data-open={open} data-half={half} data-wobble={wobble === petal || (phase === 'jam' && half)} data-hint={hinted === petal} disabled={phase !== 'copy' && phase !== 'undo'} aria-disabled={!live} aria-pressed={open} aria-label={oopsLine(half ? w.petalStuck : open ? w.petalOpen : w.petalClosed, w.petals[petal])} onClick={() => press(petal)}>
+                  {open && <i className="oops-pop" aria-hidden="true" />}
                   <BopSprite name={PETAL_ART[petal]} size={54} className="oops-petal__art" flat />
                   {showing && <span className="bop-chip oops-petal__chip">{String(place + 1)}</span>}
                 </button>;
               })}
+              {/* B-GAME-45: a bloom throws light: ten rays turn slowly behind the toy. */}
+              {phase === 'bloom' && <span className="oops-rays" aria-hidden="true">{Array.from({ length: 10 }, (_, ray) => <i key={ray} style={{ '--ray': ray } as CSSProperties} />)}</span>}
               <span className="oops-hub" aria-hidden="true"><BopSprite name="oops-hub" size="100%" /></span>
             </div>
             <span className="oops-ahead" aria-hidden="true"><BopSprite name="chock-happy" size={1} flat /></span>

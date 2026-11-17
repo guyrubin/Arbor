@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Eye, Pause, Play, RotateCcw, Sparkles } from 'lucide-react';
+import { Check, Eye, Music2, Pause, Play, RotateCcw, Sparkles } from 'lucide-react';
 import { NEXT_GAME_COPY } from '../../../../../lib/i18nGameNext';
 import { selectionHaptic } from '../../../../../lib/native';
 import { useLanguage } from '../../../../../context/LanguageContext';
@@ -159,8 +159,12 @@ export default function HeroBand() {
         <div className="band-stage" data-phase={phase} data-move={move ?? 'none'} data-playing={playing}>
           <BopScene scene="scene-band" />
           <span className="band-spot" aria-hidden="true" />
+          {/* B-GAME-45: the show gets its lights: three beams sweep the stage. */}
+          {phase === 'stage' && <span className="band-beams" aria-hidden="true"><i /><i /><i /></span>}
           <BopCheer beat={phase === 'matched' ? round : phase === 'stage' ? 'stage' : null} big={phase === 'stage'} />
           <div className="band-floor">
+            {/* Every move sends a note up from the dancer, on the beat. */}
+            {move !== null && <span className="band-note" key={beat} data-move={move} aria-hidden="true"><Music2 size={phase === 'stage' ? 30 : 24} /></span>}
             <span className="band-dancer" ref={dancer}><StudioPlayHero size={phase === 'stage' ? 250 : 190} kick={beat} pose={pose} celebrate={phase === 'matched'} /></span>
             <AdventureSprout className="band-sprout" size={84} speaking={guide.speaking} beat={beat} action={phase === 'matched' ? 'celebrate' : phase === 'show' ? 'show' : phase === 'copy' ? 'listen' : 'welcome'} />
           </div>
@@ -179,6 +183,7 @@ export default function HeroBand() {
             {pads.map(id => {
               const Glyph = BAND_GLYPHS[id];
               return <button type="button" key={id} className="band-pad" data-move={id} data-lit={move === id} disabled={phase === 'ready' || phase === 'show' || phase === 'matched'} onClick={() => tap(id)}>
+                {move === id && <i className="band-ripple" key={beat} aria-hidden="true" />}
                 <span className="band-pad__hero"><StudioPlayHero size={54} pose={BAND_MOVES[id].pose} /></span>
                 <span className="band-pad__name"><Glyph size={16} aria-hidden="true" />{w.moves[id]}</span>
               </button>;

@@ -262,11 +262,16 @@ describe.each(['en', 'he'] as const)('Wobbly Delivery (%s)', lang => {
           vi.advanceTimersByTime(CARRY_STEP_MS); tree = render();
           expect(phase(tree)).toBe('carry'); expect(heroStop(tree)).toBe(stop); expect(carried(tree)).toBe(item);
           expect(tiles(tree).map(n => n.props['data-lit'])).toEqual(DELIVERY_TILES.map((_, tile) => tile + 1 === stop));
+          // B-GAME-45: the lit tile, and only that one, sends up its note.
+          expect(tiles(tree).map(n => nodes(n.props.children).some(classed('delivery-note')))).toEqual(DELIVERY_TILES.map((_, tile) => tile + 1 === stop));
         }
         expect(h.tones.play.mock.calls).toEqual([[at], [at + 1], [at + 2]]); expect(landed(tree)).toEqual(request.slice(0, at));
         vi.advanceTimersByTime(CARRY_MS - CARRY_STEP_MS * (DELIVERY_TILES.length + 1)); tree = render();
         // It lands in the next free place on the rug, in the order it was brought.
         expect(landed(tree)).toEqual(request.slice(0, at + 1)); expect(carried(tree)).toBeNull();
+        // One puff a thing on the rug, and one lantern lit a thing brought.
+        expect(nodes(tree).filter(classed('delivery-puff'))).toHaveLength(at + 1);
+        expect(nodes(one(tree, 'the lanterns', classed('delivery-lanterns')).props.children).map(n => n.props['data-on'])).toEqual(request.map((_, slot) => slot <= at));
         expect(rug(tree).props['aria-label']).toBe(`${w.rug[round]}: ${request.slice(0, at + 1).map(name => w.items[name]).join(w.listJoin)}`);
         expect(shelfItem(tree, item).props).toMatchObject({ 'data-away': true, 'aria-label': `${w.items[item]}. ${w.onRug}` });
         if (at === count - 1) return;
