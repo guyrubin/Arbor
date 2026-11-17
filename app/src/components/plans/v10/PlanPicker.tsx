@@ -1,4 +1,5 @@
 import React from "react";
+import { Icon } from "../../ui/Icon";
 import { GlyphChip, LivingForm } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import type { UiLang } from "../../../lib/i18n";
@@ -45,7 +46,7 @@ export function PlanPicker({ actionPlans, selectedId, challenges, lang, composit
           <small>{c.actionPlan}</small>
           {line(plan.title)}
         </span>
-        {desk && <span className="ps">{on ? c.openBelow : c.open}</span>}
+        {desk && <span className="ps">{on ? c.openBelow : c.open}<Icon name={on ? "expand_more" : "chevron_right"} size={15} className={on ? undefined : "rtl:-scale-x-100"} /></span>}
       </button>,
     );
   }
@@ -60,7 +61,7 @@ export function PlanPicker({ actionPlans, selectedId, challenges, lang, composit
           <small>{c.challengePlan}</small>
           {line(planString("card.night", l, { n: night, total }))}
         </span>
-        {desk && <span className="ps">{c.open}</span>}
+        {desk && <span className="ps">{c.open}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" /></span>}
       </a>,
     );
   }
@@ -72,7 +73,7 @@ export function PlanPicker({ actionPlans, selectedId, challenges, lang, composit
           <small>{planString("section.title", l)}</small>
           {line(planString("section.hard", l))}
         </span>
-        {desk && <span className="ps">{c.open}</span>}
+        {desk && <span className="ps">{c.open}<Icon name="chevron_right" size={15} className="rtl:-scale-x-100" /></span>}
       </a>,
     );
   }

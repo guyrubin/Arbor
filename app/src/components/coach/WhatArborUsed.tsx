@@ -3,6 +3,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import type { BasedOnModel } from "../trust/BasedOnReceipt";
 import { Icon } from "../ui/Icon";
 import { talkCopy } from "../companion/talkViewCopy";
+import { programName } from "../../content/programs";
 
 /**
  * V77 (N-Talk-D/M) — "What Arbor used", READ-ONLY. It shows only what the
@@ -12,13 +13,18 @@ import { talkCopy } from "../companion/talkViewCopy";
  *    (contract.sourceCards / sourceCardsUsed);
  *  - the remembered notes: the parent-approved facts sent with the question
  *    (basedOn.facts; each opens in the notebook, where Correct and Forget live);
- *  - this week: the counts on the send path (basedOn.weekly).
+ *  - this week: the counts on the send path (basedOn.weekly);
+ *  - the program: the active program this answer's prompt carried, echoed by
+ *    the server (contract.activeProgramUsed); its name is the program's own
+ *    localized name. Absent → no line (older answers render as before).
  * Nothing is removable here (removing a source needs server support), and
  * nothing is inferred: the answer payload names no plan and no individual
  * records, so neither is listed. Parent words and field names only.
  */
-export default function WhatArborUsed({ basedOn, guides, childName, onOpenFact }: {
+export default function WhatArborUsed({ basedOn, guides, childName, onOpenFact, program }: {
   basedOn: BasedOnModel | null | undefined;
+  /** Server-echoed active program (id + week) that was in this answer's context. */
+  program?: { id: string; week: number } | null;
   guides: readonly { id: string; title: string | null }[];
   childName?: string;
   onOpenFact?: (memoryId: string) => void;
@@ -31,7 +37,9 @@ export default function WhatArborUsed({ basedOn, guides, childName, onOpenFact }
   const facts = basedOn?.facts ?? [];
   const weekly = basedOn?.weekly;
   const titled = guides.filter((g) => g.title);
-  if (fields.length === 0 && facts.length === 0 && !weekly && guides.length === 0) return null;
+  const programLabel = program ? programName(program.id)?.[uiLang === "he" ? "he" : "en"] : undefined;
+  const programLine = programLabel && Number.isFinite(program?.week) ? copy.usedProgram(programLabel, Math.max(1, Math.floor(program!.week))) : null;
+  if (fields.length === 0 && facts.length === 0 && !weekly && guides.length === 0 && !programLine) return null;
   const weekLine = weekly
     ? typeof weekly.words === "number"
       ? t("companion.basedOn.weekWords", { n: weekly.moments, words: weekly.words })
@@ -47,6 +55,14 @@ export default function WhatArborUsed({ basedOn, guides, childName, onOpenFact }
             <span className="coach-used-text">
               {childName && <b dir="auto">{childName}</b>}
               <small data-testid="based-on-fields">{t("companion.basedOn.fields", { fields: fields.join(", ") })}</small>
+            </span>
+          </li>
+        )}
+        {programLine && (
+          <li className="coach-used-tile" data-used="program" data-testid="coach-used-program">
+            <span className="coach-used-glyph k-plan" aria-hidden="true"><Icon name="checklist" size={18} /></span>
+            <span className="coach-used-text">
+              <b dir="auto">{programLine}</b>
             </span>
           </li>
         )}

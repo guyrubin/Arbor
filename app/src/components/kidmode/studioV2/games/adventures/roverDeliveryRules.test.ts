@@ -330,7 +330,7 @@ describe('Rover Delivery helpers', () => {
   });
 
   it('keeps the timings of the brief, with a longer welcome at the rug', () => {
-    expect(STEP_MS).toBe(420); expect(RETURN_MS).toBe(300); expect(ARRIVED_MS).toBe(2400); expect(OOPS_MS).toBe(700); expect(HINT_AFTER).toBe(2);
+    expect(STEP_MS).toBe(420); expect(RETURN_MS).toBe(300); expect(ARRIVED_MS).toBe(3200); expect(OOPS_MS).toBe(700); expect(HINT_AFTER).toBe(2);
     expect(PRESS_MS).toBeGreaterThan(0); expect(PRESS_MS).toBeLessThan(STEP_MS * 2);
     // The longest finished route still runs in a few seconds.
     const longest = Math.max(...FLOORS.map(floor => runRover(floor.level, fixSigns(floor.level), true).path.length));

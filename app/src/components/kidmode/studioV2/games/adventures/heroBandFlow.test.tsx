@@ -71,7 +71,10 @@ function watch(): MoveId[] {
 describe('Hero Band', () => {
   it('shows a dance, lets the child dance it back, and forgives a wrong move by showing the moves', () => {
     let tree = render();
-    expect(heading(tree)).toBe(en.ready); expect(pad(tree, 0).props.disabled).toBe(true); expect(nodes(tree).filter(n => n.props.className === 'band-pad')).toHaveLength(4);
+    expect(heading(tree)).toBe(en.ready); expect(nodes(tree).filter(n => n.props.className === 'band-pad')).toHaveLength(4);
+    // B-GAME-46: before the first dance a pad is live and only makes the hero move; nothing is recorded.
+    expect(pad(tree, 0).props.disabled).toBe(false); pad(tree, 0).props.onClick(); tree = render();
+    expect(heading(tree)).toBe(en.ready); expect(h.engine.hit).toHaveBeenCalledTimes(1); h.engine.hit.mockClear();
     const target = watch(); tree = render();
     expect(heading(tree)).toBe(en.yourTurn); expect(pad(tree, 0).props.disabled).toBe(false);
     expect(steps(tree).every(step => step.props['data-move'] === 'none')).toBe(true);

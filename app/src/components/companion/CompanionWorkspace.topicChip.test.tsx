@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({
   topic: null as null | { id: string; title: string },
   nodes: [] as Captured[], effects: [] as Array<() => void | (() => void)>,
   // Forces the options menu's own open flag (its only useState(false)).
-  forceOpen: false, setOpen: vi.fn(),
+  forceOpen: false, setOpen: vi.fn(), composition: "phone" as "phone" | "desk",
   setActiveTab: vi.fn(), setChatInput: vi.fn(), newConversation: vi.fn(), openCaptureSheet: vi.fn(), openHardMomentNow: vi.fn(),
 }));
 vi.mock("react", async (original) => {
@@ -29,6 +29,7 @@ vi.mock("react", async (original) => {
   };
 });
 vi.mock("../../lib/kpiEvents", () => ({ trackCompanionPanelOpen: vi.fn() }));
+vi.mock("../../design/useComposition", () => ({ useComposition: () => state.composition }));
 vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   activeTab: state.activeTab, chatInput: state.chatInput, activeFamilyTopic: state.topic,
   childProfile: { id: "child-a", name: "Noa", age: 4 },
@@ -76,7 +77,7 @@ const shipped = new Set(readFileSync(new URL("../../../public/fonts/material-sym
 
 beforeEach(() => {
   vi.clearAllMocks();
-  Object.assign(state, { lang: "en", chatInput: "", activeTab: "overview", topic: null, nodes: [], effects: [], forceOpen: false });
+  Object.assign(state, { lang: "en", chatInput: "", activeTab: "overview", topic: null, nodes: [], effects: [], forceOpen: false, composition: "phone" });
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -112,6 +113,21 @@ describe("FEAT-01 — the Ask bar carries the active question as one quiet line"
     // EVERY parent screen, the overview included — beside the question line,
     // never inside it (the caption above is text only).
     expect(markup).not.toContain('data-testid="launcher-hard-moment"');
+  });
+
+  it.each(["en", "he"] as const)("V77: desktop shows the full words, the phone the short ones; the name is the full label at both (%s)", (lang) => {
+    state.lang = lang;
+    state.composition = "desk";
+    renderWorkspace();
+    expect(node(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(translate(lang, "companion.launcher.label"));
+    expect(ask()["aria-label"]).toBe(translate(lang, "companion.launcher.label"));
+    expect(translate("en", "companion.launcher.label")).toBe("Ask Arbor: text, photo or voice");
+    // Negative control: the phone keeps the board's short "Ask Arbor".
+    state.nodes = [];
+    state.composition = "phone";
+    renderWorkspace();
+    expect(node(n => n.props.className === "companion-launch-copy")!.props.children[0]).toBe(translate(lang, "companion.launcher.short"));
+    expect(ask()["aria-label"]).toBe(translate(lang, "companion.launcher.label"));
   });
 
   it("is absent without a question, for a blank question, beside a draft and in Kid Mode", () => {

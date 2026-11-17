@@ -141,10 +141,11 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
       <div className="stack ds-col" style={{ gap: 14, maxWidth: composition === "desk" && state.stage !== "steps" ? 760 : undefined, marginInline: "auto", width: "100%" }}>
         <header className="line between" style={{ gap: 8, minHeight: 44 }}>
           <button type="button" className="ds-link" style={{ paddingInlineStart: 0 }} onClick={() => (state.stage === "door" || state.stage === "approved" ? onClose() : dispatch({ type: "back" }))} data-plan-back="">
-            <Icon name="arrow_back" size={18} className="rtl:-scale-x-100" />
-            {s("back")}
+            <Icon name="chevron_left" size={18} className="rtl:-scale-x-100" />
+            {/* CP-1: where the link goes — the Challenge Plans list from the door, else the stage before. */}
+            {state.stage === "door" || state.stage === "approved" ? s("section.title") : s("back")}
           </button>
-          <span className="small" style={{ fontWeight: 600 }}>{s("stage.door.kicker")} · {c.stopOf(stop + 1, 5, stopNames[stop])}</span>
+          <span className="small">{c.stopOf(stop + 1, 5, stopNames[stop])}</span>
         </header>
         <JourneyStrip current={stop} lang={lang} />
         {/* S1 4(b): owner only — the shared plates paint themselves in the background; no button. */}
@@ -164,7 +165,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
                 <ChallengeBook title={title} width={92} label={c.book(title)} />
                 <div className="stack ds-col" style={{ gap: 6 }}>
                   <h1 className="cp-h" dir="auto">{title}</h1>
-                  <p className="cp-lede" dir="auto">{c.quoted(def.parentWords[lang])}</p>
+                  <p className="cp-lede" dir="auto" style={{ fontFamily: "var(--font-editorial)", fontStyle: "italic", fontSize: 15 }}>{c.quoted(def.parentWords[lang])}</p>
                   <span className="line" style={{ gap: 6, flexWrap: "wrap" }}>
                     <span className="cp-st2">{s("chooser.age", { age: def.ageText })}</span>
                     <span className="cp-st2">{c.days(def.defaultDurationDays)}</span>
@@ -172,7 +173,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
                 </div>
               </div>
               <div className="cp-get">
-                <span><i aria-hidden="true"><Icon name="checklist" size={18} /></i>{c.get.steps}</span>
+                <span><i aria-hidden="true"><Icon name="flag" size={18} /></i>{c.get.steps}</span>
                 <span><i aria-hidden="true"><Icon name="auto_stories" size={18} /></i>{c.get.book(name)}</span>
                 <span><i aria-hidden="true"><Icon name="nightlight" size={18} /></i>{c.get.asApproved}</span>
               </div>
@@ -260,7 +261,7 @@ export default function PlanComposer({ def, child, onSaved, onClose, onSafety, o
             <div className="stack ds-col" style={{ gap: 6 }}>
               <div className="line between" style={{ gap: 8 }}>
                 <h1 className="cp-h">{s("stage.preview.title", { name })}</h1>
-                <span className="cp-st2 dr">{c.draft}</span>
+                <span className="cp-st2 dr"><Icon name="edit" size={15} />{c.draft}</span>
               </div>
               <p className="cp-lede">{s("stage.preview.body", { name })}</p>
             </div>
@@ -321,6 +322,11 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
       setPhrasing(false);
     }
   };
+  const stepTime = (slot: 1 | 2 | 3) => {
+    const item = def.menu.find((m) => m.id === state.stepMenuIds[slot - 1]);
+    const t = slot === 1 && item?.defaultMinutes != null ? state.time : item?.defaultTime;
+    return t ? s(`time.${t}` as Parameters<typeof planString>[0]) : "";
+  };
   return (
     <section data-plan-stage="steps" className="stack ds-col" style={{ gap: 14 }}>
       <div className="stack ds-col" style={{ gap: 6 }}>
@@ -339,10 +345,26 @@ function StepsStage({ def, lang, childName, state, dispatch, problems, onSafety,
             <li key={slot} className={desk ? "cp-col" : "cp-card"} data-plan-step={slot} data-plan-step-own={isOwn ? "" : undefined}>
               <div className="line" style={{ gap: 12 }}>
                 <span className="cp-n" aria-hidden="true"><b>{slot}</b><Icon name="check" size={18} /></span>
-                <b style={{ fontSize: 15, fontWeight: 600 }}>{s("stage.steps.step", { n: slot })}</b>
+                {/* CP-2: the step and its time of day (the board's step names are not in the data). */}
+                <span className="stack ds-col" style={{ gap: 0 }}>
+                  <b style={{ fontSize: 15, fontWeight: 600 }}>{s("stage.steps.step", { n: slot })}</b>
+                  {stepTime(slot) && <small style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{stepTime(slot)}</small>}
+                </span>
               </div>
               {youDo && <div className="cp-pl" dir="auto"><small>{c.youDo}</small>{youDo}</div>}
-              {text && <div className="cp-kid" dir="auto" data-plan-step-text=""><small>{c.inTheBook(childName)}</small>{lang === "he" ? text.he[heGender(undefined)] : text.en}</div>}
+              {/* CP-2: the first step's words open; the others fold to one line until tapped. */}
+              {text && (slot === 1 || desk ? (
+                <div className="cp-kid" dir="auto" data-plan-step-text=""><small>{c.hearsExactly(childName)}</small>{lang === "he" ? text.he[heGender(undefined)] : text.en}</div>
+              ) : (
+                <details className="cp-kidd group">
+                  <summary className="cp-kids" dir="auto">
+                    <small>{c.hears(childName)}</small>
+                    <span className="cp-kidt">{lang === "he" ? text.he[heGender(undefined)] : text.en}</span>
+                    <Icon name="expand_more" size={18} className="transition group-open:rotate-180" />
+                  </summary>
+                  <div className="cp-kid" dir="auto" data-plan-step-text="">{lang === "he" ? text.he[heGender(undefined)] : text.en}</div>
+                </details>
+              ))}
               {isOwn && state.ownStep && (
                 <div className="cp-own" data-plan-own-pending={state.ownStep.approvedAt ? undefined : ""}>
                   <span className="by" data-plan-own-origin={state.ownStep.origin ?? "parent"}><Icon name="edit" size={15} /> {state.ownStep.origin === "practitioner" ? s("stage.steps.practitionerLabel", { name: childName }) : s("stage.steps.ownLabel")}</span>

@@ -10,7 +10,7 @@ import type { NowV10Copy } from "./nowV10Copy";
  * hours from Gentle reminders. `children` is laid over the arc's bowl: the
  * lead's face (its tag and title), never invented content.
  */
-export default function NowDayArc({ composition, now, quietStart, quietEnd, evening, window: nudgeWindow = null, copy, children }: {
+export default function NowDayArc({ composition, now, quietStart, quietEnd, evening, window: nudgeWindow = null, variant = "now", copy, children }: {
   composition: Composition;
   now: Date;
   quietStart: number;
@@ -19,6 +19,8 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
   evening: boolean;
   /** Gentle reminders: the stretch nudges are held for (the parent's calmer-stretches setting over the family's own rhythm), whole hours. */
   window?: { from: number; to: number } | null;
+  /** "now": the board's Now arc (hour labels 9/12/15 on desktop, no quiet words). "reminders": 6:00 / 13:30 / 21:00 and the quiet hour named inside the bowl. */
+  variant?: "now" | "reminders";
   copy: NowV10Copy;
   children?: React.ReactNode;
 }) {
@@ -39,7 +41,6 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
   const pct = (n: number, of: number) => `${((n / of) * 100).toFixed(2)}%`;
   const labelY = g.cy + (desk ? -8 : 18);
   const quietEndLabel = quiet.find((s) => s.edge === "start");
-  const quietAtEnd = quiet.some((s) => s.edge === "end") || quietStart >= ARC_END_HOUR;
   // The drawing (svg, sun, clock label) and the face share one grid cell: the cell is as tall as the taller of the two,
   // so whatever follows the arc never rises into the drawing, whatever the face's length or language.
   return <div className="nw-arc">
@@ -60,17 +61,20 @@ export default function NowDayArc({ composition, now, quietStart, quietEnd, even
         const l = arcPoint({ ...g, rx: g.rx + 30, ry: g.ry + 20 }, fr);
         return <React.Fragment key={h}>
           <path className="g-tick" d={`M${a.x.toFixed(1)} ${a.y.toFixed(1)} L${b.x.toFixed(1)} ${b.y.toFixed(1)}`} />
-          {h % 3 === 0 && <text className="g-hr" x={l.x.toFixed(1)} y={l.y.toFixed(1)}>{clock24(h * 60)}</text>}
+          {variant === "now" && h % 3 === 0 && h < EVENING_FROM_HOUR && Math.abs(h * 60 - minute) > 60 && <text className="g-hr" x={l.x.toFixed(1)} y={l.y.toFixed(1)}>{clock24(h * 60)}</text>}
         </React.Fragment>;
       })}
       <text className="g-hr" x={desk ? left.x - 30 : left.x} y={labelY}>{clock24(ARC_START_HOUR * 60)}</text>
       <text className="g-hr" x={desk ? right.x + 32 : right.x} y={labelY}>{clock24(ARC_END_HOUR * 60)}</text>
-      {desk && quietAtEnd && <text className="g-hr" x={right.x + 32} y={labelY + 16}>{copy.quietHours}</text>}
-      {desk && quietEndLabel && quietEnd > ARC_START_HOUR && <text className="g-hr nw-quiet-label" x={left.x - 30} y={labelY + 16}>{copy.quietUntil(clock24(quietEnd * 60))}</text>}
-      {/* Phone: the hour the quiet stretch ends, inside the bowl beside the segment's end, clear of the dashed band. */}
-      {!desk && quietEndLabel && quietEnd > ARC_START_HOUR && (() => {
+      {/* The midday mark over the top of the arc: on the phone arc, and on the reminders arc at both sizes; like every hour label, never under the clock now. */}
+      {(variant === "reminders" || !desk) && Math.abs(((ARC_START_HOUR + ARC_END_HOUR) / 2) * 60 - minute) > 60 && (() => {
+        const top = arcPoint(g, 0.5);
+        return <text className="g-hr" x={top.x.toFixed(1)} y={(top.y - (desk ? 14 : 10)).toFixed(1)}>{clock24(((ARC_START_HOUR + ARC_END_HOUR) / 2) * 60)}</text>;
+      })()}
+      {/* Reminders: where the quiet stretch ends, named inside the bowl beside the segment's end, clear of the dashed band. */}
+      {variant === "reminders" && quietEndLabel && quietEnd > ARC_START_HOUR && (() => {
         const p = arcPoint(g, quietEndLabel.to);
-        return <text className="g-hr nw-quiet-hour" x={(p.x + 14).toFixed(1)} y={(p.y + 6).toFixed(1)}>{clock24(quietEnd * 60)}</text>;
+        return <text className="g-hr nw-quiet-hour" x={(p.x + (desk ? 14 : 14)).toFixed(1)} y={(p.y + (desk ? 30 : 6)).toFixed(1)}>{desk ? copy.quietUntil(clock24(quietEnd * 60)) : clock24(quietEnd * 60)}</text>;
       })()}
     </svg>
     <span className={desk ? "at sun" : "at sun sm"} style={{ left: pct(sun.x, g.w), top: pct(sun.y, g.h) }} aria-hidden="true" />

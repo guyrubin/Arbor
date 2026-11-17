@@ -1,3 +1,4 @@
+import { useComposition } from "../../design/useComposition";
 import { translate as inputText } from "../../lib/i18n";
 import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useArbor } from "../../context/ArborContext";
@@ -122,10 +123,12 @@ export default function CompanionWorkspace({ children, kidLocked }: { children: 
   const [topicBefore, topicAfter = ""] = inputText(uiLang, "companion.launcher.topic").split("{title}");
   // F-TALK-1: the bar names its three ways in, "Ask Arbor - text, photo or
   // voice"; its accessible name is the visible words (a draft names the draft).
+  const composition = useComposition();
   const launchLabel = chatInput.trim() ? inputText(uiLang, "companion.input.continue-your-draft") : inputText(uiLang, "companion.launcher.label");
-  // v10 (canvas V77): the bar reads "Ask Arbor" on every phone board; its full
-  // description stays the button's name for screen readers.
-  const launchShown = chatInput.trim() ? launchLabel : inputText(uiLang, "companion.launcher.short");
+  // v10 (canvas V77): the bar reads "Ask Arbor" on every phone board and its
+  // full words ("Ask Arbor: text, photo or voice") on every desktop board; the
+  // full description is the button's name for screen readers at every width.
+  const launchShown = chatInput.trim() ? launchLabel : inputText(uiLang, composition === "desk" ? "companion.launcher.label" : "companion.launcher.short");
   // Direct Coach/Scholar entry has no mounted launcher until close commits.
   // Restore only an explicit close, after route/dialog cleanup; newer context
   // owns focus and cancels this return rather than moving or scrolling it.

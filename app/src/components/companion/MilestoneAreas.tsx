@@ -19,6 +19,7 @@ import { closeDay, deriveReturnSignals } from "../../lib/tomorrowReason";
 import { closeNoticeDetail, openNoticeDetail, readNoticeTarget } from "../../lib/noticeNavigation";
 import { celebrateFirstOnce } from "../milestones/celebrateFirst";
 import type { Composition } from "../../design/useComposition";
+import { bandForAgeMonths as screeningBand } from "../../lib/screening";
 import AreaRowDetail, { areaRowIds } from "./AreaRowDetail";
 import DevelopmentCheckCard from "./DevelopmentCheckCard";
 import DevelopmentMap from "./DevelopmentMap";
@@ -82,6 +83,8 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
 
   const comparisonMonths = comparisonAgeMonths(ageMonthsOf(childProfile), childProfile.preterm?.gestationalWeeks);
   const currentBandMonths = bandForAgeMonths(comparisonMonths).months;
+  // The check's own band at this age (Screening asks exactly these items).
+  const checkQuestions = screeningBand(comparisonMonths).items.length;
   const gender = childProfile.gender ?? null;
 
   // The watch the parent chose in the Development Check (PortraitWatchRow's reader).
@@ -169,6 +172,7 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
       primaryMoveProps={primaryMoveProps}
       recheckDueAt={chosenWatch ? null : recheckDueAt}
       lastCheckAt={lastCheckAt}
+      questions={checkQuestions}
     />
   );
   const area = (
@@ -203,7 +207,7 @@ export default function MilestoneAreas({ observations, momentText, primaryMovePr
   const notice = useNoticePicks(childProfile.id, milestones, comparisonMonths);
   const listed = useMemo(() => areaRowIds(milestones, openDomain, currentBandMonths), [milestones, openDomain, currentBandMonths]);
   const { first, rest } = splitPicks(notice.picks, openDomain, listed);
-  const suggest = first ? <NoticePickCard pick={first} gender={gender} suggested onAnswer={answer} onHold={notice.hold} /> : null;
-  const next = <NoticeNext picks={rest} gender={gender} onAnswer={answer} onHold={notice.hold} />;
+  const suggest = first ? <NoticePickCard pick={first} gender={gender} suggested onAnswer={answer} onHold={notice.hold} milestones={milestones} /> : null;
+  const next = <NoticeNext picks={rest} gender={gender} onAnswer={answer} onHold={notice.hold} milestones={milestones} />;
   return <>{children({ map, check, area, suggest, next, openDomain })}</>;
 }

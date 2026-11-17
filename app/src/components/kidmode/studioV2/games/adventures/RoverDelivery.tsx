@@ -135,14 +135,17 @@ export default function RoverDelivery() {
   const busy = phase === 'drive' || phase === 'arrived';
   const cue = phase === 'done' ? w.finishTitle : phase === 'arrived' ? w.arrived : phase === 'drive' ? w.drive : phase === 'parked' ? w.parked : parks > 0 ? w.replan : w.plan;
   const narration = status || cue;
-  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${runs}:${changes}`, enabled: !busy && phase !== 'done' });
+  // B-GAME-46: the arrival is said aloud too; only the drive itself is left to the tones.
+  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${runs}:${changes}`, enabled: phase !== 'drive' && phase !== 'done' });
+  // B-GAME-46: on the very first floor, before anything is touched, the sign to turn pulses so a child sees that signs turn.
+  const shownHint: RoverHint = hint ?? (round === 0 && phase === 'ready' && runs === 0 && changes === 0 ? roverHint(level, turns.map(headingOf), folded) : null);
 
   return <GameShell fullBleed autoNarrate={false} worldId="river-rescue" title={w.title} instruction={w.instruction} hearIt={narration}>
     {phase === 'done'
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--rover" data-adventure="rover" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={levelsDone} total={ROVER_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${runs}:${busy ? phase : 'plan'}`} onHear={guide.replay} muted={guide.muted || busy}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${runs}:${busy ? phase : 'plan'}`} onHear={guide.replay} muted={guide.muted || busy} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage rover-stage" data-phase={phase} data-size={level.size}>
           <BopCheer beat={phase === 'arrived' ? levelsDone : null} big={phase === 'arrived' && levelsDone >= ROVER_ROUNDS} />
           <BopScene scene="scene-floor" />
@@ -151,7 +154,7 @@ export default function RoverDelivery() {
             {cells.map(cell => {
               const sign = level.signs.findIndex(item => item.cell === cell), driven = trail.includes(cell);
               if (sign >= 0) {
-                const heading = headingOf(turns[sign]), hinted = hint === sign && !busy && heading !== level.signs[sign].fix;
+                const heading = headingOf(turns[sign]), hinted = shownHint === sign && !busy && heading !== level.signs[sign].fix;
                 return <button type="button" key={cell} className="bop-piece rover-cell rover-sign" data-cell={cell} data-sign={sign} data-heading={heading} data-trail={driven} data-hint={hinted}
                   disabled={busy} aria-disabled={busy} aria-label={`${roverLine(w.sign, w.directions[heading])}${hinted ? ` ${w.hintHere}` : ''}`} onClick={() => turn(sign)}>
                   <span className="rover-spin" style={{ '--rover-turn': turns[sign] } as CSSProperties}><BopSprite name="rover-sign" /></span>
@@ -160,7 +163,7 @@ export default function RoverDelivery() {
                 </button>;
               }
               if (cell === level.bloom) {
-                const hinted = hint === 'bloom' && !busy && !folded;
+                const hinted = shownHint === 'bloom' && !busy && !folded;
                 return <button type="button" key={cell} className="bop-piece rover-cell rover-bloom" data-cell={cell} data-folded={folded} data-trail={driven} data-hint={hinted}
                   disabled={busy} aria-disabled={busy} aria-pressed={folded} aria-label={`${folded ? w.bloomFolded : w.bloomOpen}${hinted ? ` ${w.hintHere}` : ''}`} onClick={fold}>
                   <BopSprite name={folded ? 'rover-bloom-folded' : 'rover-bloom-open'} />
