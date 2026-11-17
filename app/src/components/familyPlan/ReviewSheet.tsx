@@ -5,7 +5,7 @@ import { dayKey, isDay, isTime, type FamilyPlanKind, FAMILY_PLAN_KINDS } from ".
 import { matchDraft } from "../../lib/familyPlan/match";
 import type { FamilyPlanExtractItem, ReviewRow } from "../../lib/familyPlan/draft";
 import type { FamilyPlanApi } from "../../hooks/useFamilyPlan";
-import { Token, PencilChip } from "../../design/primitives";
+import { Fig, Token, PencilChip } from "../../design/primitives";
 import { Icon } from "../ui/Icon";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { FpDialog } from "./FpDialog";
@@ -161,8 +161,18 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
 
       {phase.at === "review" && (
         <>
-          <p className="h3" role="status">{rows.length ? c.reviewFound(dated.length, notes.length) : c.reviewNothing}</p>
-          {rows.length > 0 && <span className="small">{c.reviewTickHint}</span>}
+          {/* FA-Review: the message's head — how many things, the figures, then "tick what joins the plan". */}
+          {rows.length ? (
+            <div className="fp-col" style={{ gap: 8 }}>
+              <h3 className="title" style={{ fontSize: 26, lineHeight: 1.15 }}>{c.reviewThings(rows.length)}</h3>
+              <p className="fp-visually-hidden" role="status">{c.reviewFound(dated.length, notes.length)}</p>
+              <div className="line" style={{ gap: 24, alignItems: "flex-end", flexWrap: "wrap" }}>
+                {dated.length > 0 && <Fig size="md" n={dated.length} unit={c.figFound(dated.length)} />}
+                {notes.length > 0 && <Fig size="md" n={notes.length} unit={c.figNoDate(notes.length)} />}
+              </div>
+              <span className="small">{c.reviewTickHint}</span>
+            </div>
+          ) : <p className="h3" role="status">{c.reviewNothing}</p>}
           {rows.map((r) => {
             const isDup = r.match.kind === "duplicate";
             const isChange = r.match.kind === "change" && !resolved[r.id];
@@ -171,7 +181,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
               <article key={r.id} className={`fp-row ${r.kind === "note" ? "nx-found nod" : "draft"}${isDup ? " dup" : ""}`} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14 }} aria-label={r.title}>
                 <div className="line between" style={{ gap: 8, flexWrap: "wrap" }}>
                   <PencilChip>{isChange ? c.reviewChange : c.reviewDraft}</PencilChip>
-                  <span className="nx-tag">{c.kinds[r.kind]}</span>
+                  <span className="nx-tag">{c.kindTags[r.kind]}</span>
                 </div>
                 <div className="line" style={{ gap: 12, alignItems: "center" }}>
                   {isDay(r.date)
@@ -179,7 +189,7 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
                     : <span className="gi" aria-hidden="true"><Icon name="description" size={18} /></span>}
                   <div className="fp-col grow" style={{ gap: 2, minWidth: 0 }}>
                     <b dir="auto" style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 19, lineHeight: 1.2 }}>{r.title}</b>
-                    <span className="small">{isDay(r.date) ? whenLabel({ date: r.date, time: r.time || undefined }, lang) : c.reviewNoDate}</span>
+                    <span className="small">{!isDay(r.date) ? c.reviewNoDate : r.kind === "deadline" ? c.dueOn(whenLabel({ date: r.date, time: r.time || undefined }, lang)) : r.kind === "join" ? `${whenLabel({ date: r.date, time: r.time || undefined }, lang)} · ${c.kinds.join.toLowerCase()}` : whenLabel({ date: r.date, time: r.time || undefined }, lang)}</span>
                   </div>
                 </div>
                 {isChange && r.match.kind === "change" && (
@@ -245,10 +255,17 @@ export function ReviewSheet({ open, onClose, plan, childName, lang, c, onSafety 
             );
           })}
           {rows.length > 0 && (
-            <div className="nx-found nod" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
-              <Icon name="task_alt" size={20} />
-              <span><b>{c.reviewChecked}</b>{dupCount ? c.duplicatesSkipped(dupCount) : c.reviewCheckedNone} {c.reviewKeepsLines}</span>
-            </div>
+            <section className="fp-col" style={{ gap: 8 }} aria-labelledby="fp-before-h">
+              <h3 className="h3" id="fp-before-h">{c.beforeAdd}</h3>
+              <div className="nx-found nod" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
+                <Icon name="task_alt" size={20} />
+                <span><b>{c.reviewChecked}</b>{dupCount ? c.duplicatesSkipped(dupCount) : c.reviewCheckedNone}</span>
+              </div>
+              <div className="nx-found nod" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
+                <Icon name="description" size={20} />
+                <span><b>{c.keepsTitle}</b>{c.keepsSub}</span>
+              </div>
+            </section>
           )}
           {plan.error && <p role="alert" className="fp-err">{c.saveError}</p>}
           <div className="fp-actions">

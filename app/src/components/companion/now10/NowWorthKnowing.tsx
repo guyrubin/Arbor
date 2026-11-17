@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useArbor } from "../../../context/ArborContext";
-import { Know, LivingForm } from "../../../design/primitives";
+import { Know } from "../../../design/primitives";
 import { ageYearsFromProfile } from "../../../lib/childAge";
 import { concernsForBehaviors } from "../../../content/selectCards";
 import { recentBehaviorTypes } from "../../../content/hardMomentSurface";
@@ -55,9 +55,7 @@ export default function NowWorthKnowing({ lang, kicker, readMinutes, topicText, 
   if (!pick) return null;
   const card = pick.card;
   const desk = composition === "desk";
-  const art = <LivingForm src="/visuals/parent/v2/guidance-960.webp" width={desk ? 116 : 46} height={desk ? 113 : 45}
-    crop={desk ? { w: 271.6, h: 152.8, x: -130.4, y: -20.4 } : { w: 104.2, h: 58.6, x: -49.3, y: -7.2 }} className="nw-know-art" />;
-  return <Know kicker={kicker} art={art} className={desk ? "x4 nw-know" : "nw-know m"}
+  return <Know kicker={kicker} className={desk ? "x4 nw-know" : "nw-know m"}
     link={<button type="button" className="nw-know-link" data-testid="now-worth-knowing-read" onClick={() => requestLearnRead({ cardId: card.id, source })}>
       <span dir="auto">{card.title[lang]}</span> · {readMinutes(card.minutes)}
     </button>}>

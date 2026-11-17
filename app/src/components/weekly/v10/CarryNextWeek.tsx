@@ -1,5 +1,5 @@
 import React, { type ReactNode } from "react";
-import { LivingForm, MoreLink, Pile, RouteHead, Tile } from "../../../design/primitives";
+import { LivingForm, MoreLink, RouteHead, Tile } from "../../../design/primitives";
 import type { Composition } from "../../../design/useComposition";
 import { behaviorTypeLabel } from "../../../content/behaviorTaxonomy";
 import { domainName } from "../../../lib/domains/registry";
@@ -37,6 +37,7 @@ export default function CarryNextWeek({
   locale,
   forNextWeek,
   areas,
+  areaDetail,
   visit,
   nowMs,
   onHardMoments,
@@ -51,6 +52,8 @@ export default function CarryNextWeek({
   /** The carry band's body: the suggestion and its moves (WeeklyTab owns them). */
   forNextWeek: ReactNode;
   areas: readonly WeekAreaLine[];
+  /** Per area, the newest record the parent kept this week (its day and words). */
+  areaDetail: Partial<Record<WeekAreaLine["domain"], { ms: number; text: string; hard: boolean; settled: boolean }>>;
   visit: WeekVisit | null;
   nowMs: number;
   onHardMoments: () => void;
@@ -87,20 +90,26 @@ export default function CarryNextWeek({
       <div data-testid="weekly-glance-areas" className="stack wk10-areas">
         {recorded.map((area) => {
           const art = DOMAIN_ART[area.domain];
+          const detail = areaDetail[area.domain];
+          const hard = !!detail?.hard;
           return (
-            <div key={area.domain} className="nx-area" data-area={area.domain}>
+            <div key={area.domain} className={`nx-area${hard ? " hard" : ""}`} data-area={area.domain}>
               {!phone && <LivingForm src={art.src} srcSet={art.srcSet} width={26} height={26} />}
               <span className="wk10-area-text">
                 <b>{domainName(area.domain, t)}</b>
-                <span className="small">{areaLine(area)}</span>
+                <span className="small">
+                  {detail ? (
+                    <>
+                      {new Date(detail.ms).toLocaleDateString(locale, { weekday: "short", day: "numeric" })}
+                      {" · "}
+                      <bdi>{detail.settled ? copy.settledNote : detail.text}</bdi>
+                    </>
+                  ) : (
+                    areaLine(area)
+                  )}
+                </span>
               </span>
-              <span role="img" aria-label={copy.areaRecords(area.n)}>
-                <Pile layout="line">
-                  {Array.from({ length: Math.min(area.n, 3) }, (_, i) => (
-                    <i key={i} aria-hidden="true" className="tok moment sm" />
-                  ))}
-                </Pile>
-              </span>
+              <i role="img" aria-label={copy.areaRecords(area.n)} className={`tok ${hard ? "hard" : "moment"} md`} />
             </div>
           );
         })}

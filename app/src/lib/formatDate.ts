@@ -91,15 +91,24 @@ export const fmtDayShort = (input: DateInput, lang: UiLang): string =>
 export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
   const d = toDate(input);
   if (!d) return "";
-  const locale = lang === "he" ? "he-IL" : "en-GB";
-  let day: string;
-  try {
-    day = d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
-  } catch {
-    day = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-  }
-  return isolate(`${day} · ${fmtTimeV10(d, lang)}`);
+  return isolate(`${shellDay(d, lang)} · ${fmtTimeV10(d, lang)}`);
 };
+
+/** The shell's day alone — "Monday 16 November" / "יום שני, 16 בנובמבר" (V77:
+ *  a route that replaces the time with its own words, or shows the day only). */
+export const fmtShellDay = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  return d ? isolate(shellDay(d, lang)) : "";
+};
+
+function shellDay(d: Date, lang: UiLang): string {
+  const locale = lang === "he" ? "he-IL" : "en-GB";
+  try {
+    return d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+  } catch {
+    return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  }
+}
 
 /* ── v10 / canvas V77: the day as the boards draw it ───────────────────────
    Every v10 board writes a day as weekday, day, short month ("Sat 14 Nov",
@@ -153,6 +162,21 @@ export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
     return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" }));
   } catch {
     return isolate(d.toLocaleDateString(undefined, { day: "numeric", month: "short" }));
+  }
+};
+
+/** v10 day and long month, no weekday — "8 October" / "8 באוקטובר" (year only outside the current year). */
+export const fmtDayMonthLongV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric", month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+  };
+  try {
+    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", options));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, options));
   }
 };
 

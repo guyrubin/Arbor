@@ -11,6 +11,7 @@ import WeekInstrument from "./WeekInstrument";
 import WhatHelped from "./WhatHelped";
 import YourDay from "./YourDay";
 import WeekReadGuide from "./WeekReadGuide";
+import CarryNextWeek from "./CarryNextWeek";
 import { WEEKLY_COPY } from "./weeklyCopy";
 
 /* v10 Weekly report components, rendered with and without data, in both
@@ -139,7 +140,12 @@ describe("WhatHelped (canvas V77)", () => {
       expect(text(card.slice(0, card.indexOf("</button>")))).toContain(translate(lang, "nav.view.behaviors"));
       expect(text(card.slice(0, card.indexOf("</button>")))).not.toMatch(/\d/);
       expect(html.match(/data-testid="weekly-step"/g)).toHaveLength(2);
-      expect(html).toContain(translate(lang, "elev.wk.helped.not", { n: 1 }));
+      // One "not this time" names its day, as N-Week-D writes it ("Not this time · Sun 15").
+      expect(text(html)).toContain(WEEKLY_COPY[lang].notThisTimeOn(new Date(0).toLocaleDateString(lang, { weekday: "short", day: "numeric" })));
+      // Negative control: the counted form shows only for more than one.
+      expect(html).not.toContain(translate(lang, "elev.wk.helped.not", { n: 1 }));
+      const twice = renderToStaticMarkup(<WhatHelped composition="desk" copy={WEEKLY_COPY[lang]} t={t(lang)} uiLang={lang} locale={lang} childFirst="Noa" hardCount={0} steps={[{ ...steps[1], notThisTime: 2 }]} heldWords={null} hasHeldWords={false} words={[]} onPlans={() => {}} onHardMoments={() => {}} />);
+      expect(twice).toContain(translate(lang, "elev.wk.helped.not", { n: 2 }));
       expect(text(html)).not.toMatch(FIREWALL);
     });
 
@@ -191,5 +197,60 @@ describe("WeekInstrument — the join line (N-Week-D/M)", () => {
     const rules = css.slice(css.indexOf(".ds .wk10-join {"));
     expect(rules).toMatch(/inset-inline-end/);
     expect(rules).not.toMatch(/\b(left|right):/);
+  });
+});
+
+describe("Fidelity re-audit (N-Week-D/M)", () => {
+  it("the dates rail gives the item after the week its own column past Friday (desktop)", () => {
+    const data = weekInstrument({ observations: [], actionLoop: [], logs: [], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true });
+    const html = renderToStaticMarkup(<WeekInstrument data={data} composition="desk" copy={WEEKLY_COPY.en} locale="en-GB" beyond={{ label: "Speech therapist", ms: new Date(2026, 9, 21, 10).getTime() }} />);
+    expect(html).toContain('class="wk10-plot has-beyond"');
+    expect(html).toContain('class="wk10-cell wk10-beyondcell"');
+    const none = renderToStaticMarkup(<WeekInstrument data={data} composition="desk" copy={WEEKLY_COPY.en} locale="en-GB" />);
+    expect(none).not.toContain("has-beyond");
+  });
+
+  it("phone: an empty day ahead is a short row; a dated day ahead keeps its height and shows the date as a pill", () => {
+    const data = weekInstrument({ observations: [], actionLoop: [], logs: [], dayStarts, endMs: new Date(2026, 9, 12, 15).getTime(), isCurrent: true,
+      dates: [{ id: "plan:x", startMs: new Date(2026, 9, 14).getTime(), label: "Visit form", sub: "you" }] });
+    const html = renderToStaticMarkup(<WeekInstrument data={data} composition="phone" copy={WEEKLY_COPY.en} locale="en-GB" />);
+    expect(html.match(/class="wk10-mr ahead short"/g)).toHaveLength(3);
+    expect(html).toContain('<span class="wk-pill">Visit form · you</span>');
+  });
+
+  for (const lang of LANGS) {
+    it(`${lang}: By area draws a hard moment's area in rust with "you marked it settled", a moment's with its day and the parent's words`, () => {
+      const c = WEEKLY_COPY[lang];
+      const areas = [
+        { domain: "feelings", n: 1, milestones: [], latest: { kind: "moment", behaviorType: "Tantrum" } },
+        { domain: "hands", n: 1, milestones: [], latest: { kind: "moment", behaviorType: "Moment" } },
+      ] as unknown as Parameters<typeof CarryNextWeek>[0]["areas"];
+      const html = renderToStaticMarkup(
+        <CarryNextWeek composition="desk" copy={c} t={t(lang)} uiLang={lang} locale={lang} forNextWeek={null} areas={areas} visit={null} nowMs={0}
+          areaDetail={{ feelings: { ms: dayStarts[0], text: "x", hard: true, settled: true }, hands: { ms: dayStarts[1], text: "“Put his shoes on”", hard: false, settled: false } }}
+          onHardMoments={() => {}} onMoments={() => {}} onPrepare={() => {}} />,
+      );
+      expect(html).toContain('class="nx-area hard" data-area="feelings"');
+      expect(text(html)).toContain(c.settledNote);
+      expect(html).toContain("“Put his shoes on”");
+      expect(html).toContain('class="nx-area" data-area="hands"');
+    });
+
+    it(`${lang}: Your day's lead line counts logs at home and the weekday most logged`, () => {
+      expect(WEEKLY_COPY.en.dayFoot(12, 4, "Saturday")).toBe("12 at home, 4 on a Saturday.");
+      expect(WEEKLY_COPY[lang].dayFoot(0, 3, "x")).not.toMatch(/^0/);
+    });
+  }
+});
+
+describe("WhatHelped — the words card's glyph tile (N-Week-M)", () => {
+  const props = { copy: WEEKLY_COPY.en, t: t("en"), uiLang: "en" as const, locale: "en", childFirst: "Noa", hardCount: 0, steps: [], heldWords: <p>held</p>, hasHeldWords: true, words: [], onPlans: () => {}, onHardMoments: () => {} };
+  it("phone: the words card leads with a decorative music-note tile", () => {
+    const html = renderToStaticMarkup(<WhatHelped composition="phone" {...props} />);
+    expect(html).toMatch(/<span class="wk-tw" aria-hidden="true" data-testid="weekly-words-glyph">[\s\S]*?music_note/);
+  });
+  it("negative controls: no tile on desktop (the board draws none there), and none without held words", () => {
+    expect(renderToStaticMarkup(<WhatHelped composition="desk" {...props} />)).not.toContain("weekly-words-glyph");
+    expect(renderToStaticMarkup(<WhatHelped composition="phone" {...props} hasHeldWords={false} heldWords={null} />)).not.toContain("weekly-words-glyph");
   });
 });

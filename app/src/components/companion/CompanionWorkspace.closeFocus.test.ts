@@ -46,6 +46,7 @@ async function mountedCloseProof() {
     if (name === "../../context/LanguageContext") return { useLanguage: () => ({ uiLang: "en" }) };
     if (name === "../../hooks/useDialog") return { useDialog: () => ({ ref: React.useRef(null) }) };
     if (name === "../../hooks/useVisualViewportInset") return { useVisualViewportInset() {} };
+    if (name === "../../design/useComposition") return { useComposition: () => (wide ? "desk" : "phone") };
     if (name === "../../lib/i18n") return { translate: (_lang, key) => key };
     if (name === "../../lib/kidModeGate") return { isKidModeActive: () => gate };
     // B-VOICE-08 round 3: the door seam records what the workspace reports.

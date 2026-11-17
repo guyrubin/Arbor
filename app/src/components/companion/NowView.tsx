@@ -39,7 +39,7 @@ import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
 import { useArborPause } from "../../lib/pauseArborStore";
 import { fmtDay } from "../../lib/formatDate";
 import BasedOnReceipt from "../trust/BasedOnReceipt";
-import FromRecordCard, { FromRecordReceipt, recordMeta, recordQuestion } from "../overview/FromRecordCard";
+import FromRecordCard, { FromRecordReceipt, recordQuestion } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
@@ -70,7 +70,7 @@ import { DsRoot, Guide, LivingForm, MoreLink, Route, RouteSection, Row12, Scene,
 import { useComposition } from "../../design/useComposition";
 import { NOW_V10_COPY } from "./now10/nowV10Copy";
 import NowDayArc from "./now10/NowDayArc";
-import { eveningMoments, clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR } from "./now10/dayArcModel";
+import { eveningMoments, clock24 } from "./now10/dayArcModel";
 import { NowStageContext, type NowStage } from "./now10/nowStage";
 import NowWaiting, { NowChallengePlan, NowNotebookBadge, type WaitingStep } from "./now10/NowWaiting";
 import NowThisWeek from "./now10/NowThisWeek";
@@ -350,7 +350,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   const recordNoteDay = recordFace?.quoteAt && Number.isFinite(Date.parse(recordFace.quoteAt))
     ? new Date(recordFace.quoteAt).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }) : null;
   const planSay = recordFace ? recordQuote : pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = recordFace ? recordMeta(recordFace, uiLang, t) : pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
+  const planMeta = recordFace ? null : pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
@@ -415,8 +415,8 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     // The face (the lead's tag, title, quote) is set inside the arc's bowl, as N-Now draws it on both compositions.
     renderArc: (face, art) => <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
       <div className={desk ? "nw-face-row" : "nw-face-col"}>
-        <LivingForm src={art?.src ?? "/visuals/parent/v2/guidance-480.webp"} srcSet={art?.srcSet} width={desk ? 150 : 88} height={desk ? 115 : 68}
-          crop={art ? undefined : desk ? { w: 270.8, h: 152.3, x: -122, y: -24 } : { w: 158.9, h: 89.4, x: -71.6, y: -14 }} className="nw-face-art" />
+        {!desk && <LivingForm src={art?.src ?? "/visuals/parent/v2/guidance-480.webp"} srcSet={art?.srcSet} width={desk ? 150 : 88} height={desk ? 115 : 68}
+          crop={art ? undefined : desk ? { w: 270.8, h: 152.3, x: -122, y: -24 } : { w: 158.9, h: 89.4, x: -71.6, y: -14 }} className="nw-face-art" />}
         {face}
       </div>
     </NowDayArc>,
@@ -520,7 +520,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
       onOpen={openPlan} /> });
   else if (plansDoor) waiting.push({ key: "tonight", when: v10.whenTonight, body: plansDoor });
   if (lead !== "urgent" && notesWaiting > 0) waiting.push({ key: "later", when: v10.whenLater, sub: v10.whenLaterSub, body:
-    <NowNotebookBadge waiting={notesWaiting} copy={v10} notebook={t("companion.about.notebook")} label={t(notesWaiting === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: notesWaiting })} onOpen={() => goToRoute("memory")} /> });
+    <NowNotebookBadge waiting={notesWaiting} remembered={(approvedMemoryItems ?? []).length} copy={v10} notebook={t("companion.about.notebook")} label={t(notesWaiting === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: notesWaiting })} onOpen={() => goToRoute("memory")} /> });
   // "Waiting for you · n things": the blocks the rail shows (a Now step with only its say-back extras is not counted).
   const thingsWaiting = waiting.filter(w => w.key !== "now" || showNotice).length;
   const waitingTitleId = `${id}-waiting`;
@@ -563,7 +563,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
 
   const stops: GuideStop[] = [
     // The phone guide uses the board's short names for the same four stops.
-    { id: "now-tonight", title: desk ? v10.stops.tonight : v10.stopsShort.tonight, sub: planTag },
+    { id: "now-tonight", title: desk ? v10.stops.tonight : v10.stopsShort.tonight, sub: recordFace ? v10.stopSubs.tonight : planTag },
     ...(waiting.length ? [{ id: "now-waiting", title: desk ? v10.stops.waiting : v10.stopsShort.waiting, sub: v10.stopSubs.waiting }] : []),
     { id: "now-week", title: desk ? v10.stops.week : v10.stopsShort.week, sub: v10.stopSubs.week },
     { id: "now-ahead", title: desk ? v10.stops.ahead : v10.stopsShort.ahead, sub: v10.stopSubs.ahead },
@@ -585,7 +585,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     {(topic || onTopicOpen) && <div className="nw-stage-q"><NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} phone={!desk} /></div>}
     <div className="nw-meta nw-arc-legend">
       {/* V77: the phone legend names the band; the desktop says its window and its count. */}
-      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" />{desk ? <span><b>{v10.eveningLabel(clock24(EVENING_FROM_HOUR * 60), clock24(EVENING_TO_HOUR * 60))}</b> {v10.eveningCount(evening.inBand, evening.total)}</span> : v10.eveningShort}</span>}
+      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" /><span>{v10.eveningShort}<span className="sr-only">: {v10.eveningCount(evening.inBand, evening.total)}</span></span></span>}
       <span><i className="nw-qh" aria-hidden="true" />{v10.quietFrom(quietFrom)}</span>
       {!desk && dayGlance}
     </div>

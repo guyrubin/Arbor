@@ -90,6 +90,7 @@ import { Guide } from "../../design/primitives";
 import { useComposition } from "../../design/useComposition";
 import PeopleScene from "../care/v10/PeopleScene";
 import PeopleLanes, { peopleLanes } from "../care/v10/PeopleLanes";
+import ShareCarries from "../care/v10/ShareCarries";
 import { careCopy } from "../care/v10/careV10Copy";
 import "../care/v10/care.css";
 
@@ -469,16 +470,24 @@ export default function TrustedSharing() {
         mini={composition === "phone"}
         label={careCopy(uiLang).onThisPage}
         className="care-guide"
-        stops={[
+        stops={composition === "desk" ? [
+          // Design V77 (N-People-D): who sees what, before you invite, what a share carries, shares and your data.
           { id: "people-who", title: careCopy(uiLang).people.stopWho, sub: careCopy(uiLang).people.stopWhoSub },
-          { id: "people-roster", title: t("sec.sharing.team.title", { name: first }) },
-          { id: "people-more", title: t("elev.learnCare.share.more.title"), sub: careCopy(uiLang).people.stopMoreSub },
+          { id: "people-invite", title: careCopy(uiLang).people.stopInvite, sub: careCopy(uiLang).people.stopInviteSub },
+          { id: "people-carry", title: careCopy(uiLang).people.stopCarry, sub: careCopy(uiLang).people.stopCarrySub },
+          { id: "people-roster", title: careCopy(uiLang).people.stopShares, sub: careCopy(uiLang).people.stopMoreSub },
+        ] : [
+          // N-People-M: three short stops.
+          { id: "people-who", title: careCopy(uiLang).people.stopWho },
+          { id: "people-carry", title: careCopy(uiLang).people.stopKinds },
+          { id: "people-roster", title: careCopy(uiLang).people.invitesHead },
         ]}
       />
       <div className={composition === "desk" ? "route gut" : "route m"}>
       <section className="rsec" id="people-who">
       <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
-      <PeopleScene composition={composition} title={t("sec.sharing.title")} sub={t("sec.sharing.sub", { name: first })} liveCount={liveGrants.length} loading={loading} childName={first}>
+      {/* Design V77 (N-People): the kicker is the page's name ("Trusted sharing"), the heading the question it answers. */}
+      <PeopleScene composition={composition} kicker={t("sec.sharing.title")} title={careCopy(uiLang).people.lanesLabel(first)} liveCount={liveGrants.length} loading={loading} childName={first}>
         {/* Design V77 (N-People): who sees what — you, then every live share. */}
         <PeopleLanes composition={composition} lanes={peopleLanes(liveGrants, careCopy(uiLang).people, (g) => roleLabel(g.role))} copy={careCopy(uiLang).people} childName={first} />
       </PeopleScene>
@@ -637,6 +646,12 @@ export default function TrustedSharing() {
       )}
       {/* Design v10.1: the week share (the route's one move) leads; the
           co-parent invite follows it (on desktop it runs beside both). */}
+      {/* V77 N-People: the rail is "Invites · waiting for an answer" (stop 2). */}
+      <div id="people-invite" className={composition === "desk" ? "care-people-invite-head" : "sr-only"} data-testid="people-invite-head">
+        <span className="rstop inline" aria-hidden="true">2</span>
+        <span className="h3">{careCopy(uiLang).people.invitesHead}</span>
+        <span className="small">{careCopy(uiLang).people.invitesSub}</span>
+      </div>
       <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       <ReceiptNoteLine note={receipt.note} testId="sharing-receipt" />
       {invite && (
@@ -774,8 +789,19 @@ export default function TrustedSharing() {
       </div>
       </section>
 
-      <section className="rsec" id="people-roster">
-      <span className="rstop" style={{ top: 14 }} aria-hidden="true">2</span>
+      {/* V77 N-People §3: what each kind of share carries, from the grants production makes. */}
+      <section className="rsec" id="people-carry" aria-labelledby="people-carry-title">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">{composition === "desk" ? 3 : 2}</span>
+      {/* N-People-D: the cards name themselves; N-People-M heads the section "What a share carries · the week, a custom share". */}
+      {composition === "desk"
+        ? <h2 id="people-carry-title" className="sr-only">{careCopy(uiLang).people.stopCarry}</h2>
+        : <div className="rh care-people-rh"><h2 id="people-carry-title" className="h3">{careCopy(uiLang).people.stopCarry}</h2><span className="small">{careCopy(uiLang).people.stopCarrySub}</span></div>}
+      <ShareCarries name={first} copy={careCopy(uiLang).people} durations={DURATIONS.map((d) => t(`share.duration.${d}`))} roles={ROLES.map((r) => roleLabel(r))} />
+      </section>
+
+      <section className="rsec" id="people-roster" aria-labelledby="people-roster-title">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">{composition === "desk" ? 4 : 3}</span>
+      <div className="rh care-people-rh"><h2 id="people-roster-title" className="h3">{composition === "desk" ? careCopy(uiLang).people.sharesHead : careCopy(uiLang).people.invitesAndShares}</h2>{composition === "desk" && <span className="small">{careCopy(uiLang).people.stopMoreSub}</span>}</div>
       {!error && (
         <div data-module="sharing-roster" style={{ display: "contents" }}>
         {/* W2-CAREPRO r2: with nobody on the roster, one muted line — not a
@@ -835,7 +861,6 @@ export default function TrustedSharing() {
       </section>
 
       <section className="rsec" id="people-more">
-      <span className="rstop" style={{ top: 14 }} aria-hidden="true">3</span>
       <details data-module-disclosure="sharing-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>

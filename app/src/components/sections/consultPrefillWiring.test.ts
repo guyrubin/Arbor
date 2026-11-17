@@ -73,6 +73,7 @@ describe("B-CAREPRO-13 · every caller goes through the widened seam", () => {
   it("the scan found five explicit callers (Appointments, Reports, unified Coach report, Screening, Safety)", () => {
     const files = CALLS.map((c) => c.rel).sort();
     expect(files).toEqual([
+      "components/care/v10/VisitTimeline.tsx", // design V77 (N-Care): "Add to the visit summary" on the next visit's card
       "components/sections/Appointments.tsx", // B-CAREPRO-31: "Prepare" on an upcoming visit
       "components/sections/Reports.tsx", // B-CAREPRO-23: the one door from Your full record into Consult
       "components/sections/Screening.tsx",

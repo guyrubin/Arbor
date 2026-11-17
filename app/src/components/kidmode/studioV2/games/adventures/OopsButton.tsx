@@ -96,7 +96,7 @@ export default function OopsButton() {
         later(BLOOM_MS, () => { if (round + 1 >= OOPS_ROUNDS) setPhase('done'); else startRound(round + 1, challenge, order); });
         return;
       }
-      if (toyJams(round, open.length, jamUsed.current)) { jamUsed.current = true; setStuck(petal); setJamByToy(true); setPhase('jam'); }
+      if (toyJams(round, open.length, jamUsed.current)) { jamUsed.current = true; setStuck(petal); setJamByToy(true); kidSfx('tryAgain'); setPhase('jam'); }
       return;
     }
     if (phaseRef.current !== 'undo') return;
@@ -135,7 +135,8 @@ export default function OopsButton() {
     copy: opened.length > 0 ? oopsLine(w.copyNext, opened.length, order.length) : w.copyFirst,
     bloom: round + 1 < OOPS_ROUNDS ? w.bloomNext : w.bloomLast,
     jam: jamByToy ? w.jamToy : w.jam,
-    undo: nudge ? w.undoWait : undone > 0 ? w.undoNext : w.undoFirst,
+    // The petal to press next is the newest open one; its number is on it.
+    undo: oopsLine(nudge ? w.undoWait : undone > 0 ? w.undoNext : w.undoFirst, opened.length),
     reset: w.reset, done: w.transfer,
   };
   const cue = cues[phase], status = lines[phase];
@@ -150,7 +151,7 @@ export default function OopsButton() {
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--oops" data-adventure="oops" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={blooms} total={OOPS_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${phase}:${attempt}`} onHear={guide.replay} muted={guide.muted || quietBeat}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${phase}:${attempt}`} onHear={guide.replay} muted={guide.muted || quietBeat} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage oops-stage">
           <BopCheer beat={phase === 'bloom' ? blooms : null} big={phase === 'bloom' && blooms >= OOPS_ROUNDS} />
           <BopScene scene="scene-table" />
@@ -169,6 +170,8 @@ export default function OopsButton() {
                   {open && <i className="oops-pop" aria-hidden="true" />}
                   <BopSprite name={PETAL_ART[petal]} size={54} className="oops-petal__art" flat />
                   {showing && <span className="bop-chip oops-petal__chip">{String(place + 1)}</span>}
+                  {/* B-GAME-46: while the petals go back, each open one shows when it opened, so "biggest number first" can be seen. */}
+                  {(phase === 'jam' || phase === 'undo') && open && <span className="bop-chip oops-petal__chip" data-undo-number={opened.indexOf(petal) + 1}>{String(opened.indexOf(petal) + 1)}</span>}
                 </button>;
               })}
               {/* B-GAME-45: a bloom throws light: ten rays turn slowly behind the toy. */}

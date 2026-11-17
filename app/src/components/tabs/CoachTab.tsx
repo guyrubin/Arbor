@@ -2,6 +2,7 @@ import { translate as inputText } from "../../lib/i18n";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import TalkReadingKey from "../companion/TalkReadingKey";
 import TalkStarters from "../companion/TalkStarters";
+import { formatChildAge } from "../../lib/age/format";
 import { recentRecordStarters } from "../../lib/talkStarters";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
@@ -1795,7 +1796,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // went out with a family question (its stamped topicId).
                       basedOn={!msg.chatLive && !msg.voiceLive ? talkBasedOn(idx) : undefined}
                       onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
-                      childName={(childProfile.name || "").split(" ")[0] || childProfile.name}
+                      childName={[(childProfile.name || "").split(" ")[0] || childProfile.name, formatChildAge(childProfile, t)].filter(Boolean).join(", ")}
                       provenance={!msg.chatLive && !msg.voiceLive ? { topic: askedWithTopic(chatMessages, idx) } : undefined}
                     />
                     </>

@@ -59,6 +59,8 @@ export const ABOUT_COPY = {
     tokenToldOne: "something you told",
     tokenWaitingOne: "a note waiting for you",
     identity: (name: string, age: string) => `${name} · ${age}`,
+    /** V77 (N-About-D): the pill row's end, after the day. */
+    rowEndSuffix: "nothing is remembered without your approval",
   },
   he: {
     onThisPage: "בעמוד הזה",
@@ -111,6 +113,8 @@ export const ABOUT_COPY = {
     tokenToldOne: "משהו שסיפרתם",
     tokenWaitingOne: "הערה שמחכה לכם",
     identity: (name: string, age: string) => `${name} · ${age}`,
+    // NATIVE REVIEW: the row end's Hebrew ("nothing is kept without your approval").
+    rowEndSuffix: "שום דבר לא נשמר בלי האישור שלכם",
   },
 } as const;
 

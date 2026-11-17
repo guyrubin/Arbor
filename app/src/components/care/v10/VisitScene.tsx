@@ -24,9 +24,11 @@ import { careCopy } from "./careV10Copy";
 const RUNWAY_MAX = 14;
 const ART = "/visuals/parent/v2/area-words-960.webp";
 
-export type PackedCounts = { moments: number; milestones: number; words: number };
+export type PackedCounts = { moments: number; milestones: number; words: number; planSteps?: number };
 
-export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, aside, reviewed = false, nowMs = Date.now() }: {
+export default function VisitScene({ composition, visit, heading, packed, build, brief = false, briefLine, briefKicker, aside, reviewed = false, nowMs = Date.now() }: {
+  /** The Teacher brief's kicker, in the stage's header row beside Start here (V77 N-Brief). */
+  briefKicker?: React.ReactNode;
   /** The parent ticked "I reviewed" (the stepper's Review step). */
   reviewed?: boolean;
   /** The Teacher brief: who it is for and the template, as a card inside the
@@ -60,9 +62,10 @@ export default function VisitScene({ composition, visit, heading, packed, build,
   const todayLabel = fmtDayV10(new Date(nowMs).toISOString(), uiLang);
   const dateLabel = visit?.whenIso ? fmtDayV10(visit.whenIso, uiLang) : "";
   const tiles = [
-    { n: packed.moments, unit: c.packedMoments(packed.moments), sub: c.packedMomentsSub },
-    { n: packed.milestones, unit: c.packedMilestones(packed.milestones), sub: c.packedMilestonesSub },
-    { n: packed.words, unit: c.packedWords(packed.words), sub: c.packedWordsSub },
+    { n: packed.moments, unit: c.packedMoments(packed.moments), sub: c.packedMomentsSub, kind: "moment" as const },
+    { n: packed.milestones, unit: c.packedMilestones(packed.milestones), sub: c.packedMilestonesSub, kind: "moment" as const },
+    { n: packed.words, unit: c.packedWords(packed.words), sub: c.packedWordsSub, kind: "moment" as const },
+    { n: packed.planSteps ?? 0, unit: c.packedPlan(packed.planSteps ?? 0), sub: c.packedPlanSub, kind: "plan" as const },
   ].filter((x) => x.n > 0);
 
   const figure = visit && days !== null
@@ -75,10 +78,12 @@ export default function VisitScene({ composition, visit, heading, packed, build,
       labelledBy="consult-h1"
       data-testid={brief ? undefined : "consult-visit-head"}
       data-visit={brief ? undefined : visit ? "booked" : "none"}
-      kicker={brief ? undefined : <span data-testid="consult-kicker">{t(desk ? "elev.consult.kicker" : "elev.consult.visit.kicker")}</span>}
-      startHere={!brief}
+      kicker={brief ? briefKicker : <span data-testid="consult-kicker">{t(desk ? "elev.consult.kicker" : "elev.consult.visit.kicker")}</span>}
+      // V77 N-Brief: the Teacher brief's stage is where the page starts too.
+      startHere={!brief || !!briefKicker}
       note={briefLine ?? (desk && !brief ? t("elev.consult.template.note.visit") : undefined)}
-      art={desk ? ART : undefined}
+      art={desk || briefKicker ? ART : undefined}
+      artOnPhone={!!briefKicker}
       heading={desk && visit && !brief ? <><span className="care-scene-over">{[t("elev.consult.visit.kicker"), statusLine].filter(Boolean).join(" · ")}</span>{heading}</> : heading}
       figure={figure}
       aside={aside}
@@ -106,7 +111,7 @@ export default function VisitScene({ composition, visit, heading, packed, build,
           <div className="packed" role="group" aria-label={c.packed} style={{ gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))` }}>
             {tiles.map((x) => (
               <span key={x.sub} className="pk">
-                <Token kind="moment" size="sm" label={x.unit} />
+                <Token kind={x.kind} size="sm" label={x.unit} />
                 <span><b>{x.n}</b> {x.unit}<small>{x.sub}</small></span>
               </span>
             ))}

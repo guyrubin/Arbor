@@ -51,7 +51,8 @@ describe("B-SHELL-23 · targets, tokens and comments", () => {
     expect(at).toBeGreaterThan(-1);
     const button = sidebar.slice(sidebar.lastIndexOf("<button", at), sidebar.indexOf("</button>", at));
     expect(button).toMatch(/className="[^"]*\bmin-h-11\b/);
-    expect(button).toContain('<Icon name="settings" size={18}');
+    expect(button).toContain('<Icon name="tune" size={18}');
+    expect(button).not.toContain('<Icon name="settings"');
     expect(button).toContain('t("nav.popover.settings")');
     expect(sidebar).not.toContain('role="menu"');
     expect(sidebar).not.toContain('role="menuitem"');
