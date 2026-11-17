@@ -151,3 +151,19 @@
   .coach-report > .coach-report__script { grid-column: span 4; }
   .coach-report__opening .coach-report__lead > p:first-child { font-size: 34px; line-height: 1.12; }
 }
+
+/* V77 (N-Talk): "What Arbor used" — read-only tiles of what the answer carried. */
+.coach-used { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
+.coach-used-title { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 500; color: var(--arbor-ink); }
+.coach-used-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.coach-used-tile { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--arbor-paper-deep); }
+.coach-used-notes { grid-column: 1 / -1; }
+.coach-used-glyph { display: inline-grid; place-items: center; flex: none; inline-size: 32px; block-size: 32px; border-radius: 10px; background: var(--arbor-k-moment-w); color: var(--arbor-k-moment-i); }
+.coach-used-glyph.k-date { background: var(--arbor-k-date-w); color: var(--arbor-k-date-i); }
+.coach-used-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.coach-used-text b { font-size: 14px; font-weight: 600; color: var(--arbor-ink); }
+.coach-used-text small { font-size: 13px; color: var(--arbor-muted); overflow-wrap: anywhere; }
+.coach-used-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 4px; }
+.coach-used-fact { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); font-size: 14px; font-style: italic; color: var(--arbor-ink); text-align: start; cursor: pointer; }
+.coach-used-fact:hover { background: var(--arbor-k-moment-w); }
+.coach-used-fact:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }

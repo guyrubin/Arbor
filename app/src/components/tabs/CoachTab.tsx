@@ -1,6 +1,8 @@
 import { translate as inputText } from "../../lib/i18n";
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import TalkReadingKey from "../companion/TalkReadingKey";
+import TalkStarters from "../companion/TalkStarters";
+import { recentRecordStarters } from "../../lib/talkStarters";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
@@ -476,6 +478,18 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [topicChipBefore, topicChipAfter = ""] = inputText(uiLang, "companion.talk.topic-chip").split("{title}");
   const scenarioSeats = embedded ? 4 : 3;
   const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));
+  // V77 (N-Talk, empty state): the parent's two most recent records lead; with
+  // none, the fixed scenarios stay. Deterministic, zero model calls.
+  const recordStarters = useMemo(() => recentRecordStarters(behaviorLogs), [behaviorLogs]);
+  const focusComposer = (from: HTMLElement) => {
+    const scope: ParentNode = from.closest(".companion-coach") ?? document;
+    requestAnimationFrame(() => {
+      const field = scope.querySelector<HTMLTextAreaElement>('[data-testid="coach-composer-well"] textarea');
+      if (!field || field.disabled) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(field.value.length, field.value.length);
+    });
+  };
   const continueWithTopic = (from: HTMLElement, title: string) => {
     setChatInput((current) => current.trim() && current.trim() !== title ? `${current}\n\n${title}` : title);
     const scope: ParentNode = from.closest(".companion-coach") ?? document;
@@ -1568,8 +1582,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 </button>
               )}
               {/* B-ASKJB-10: the child's own recurring moment (after the family
-                  question, when one is set), then the static chips. */}
-              {echoScenario && (
+                  question, when one is set), then the static chips. V77: when
+                  the parent has records, their own records take those seats. */}
+              {recordStarters.length === 0 && echoScenario && (
                 <button
                   key="echo"
                   data-testid="coach-scenario-echo"
@@ -1581,7 +1596,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
                 </button>
               )}
-              {SCENARIOS.slice(0, staticShown).map((s) => (
+              {recordStarters.length === 0 && SCENARIOS.slice(0, staticShown).map((s) => (
                 <button
                   key={s.labelKey}
                   // ASK-5: the parent's bubble shows the localized label they
@@ -1595,6 +1610,15 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 </button>
               ))}
             </div>
+            {recordStarters.length > 0 && (
+              <TalkStarters
+                starters={recordStarters}
+                lang={uiLang === "he" ? "he" : "en"}
+                disabled={isChatLoading}
+                onPick={(from, words) => continueWithTopic(from, words)}
+                onElse={(from) => focusComposer(from)}
+              />
+            )}
           </div>
         )}
         {/* F-TALK-1: the research trust chip left the panel — every answer
@@ -1771,6 +1795,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // went out with a family question (its stamped topicId).
                       basedOn={!msg.chatLive && !msg.voiceLive ? talkBasedOn(idx) : undefined}
                       onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
+                      childName={(childProfile.name || "").split(" ")[0] || childProfile.name}
                       provenance={!msg.chatLive && !msg.voiceLive ? { topic: askedWithTopic(chatMessages, idx) } : undefined}
                     />
                     </>
