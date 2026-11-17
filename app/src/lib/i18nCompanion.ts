@@ -458,7 +458,7 @@ export const companionEn = {
   "companion.about.moments": "Open the moments",
   "companion.about.details": "Details",
   "companion.about.detailsEdit": "Edit details",
-  "companion.about.birthDate": "Birth date {date}",
+  "companion.about.birthDate": "Born {date}",
   "companion.about.bornEarly": "Born at {weeks} weeks",
   // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
   // area: no number, no badge.
