@@ -26,6 +26,7 @@ export async function verifyJosephStory({ browser, base, output }) {
     const context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
     const page = await context.newPage();
     const errors = [], unexpected = [], narrationReads = [], staticReads = [], screenshots = [], pages = [], outcomes = [];
+    const decodedAssets = new Map();
     let injectedMissing = false;
     page.on('pageerror', error => errors.push(error.message));
     page.on('response', response => {
@@ -78,20 +79,39 @@ export async function verifyJosephStory({ browser, base, output }) {
       await paint();
       const picture = await scope.locator(`[data-story-art-image="${id}"]`).evaluate(img => {
         const box = img.getBoundingClientRect(), style = getComputedStyle(img);
-        return { url: new URL(img.currentSrc).pathname, width: img.naturalWidth, height: img.naturalHeight, box: { x: box.x, y: box.y, width: box.width, height: box.height }, objectFit: style.objectFit, objectPosition: style.objectPosition, transform: style.transform };
+        return { currentSrc: img.currentSrc, url: new URL(img.currentSrc).pathname, width: img.naturalWidth, height: img.naturalHeight, box: { x: box.x, y: box.y, width: box.width, height: box.height }, objectFit: style.objectFit, objectPosition: style.objectPosition, transform: style.transform };
       });
       const expected = frames.get(id);
       assert.ok(expected, `${id}: reviewed frame metadata`);
       assert.match(picture.url, new RegExp(`^${ART}${id}(?:-480)?\\.webp$`), `${cell.id}: exact authored ${id} scene, not a repeated cover`);
       assert.equal(picture.objectPosition, expected.crop.objectPosition, `${cell.id}/${id}: reviewed per-scene camera`);
       assert.equal(picture.transform, 'none', 'art is never mirrored or zoomed in Hebrew');
-      assert.ok(Math.abs(picture.width / picture.height - (id === 'cover' ? .75 : 1.5)) < .003, `${id}: actual native derivative aspect`);
       const selected = expected.exports.find(file => file.path === `app/public${picture.url}`);
       assert.ok(selected, `${id}: the selected file is in the reviewed export set`);
+      // naturalWidth/Height are density-corrected CSS dimensions. A 480×640
+      // source can report 233×312 after srcset rounding in landscape. Decode
+      // the selected resource itself and verify its exact bytes and pixels.
+      // Cache per URL/context so rereads do not fetch/decode the same file.
+      let decoded = decodedAssets.get(picture.currentSrc);
+      if (!decoded) {
+        decoded = await page.evaluate(async src => {
+          const response = await fetch(src, { cache: 'force-cache' });
+          if (!response.ok) throw new Error(`Selected story image returned ${response.status}: ${src}`);
+          const bytes = await response.arrayBuffer();
+          const bitmap = await createImageBitmap(new Blob([bytes], { type: response.headers.get('content-type') || 'image/webp' }));
+          const width = bitmap.width, height = bitmap.height;
+          bitmap.close();
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          return { width, height, bytes: bytes.byteLength, sha256: [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('') };
+        }, picture.currentSrc);
+        decodedAssets.set(picture.currentSrc, decoded);
+      }
+      assert.deepEqual(decoded, { width: selected.width, height: selected.height, bytes: selected.bytes, sha256: selected.sha256 }, `${cell.id}/${id}: selected resource decodes to the exact reviewed export`);
+      assert.equal(decoded.width * (id === 'cover' ? 4 : 2), decoded.height * 3, `${id}: actual native derivative aspect`);
       const drawnWidth = picture.objectFit === 'contain'
-        ? Math.min(picture.box.width, picture.box.height * selected.width / selected.height)
-        : Math.max(picture.box.width, picture.box.height * selected.width / selected.height);
-      assert.ok(selected.width + 1 >= drawnWidth, `${cell.id}/${id}: ${selected.width}px source covers ${drawnWidth}px uncropped image at DPR1`);
+        ? Math.min(picture.box.width, picture.box.height * decoded.width / decoded.height)
+        : Math.max(picture.box.width, picture.box.height * decoded.width / decoded.height);
+      assert.ok(decoded.width + 1 >= drawnWidth, `${cell.id}/${id}: ${decoded.width}px source covers ${drawnWidth}px uncropped image at DPR1`);
       const hero = scope.locator('[data-story-own-hero="approved"]');
       const heroBox = await hero.boundingBox(), artBox = await art.boundingBox();
       assert.ok(inside(heroBox, artBox), `${cell.id}/${id}: the existing own portrait stays inside the picture`);
@@ -99,7 +119,7 @@ export async function verifyJosephStory({ browser, base, output }) {
       assert.equal(await scope.locator('[data-story-own-hero]').count(), 1, `${id}: one identity only`);
       const heroCenter = (heroBox.x + heroBox.width / 2 - artBox.x) / artBox.width;
       assert.ok(Math.abs(heroCenter - expected.heroSlot.centerX) * artBox.width <= 2, `${id}: portrait uses the reviewed physical slot without RTL mirroring`);
-      return { id, ...picture, sourcePixels: { width: selected.width, height: selected.height }, uncroppedRenderedWidth: drawnWidth, heroBox, artBox };
+      return { id, ...picture, sourcePixels: { width: decoded.width, height: decoded.height }, sourceBytes: decoded.bytes, sourceSha256: decoded.sha256, uncroppedRenderedWidth: drawnWidth, heroBox, artBox };
     };
     const controls = async () => {
       const items = await page.locator('[data-kid-book-reader] button:visible').evaluateAll(buttons => buttons.filter(button => !button.disabled).map(button => {
