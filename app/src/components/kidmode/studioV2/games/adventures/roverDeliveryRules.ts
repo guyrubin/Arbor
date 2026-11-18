@@ -78,9 +78,32 @@ const LEVELS: Record<Challenge, readonly RoverLevel[]> = {
 };
 
 /** B-GAME-46: each play again turns every floor a quarter turn clockwise, so
- * a replay is a fresh map. A turn of the whole floor keeps its one answer and
- * how many presses each sign needs; only where things stand changes. */
-export const ROVER_SPINS = 4;
+ * a replay is a fresh map; after four turns the floor is also mirrored, so
+ * eight plays in a row never repeat a map. A turn or a mirror of the whole floor
+ * keeps its one answer and how many presses each sign needs; only where things
+ * stand changes. */
+export const ROVER_SPINS = 8;
+
+const MIRROR: Record<Heading, Heading> = { n: 'n', e: 'w', s: 's', w: 'e' };
+
+/** The floor seen in a mirror, left for right. Each sign's answer is mirrored;
+ * its first setting is put back the same number of presses before the answer,
+ * so a mirrored floor asks for exactly the presses the plain one did. */
+export function mirrorLevel(level: RoverLevel): RoverLevel {
+  const size = level.size, cell = (value: number) => Math.floor(value / size) * size + (size - 1 - (value % size));
+  return {
+    size,
+    start: cell(level.start),
+    heading: MIRROR[level.heading],
+    goal: cell(level.goal),
+    signs: level.signs.map(sign => {
+      const fix = MIRROR[sign.fix], presses = (turnsOf(sign.fix) - turnsOf(sign.initial) + 4) % 4;
+      return { cell: cell(sign.cell), initial: headingOf(turnsOf(fix) - presses), fix };
+    }),
+    planters: level.planters.map(cell),
+    ...(level.bloom === undefined ? {} : { bloom: cell(level.bloom) }),
+  };
+}
 
 function spinCell(cell: number, size: number): number {
   const row = Math.floor(cell / size), column = cell % size;
@@ -88,9 +111,9 @@ function spinCell(cell: number, size: number): number {
 }
 
 export function spinLevel(level: RoverLevel, spin: number): RoverLevel {
-  const times = ((Math.trunc(spin) % ROVER_SPINS) + ROVER_SPINS) % ROVER_SPINS;
-  let next = level;
-  for (let at = 0; at < times; at++) {
+  const whole = ((Math.trunc(spin) % ROVER_SPINS) + ROVER_SPINS) % ROVER_SPINS;
+  let next = whole >= 4 ? mirrorLevel(level) : level;
+  for (let at = 0; at < whole % 4; at++) {
     const size = next.size, cell = (value: number) => spinCell(value, size);
     next = {
       size,
