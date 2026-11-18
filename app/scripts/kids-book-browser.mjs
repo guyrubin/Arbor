@@ -50,7 +50,7 @@ export async function verifyBookPictureRecovery({ browser, base, output }) {
       await retry.waitFor({ state: 'visible' });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForFunction(() => document.documentElement.classList.contains('msr-ready'));
-      const glyphs = await page.locator('[data-book-reader] .msr').evaluateAll(elements => elements.map(element => {
+      const glyphs = await page.locator('[data-book-reader] .msr:visible').evaluateAll(elements => elements.map(element => {
         const style = getComputedStyle(element), rect = element.getBoundingClientRect();
         return { name: element.textContent, font: style.fontFamily, loaded: document.fonts.check(`${style.fontSize} 'Material Symbols Rounded'`, element.textContent || ''), visible: style.visibility === 'visible', width: rect.width, size: parseFloat(style.fontSize) };
       }).filter(glyph => glyph.width > 0));
