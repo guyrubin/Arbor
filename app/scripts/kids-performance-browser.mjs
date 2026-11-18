@@ -7,14 +7,16 @@ import { chromium } from 'playwright';
 import { RELEASE_VIEWPORTS, DEVICE_VIEWPORTS } from './capture/release-config.mjs';
 import { verifyBookPictureRecovery } from './kids-book-browser.mjs';
 import { verifyStudioWorldPlates } from './kids-stage-art-browser.mjs';
+import { verifyDefaultGameCycles } from './kids-game-cycle-browser.mjs';
+import { verifyJosephStory } from './kids-joseph-browser.mjs';
 const output = path.resolve('output/kids-performance');
 await mkdir(output, { recursive: true });
-const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json' };
+const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
 const server = createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (pathname.includes('..') || pathname.startsWith('/_proof') || pathname.startsWith('/api')) { res.statusCode = 404; res.end('{}'); return; }
-    const root = pathname.startsWith('/visuals/') || pathname.startsWith('/fonts/') ? 'public' : 'dist-studio-preview';
+    const root = pathname.startsWith('/visuals/') || pathname.startsWith('/fonts/') || pathname.startsWith('/audio/') ? 'public' : 'dist-studio-preview';
     const file = path.join(root, pathname === '/' ? 'index.html' : pathname);
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
     res.end(await readFile(file));
@@ -185,6 +187,8 @@ try {
   }
   results.push(...await verifyStudioWorldPlates({ browser, base, output }));
   results.push(...await verifyBookPictureRecovery({ browser, base, output }));
+  results.push(...await verifyDefaultGameCycles({ browser, base, output }));
+  results.push(...await verifyJosephStory({ browser, base, output }));
   await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game and book components and assets', results }, null, 2));
   console.log(JSON.stringify({ passed: true, cases: results.length, results }, null, 2));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

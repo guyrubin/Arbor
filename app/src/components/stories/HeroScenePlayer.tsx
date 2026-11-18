@@ -19,6 +19,8 @@ import type { HeroSceneRender } from "../../types";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { ArborMascot } from "../ui/ArborMascot";
 import { setKidStage } from "../kidmode/kidChrome";
+import { StoryArtwork } from "./StoryArtwork";
+import type { StoryPlateArt } from "../../lib/storyPlateArt";
 
 /** B-KID-70 (R-4b): where the cover is cropped on each beat (object-position),
  *  so a book read on one cover still turns eight different pages. */
@@ -80,6 +82,7 @@ export function HeroScenePlayer({
   immersive = false,
   fallbackArtUrl,
   fallbackArtHasHero = false,
+  authoredArt,
   metaAction,
   childId,
   onPageResolved,
@@ -117,6 +120,8 @@ export function HeroScenePlayer({
   fallbackArtUrl?: string;
   /** B-KID-70 (R-4b): the fallback picture already shows a hero — no cameo box over it. */
   fallbackArtHasHero?: boolean;
+  /** Complete reviewed per-beat art from the child's selected theme. */
+  authoredArt?: StoryPlateArt | null;
   /** B-KID-53 polish: one extra control for the page's meta row (Kid Mode's full screen). */
   metaAction?: React.ReactNode;
   /** G2: enables the device-local page store so the story re-opens with its art. */
@@ -262,21 +267,24 @@ export function HeroScenePlayer({
   );
 
   if (layout === "book") {
-    // B-BOOK-28: the story's static cover, cropped per beat, or its seeded
-    // illustration. Neither page turns nor retries enter the image pipeline.
+    // B-BOOK-83 uses the complete reviewed per-beat set when available.
+    // Other books retain their static cover / seeded illustration. Neither
+    // page turns nor retries enter the image pipeline (B-BOOK-28).
     return (
-      <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="" data-kid-decision={decision ? "" : undefined}>
+      <div className={KID_BOOK_SPREAD_CLASS} data-kid-book-page="" data-kid-book-beat={scene.beatId} data-kid-decision={decision ? "" : undefined}>
         <span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>
         <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
-          {sceneArt ? (
+          {authoredArt ? (
+            <StoryArtwork art={authoredArt} lang={bookLang} heroUrl={heroAvatarUrl ?? cameoUrl} heroName={heroName} decision={decision} />
+          ) : sceneArt ? (
             <img src={sceneArt} alt={kidsStoriesText("journey.pageAlt", aiLang, { number: beatNumber, title: scene.title })} className="absolute inset-0 h-full w-full object-cover" onError={() => { setResolvedArt(undefined); setArtError(true); }} />
           ) : fallbackArtUrl ? (
             <img src={fallbackArtUrl} alt="" aria-hidden="true" className={`absolute inset-0 h-full w-full object-cover ${BEAT_SCALE_CLASS[(beatNumber - 1) % BEAT_SCALE_CLASS.length]}`} style={{ objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length], transformOrigin: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length] }} />
           ) : (
             <StoryIllustration seed={seed} className="absolute inset-0 h-full w-full" />
           )}
-          {!sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}
-          {sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
+          {!authoredArt && !sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}
+          {!authoredArt && sceneArt && <ProvenanceBadge lang={uiLang === "he" ? "he" : "en"} className="absolute bottom-2 end-2" />}
         </div>
         <div className={KID_BOOK_SIDE_CLASS}>
         {/* Stable authored words; reduced motion keeps the swap still. */}

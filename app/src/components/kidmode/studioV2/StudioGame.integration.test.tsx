@@ -183,6 +183,7 @@ describe("V2 entry, identity and persistent result", () => {
     const draw = () => render("session", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
     click(draw().find(node => node.props["data-studio-start"] === ""));
     const playing = draw(), firstGame = playing.find(node => node.type === STUDIO_GAME_COMPONENTS.memory)!;
+    expect(playing.find(node => node.type === GameCompletionProvider)!.props.replay).toBe(0);
     const complete = playing.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void;
     h.session = { playOnly: true, onComplete: complete };
     expect(render("finish", () => GameFinish({ title: "Done", onPlayAgain: vi.fn(), playAgainLabel: "Again", homeLabel: "Home" }))).toEqual([]);
@@ -192,6 +193,7 @@ describe("V2 entry, identity and persistent result", () => {
     expect(draw().find(node => node.type === KidFinishMoment)).toBeDefined();
     expect(h.sound).toHaveBeenCalledWith("finish");
     click(tree.find(node => node.props["data-studio-replay"] === "")); tree = draw();
+    expect(tree.find(node => node.type === GameCompletionProvider)!.props.replay).toBe(1);
     expect(tree.find(node => node.type === STUDIO_GAME_COMPONENTS.memory)?.key).not.toBe(firstGame.key);
     complete(); expect(draw()[0].props["data-studio-phase"]).toBe("play");
     const nextComplete = tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void;

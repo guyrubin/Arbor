@@ -182,7 +182,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   if (phase === "play") return <div ref={fullViewRef} className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" && fullHeight !== undefined ? { blockSize: fullHeight } : undefined}>
     {environment}
     <div className="studio-game-view__mechanic">
-      <GameCompletionProvider onComplete={onComplete}>
+      <GameCompletionProvider onComplete={onComplete} replay={round}>
         <Suspense fallback={<KidStageFallback worldId={activityId} studio />}>
           <Component key={round} {...(activityId === "mimic" ? { onBack } : {})} />
         </Suspense>

@@ -60,6 +60,9 @@ import HeroJourneyTab, { authoredJourneyRender, clearJourneyMemo, journeyMemoKey
 import { HeroScenePlayer } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { StoryCard } from "../stories/StoryCard";
+import { StoryArtwork } from "../stories/StoryArtwork";
+import { JOSEPH_STORY_ID } from "../../lib/storyPlateArt";
+import { resolveHeroUrl } from "../../lib/heroIdentity";
 import { HERO_STORIES, KID_SHELF_STORIES, storyHasLanguage } from "../../lib/heroJourneys";
 import { _setHeroRenderBackend, getSavedRender, renderSignature, saveRender, type SavedHeroRender } from "../../lib/heroRenderStore";
 
@@ -147,6 +150,15 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
     if (currentPage) {
       const player = harness(HeroScenePlayer, currentPage.props as any);
       expect(marker(player.tree, "data-kid-book-page")).toBeTruthy();
+      if (story.id === JOSEPH_STORY_ID && env.profile.kidTheme !== "storybook") {
+        // Real tab callbacks selected this beat, including every consequence
+        // branch: the reader receives its scene, never a repeated cover.
+        expect(currentPage.props.authoredArt.id).toBe(currentPage.props.scene.beatId);
+        const art = find(player.tree, node => node.type === StoryArtwork);
+        expect(art?.props.art).toBe(currentPage.props.authoredArt);
+        expect(art?.props.heroUrl).toBe(resolveHeroUrl(env.profile) ?? undefined);
+        expect(elements(player.tree).filter(node => node.type === StoryArtwork)).toHaveLength(1);
+      } else expect(currentPage.props.authoredArt).toBeNull();
       words.push(currentPage.props.scene.narration);
       player.unmount();
     }
@@ -169,6 +181,38 @@ async function readPath(tab: ReturnType<typeof harness<any>>, story: HeroStorySp
 }
 
 describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () => {
+  for (const lang of ["en", "he"] as const) for (const identity of ["none", "remote", "profile-only"] as const) it(`B-BOOK-83 ${lang}/${identity}: the complete static Joseph cover opens, Back returns to it, and reread needs no generated hero`, async () => {
+    env.lang = lang;
+    const story = HERO_STORIES.find(story => story.id === JOSEPH_STORY_ID)!;
+    env.profile = { ...env.profile, age: 7, avatar: undefined, photoUrl: identity === "profile-only" ? "data:image/png;base64,SYNTHETIC_PROFILE_ONLY" : undefined, comicAvatarUrl: identity === "remote" ? "https://synthetic.invalid/approved-hero.webp" : undefined } as ChildProfile;
+    const tab = harness(HeroJourneyTab, { initialStoryId: story.id, pinNonce: 1 });
+    expect(marker(tab.tree, "data-kid-book-cover")).toBeTruthy();
+    const cover = find(tab.tree, node => node.type === StoryArtwork)!;
+    expect(cover.props.art.id).toBe("cover");
+    expect(cover.props.heroUrl).toBe(identity === "remote" ? env.profile.comicAvatarUrl : undefined);
+    const back = () => elements(marker(tab.tree, "data-kid-book-nav")).find(node => node.type === "button")!;
+    expect(back().props.disabled).toBe(true);
+    marker(tab.tree, "data-kid-book-next")!.props.onClick(); tab.commit();
+    expect(page(tab.tree)?.props.scene.beatId).toBe("call");
+    expect(back().props.disabled).toBe(false);
+    back().props.onClick(); tab.commit();
+    expect(marker(tab.tree, "data-kid-book-cover")).toBeTruthy();
+    await readPath(tab, story, "b");
+    elements(tab.tree).find(node => node.type === "button" && !node.props["aria-label"])!.props.onClick(); tab.commit();
+    expect(marker(tab.tree, "data-kid-book-cover")).toBeTruthy();
+    expect(env.text).not.toHaveBeenCalled(); expect(env.image).not.toHaveBeenCalled(); expect(fetchSpy).not.toHaveBeenCalled();
+    tab.unmount();
+  });
+  it("B-BOOK-83 leaves a hero-less storybook Joseph and other legacy books opening on beat one", () => {
+    for (const [storyId, theme] of [[JOSEPH_STORY_ID, "storybook"], ["noahs-ark", "film3d"]] as const) {
+      env.profile = { ...env.profile, age: 7, kidTheme: theme, avatar: undefined, photoUrl: undefined, comicAvatarUrl: undefined } as ChildProfile;
+      const tab = harness(HeroJourneyTab, { initialStoryId: storyId, pinNonce: 1 });
+      expect(marker(tab.tree, "data-kid-book-cover")).toBeUndefined();
+      expect(page(tab.tree)?.props.scene.beatId).toBe("call");
+      expect(page(tab.tree)?.props.authoredArt).toBeNull();
+      tab.unmount();
+    }
+  });
   for (const voice of ["recorded", "none"] as const) for (const fixture of fixtures) it(`${fixture.lang}/${fixture.gender} (${voice === "recorded" ? "narration files" : "no files yet"}): every legacy book and choice reads twice without text, image, TTS or network calls`, async () => {
     env.lang = fixture.lang; env.voice = voice;
     for (const story of KID_SHELF_STORIES.filter(value => storyHasLanguage(value, fixture.lang))) {

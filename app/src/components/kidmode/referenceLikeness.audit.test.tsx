@@ -63,7 +63,10 @@ function sources(dir: string): string[] {
 describe("the reference likeness is only reachable through the manifest, and the manifest never hands it to a shared slot", () => {
   it("non-vacuous: the hero-painted pictures exist, and every one of them is a /visuals/cards/ file", () => {
     const keys = painted("film3d");
-    expect(keys.filter((k) => k.startsWith("story.")).length).toBeGreaterThanOrEqual(21); // the 10 + 11 film-3D covers
+    // B-BOOK-83 replaced Joseph's manifest entry with its reviewed child-free
+    // cover. The remaining twenty old covers stay suppressed, not deleted.
+    expect(keys.filter((k) => k.startsWith("story."))).toHaveLength(20);
+    expect(kidArt("film3d", storyCoverKey("joseph-and-his-brothers"))?.hasHero).toBe(false);
     for (const k of keys) expect(kidArt("film3d", k)!.src, k).toContain(REFERENCE);
   });
   it("every theme, every story and every slot: the shared accessors never return a hero-painted picture", () => {

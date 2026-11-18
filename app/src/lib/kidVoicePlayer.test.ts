@@ -51,8 +51,9 @@ describe("kidVoicePlayer", () => {
     expect(page.play).toHaveBeenCalledTimes(1);
     expect(clip.play).toHaveBeenCalledTimes(1);
     expect(page.src).toBe(SILENT_WAV);
-    expect(kidVoiceBlessed()).toBe(true);
+    expect(kidVoiceBlessed()).toBe(false); // pending playback is not a granted permission
     await Promise.resolve();
+    expect(kidVoiceBlessed()).toBe(true);
     expect(page.pause).toHaveBeenCalled(); // the silence stops; a real page's src would not be paused
   });
   it("a page already playing when the bless lands is left alone", async () => {
@@ -63,10 +64,32 @@ describe("kidVoicePlayer", () => {
     expect(page.src).toBe("blob:page-1");
     expect(page.play).not.toHaveBeenCalled();
   });
-  it("installed on open: the first tap blesses, then the listeners go; never on keydown", () => {
+  it("installed on open: successful first tap clears the listeners only after confirmed play", async () => {
     const remove = installKidVoiceUnlock();
     expect(doc.addEventListener.mock.calls.map(([t]) => t).sort()).toEqual(["click", "pointerup", "touchend"]);
     fire("touchend");
+    expect(kidVoiceBlessed()).toBe(false);
+    expect(listeners.get("click")?.size).toBe(1);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(kidVoiceBlessed()).toBe(true);
+    expect([...listeners.values()].every((s) => s.size === 0)).toBe(true);
+    remove();
+  });
+  it("keeps gesture listeners for retry after a delayed iOS play refusal, even if src changed", async () => {
+    const page = kidVoiceElement("page") as unknown as FakeAudio;
+    let reject!: (error: Error) => void;
+    page.play.mockImplementationOnce(() => new Promise<void>((_, fail) => { reject = fail; }));
+    const remove = installKidVoiceUnlock();
+    fire("click");
+    expect(kidVoiceBlessed()).toBe(false);
+    page.src = "blob:later-page"; // an overlapping reader changed the same channel
+    reject(new Error("NotAllowedError"));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(kidVoiceBlessed()).toBe(false);
+    expect(listeners.get("click")?.size).toBe(1);
+    fire("pointerup");
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(page.play).toHaveBeenCalledTimes(2);
     expect(kidVoiceBlessed()).toBe(true);
     expect([...listeners.values()].every((s) => s.size === 0)).toBe(true);
     remove();

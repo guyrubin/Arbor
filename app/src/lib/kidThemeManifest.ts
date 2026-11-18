@@ -20,6 +20,7 @@ import { STUDIO_V2_GAME_WORLDS } from "../components/kidmode/studioGameWorlds";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
 import { studioNextFlagOn, type StudioNextHost } from "../components/kidmode/studioV2/studioNextFlag";
 import { heroBandFlagOn } from "../components/kidmode/studioV2/heroBandFlag";
+import { JOSEPH_STORY_ART, JOSEPH_STORY_ID } from "./storyPlateArt";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -293,6 +294,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     "world.kid-quest.tile": studioFilm("room-arch-tall", "50% 55%", 864),
     ...Object.fromEntries(FILM3D_STORY_COVERS.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%")])),
     ...Object.fromEntries(FILM3D_STORY_COVERS_2X3.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%", 832)])),
+    // B-BOOK-83: the complete child's-own-hero set replaces only this shared
+    // cover; the eight authored scenes use the same reviewed registry.
+    [storyCoverKey(JOSEPH_STORY_ID)]: JOSEPH_STORY_ART.cover,
     "home.stage": studioFilm("room-terrace", "60% 55%"),
   },
   storybook: {

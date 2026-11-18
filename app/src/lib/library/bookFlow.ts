@@ -114,8 +114,10 @@ export function awaitingRepair(book: AnyBook, s: BookFlowState): boolean {
 export function canTurnForward(book: AnyBook, s: BookFlowState): boolean {
   if (s.at === COVER) return true;
   if (s.at === END) return false;
-  if (isEnding(book, s)) return true;
+  // A final page can also ask the child to complete a repair. Finishing the
+  // book must never bypass the same meaningful-action gate as a page turn.
   if (isDecision(book, s) || awaitingRepair(book, s)) return false;
+  if (isEnding(book, s)) return true;
   const path = readPath(book, s.choiceId);
   const i = path.findIndex((p) => p.id === s.at);
   return i >= 0 && i < path.length - 1;
@@ -129,8 +131,11 @@ export function bookFlowReducer(book: AnyBook, s: BookFlowState, a: BookFlowActi
       return s.at === COVER && path.length ? { ...s, at: path[0].id, dir: 1 } : s;
     case "next":
       if (s.at === COVER) return bookFlowReducer(book, s, { type: "open" });
+      // Check the repair/decision gate before the ending shortcut. Otherwise
+      // an unfinished repair on the last page could jump straight to END.
+      if (!canTurnForward(book, s)) return s;
       if (isEnding(book, s)) return { ...s, at: END, dir: 1 };
-      return canTurnForward(book, s) ? { ...s, at: path[i + 1].id, dir: 1 } : s;
+      return { ...s, at: path[i + 1].id, dir: 1 };
     case "back":
       if (s.at === COVER) return s;
       if (s.at === END) return path.length ? { ...s, at: path[path.length - 1].id, dir: -1 } : s;

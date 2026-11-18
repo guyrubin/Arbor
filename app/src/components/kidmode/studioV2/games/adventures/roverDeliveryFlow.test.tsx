@@ -3,7 +3,7 @@
 import { isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
-const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, hush: [] as (() => void)[],
+const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, replay: undefined as number | undefined, hush: [] as (() => void)[],
   tones: { play: vi.fn((_step: number): boolean => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn() }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
@@ -26,6 +26,7 @@ vi.mock('../../../../../context/LanguageContext', () => ({ useLanguage: () => ({
 vi.mock('../../../../../context/ArborContext', () => ({ useArborOptional: () => ({ childProfile: { id: 'child-a', age: 5 } }) }));
 vi.mock('../../../../../lib/native', () => ({ selectionHaptic: async () => {} }));
 vi.mock('../../../game/GameShell', () => ({ GameShell: () => null, GameFinish: () => null }));
+vi.mock('../../../game/GameSessionContext', () => ({ useGameSession: () => h.replay === undefined ? null : { playOnly: true, replay: h.replay, onComplete: vi.fn() } }));
 vi.mock('../../../audio/kidAudio', () => ({ kidSfx: h.sound, kidSay: h.say, useKidReadAloudMuted: () => h.muted, onKidHush: (fn: () => void) => { h.hush.push(fn); return () => {}; } }));
 vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn(), isActive: () => false, voiceState: () => ({ speaking: false }), subscribeVoice: () => () => {} }));
 vi.mock('./bopTones', () => ({ createBopTones: () => h.tones }));
@@ -36,7 +37,7 @@ import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import type { Challenge } from './adventureRules';
 import { ROVER_DELIVERY_COPY, roverLine, type RoverDeliveryWords } from './roverDeliveryCopy';
-import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_IDLE_MS, ROVER_ROUNDS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
+import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_IDLE_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -163,7 +164,7 @@ function shown(tree: unknown): string[] {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  h.slots = []; h.lang = 'en'; h.muted = false; h.hush = []; watch = null;
+  h.slots = []; h.lang = 'en'; h.muted = false; h.replay = undefined; h.hush = []; watch = null;
   h.tones.play.mockClear(); h.tones.play.mockReturnValue(true); h.tones.stop.mockClear(); h.tones.dispose.mockClear(); h.say.mockClear(); h.sound.mockClear();
   vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
   vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn() });
@@ -456,6 +457,21 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     restart('gentle'); tree = render();
     expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(last.start); expect(pointing(tree, last)).toEqual(initialSigns(last));
     expect(send(last, w).tree).toBeDefined(); expect(hints(render())).toEqual([]);
+  });
+
+  it('keeps turned replay floors when Studio remounts the game after its own result', () => {
+    // Studio owns the finish and remounts the mechanic, so its replay counter
+    // must seed all three initial values: floor, sign headings and rover.
+    for (let replay = 0; replay <= ROVER_SPINS; replay++) {
+      h.replay = replay;
+      const tree = mount(), spin = replay % ROVER_SPINS, first = levelFor('gentle', 0, spin);
+      expect(at(tree)).toBe(first.start);
+      expect(pointing(tree, first)).toEqual(initialSigns(first));
+      expect(one(tree, 'the start mat', classed('rover-start')).props['data-cell']).toBe(first.start);
+      expect(one(tree, 'the rug', classed('rover-goal')).props['data-cell']).toBe(first.goal);
+      expect(finish(playOut('gentle', w, spin))).toBeDefined();
+    }
+    h.replay = undefined;
   });
 
   it('plays the whole game with sound off: the floor and the words carry it', () => {

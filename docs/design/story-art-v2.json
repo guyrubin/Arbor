@@ -1,0 +1,1338 @@
+{
+  "schemaVersion": 1,
+  "created": "2026-11-18",
+  "storyId": "joseph-and-his-brothers",
+  "scope": "Static illustration improvement for the existing legacy HeroScenePlayer, film3d theme only. Existing authored text and choices remain unchanged.",
+  "canonicalBookApproval": false,
+  "closesBBook83": false,
+  "nativeResolutionGate": {
+    "minimumLandscapeWidth": 2048,
+    "met": false,
+    "status": "open",
+    "note": "Built-in ImageGen returned native 1536x1024 pages and a 1086x1448 cover. No upscaling. Canonical native-2K, BookReader migration and per-pose acceptance remain open."
+  },
+  "method": "Built-in OpenAI image_gen.imagegen; one original generation per image, two targeted composition corrections; mechanical WebP encoding and cover downsampling only.",
+  "recovery": "Historical accepted-art ledger was recovered, but its untracked original files and exported set were unavailable in the connected repositories and Drive archive locations searched. This is a new coherent set; historical acceptance was not transferred to these bytes.",
+  "references": [
+    {
+      "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+      "role": "approved biblical illustration style and material reference",
+      "file": "PL1.webp",
+      "width": 2048,
+      "height": 1374,
+      "bytes": 404940,
+      "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+      "mode": "RGB"
+    },
+    {
+      "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+      "role": "approved biblical illustration style and material reference",
+      "file": "PL4.webp",
+      "width": 2528,
+      "height": 1696,
+      "bytes": 328356,
+      "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+      "mode": "RGB"
+    }
+  ],
+  "assets": [
+    {
+      "id": "joseph-and-his-brothers:cover",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "cover",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/cover.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/cover.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/cover-480.webp",
+      "width": 1023,
+      "height": 1364,
+      "bytes": 254360,
+      "sha256": "d4ca35752da37faf442ad95cc87a8371aa36df8c8480204ad28a0b8ca85c31e9",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-acc8e508-1d04-48b9-ab6f-140e8ef73d00.png",
+        "native": {
+          "file": "cover.png",
+          "width": 1086,
+          "height": 1448,
+          "bytes": 3055143,
+          "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create one original production book-cover background for the existing Arbor biblical story 'Joseph and His Brothers'. Portrait composition intended for a 3:4 cover. NO text, lettering, symbols, logos, borders, panels, or watermark anywhere.\nINPUT REFERENCES: image 1 PL1.webp supplies the established luminous painted picture-book style, natural ancient landscape, fine brushwork, tactile cloth/stone and the identity of Bun, the small blue knitted toy rabbit. Image 2 PL4.webp supplies the same painterly adult facial treatment and period fabric/material quality. They are STYLE references only: do not copy King Saul, crowns, armor, swords, shields, tree markings, sheep, or that scene.\nSTORY WORLD: an inviting ancient Egyptian granary courtyard at the edge of the Nile, pale sun-warmed mudbrick and plaster walls, simple timber doors, grain baskets and tied wheat sacks, date palms, distant green river fields and ochre hills. Warm morning light, dignified and lived-in, not a fantasy palace. Refined natural colour, no yellow filter, no photographic/3D-rendered look.\nCOMPOSITION: a richly illustrated finished cover with depth and carefully placed objects. An unmistakable folded coat of red, gold-yellow, green and blue woven stripes rests over a low wooden bench at the lower LEFT, an open basket of wheat on the RIGHT. A broad softly lit empty stone-and-sand path occupies the LOWER CENTRE, ready for the reading child's own avatar to be composed there by the app. Keep that central foreground EMPTY from roughly x36%–64%, y50%–94%: no person, body, silhouette, placeholder, toy, clothes, basket, or shadow shaped like a figure there.\nCAST: only adult supporting people, no depicted Joseph/hero and no children or teenagers. On the middle-distance LEFT, a kind elderly father, olive complexion, grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick; facing towards the open central path. On the middle-distance RIGHT, three clearly adult brothers in their late twenties to forties, olive-brown complexions: a broad dark-bearded man in terracotta tunic and charcoal shawl; a slender wavy-dark-haired man with a short beard in muted sage tunic and cream scarf; a slightly shorter but clearly mature man with short dark hair and stubble in sand-coloured tunic with muted plum sash. They have warm understated relieved expressions, full natural adult anatomy, no exaggerated cartoon proportions. Keep all adults secondary in scale; this cover is an open invitation for the personalized hero, not a portrait of another protagonist.\nBUN: exactly one tiny blue knitted toy rabbit with visible knitted yarn, rounded button-like black eyes, a simple stitched smile, one long ear gently drooping, cream paw pads, sitting beside the LEFT bench away from the hero's place, no larger than an adult ankle/shin. Bun is a plush toy, not a live rabbit or the blue franchise companion Aya.\nCALM FINISH: authentic pastoral biblical setting; flowing, readable painterly composition and clear material edges, delicate light and rich depth. All hero identity is supplied later by the app. Absolutely no child, generic hero, baby, toddler, human silhouette, empty human-shaped garment, human reflection, body part emerging from the open hero space, modern object, Bebe, GobGob, or religious icon.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/cover.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/cover.webp",
+          "file": "cover.webp",
+          "width": 1023,
+          "height": 1364,
+          "bytes": 254360,
+          "sha256": "d4ca35752da37faf442ad95cc87a8371aa36df8c8480204ad28a0b8ca85c31e9",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/cover-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/cover-480.webp",
+          "file": "cover-480.webp",
+          "width": 480,
+          "height": 640,
+          "bytes": 73970,
+          "sha256": "323bb8ebe9c6793c002e629078bd3fcee3ba1904c13e8baa91efc37a97e77b3e",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0,
+          "y": 0,
+          "width": 1,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0,
+          "y": 0.03125,
+          "width": 1,
+          "height": 0.9375
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.32,
+        "y": 0.66,
+        "width": 0.36,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Ancient Egyptian granary/Nile setting; mature father and adult brothers; multicolor coat and blue knitted Bun; no depicted hero.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:call",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "call",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/call.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/call.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/call-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 279264,
+      "sha256": "283fe97929c43b1e965e92aaa4b4d4012445e6d2f191e124c33eec5ce1ba7581",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-2a98b8c6-c38f-4f67-9124-2cdd041ff210.png",
+        "native": {
+          "file": "call-v2.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 2907795,
+          "sha256": "41cdedfb70fc35aef0f5d0432b299416a989bdb032ed9c7fd5601712554c9d55",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: precise-object-edit. Edit ONLY the position of the three ADULT BROTHERS in this existing finished Joseph story illustration. Move the entire three-man group together approximately 12% of the full image width to the LEFT (about180pixels in a1536pixel image). Keep their size, height, spacing, exact faces, hair, beards, clothing, poses, hand anatomy, light and expressions unchanged. Reconstruct only the tiny revealed background areas where they stood; give their relocated sandals matching contact shadows. In the finished result all THREE faces and complete heads must lie inside the CENTRAL HALF of the image, x25%–75%, with the rightmost head's edge no farther right than72%. Keep their feet at the existing height, safely above66% of image height, and keep lower-centre x36%–64%,y66%–94% empty. The hanging multicolour coat on the left wall MUST stay exactly where it is, fully unchanged; do not move or resize the coat, wall, hook, trees, hills, blue knit toy, baskets or foreground. Maintain the original camera, landscape3:2 canvas, painterly film quality, all colour and lighting. This is a small compositional correction so a portrait centre crop can show both the coat and every adult face. Add or remove no characters. No child, hero, new silhouette, lettering, symbols, border or watermark.",
+        "references": [
+          {
+            "role": "immediate edit target; prior approved-style references are recorded under initialGeneration",
+            "file": "call.png",
+            "width": 1536,
+            "height": 1024,
+            "bytes": 3264108,
+            "sha256": "a1812f7abdc738922406c04a117531b2d47f5fc9744de2ad46ab44155b3f8abb",
+            "mode": "RGB"
+          }
+        ],
+        "initialGeneration": {
+          "native": {
+            "file": "call.png",
+            "width": 1536,
+            "height": 1024,
+            "bytes": 3264108,
+            "sha256": "a1812f7abdc738922406c04a117531b2d47f5fc9744de2ad46ab44155b3f8abb",
+            "mode": "RGB"
+          },
+          "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y48% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y50%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — A Rainbow Coat: morning in the family's pastoral Canaan home courtyard, an ancient limestone-and-mudbrick house, olive tree, low stone wall and softly terraced hills. An unmistakable striped coat of RED, GOLD-YELLOW, GREEN and BLUE woven cloth is displayed EMPTY, hanging flat from a short timber peg on the left courtyard wall (within x26%–35%, y18%–48%); clearly a normal coat hanging against the wall, not a body or a standing empty garment. The three adult brothers from the cover are a small group across the upper-right of the courtyard (within x60%–74%, feet above y48%), glancing at the special coat with restrained envy/curiosity, not threatening. Two of them quietly confer. No father. A tiny blue knitted Bun sits on the far-left low step, outside the central hero rectangle. An open sunlit sandy path across the foreground leads toward the brothers. The colorful coat must remain readable in the central portrait crop. Do not paint dreams as literal floating objects.",
+          "references": [
+            {
+              "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+              "role": "approved biblical illustration style and material reference",
+              "file": "PL1.webp",
+              "width": 2048,
+              "height": 1374,
+              "bytes": 404940,
+              "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+              "mode": "RGB"
+            },
+            {
+              "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+              "role": "approved biblical illustration style and material reference",
+              "file": "PL4.webp",
+              "width": 2528,
+              "height": 1696,
+              "bytes": 328356,
+              "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+              "mode": "RGB"
+            },
+            {
+              "role": "new Joseph cast, Bun and material consistency anchor",
+              "file": "cover.png",
+              "width": 1086,
+              "height": 1448,
+              "bytes": 3055143,
+              "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+              "mode": "RGB"
+            }
+          ]
+        },
+        "editTarget": {
+          "file": "call.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3264108,
+          "sha256": "a1812f7abdc738922406c04a117531b2d47f5fc9744de2ad46ab44155b3f8abb",
+          "mode": "RGB"
+        },
+        "editKind": "precise-object-edit",
+        "note": "Original and corrected native outputs are both preserved; only the corrected output is shipped."
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/call.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/call.webp",
+          "file": "call.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 279264,
+          "sha256": "283fe97929c43b1e965e92aaa4b4d4012445e6d2f191e124c33eec5ce1ba7581",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/call-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/call-480.webp",
+          "file": "call-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 43622,
+          "sha256": "92ed2d02f971cb3a0c50fd35f7e66d95b952873da5132ecd85a8aae6cf6b47c9",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0.25,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.23333333333333334,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.36,
+        "y": 0.66,
+        "width": 0.28,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Multicolor coat displayed in Canaan courtyard; three clearly adult brothers confer with restrained envy. Group moved left so coat and all three faces survive portrait crop.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:challenge",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "challenge",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/challenge.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/challenge.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/challenge-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 291098,
+      "sha256": "d2037a0d038b2382f67654c554063b181cbe6f1eaa7bfd088e4951a927b39716",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-c8c3caae-0c7f-4b1f-8620-023b245a808d.png",
+        "native": {
+          "file": "challenge.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3081094,
+          "sha256": "d0963128d4aabf91fd6e38e0ae57597f0fb298af08dfec942f65bf1c9ea907ea",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y48% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y50%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — Far, Far Away: a long ancient desert caravan route from Canaan toward Egypt, dusty road curving past ochre hills to a distant green river valley. In the upper-left centre (x27%–42%, feet above y48%), the same three adult brothers stand together; the broad man in terracotta folds his arms, the sage-robed brother looks away with regret, and the sand-robed brother points down the road. Their envy is restrained, not violent. At upper-right centre (x54%–74%, feet above y48%) a line of two or three clearly recognizable CAMELS with woven travel packs and one mature adult caravan guide leads away along the road. No riders, no child, no represented hero on the caravan, no chains or sale scene. Leave the lower-centre foreground road completely empty for the hero. No father, no rainbow coat abandoned on the ground, no Bun in the hero area. Quiet emotional distance and a real journey, warm late-afternoon light without threat.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/challenge.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/challenge.webp",
+          "file": "challenge.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 291098,
+          "sha256": "d2037a0d038b2382f67654c554063b181cbe6f1eaa7bfd088e4951a927b39716",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/challenge-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/challenge-480.webp",
+          "file": "challenge-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 41372,
+          "sha256": "78cbdc2f6ad058df31715b05974b8186c1a0b61d13b71070984d2ac7068eb998",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0.25,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.23333333333333334,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.36,
+        "y": 0.66,
+        "width": 0.28,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Adult brothers watch a camel caravan depart toward the river valley. No rider, child, chains, or sale scene; open foreground for the hero.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:fear",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "fear",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/fear.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/fear.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/fear-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 212670,
+      "sha256": "a047b7ad6568f84ac3266c551e58db2fe61967d56328b68123ab83d33bc4bd23",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-ebb54c29-ccb8-41dd-8578-f4e3c7e82ced.png",
+        "native": {
+          "file": "fear-v2.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 2701867,
+          "sha256": "752ede357ff15806e81b5e94f9e990b1c4b1feb0251c307542ae8dd0bfe04fc5",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: precise-object-edit. Edit the supplied illustration, keeping its camera, crop, painted rendering, Egyptian barn architecture, wheat, sacks, baskets, sunlight, colors, and every other object exactly unchanged. Make ONLY this correction: relocate the small BLUE KNITTED TOY RABBIT Bun currently beside the bottom-left basket. Remove it from its current position and reconstruct only the floor/basket behind that old spot. Place the same toy on the floor immediately to the RIGHT of the large open grain sack, just beyond the wooden grain scoop, at about x30% of full image width and y77% of full image height. Its whole body and ears must be INSIDE x27%–34%; it must remain visible when the leftmost25% and rightmost25% of this picture are cropped off. Reduce the toy to about HALF its current height (roughly7% of the image height), with the same blue knitted wool, black button eyes, floppy ears, stitched smile and cream paw pads. It must sit naturally on the floor with a subtle contact shadow and not overlap the scoop. Keep the central aisle x36%–64%, y66%–94% completely empty. Do not move or resize the sack, scoop, basket, or architecture. No other change, no new animal, no person, no child, no silhouette, no text, no logo, no border.",
+        "references": [
+          {
+            "role": "immediate edit target; prior approved-style references are recorded under initialGeneration",
+            "file": "fear.png",
+            "width": 1536,
+            "height": 1024,
+            "bytes": 3003373,
+            "sha256": "b7dd84da81c9de01179f348b856aba702d74bad464851db22317ac78e0584861",
+            "mode": "RGB"
+          }
+        ],
+        "initialGeneration": {
+          "native": {
+            "file": "fear.png",
+            "width": 1536,
+            "height": 1024,
+            "bytes": 3003373,
+            "sha256": "b7dd84da81c9de01179f348b856aba702d74bad464851db22317ac78e0584861",
+            "mode": "RGB"
+          },
+          "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y48% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y50%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — Far from Home: inside a large ancient Egyptian grain barn with broad pale plaster walls, sturdy timber doors and beams, palm-fibre baskets, heaped wheat, neatly stacked tied sacks. Side-light from an open doorway illuminates dust motes and the grain. Show a clear task ready to continue: an open sack beside a wooden grain scoop and a basket of wheat, at x26%–34% around y58%–78%; all outside the hero slot. Full grain bins and stacked sacks line the upper half and outer sides, with an unobstructed centre aisle. Through a small upper doorway one can glimpse palms and the distant Nile plain. Exactly one tiny blue knitted Bun sits beside the grain basket at x29%, y78%, under 7% image height. No humans at all on this plate; the hero will be added by the app. The feeling is homesickness supported by useful, hopeful work, never frightening or dungeon-like. The lower-centre aisle remains empty and softly lit.",
+          "references": [
+            {
+              "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+              "role": "approved biblical illustration style and material reference",
+              "file": "PL1.webp",
+              "width": 2048,
+              "height": 1374,
+              "bytes": 404940,
+              "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+              "mode": "RGB"
+            },
+            {
+              "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+              "role": "approved biblical illustration style and material reference",
+              "file": "PL4.webp",
+              "width": 2528,
+              "height": 1696,
+              "bytes": 328356,
+              "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+              "mode": "RGB"
+            },
+            {
+              "role": "new Joseph cast, Bun and material consistency anchor",
+              "file": "cover.png",
+              "width": 1086,
+              "height": 1448,
+              "bytes": 3055143,
+              "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+              "mode": "RGB"
+            }
+          ]
+        },
+        "editTarget": {
+          "file": "fear.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3003373,
+          "sha256": "b7dd84da81c9de01179f348b856aba702d74bad464851db22317ac78e0584861",
+          "mode": "RGB"
+        },
+        "editKind": "precise-object-edit",
+        "note": "Original and corrected native outputs are both preserved; only the corrected output is shipped."
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/fear.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/fear.webp",
+          "file": "fear.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 212670,
+          "sha256": "a047b7ad6568f84ac3266c551e58db2fe61967d56328b68123ab83d33bc4bd23",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/fear-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/fear-480.webp",
+          "file": "fear-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 31254,
+          "sha256": "4fe84042c65871fa39c52c538f8c8620aadf970ceda86ab41ee701b451be3e5b",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0.25,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.23333333333333334,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.36,
+        "y": 0.66,
+        "width": 0.28,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Egyptian wheat barn, open grain sack and scoop, with small blue knitted Bun. Bun relocated inside the portrait crop; empty aisle retains the hero's place.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:decision",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "decision",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/decision.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/decision.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/decision-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 313440,
+      "sha256": "d627411acf4aaa2c76acc687eaefb05feb217fdc4a584a48cbef0053af28714b",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-8770f23f-f654-406e-94b6-765ea14fce94.png",
+        "native": {
+          "file": "decision.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3191599,
+          "sha256": "1ac40e931ec389fe3afc1176f210ffb8673f3436419e4d46aaa60eb2305bb544",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y48% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y50%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — Hungry Brothers: at the open doors of the same Egyptian granary from the cover, late-morning light. The three adult brothers stand as modest travellers in the upper-central band, all within x28%–73%, feet at or above y48%; their same terracotta/charcoal, sage/cream and sand/plum clothes are dustier and looser from the journey. They look tired and hungry but dignified and healthy enough, with gentle asking expressions, never skeletal or grotesque. One raises a naturally open empty hand asking for bread; another holds a small worn travel bag; the third looks toward the empty foreground hero position. Behind them stand full wheat baskets and stacked sacks inside wide timber barn doors. At the left edge of the central crop, a modest low shelf holds a round loaf and a clay bowl. NO father, NO Egyptian official/alternate hero, NO royal crown, NO child. The real question is whether to offer food; keep the clear sunlit lower-centre floor completely empty, not a throne or pedestal.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/decision.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/decision.webp",
+          "file": "decision.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 313440,
+          "sha256": "d627411acf4aaa2c76acc687eaefb05feb217fdc4a584a48cbef0053af28714b",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/decision-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/decision-480.webp",
+          "file": "decision-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 44356,
+          "sha256": "5247d4b30c473362a7656096da0fdcf6e6eec7849b814c5e9aa91d818ba79f7b",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0.25,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.23333333333333334,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.36,
+        "y": 0.66,
+        "width": 0.28,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Three tired but dignified adult brothers ask for food at an open granary. The source scene supports the unchanged three authored choices; no pictured alternate hero.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:consequence",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "consequence",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/consequence.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/consequence.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/consequence-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 310578,
+      "sha256": "2b8ef181d07b64fbe55e1d2dcc45115c0edbaa9a685b639994bc440d0a49213e",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-05cd0170-4703-4bb9-ad03-d5a035e5de97.png",
+        "native": {
+          "file": "consequence.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3148044,
+          "sha256": "14a182e2c41fff49eccf0e5fba79f4083ed59cdd22179d87705b2abd841e2da3",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y62% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y66%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — An Open Granary, After the Choice: the same sunlit Egyptian granary doorway, three adult brothers wearing their established terracotta/charcoal, sage/cream and sand/plum clothes. They stand at a comfortable middle distance in the UPPER half; the open timber doors reveal plenty of wheat. Their faces show gentle relief, remorse, recognition and warmth. One rests his open hand over his heart, the other two listen, with natural relaxed hands. Do NOT show a hug into empty air, a kneeling apology, an unseen person being held, an active bread exchange with the hero, or a painted hero. At x28%–34%, y40%–60%, a small bench visibly holds several round loaves of bread and a simple tall folded blue-and-cream Egyptian linen cap with a modest ochre band, laid down as an unoccupied prop, not on a head or mannequin. These are optional reunion cues; the scene must work equally with three existing story outcomes: the brothers sharing food, the brothers admitting they were wrong, or the hero welcoming everyone to the barn. NO father and no child or younger-looking brother. All faces and the visible bread must be retained by the central portrait crop. Keep the foreground hero region clear, with a natural sunlit empty floor.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/consequence.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/consequence.webp",
+          "file": "consequence.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 310578,
+          "sha256": "2b8ef181d07b64fbe55e1d2dcc45115c0edbaa9a685b639994bc440d0a49213e",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/consequence-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/consequence-480.webp",
+          "file": "consequence-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 42290,
+          "sha256": "f1f95f302f861d3e179a6490e1a54e0c2b33cec710e785122c0fb5fc43167d9c",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "35% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "35% 50%",
+        "window": {
+          "x": 0.175,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.16333333333333333,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.335,
+        "y": 0.68,
+        "width": 0.3,
+        "height": 0.26
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Open granary, adult brothers with warm/remorseful expressions, visible bread and removed linen hat. Neutral scene supports all three existing chosen outcomes without a forced hug or one exclusive action.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:growth",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "growth",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/growth.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/growth.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/growth-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 320468,
+      "sha256": "48e69f8d25786088b1a5e2a9e292f1bba21365d33b092613ce3a17c40666b2b5",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-310b45fb-8b6b-44b4-bacb-5b30523b19c8.png",
+        "native": {
+          "file": "growth.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3186496,
+          "sha256": "aaa790e3b5fec981471503b61777d4416ad00de409affc40e9e989caf5a52725",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y62% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y66%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — Go Bring Father: outside the same ancient Egyptian granary, warm clear morning. Two patient grey DONKEYS with unmistakable long ears, modest leather-and-woven pack saddles and balanced bulging tied WHEAT SACKS are ready for the journey home. They stand in the upper-central band, one at x30%–43% and one at x59%–73%, feet above y62%, leaving the central foreground path open. No horses or camels on this page. The same three adult brothers stand behind or beside the pack animals, checking one simple tie and preparing to depart; their identical terracotta/charcoal, sage/cream and sand/plum clothes are clean enough, their expressions relieved and hopeful. The barn doors stand open behind with grain supplies visible. A path leads from the courtyard toward distant river fields and hills; sunlight gives the sense of a welcome invitation home. Father has NOT yet arrived; do not depict him, a wagon, the hero, or any child. The essential action is donkeys laden with food for the brothers to bring the family back, never people riding animals. Keep every loaded sack naturally balanced and all anatomy sound. Leave the lower-centre hero rectangle fully empty.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/growth.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/growth.webp",
+          "file": "growth.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 320468,
+          "sha256": "48e69f8d25786088b1a5e2a9e292f1bba21365d33b092613ce3a17c40666b2b5",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/growth-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/growth-480.webp",
+          "file": "growth-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 45004,
+          "sha256": "1844dcc56833a6750856f0505760bcc3c0b50f0ffb118826c9cdd3d5f0ef3767",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "50% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "50% 50%",
+        "window": {
+          "x": 0.25,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.23333333333333334,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.36,
+        "y": 0.66,
+        "width": 0.28,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Adult brothers prepare two grey donkeys carrying balanced wheat sacks for the journey to bring Father. No father yet, no riders, no child.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:victory",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "victory",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/victory.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/victory.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/victory-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 314196,
+      "sha256": "8cd251304fb7dab0aa1a4a9e8dc1672c5a455c324806001d553154552ed5de48",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-c03b0eb6-201b-445a-b6d5-c181871d45f9.png",
+        "native": {
+          "file": "victory.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3151745,
+          "sha256": "9f118748a60c45d4f7ab56ff4b3047783c3075105cbb6d7fba3c48a1afdf5af3",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y62% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y66%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — Father Is Here: the warm Egyptian granary courtyard is now a welcoming arrival place. The elderly FATHER from the cover (grey wavy hair, short grey beard, cream tunic, indigo wrap, walking stick) has just stepped down from a simple ancient wooden wagon with packed baskets. Father stands in the upper-left centre, around x32%, with a gentle joyful smile, one hand on his walking stick, the other warmly raised in greeting towards the empty hero place; NO embracing empty air. The wagon and a calm grey donkey are behind him in the upper half, with a plain plank footstep and convincing timber wheels. The same three mature adult brothers wait to the right, happy and relieved. They remain supporting figures, at middle distance, adult feet above y62%; never a child or a different Joseph figure. Exactly one tiny blue knitted Bun, below 7% image height, sits ON THE FLOOR at x30%, y75%, where it will remain visible within the central portrait crop and outside the open hero rectangle. Clear joyful reunion, no magical effects. No other children or infants in or around the wagon. Keep the lower centre path completely empty for the hero.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/victory.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/victory.webp",
+          "file": "victory.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 314196,
+          "sha256": "8cd251304fb7dab0aa1a4a9e8dc1672c5a455c324806001d553154552ed5de48",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/victory-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/victory-480.webp",
+          "file": "victory-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 43700,
+          "sha256": "892f8c5605421bcc62039862c89e326d5a9bd5543ce5de24a02d3a2723455c20",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "35% 50%",
+      "heroSlot": {
+        "centerX": 0.5,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "35% 50%",
+        "window": {
+          "x": 0.175,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.16333333333333333,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.335,
+        "y": 0.68,
+        "width": 0.3,
+        "height": 0.26
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Elderly Father has arrived beside a loaded wooden wagon and donkey; adult brothers welcome him; small blue knitted Bun is visible in the authored portrait crop.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    },
+    {
+      "id": "joseph-and-his-brothers:reflection",
+      "storyId": "joseph-and-his-brothers",
+      "beat": "reflection",
+      "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/reflection.webp",
+      "src": "/visuals/stories/v2/joseph-and-his-brothers/reflection.webp",
+      "src480": "/visuals/stories/v2/joseph-and-his-brothers/reflection-480.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 269332,
+      "sha256": "1aa2ec0c8b698883d82c97c79e6382b3a609e5cc094c42d9bbe33fb6db236927",
+      "childFree": true,
+      "textFree": true,
+      "hasHero": false,
+      "source": {
+        "provider": "OpenAI",
+        "tool": "image_gen.imagegen",
+        "mode": "built-in",
+        "generatedAt": "2026-11-18",
+        "generatedFile": "exec-f3af2948-3805-4e08-9163-77d28fb9676c.png",
+        "native": {
+          "file": "reflection.png",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 3052588,
+          "sha256": "64b2672256f666fb333ab30bedd68d233dac1f440434ce05bfcd2eec47fed7d4",
+          "mode": "RGB"
+        },
+        "prompt": "Use case: illustration-story. Create ONE finished production illustration for the existing Arbor biblical story 'Joseph and His Brothers', landscape 3:2 horizontal master. This is a scene background onto which the app later composes the reading child's EXISTING avatar; do not draw the hero or any child.\nREFERENCE ROLES: image 1 (PL1.webp) supplies the established luminous painted picture-book environment style and blue knitted Bun identity. Image 2 (PL4.webp) supplies painterly adult anatomy and fabric/stone/wood material treatment. Image 3 (new Joseph cover) is the CONSISTENCY REFERENCE for the adult supporting cast, their exact clothing/appearance, Bun, granary architecture, and colour/light quality. Create the specified new scene, not a collage and not a copy of the cover layout. Do not copy King Saul, royal crown, armor, swords, shield, marked tree, or sheep.\nSTYLE: painterly feature-film storybook realism, believable natural anatomy, clear fine brushed forms, tactile linen and woven wool, ancient plaster/mudbrick/timber, softly dimensional light and atmospheric depth. Sophisticated natural colour, gentle expressions, luminous highlights without a yellow wash; warm pastoral biblical world. No modern architecture, technology or franchise styling.\nREUSABLE SUPPORTING CAST: the three brothers are unmistakably ADULT men late twenties to forties, olive-brown complexions: broad dark beard/terracotta tunic/charcoal shawl; slender wavy dark hair and short beard/muted sage tunic/cream scarf; a slightly shorter MATURE man with dark hair and stubble/sand tunic/muted plum sash. Keep their appearance consistent with image 3. Other brothers, only if a scene needs them, are clearly adult men in subdued ancient linen. Father appears ONLY when the scene below calls for him: elderly olive-complexioned man with grey wavy hair and short grey beard, cream linen tunic, muted indigo outer wrap, wooden walking stick, exactly as image 3.\nBUN if specified below: one small blue knitted TOY rabbit with visible knitted yarn, black button-like eyes, a simple stitched smile, long floppy ears and cream paw pads, like the reference. Keep Bun tiny and secondary, no more than 7% of picture height. Not a human, not a live rabbit, not Aya.\nPRODUCTION FRAMING: core narrative action and essential props must remain legible inside the central 50% of the landscape image (x25%–75%), because a portrait 3:4 crop is authored from that window. Place supporting faces, hands and major action mainly in the UPPER half. Supporting people and animals have feet no lower than y62% if within the central window. The LOWER CENTRE is a calm fully-painted EMPTY foreground for the hero: reserve all of x36%–64%, y66%–94% as clear floor/path. No adult, child, limb, body, silhouette, person reflection, animal, Bun, garment, bag, basket, vehicle, chair, tool, table edge or other prop may intrude into this rectangle. Do not draw a placeholder, outline, glow, blank cutout, or human-shaped gap; it must look like natural empty scenery. Keep the right and left framing richly illustrated.\nABSOLUTE EXCLUSIONS: no depicted Joseph/hero; no child, baby, toddler, teen, or childlike adult; no lettering, numbers, writing, glyphs, labels, hieroglyphs, banners with symbols, speech bubbles, border, panel layout, UI, watermark, crosses, halos, deity figures, wings, magical effect, modern object, Bebe or GobGob. No copy of a source hero. Exactly one complete scene, not a contact sheet.\nSCENE — One Long Table: gentle blue twilight in the same ancient Egyptian family courtyard, lit by a few small warm CLAY OIL LAMPS. A single long low wooden table stretches across the UPPER HALF, with naturally scaled round warm bread, bowls of figs, a small clay jar of honey, pottery cups, no writing or markings. The elder FATHER in cream tunic and indigo wrap sits at left, and the same clearly adult brothers in terracotta/charcoal, sage/cream and sand/plum sit along the far side and right. Add only a few other clearly mature adult male brothers farther back if needed to suggest the larger family; no women or extra cast required, and absolutely no child or youth. They have relaxed, laughing faces and natural hands as they eat. The NEAR CENTRE PLACE is unoccupied: its small plate and the honey jar are at the tabletop's near edge ABOVE y48%, leaving empty floor below for the app's hero. There is a natural break between the low side benches in front of that place; no chair, stool, table leg, dish or body intrudes into x36%–64%, y66%–94%. Father sits on one side of that place and a clearly mature youngest adult brother sits on the other; do not paint the 'littlest brother' as a child. Exactly one tiny blue knitted Bun sits beside a left bench at x30%, y76%, visible in the central portrait crop, outside the empty hero rectangle. Balanced cool night air and warm lamp light, intimate family comfort rather than a banquet palace. No neon light, flames near clothing, text, religious emblems, or depicted hero.",
+        "references": [
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL1.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL1.webp",
+            "width": 2048,
+            "height": 1374,
+            "bytes": 404940,
+            "sha256": "775e4456b922f1f10f7c4c5502a3849b3050ecbc8ef4c147059a384bdc0d60d8",
+            "mode": "RGB"
+          },
+          {
+            "path": "app/public/visuals/books/five-smooth-stones/PL4.webp",
+            "role": "approved biblical illustration style and material reference",
+            "file": "PL4.webp",
+            "width": 2528,
+            "height": 1696,
+            "bytes": 328356,
+            "sha256": "65d1e2a958535000a7cfdc3b4e8c29537e553619f466b65f69b6fad9bc731fa1",
+            "mode": "RGB"
+          },
+          {
+            "role": "new Joseph cast, Bun and material consistency anchor",
+            "file": "cover.png",
+            "width": 1086,
+            "height": 1448,
+            "bytes": 3055143,
+            "sha256": "b573e89d9e01555278dfca66c008f73be4cf9ce6e71b10655dc77d4f5dc46825",
+            "mode": "RGB"
+          }
+        ]
+      },
+      "exports": [
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/reflection.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/reflection.webp",
+          "file": "reflection.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 269332,
+          "sha256": "1aa2ec0c8b698883d82c97c79e6382b3a609e5cc094c42d9bbe33fb6db236927",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "WebP encoding only"
+        },
+        {
+          "path": "app/public/visuals/stories/v2/joseph-and-his-brothers/reflection-480.webp",
+          "src": "/visuals/stories/v2/joseph-and-his-brothers/reflection-480.webp",
+          "file": "reflection-480.webp",
+          "width": 480,
+          "height": 320,
+          "bytes": 38816,
+          "sha256": "3b561b12e778c1e1cfd8f3a7be372d5ad185ebb1ee0b19b6f7aa09337fe00dee",
+          "mode": "RGB",
+          "quality": 80,
+          "method": 6,
+          "operation": "Lanczos downsample and WebP encoding"
+        }
+      ],
+      "objectPosition": "25% 50%",
+      "heroSlot": {
+        "centerX": 0.62,
+        "bottom": 0.94,
+        "height": 0.26
+      },
+      "crop": {
+        "aspect": "3:4",
+        "objectPosition": "25% 50%",
+        "window": {
+          "x": 0.125,
+          "y": 0,
+          "width": 0.5,
+          "height": 1
+        },
+        "phoneAspect": "4:5",
+        "phoneWindow": {
+          "x": 0.11666666666666667,
+          "y": 0,
+          "width": 0.5333333333333333,
+          "height": 1
+        }
+      },
+      "heroSlotCoordinateSpace": "Rendered portrait viewport; physical coordinates are unchanged in Hebrew",
+      "reservedMasterRect": {
+        "x": 0.335,
+        "y": 0.66,
+        "width": 0.3,
+        "height": 0.28
+      },
+      "review": {
+        "reviewer": "ChatGPT visual_kit agent",
+        "date": "2026-11-18",
+        "childFree": true,
+        "textFree": true,
+        "semanticMatch": true,
+        "heroSlotClear": true,
+        "semantic": "Family meal at one long table: Father and clearly adult brothers, bread, figs and honey, unoccupied near place for the hero, small blue knitted Bun. Left-shifted portrait crop retains Father and food; hero frame shifted right of his sandal.",
+        "checks": [
+          "Native full-frame visual inspection",
+          "Authored 3:4 portrait crop inspection",
+          "No painted child or hero",
+          "All supporting humans clearly adults",
+          "No baked lettering, glyphs or watermark",
+          "Open space for existing framed avatar"
+        ],
+        "releaseStatus": "Art reviewed; parent-agent review, real-reader captures and release gates are separate"
+      }
+    }
+  ],
+  "totalBytes": 2969790
+}
