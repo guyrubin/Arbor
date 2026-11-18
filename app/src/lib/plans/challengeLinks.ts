@@ -13,6 +13,7 @@
 import { routeHash } from "../routes";
 import { isPatternId } from "../library/plans/planVisibility";
 import type { PatternId } from "../library/types";
+import { planName } from "./planNames";
 
 export const CHALLENGE_ALL = "all";
 
@@ -37,20 +38,21 @@ export function challengePlanHref(pattern?: PatternId | null, opts: { compose?: 
 
 /**
  * The plan a Challenge Plans view has open, as the shell's breadcrumb names it
- * (N-Challenge-D: "Now › Plans › {plan}"); null on Plans' home. The composer
- * names the pattern it composes; the plan's page, the running plan it shows
- * (the one asked for, else the newest running); the parent copy, its plan.
- * The name is the plan's own title (the board's parent-register names are not
- * in the pattern data).
+ * (N-Challenge-D: "Now › Plans › Saying goodbye at drop-off"); null on Plans'
+ * home. The composer names the pattern it composes; the plan's page, the
+ * running plan it shows (the one asked for, else the newest running); the
+ * parent copy, its plan. The name is the plan's parent-facing name
+ * (lib/plans/planNames), else the book's title.
  */
 export function openChallengeName(
   target: ChallengeTarget,
   running: { def: { id: PatternId; title: { en: string; he: string } } }[],
-  composing: { title: { en: string; he: string } } | null | undefined,
+  composing: { id: PatternId; title: { en: string; he: string } } | null | undefined,
   lang: "en" | "he",
 ): string | null {
   if (target.kind === "none") return null;
-  if (composing) return composing.title[lang];
+  const named = (d: { id: PatternId; title: { en: string; he: string } }) => planName(d.id, lang) ?? d.title[lang];
+  if (composing) return named(composing);
   const open = target.kind === "pattern" ? running.find((r) => r.def.id === target.pattern) ?? (target.print ? undefined : running[0]) : running[0];
-  return open ? open.def.title[lang] : null;
+  return open ? named(open.def) : null;
 }

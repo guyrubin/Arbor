@@ -18,6 +18,11 @@ import AboutAreaIndex from "../about/AboutAreaIndex";
 import { useShellRowEnd } from "../../lib/shellSlots";
 import AboutHowToRead from "../about/AboutHowToRead";
 import AboutLastVisit from "../about/AboutLastVisit";
+import NowWorthKnowing from "../companion/now10/NowWorthKnowing";
+import { milestonesV10Copy } from "../companion/milestonesV10Copy";
+import { NOW_COPY } from "../companion/nowViewCopy";
+import { useNowClock } from "../companion/useNowClock";
+import { ageYearsFromProfile } from "../../lib/childAge";
 import { LEDGER_ID, useLedgerArrival } from "../about/useLedgerArrival";
 import TellArborMore from "../describe/TellArborMore";
 import KeptDescription from "../describe/KeptDescription";
@@ -71,6 +76,7 @@ export default function ChildProfile() {
   const { childProfile, approvedMemoryItems, pendingMemoryItems, activeTab, memoryReviewError, retryMemoryReview, setActiveTab } = useArbor();
   const { t, uiLang } = useLanguage();
   const copy = aboutCopy(uiLang);
+  const now = useNowClock();
   // V77 (N-About-D): the pill row ends "Monday 16 November · nothing is remembered without your approval".
   useShellRowEnd({ suffix: copy.rowEndSuffix });
   const composition = useComposition();
@@ -254,12 +260,24 @@ export default function ChildProfile() {
   const rememberedNote = newest && !memoryReviewError
     ? <RememberedNote m={newest} stored={nb.storedOf(newest)} onEdited={retryMemoryReview} />
     : null;
+  // V77 (N-About-D): "Worth knowing at three" closes the desk rail — the shared
+  // card bound to today's reviewed Learn pick (My child's same card and kicker
+  // rule); no new developmental sentence. The phone board does not draw it.
+  const msCopy = milestonesV10Copy(uiLang);
+  const years = Math.floor(ageYearsFromProfile(childProfile) ?? 0);
+  const worthKicker = years >= 1 && years < msCopy.ageWords.length ? msCopy.worthKnowingAt.replace("{age}", msCopy.ageWords[years]) : msCopy.worthKnowing;
   const rail = (
     <>
       <AboutHowToRead compact={!desk} />
       <CoachDataContract ledgerUnreadable={memoryReviewError} />
       {rememberedNote}
       {desk && <AboutLastVisit className="mbtn about-visit-link" />}
+      {desk && (
+        <div className="about-know" data-testid="about-worth-knowing">
+          <NowWorthKnowing lang={uiLang === "he" ? "he" : "en"} kicker={worthKicker} readMinutes={NOW_COPY[uiLang === "he" ? "he" : "en"].readMinutes}
+            composition="phone" now={now} source="about-worth-knowing" />
+        </div>
+      )}
     </>
   );
 

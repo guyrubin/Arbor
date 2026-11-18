@@ -186,13 +186,14 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const home = page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
       expect(home).toBeGreaterThan(at("consult-reason-section"));
       expect(home).toBeLessThan(at("consult-bring-row"));
-      // Design V77 audit (N-Care-M): the phone guide names three numbered stops — Visit, Summary, Dates
+      // Design V77 audit (N-Care-M): the phone guide names four numbered stops — Visit, Summary, Dates, Note
+      // (Note: the Worth knowing card, back as drawn)
       // (desktop keeps four: your next visit, getting ready, the visit summary, appointments)
       const guide = /<nav class="guide[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(html)![1];
       const stops = [...guide.matchAll(/class="gnum[^"]*">(\d)</g)].map((m) => m[1]);
-      expect(stops).toEqual(["1", "2", "3"]);
+      expect(stops).toEqual(["1", "2", "3", "4"]);
       const short = careCopy(locale).visits.stopShort;
-      for (const label of [short.visit, short.summary, short.dates]) expect(decode(guide)).toContain(label);
+      for (const label of [short.visit, short.summary, short.dates, short.note]) expect(decode(guide)).toContain(label);
       // the builder's own step numbers step aside for the route's
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())

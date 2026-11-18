@@ -10,7 +10,11 @@ import type { AskSpecialistParts } from "../../sections/AskSpecialist";
 import VisitScene, { type PackedCounts } from "./VisitScene";
 import { openAddAppointment } from "./VisitTimeline";
 import { daysUntil } from "../CareVisitHead";
-import { careCopy } from "./careV10Copy";
+import { careCopy, CARE_WORTH_TOPIC } from "./careV10Copy";
+import NowWorthKnowing from "../../companion/now10/NowWorthKnowing";
+import { NOW_COPY } from "../../companion/nowViewCopy";
+import { milestonesV10Copy } from "../../companion/milestonesV10Copy";
+import { ageYearsFromProfile } from "../../../lib/childAge";
 import { useShellRowEnd } from "../../../lib/shellSlots";
 import { appointmentRoleLabel } from "../../../lib/appointmentLabel";
 import { fmtDayV10 } from "../../../lib/formatDate";
@@ -29,7 +33,7 @@ import "./care.css";
    Desktop is the stage-and-rail composition; phone is one column in the same
    order. One tree renders (useComposition), so every control exists once. */
 
-const SECTION = { visit: "care-visit", ready: "care-ready", summary: "care-summary", appointments: "care-appointments" } as const;
+const SECTION = { visit: "care-visit", ready: "care-ready", summary: "care-summary", appointments: "care-appointments", note: "care-note" } as const;
 
 export default function VisitsComposition({ composition, parts, visit, heading, sublines, packed, landing, followUp, homeDoor = null, timeline, aside, shared, nowMs }: {
   composition: Composition;
@@ -74,6 +78,7 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
         { id: SECTION.visit, title: c.stopShort.visit },
         { id: SECTION.summary, title: c.stopShort.summary },
         { id: SECTION.appointments, title: c.stopShort.dates },
+        { id: SECTION.note, title: c.stopShort.note },
       ]
     : [
         landing
@@ -163,6 +168,19 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
     action: { label: t("elev.careNet.appt.add"), onClick: () => openAddAppointment(setActiveTab), icon: "add", testId: "care-row-add-appointment" },
   } : null);
 
+  // V77 (N-Care-D/M): "Worth knowing at {age}" — the shared card bound to today's reviewed
+  // Learn pick, leaned toward preparing for a visit; no new developmental sentence. Nothing
+  // renders until the catalogue has loaded.
+  const msCopy = milestonesV10Copy(uiLang);
+  const years = Math.floor(ageYearsFromProfile(childProfile) ?? 0);
+  const worthKicker = years >= 1 && years < msCopy.ageWords.length ? msCopy.worthKnowingAt.replace("{age}", msCopy.ageWords[years]) : msCopy.worthKnowing;
+  const worth = landing ? (
+    <div className="care-know" data-testid="care-worth-knowing">
+      <NowWorthKnowing lang={uiLang === "he" ? "he" : "en"} kicker={worthKicker} readMinutes={NOW_COPY[uiLang === "he" ? "he" : "en"].readMinutes}
+        topicText={CARE_WORTH_TOPIC} composition="phone" now={new Date(nowMs)} source="care-worth-knowing" />
+    </div>
+  ) : null;
+
   const addAppointment = (
     <button type="button" className="ds-link care-add" onClick={() => openAddAppointment(setActiveTab)}>
       <Icon name="add" size={18} /> {t("elev.careNet.appt.add")}
@@ -211,11 +229,18 @@ export default function VisitsComposition({ composition, parts, visit, heading, 
               </div>
               <div className={desk ? "x4 stack care-aside-col" : "stack care-aside-col"}>
                 {/* V77 N-Care-D: "At home while you wait" heads the rail beside the appointments. */}
+                {desk && worth}
                 {desk && parts.home && <div className="rcard fit care-home-practice">{parts.home}</div>}
                 {aside}
               </div>
             </div>
             <div className="care-shared-row">{shared}</div>
+          </RouteSection>
+        )}
+        {/* V77 N-Care-M §4: Worth knowing, the guide's "Note" stop. */}
+        {landing && !desk && (
+          <RouteSection id={SECTION.note} n={4} aria-label={c.stopShort.note}>
+            {worth}
           </RouteSection>
         )}
       </Route>

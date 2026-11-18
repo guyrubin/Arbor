@@ -352,3 +352,24 @@ describe("a failed co-parent invite says what failed", () => {
     expect(text(tree)).toContain(coParentCopy.en.ready);
   });
 });
+
+describe("E-Invite: who invited you", () => {
+  const card = (share: Record<string, unknown>) => {
+    h.api.invitations.mockResolvedValue({ shares: [{ id: "grant-a", childId: "child-a", childName: "Private child", ownerEmail: "maya@example.test", ...share }] });
+  };
+  it("an invite with the inviter's name says \"{name} invited you to Arbor\"", async () => {
+    card({ ownerName: "Maya Example" });
+    gate(); await settle();
+    const t = text(gate());
+    expect(t).toContain("Maya Example invited you to Arbor");
+    expect(t).not.toContain(coParentCopy.en.invitedBy);
+  });
+  it("negative control: an older invite without a name keeps the email line", async () => {
+    card({});
+    gate(); await settle();
+    const t = text(gate());
+    expect(t).toContain(coParentCopy.en.invitedBy);
+    expect(t).toContain("maya@example.test");
+    expect(t).not.toContain("invited you to Arbor");
+  });
+});
