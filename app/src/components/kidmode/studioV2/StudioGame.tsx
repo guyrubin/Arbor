@@ -1,5 +1,5 @@
 import { STUDIO_ACTIVITY_LOADERS, preloadStudioActivity } from '../kidPrefetch';
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { preload } from "react-dom";
 import { ArrowRight, RotateCcw, Waves } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
@@ -96,6 +96,40 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   // A maker opens on its own opening shot (title on the picture, the host, a tap to skip),
   // so it goes straight into play: no second title card in front of it.
   const [phase, setPhase] = useState<"intro" | "play" | "result">(() => isStudioMakerId(activityId) ? "play" : "intro");
+  const fullViewRef = useRef<HTMLDivElement | null>(null);
+  const [fullHeight, setFullHeight] = useState<number>();
+  // Sneak's absolutely positioned scene needs a definite box. The app gives
+  // it a flex viewport, but a review/embed host may have auto height, where
+  // a chain of 100% heights collapses. Measure the existing app slot, or the
+  // space below the host's actual header (as the maker PlayStage does).
+  useLayoutEffect(() => {
+    if (activityId !== "sneak" || phase !== "play") return;
+    const el = fullViewRef.current;
+    if (!el) return;
+    const slot = el.closest<HTMLElement>("[data-kid-view]");
+    const measure = () => {
+      const viewport = window.innerHeight || document.documentElement.clientHeight;
+      const top = el.getBoundingClientRect().top + (window.scrollY || 0);
+      const height = slot ? slot.getBoundingClientRect().height : viewport - top;
+      if (Number.isFinite(height) && height > 0) {
+        const next = Math.max(1, Math.round(height));
+        setFullHeight(previous => previous === next ? previous : next);
+      }
+    };
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(slot ?? el);
+    if (el.parentElement) observer?.observe(el.parentElement);
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    const settle = [120, 320, 900].map(ms => setTimeout(measure, ms));
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      settle.forEach(clearTimeout);
+    };
+  }, [activityId, phase]);
   const [round, setRound] = useState(0);
   const [creation, setCreation] = useState<StudioCreation | undefined>();
   const complete = useRef(false);
@@ -145,7 +179,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     </div>
   </section>;
 
-  if (phase === "play") return <div className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" ? { height: "100%", minHeight: 0 } : undefined}>
+  if (phase === "play") return <div ref={fullViewRef} className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" && fullHeight !== undefined ? { blockSize: fullHeight } : undefined}>
     {environment}
     <div className="studio-game-view__mechanic">
       <GameCompletionProvider onComplete={onComplete}>

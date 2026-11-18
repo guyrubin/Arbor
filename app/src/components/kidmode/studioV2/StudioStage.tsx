@@ -5,7 +5,7 @@ import "./studioStage.css";
 /** B-KID-177: the film's rooms and crew on the Studio stage; the art lives in lib/studioStageArt. */
 export function StudioWorldPlate({ worldId, sizes = "100vw", className = "", priority = false }: { worldId: StudioWorldId; sizes?: string; className?: string; priority?: boolean }) {
   const plate = STUDIO_WORLD_PLATES[worldId];
-  return <img className={`studio-stage__plate ${className}`} data-studio-plate={worldId} src={plate.src800} srcSet={`${plate.src800} 800w, ${plate.src1600} 1600w`} sizes={sizes}
+  return <img className={`studio-stage__plate ${className}`} data-studio-plate={worldId} src={plate.src800} srcSet={`${plate.src800} 800w, ${plate.srcLarge} ${plate.largeWidth}w`} sizes={sizes}
     style={{ objectPosition: plate.position }} alt="" draggable={false} decoding="async" fetchPriority={priority ? "high" : undefined} />;
 }
 

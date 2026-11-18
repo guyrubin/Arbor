@@ -45,4 +45,10 @@ function Preview() {
     <footer className="review-tools"><span>{uiLang === 'he' ? 'תצוגת עיצוב • נבט מלווה כאן. באפליקציה מופיע האווטאר המאושר של הילד.' : 'Design preview • Sprout stands in here. The app uses your child’s approved avatar.'}</span><button onClick={() => setUiLang(uiLang === 'he' ? 'en' : 'he')}><Languages size={18} />{uiLang === 'he' ? 'English' : 'עברית'}</button></footer>
   </>;
 }
-createRoot(document.getElementById('root')!).render(<PreviewProvider><Preview /></PreviewProvider>);
+// The separate CI-only book fixture mounts the production reader; ordinary
+// Studio preview/home keeps its current loading path and synthetic adapters.
+if (new URLSearchParams(window.location.search).has('bookReview')) {
+  void import('./book').then(({ mountBookReview }) => mountBookReview(document.getElementById('root')!));
+} else {
+  createRoot(document.getElementById('root')!).render(<PreviewProvider><Preview /></PreviewProvider>);
+}

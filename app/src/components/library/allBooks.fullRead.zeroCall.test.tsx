@@ -51,9 +51,12 @@ vi.mock("../kidmode/audio/kidAudio", async (original) => ({
 }));
 
 import { BookReader } from "./BookReader";
+import { BookPage } from "./BookPage";
 import { allBooks } from "../../lib/library/books";
 import { PLAN_FIXTURE_BOOKS } from "../../lib/library/plans/planBooks";
-import { resetPlanPlateSources } from "../../lib/plans/planPlateSource";
+import { loadPlanPlateUrl, resetPlanPlateSources } from "../../lib/plans/planPlateSource";
+import { setAuthTokenProvider } from "../../lib/api";
+import type { BookPageLayout } from "../../lib/library/bookPageLayout";
 import { allBookPages, bookChoices } from "../../lib/library/bookShape";
 import type { AnyBook, BookReaderChild } from "../../lib/library/types";
 import type { HeroSheet } from "../../lib/library/heroSheet";
@@ -121,7 +124,7 @@ beforeEach(() => {
   vi.stubGlobal("navigator", { userActivation: { hasBeenActive: true }, sendBeacon: (url: string) => { record("sendBeacon")(url); return true; } });
   vi.stubGlobal("window", { innerWidth: 390, innerHeight: 844, addEventListener() {}, removeEventListener() {} });
 });
-afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); setAuthTokenProvider(async () => null); });
 
 // ── the commit harness (production components and callbacks unmodified) ──────
 function harness<P>(component: (props: P) => React.ReactNode, props: P) {
@@ -254,6 +257,85 @@ async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "h
 
 const BOOKS: AnyBook[] = [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS)];
 const offences = () => env.requests.map((r) => [r.via, r.url, requestOffence(r.url)] as const).filter(([via, , why]) => why !== null || via === "speechSynthesis" || via === "sendBeacon" || via === "WebSocket" || via === "EventSource" || via === "XMLHttpRequest");
+
+describe("a missing book picture can recover without restarting the read", () => {
+  it("does not offer an impossible image retry when no plate or print is declared", () => {
+    const book = PLAN_FIXTURE_BOOKS["plan-poo-sit--demo"];
+    const reader = harness(BookReader, { book, lang: "en", child: READERS[0].child, onClose: () => {}, dev: false, plates: {}, sheet: null, assets: noFiles, initialBox: { width: 390, height: 756 } } as Parameters<typeof BookReader>[0]);
+    expect(find(reader.tree, (el) => el.type === BookPage)!.props.pictureRecovery).toBeUndefined();
+    expect(find(reader.tree, has("data-book-page"))?.props["data-book-page"]).toBe("cover");
+    const open = find(reader.tree, has("data-book-open"));
+    expect(open).toBeDefined();
+    open!.props.onClick();
+    reader.commit();
+    expect(find(reader.tree, has("data-book-page"))?.props["data-book-page"]).toBe("p1");
+    expect(find(reader.tree, (el) => el.type === BookPage)!.props.pictureRecovery).toBeUndefined();
+    expect(find(reader.tree, has("data-book-next"))).toBeDefined();
+    expect(env.requests).toEqual([]);
+    reader.unmount();
+  });
+
+  it.each(["en", "he"] as const)("%s: retries only the current authenticated image and preserves the page and other cached pictures", async (lang) => {
+    setAuthTokenProvider(async () => "synthetic-token");
+    const url = "/api/plans/plates/plan-poo-sit/PP1";
+    const other = "/api/plans/plates/plan-poo-sit/PP8";
+    let available = false;
+    const fetchMock = vi.fn(async (source: string, init?: RequestInit) => {
+      record("fetch")(source);
+      expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer synthetic-token");
+      return source === other || available
+        ? new Response(new Blob([new Uint8Array([1, 2])], { type: "image/webp" }))
+        : new Response("", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    let blob = 0;
+    vi.stubGlobal("URL", Object.assign(Object.create(URL), { createObjectURL: () => `blob:synthetic/picture-${++blob}` }));
+    expect(await loadPlanPlateUrl(other)).toBe("blob:synthetic/picture-1");
+    const completed = vi.fn();
+    const book = PLAN_FIXTURE_BOOKS["plan-poo-sit--demo"];
+    const reader = harness(BookReader, { book, lang, child: READERS[0].child, onClose: () => {}, onComplete: completed, dev: false, sheet: null, assets: noFiles, initialBox: { width: 390, height: 756 } } as Parameters<typeof BookReader>[0]);
+    const picture = () => find(reader.tree, (el) => el.type === BookPage)!;
+    await vi.advanceTimersByTimeAsync(0); reader.commit();
+    expect(picture().props.plateSrcs).toEqual([]);
+    expect(picture().props.pictureRecovery.pending).toBe(false);
+    expect(picture().props.pictureRecovery.retryLabel).toBe(lang === "he" ? "לנסות שוב את התמונה" : "Try the picture again");
+    expect(renderedSources(reader.tree)).not.toContain(url);
+    expect(fetchMock.mock.calls.filter(([source]) => source === url)).toHaveLength(1);
+    available = true;
+    picture().props.pictureRecovery.onRetry(); reader.commit();
+    expect(picture().props.pictureRecovery.pending).toBe(true);
+    // Join the request already started by the hook. A real Response.blob()
+    // settles on the stream microtask, independently of our fake timers.
+    expect(await loadPlanPlateUrl(url)).toBe("blob:synthetic/picture-2");
+    await Promise.resolve(); reader.commit();
+    expect(picture().props.plateSrcs).toEqual(["blob:synthetic/picture-2"]);
+    expect(picture().props.pictureRecovery.pending).toBe(false);
+    expect(fetchMock.mock.calls.filter(([source]) => source === url)).toHaveLength(2);
+    expect(await loadPlanPlateUrl(other)).toBe("blob:synthetic/picture-1");
+    expect(fetchMock.mock.calls.filter(([source]) => source === other)).toHaveLength(1);
+    expect(find(reader.tree, has("data-book-page"))?.props["data-book-page"]).toBe("cover");
+    expect(completed).not.toHaveBeenCalled();
+    expect(offences()).toEqual([]);
+    reader.unmount();
+  });
+
+  it("shows a real retry after all static sources fail, stops art-tap bubbling and clears the failure for a new source", () => {
+    const art = { x: 0, y: 0, w: 300, h: 360 };
+    const retry = vi.fn();
+    const props: Parameters<typeof BookPage>[0] = { layout: { art, plate: art, hero: null, shadow: null } as BookPageLayout, plateSrcs: ["/visuals/missing.webp"], heroSrc: null, heroKey: "synthetic", pictureLabel: "Picture", pictureRecovery: { pending: false, attempt: 0, unavailableLabel: "We couldn’t open this picture.", retryLabel: "Try the picture again", onRetry: retry } };
+    const page = harness(BookPage, props);
+    expect(find(page.tree, has("data-book-picture-retry"))).toBeUndefined();
+    find(page.tree, (el) => typeof el.props.onAllFailed === "function")!.props.onAllFailed(); page.commit();
+    const control = find(page.tree, has("data-book-picture-retry"))!;
+    const stopPropagation = vi.fn();
+    control.props.onClick({ stopPropagation });
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(retry).toHaveBeenCalledTimes(1);
+    props.plateSrcs = ["/visuals/recovered.webp"]; page.commit();
+    expect(find(page.tree, has("data-book-picture-retry"))).toBeUndefined();
+    page.unmount();
+  });
+});
 
 describe("B-BOOK-27: a full read of every book in the registry makes zero model, image or TTS requests", () => {
   it("the registry is real: the library book, the engine fixture and every plan pattern's book", () => {

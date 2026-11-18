@@ -20,6 +20,12 @@ vi.mock("react", async (importOriginal) => {
     if (equal(old?.deps, deps)) return old!.value;
     const value = factory(); h.slots[index] = { value, deps }; return value;
   };
+  const effect = (run: Effect, deps?: readonly unknown[]) => {
+    const index = h.cursor++, old = h.slots[index];
+    if (equal(old?.deps, deps)) return;
+    const slot: Slot = h.slots[index] = { deps, cleanup: old?.cleanup };
+    h.effects.push(() => { slot.cleanup?.(); slot.cleanup = run() || undefined; });
+  };
   return { ...actual,
     useState(initial: unknown) {
       const index = h.cursor++, slot = h.slots[index] ??= { value: typeof initial === "function" ? (initial as () => unknown)() : initial };
@@ -30,12 +36,8 @@ vi.mock("react", async (importOriginal) => {
     useCallback: (callback: unknown, deps: readonly unknown[]) => memo(() => callback, deps),
     useContext: () => null,
     useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
-    useEffect(effect: Effect, deps?: readonly unknown[]) {
-      const index = h.cursor++, old = h.slots[index];
-      if (equal(old?.deps, deps)) return;
-      const slot: Slot = h.slots[index] = { deps, cleanup: old?.cleanup };
-      h.effects.push(() => { slot.cleanup?.(); slot.cleanup = effect() || undefined; });
-    },
+    useEffect: effect,
+    useLayoutEffect: effect,
   };
 });
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: h.child }), useArborOptional: () => ({ childProfile: h.child }) }));
@@ -87,9 +89,10 @@ function nodes(node: unknown): ReactElement<Props>[] {
   if (!isValidElement<Props>(node)) return [];
   return [node, ...nodes(node.props.children)];
 }
-function render(key: string, component: () => unknown): ReactElement<Props>[] {
+function render(key: string, component: () => unknown, attach?: (tree: ReactElement<Props>[]) => void): ReactElement<Props>[] {
   h.slots = h.stores.get(key) ?? []; h.stores.set(key, h.slots); h.cursor = 0;
   const tree = nodes(component());
+  attach?.(tree);
   for (const effect of h.effects.splice(0)) effect();
   return tree;
 }
@@ -122,6 +125,32 @@ describe("V2 entry, identity and persistent result", () => {
       expect(tree.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
       expect(tree[0].props["aria-label"]).toBe(studioCopy(lang).activities[id].title);
     }
+  });
+  it.each([false, true])("Sneak measures its real host and retires its viewport observers; app slot=%s", inApp => {
+    const listeners = new Map<string, () => void>();
+    const browser = { innerHeight: 812, scrollY: 140,
+      addEventListener: (type: string, fn: () => void) => listeners.set(type, fn),
+      removeEventListener: (type: string) => listeners.delete(type),
+    };
+    vi.stubGlobal("window", browser);
+    const disconnect = vi.fn(), observe = vi.fn();
+    vi.stubGlobal("ResizeObserver", class { observe = observe; disconnect = disconnect; });
+    let slotHeight = 640;
+    const slot = { getBoundingClientRect: () => ({ height: slotHeight }) };
+    const element = { closest: () => inApp ? slot : null, parentElement: {}, getBoundingClientRect: () => ({ top: 76 - browser.scrollY }) };
+    const draw = () => render("sneak-size", () => StudioGameSession({ activityId: "sneak", onBack: vi.fn() }), tree => {
+      if (tree[0].props["data-studio-phase"] === "play") (tree[0].props.ref as { current: unknown }).current = element;
+    });
+    click(draw().find(node => node.props["data-studio-start"] === ""));
+    draw();
+    expect(draw()[0].props.style).toEqual({ blockSize: inApp ? 640 : 736 });
+    browser.innerHeight = 980; slotHeight = 808;
+    listeners.get("resize")!();
+    expect(draw()[0].props.style).toEqual({ blockSize: inApp ? 808 : 904 });
+    expect(observe).toHaveBeenCalledWith(inApp ? slot : element);
+    cleanup("sneak-size");
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(listeners.size).toBe(0);
   });
   it("intro uses neutral world imagery with one profile hero and refuses a stock-child replacement", () => {
     const draw = () => render("visual", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));

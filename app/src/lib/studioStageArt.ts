@@ -7,11 +7,14 @@ type StudioWorldId = "stories" | "playbank" | "feelings" | "studio";
  *  finished crew renders, cut out; the child's hero stays the child's own and is never
  *  drawn here. Bebe and Gob Gob are not hosts. */
 const ROOM = "/visuals/studio-v2/rooms";
-export const STUDIO_WORLD_PLATES: Record<StudioWorldId, { src800: string; src1600: string; position: string }> = {
-  stories: { src800: `${ROOM}/stories-800.webp`, src1600: `${ROOM}/stories-1600.webp`, position: "50% 46%" },
-  playbank: { src800: `${ROOM}/playbank-800.webp`, src1600: `${ROOM}/playbank-1600.webp`, position: "50% 40%" },
-  feelings: { src800: `${ROOM}/feelings-800.webp`, src1600: `${ROOM}/feelings-1600.webp`, position: "50% 58%" },
-  studio: { src800: `${ROOM}/studio-800.webp`, src1600: `${ROOM}/studio-1600.webp`, position: "40% 56%" },
+// v31 clean environment derivatives; provenance: docs/design/bebe-gobgob-v31-stage-art.json.
+// Keep each source's actual width: the new masters are 1536px and are not upscaled.
+const V31 = "/visuals/studio-v2/v31";
+export const STUDIO_WORLD_PLATES: Record<StudioWorldId, { src800: string; srcLarge: string; largeWidth: number; position: string }> = {
+  stories: { src800: `${V31}/glass-grove-800.webp`, srcLarge: `${V31}/glass-grove-1536.webp`, largeWidth: 1536, position: "50% 46%" },
+  playbank: { src800: `${ROOM}/playbank-800.webp`, srcLarge: `${ROOM}/playbank-1600.webp`, largeWidth: 1600, position: "50% 40%" },
+  feelings: { src800: `${ROOM}/feelings-800.webp`, srcLarge: `${ROOM}/feelings-1600.webp`, largeWidth: 1600, position: "50% 58%" },
+  studio: { src800: `${V31}/wonderworks-800.webp`, srcLarge: `${V31}/wonderworks-1536.webp`, largeWidth: 1536, position: "40% 56%" },
 };
 
 export type CrewId = "chock" | "pep" | "aya";

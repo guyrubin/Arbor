@@ -1,0 +1,65 @@
+{
+  "version": "bebe-gobgob-v31-stage-art-2026-11-18",
+  "sourceFolder": "https://drive.google.com/drive/folders/1JtrEM8UnyEBDJxYsskzlaG-pinmFiILb",
+  "sourceArchive": "https://drive.google.com/file/d/12DYJR4tWq8uYUeNSwYyPUQNBUeZ9ST01/view",
+  "identityAuthority": "https://github.com/guyrubin/Bebe-Gobgob/blob/main/CURRENT.md",
+  "sourceStatus": "v31 visual-development concepts; v30 remains character and script authority",
+  "purpose": "Decorative environment plates for the Studio workshop and Hero Stories world; not page-specific story illustrations or character replacements",
+  "derivation": "Built-in image generation used only to remove background people. Original source assets remain unchanged. Web encodes retain the generated empty environment composition.",
+  "visualReview": {
+    "peopleAnimalsText": "No visible people, human reflections, animals, UI text or watermark in either derived plate",
+    "composition": "Retained original camera, architecture, material texture, plants, props, natural light and mechanical shadows",
+    "identity": "Existing approved child avatar and companion hosts remain separate and unchanged",
+    "integration": "Uses the existing world-plate seam, decorative alt text, responsive sources and versioned paths; other world plates unchanged"
+  },
+  "assets": [
+    {
+      "world": "studio",
+      "sourceInArchive": "01_new_art/04_wonderworks.png",
+      "sourceSha256": "cc862801e156527774899d602fd3442f9009a496c53a37c28d3d815514cf85c9",
+      "derivedMasterSha256": "900a01b9c81e5a8d83de6cdcb0b6296e8eaceb89580e1194028117977803cb67",
+      "editPrompt": "Use case: precise-object-edit. Asset type: empty environment backdrop for Arbor Kids Studio games. Image 1 is the exact edit target, the supplied Bebe and GobGob v31 Wonderworks workshop plate. Remove every human person, character and animal from the entire picture, including the two distant adults in the glass doorway/background. Reconstruct only the small areas hidden behind those people with the existing continuous terrace, greenery and architecture. Preserve the exact original camera, 3:2 landscape composition, framing, architectural geometry, curved glass and ivory ceramic workshop, sunlight and shadows, plant positions, colors, material textures, foreground open TrailBench rover and its tool cubbies, blue/orange and yellow/blue empty jackets on their pegs, workbench and all other inanimate objects. The workshop should feel ready for play but completely unoccupied. Keep this a faithful localized removal, not a redesign. No people, children, human silhouettes, human reflections, animals, text, UI, borders, logos or watermarks. Opaque image, no transparency.",
+      "encoding": "WebP, quality 83, method 6; Lanczos downsample for 800px; no master upscaling",
+      "outputs": [
+        {
+          "path": "app/public/visuals/studio-v2/v31/wonderworks-800.webp",
+          "width": 800,
+          "height": 533,
+          "bytes": 121782,
+          "sha256": "8b94b7f399fff450e6e432bed1386a9fa8cdb447cb5464825a70dd28c493dad0"
+        },
+        {
+          "path": "app/public/visuals/studio-v2/v31/wonderworks-1536.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 311552,
+          "sha256": "898f81de983213774d2734242418e16a5c1e784ddcf21215651de5f582fba0cd"
+        }
+      ]
+    },
+    {
+      "world": "stories",
+      "sourceInArchive": "01_new_art/05_glass_grove.png",
+      "sourceSha256": "fa61bda96b214c1a454377b029079bb10447fadf70482e48b75b171becfed144",
+      "derivedMasterSha256": "607f6051d1765fc47afcc457b27cb780947da993e5eaff27c5da1617dc0756d8",
+      "editPrompt": "Use case: precise-object-edit. Asset type: empty environment backdrop for Arbor Kids Studio stories. Image 1 is the exact edit target, the supplied Bebe and GobGob v31 Glass Grove banner-passage plate. Remove every human person, character and animal from the entire picture, including the small grower/courier background figures on the far left behind the glass passage. Reconstruct only the small areas they obscured using the continuous existing terrace, plants and architecture. Preserve the exact original camera, 3:2 landscape composition, framing, curved ribbed translucent glass, ivory ceramic walls, hand-repaired glass rib, hanging sun banner, flowers, lush plants, sky, sunlight, shadows, colors and material textures. Preserve the small service rover, its lamp and snagged ribbon, and preserve the large physically cast rover/shade shadows on the curved glass. These shadows are mechanical objects, not people, and are part of the original scene. This is a faithful localized removal, not a redesign. No people, children, human silhouettes, human reflections, animals, text, UI, borders, logos or watermarks. Opaque image, no transparency.",
+      "encoding": "WebP, quality 83, method 6; Lanczos downsample for 800px; no master upscaling",
+      "outputs": [
+        {
+          "path": "app/public/visuals/studio-v2/v31/glass-grove-800.webp",
+          "width": 800,
+          "height": 533,
+          "bytes": 119444,
+          "sha256": "cd3899ac50036c3c8897281bd78c97ac5220aec0e6bea58724a07c1d7addeb28"
+        },
+        {
+          "path": "app/public/visuals/studio-v2/v31/glass-grove-1536.webp",
+          "width": 1536,
+          "height": 1024,
+          "bytes": 290136,
+          "sha256": "648346e72dff2e293baf77d45d815808479857ef2e28e466b3b8b8f37de4eb3d"
+        }
+      ]
+    }
+  ]
+}
