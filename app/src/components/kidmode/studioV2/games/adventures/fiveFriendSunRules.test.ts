@@ -1,7 +1,7 @@
 /** Five-Friend Sun rules, checked over both challenges and every place on the path. */
 import { describe, expect, it, vi } from 'vitest';
 import type { Challenge } from './adventureRules';
-import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, WOBBLE_MS, countOn, friendsJoined, hintAfter, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, type Arrival } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HERO_SEAT, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, WOBBLE_MS, countOn, friendsJoined, hintAfter, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn, type Arrival } from './fiveFriendSunRules';
 
 const CHALLENGES: readonly Challenge[] = ['gentle', 'explore'];
 const POSITIONS: readonly number[] = Array.from({ length: PATH_END + 1 }, (_, index) => index);
@@ -52,7 +52,7 @@ describe('Five-Friend Sun: the path and the circle', () => {
     expect(padCell(Number.NaN)).toEqual(padCell(0)); expect(padCell(3.9)).toEqual(padCell(3));
   });
   it('keeps every beat short, and the finished sun long enough to take in', () => {
-    expect(HOP_MS).toBe(380); expect(SUN_MS).toBe(2600); expect(SUN_MS).toBeGreaterThan(JOIN_MS);
+    expect(HOP_MS).toBe(380); expect(SUN_MS).toBe(4200); expect(SUN_MS).toBeGreaterThan(JOIN_MS);
     expect(JOIN_MS).toBeGreaterThanOrEqual(HOP_MS); expect(JOIN_MS).toBeLessThanOrEqual(2000);
     expect(WOBBLE_MS).toBeGreaterThan(0); expect(WOBBLE_MS).toBeLessThan(2 * HOP_MS);
   });
@@ -172,5 +172,22 @@ describe('Five-Friend Sun: who is in the circle', () => {
     expect([nextArrival(10, 3), nextArrival(10, 4), nextArrival(10, 5)]).toEqual(['make-room', 'sun', 'none']);
     const game = playGame('explore', (() => { const rolls = [0, 0.999999, 0.999999, 0.999999]; let turn = 0; return () => rolls[Math.min(turn++, rolls.length - 1)]; })());
     expect(game.stops).toEqual([1, 4, 7, 10]); expect(game.arrivals).toEqual(['friend', 'friend', 'friend', 'make-room', 'sun']);
+  });
+});
+
+describe('the spinner wheel (B-GAME-43)', () => {
+  it("stops with each hop's own wedge under the pointer, always turning forward at least twice", () => {
+    for (const faces of [2, 3]) {
+      let at = 0;
+      for (const spin of [1, faces, 1, 2, faces, 1].filter(value => value <= faces)) {
+        const next = wheelTurn(at, spin, faces);
+        expect(next - at, `${faces} faces, hop ${spin}`).toBeGreaterThanOrEqual(720);
+        // The wheel turned clockwise by `next`, so the wedge centred at c from the top now sits at c + next.
+        const centre = (spin - .5) * 360 / faces;
+        expect(((centre + next) % 360 + 360) % 360).toBeCloseTo(0);
+        at = next;
+      }
+    }
+    expect(wheelTurn(Number.NaN, 9, 3)).toBe(780);
   });
 });

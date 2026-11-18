@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Ear, Play } from 'lucide-react';
+import { Ear, Music2, Play } from 'lucide-react';
 import { selectionHaptic } from '../../../../../lib/native';
 import { subscribeVoice } from '../../../../../lib/voice';
 import { useLanguage } from '../../../../../context/LanguageContext';
@@ -11,7 +11,7 @@ import { useAdventureVoice } from './AdventureGuide';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
-import { BopFriend, BopScene, BopSprite } from './BopArt';
+import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { WOBBLY_DELIVERY_COPY, requestLine, type WobblyDeliveryWords } from './wobblyDeliveryCopy';
 import { ASK_CARD_MS, BLOOM_MS, CARRY_MS, CARRY_STEP_MS, DELIVERY_FRIENDS, DELIVERY_ROUNDS, DELIVERY_TILES, OOPS_MS, THANKS_MS, askMs, cardsStayUp, deliveryPick, requestFor, shelfFor, tileTone, type DeliveryItem } from './wobblyDeliveryRules';
@@ -152,10 +152,12 @@ export default function WobblyDelivery() {
     if (phaseRef.current !== 'fetch') return;
     void selectionHaptic();
     const result = deliveryPick(requestRef.current, deliveredRef.current, item);
-    if (result === 'repeat' || result === 'other') {
+    // A toy already on the rug is not "not yet": it only wobbles, with no line and no sound.
+    if (result === 'repeat') { setWobble(item); if (oopsTimer.current !== null) clearTimeout(oopsTimer.current); oopsTimer.current = setTimeout(() => { oopsTimer.current = null; setWobble(null); }, OOPS_MS); return; }
+    if (result === 'other') {
       // Nothing is lost and nothing locks: the toy wobbles, the hero shrugs
       // it off, and the same request is still waiting.
-      if (result === 'other') setOthers(othersRef.current + 1);
+      setOthers(othersRef.current + 1);
       kidSfx('tryAgain'); setStatus(w.notYet); setTurn(count => count + 1); setWobble(item); setOops(true);
       if (oopsTimer.current !== null) clearTimeout(oopsTimer.current);
       oopsTimer.current = setTimeout(() => { oopsTimer.current = null; setOops(false); setWobble(null); }, OOPS_MS);
@@ -211,8 +213,9 @@ export default function WobblyDelivery() {
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--delivery" data-adventure="delivery" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={roundsDone} total={DELIVERY_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${phase === 'carry' ? 'fetch' : phase}`} onHear={hear} muted={guide.muted || busy}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${phase === 'carry' ? 'fetch' : phase}`} onHear={hear} muted={guide.muted || busy} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage delivery-stage" data-phase={phase} data-shelf={shelf.length}>
+          <BopCheer beat={phase === 'thanks' || phase === 'bloom' ? `${phase}:${roundsDone}` : null} big={phase === 'bloom'} />
           <BopScene scene="scene-delivery" />
           <div className="delivery-board">
             <div className="delivery-shelf" role="group" aria-label={w.shelf}>
@@ -221,15 +224,19 @@ export default function WobblyDelivery() {
                 <BopSprite name={item} />
               </button>)}
             </div>
-            {DELIVERY_TILES.map((tile, index) => <span key={tile} className="delivery-tile" data-tile={index} data-lit={phase === 'carry' && stop === index + 1} aria-hidden="true"><BopSprite name={tile} flat /></span>)}
+            {DELIVERY_TILES.map((tile, index) => <span key={tile} className="delivery-tile" data-tile={index} data-lit={phase === 'carry' && stop === index + 1} aria-hidden="true"><BopSprite name={tile} flat />
+              {/* B-GAME-45: each tile sings as the hero lands on it: a note floats up and a ring spreads. */}
+              {phase === 'carry' && stop === index + 1 && <span className="delivery-note" key={hops}><i className="delivery-note__ring" /><Music2 size={18} /></span>}</span>)}
             <span className="delivery-flower" data-open={phase === 'bloom'} aria-hidden="true">
               <BopSprite name="flower-folded" className="delivery-flower__folded" />
               <BopSprite name="flower-open" className="delivery-flower__open" />
             </span>
             <span className="delivery-rug" aria-hidden="true"><BopSprite name="rest-rug" flat /></span>
             <BopFriend friend={friend} mood={celebrate ? 'happy' : 'idle'} size={46} className="delivery-friend" />
+            {/* One lantern a thing asked for, lit as each one lands on the rug: how far along, at a glance. */}
+            {phase !== 'ready' && phase !== 'bloom' && <span className="delivery-lanterns" aria-hidden="true">{request.map((_, index) => <i key={index} data-on={index < delivered.length || celebrate} />)}</span>}
             <div className="delivery-landed" role="img" aria-label={`${w.rug[round]}: ${delivered.length ? delivered.map(item => w.items[item]).join(w.listJoin) : w.rugEmpty}`}>
-              {delivered.map((item, slot) => <span key={item} data-slot={slot}><BopSprite name={item} /></span>)}
+              {delivered.map((item, slot) => <span key={item} data-slot={slot}><i className="delivery-puff" aria-hidden="true" /><BopSprite name={item} /></span>)}
             </div>
             {phase !== 'ready' && <div className="delivery-cards" data-cards={request.length} role="group" aria-label={w.cards}>
               {request.map((item, index) => {

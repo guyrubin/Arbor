@@ -1,23 +1,15 @@
 /**
- * R17 / LC-05 residue — the Academy hub leads with COURSES on a phone.
+ * R17 / LC-05 residue → v10.1 (N-ForYou-D/M) — the For you hub leads with the
+ * pick, then COURSES, at every width.
  *
- * MEASURED at 390 in round 2b: the first course card's top was 1,675 px
- * (acceptance < 1,500). LC-05 had already deleted two kid-register tiles, but
- * the remaining distance was structural, not content: the two-column shell
- * collapses to one column below `xl`, and the left column is the Learning Map
- * rail — spine ribbon, Academy For You, Scholar Hub, the charter strip and the
- * catalogue progress bar. Five modules that are not courses, stacked between
- * the hero and the catalogue, on the surface whose one job is courses.
- *
- * The fix is order, not deletion (law 6): the gallery is FIRST in the document
- * and returns to the right-hand column at `xl` via `order-*`, and below `md`
- * the rail becomes a single collapsed `<details>` BELOW the gallery. The rail
- * is declared once (`railStack`) and rendered in exactly one of the two slots,
- * so the phone and the desktop can never drift into two different rails.
- *
- * These are source assertions: the acceptance is a rendered pixel measurement
- * the worktree cannot take, so what is pinned here is the structure that
- * produces it. The 390 px re-measure belongs to the orchestrator.
+ * R17 measured the first course card at 1,675 px on a phone because the
+ * Learning Map rail (For You, Scholar Hub, the charter strip) stacked between
+ * the hero and the catalogue. v10 keeps the fix and makes it structural for
+ * both compositions: section 1 is the pick, section 2 is Courses by area (the
+ * desk's side rail beside the pick, the phone's next section), and the rail's
+ * modules sit behind ONE disclosure at the foot of More to read, declared once.
+ * Desktop and phone are two compositions of one tree (useComposition), never
+ * two trees hidden with CSS.
  */
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
@@ -27,65 +19,55 @@ import { en, he } from "../../lib/i18n";
 const SRC = path.resolve(__dirname, "..", "..");
 const source = fs.readFileSync(path.join(SRC, "components", "sections", "Masterclasses.tsx"), "utf8");
 
-/** The main component's returned JSX only — `railStack` and `spineRibbon` are
- *  declared ABOVE it, and the Reader component's markup lives below it, so a
- *  whole-file index comparison would answer a different question. */
+/** The hub's own component only — the course reader lives below it. */
 function hubBody(src: string): string {
-  const start = src.indexOf("  return (");
+  const start = src.indexOf("export default function Masterclasses()");
   const end = src.indexOf("export function MasterclassReader(");
-  expect(start, "the hub's return was not found").toBeGreaterThan(-1);
+  expect(start, "the hub was not found").toBeGreaterThan(-1);
   expect(end, "the Reader component was not found").toBeGreaterThan(start);
   return src.slice(start, end);
 }
 
-/** The predicate the acceptance rests on: in the document the parent's phone
- *  builds, does the course gallery come before the rail? */
-function galleryPrecedesRail(src: string): boolean {
+/** In the returned tree, does the catalogue come before the rail's disclosure? */
+function coursesPrecedeRail(src: string): boolean {
   const body = hubBody(src);
-  const gallery = body.indexOf('data-testid="academy-courses"');
-  const rail = body.indexOf('data-testid="academy-rail"');
-  const disclosure = body.indexOf('data-testid="academy-rail-disclosure"');
-  if (gallery < 0 || rail < 0 || disclosure < 0) return false;
-  return gallery < rail && gallery < disclosure;
+  const tree = body.slice(body.indexOf("  return ("));
+  const pick = tree.indexOf("{pickScene}");
+  const courses = tree.indexOf("{coursesBlock}");
+  const rail = tree.indexOf('data-testid="academy-rail"');
+  if (pick < 0 || courses < 0 || rail < 0) return false;
+  return pick < courses && courses < rail;
 }
 
-describe("R17 · the Academy hub opens on courses", () => {
-  it("the gallery precedes the rail and the disclosure in the document", () => {
-    expect(galleryPrecedesRail(source)).toBe(true);
+describe("R17 → v10 · the For you hub opens on the pick, then courses", () => {
+  it("the pick precedes the courses, and the courses precede the rail's disclosure", () => {
+    expect(coursesPrecedeRail(source)).toBe(true);
   });
 
-  it("NEGATIVE CONTROL: the pre-fix order (rail first) fails the same predicate", () => {
-    // Reproduce what shipped: the rail column emitted before the gallery. The
-    // predicate must reject it, or it is not measuring anything.
+  it("NEGATIVE CONTROL: the rail placed above the courses fails the same predicate", () => {
     const body = hubBody(source);
-    const gallery = body.indexOf('data-testid="academy-courses"');
-    const preFix = source.replace(
-      body,
-      body.slice(0, gallery) +
-        '<div data-testid="academy-rail">…</div>' +
-        body.slice(gallery),
-    );
-    expect(galleryPrecedesRail(preFix)).toBe(false);
+    const tree = body.slice(body.indexOf("  return ("));
+    const at = tree.indexOf("{coursesBlock}");
+    const preFix = source.replace(tree, tree.slice(0, at) + '<details data-testid="academy-rail"></details>' + tree.slice(at));
+    expect(coursesPrecedeRail(preFix)).toBe(false);
   });
 
-  it("nothing that is not a course stands between the hero and the gallery", () => {
-    const body = hubBody(source);
-    const between = body.slice(
-      body.indexOf('data-testid="academy-hub-hero"'),
-      body.indexOf('data-testid="academy-courses"'),
-    );
-    // The hero, the pick why-line and the catalogue header may stand here.
-    // The rail's five modules may not.
-    for (const module of ["<AcademyForYou", "<ScholarHubCard", "{railStack}", "master.progress.count"]) {
-      expect(between, `${module} is still above the gallery`).not.toContain(module);
-    }
-    // B-PLAY-18: no spine ribbon, no stat list, no completion bar — the
-    // hero, the pick (title, why-line, minutes) and the gallery only.
-    expect(between).not.toContain("academy-spine");
-    expect(between).not.toContain("{spineRibbon}");
-    expect(between).not.toContain("<SpineRibbon");
-    expect(between).not.toContain("heroStats");
-    expect(between).toContain('data-testid="academy-pick-minutes"');
+  it("the rail's modules are declared once and rendered once, inside the one disclosure", () => {
+    expect((source.match(/const railStack = \(/g) || []).length).toBe(1);
+    expect((source.match(/\{railStack\}/g) || []).length).toBe(1);
+    const disclosure = source.slice(source.indexOf('data-testid="academy-rail"'), source.indexOf("</details>", source.indexOf('data-testid="academy-rail"')));
+    expect(disclosure).toContain("{railStack}");
+    expect(source).toContain('data-module-disclosure="academy-rail"');
+    const rail = source.slice(source.indexOf("const railStack = ("), source.indexOf("const moreTiles = ("));
+    expect(rail).toContain("<AcademyForYou />");
+    expect(rail).toContain("<ScholarHubCard />");
+  });
+
+  it("one tree for both compositions: the seam is useComposition, never a CSS-hidden second copy", () => {
+    expect(source).toContain("const composition = useComposition();");
+    expect((source.match(/const pickScene = \(/g) || []).length).toBe(1);
+    expect((source.match(/const coursesBlock = \(/g) || []).length).toBe(1);
+    expect(source).not.toMatch(/hidden (md|lg|xl):block|(md|lg|xl):hidden/);
   });
 
   it("B-PLAY-18: no scorekeeping anywhere on the hub — no stat list, no completion bar, no academy-spine module", () => {
@@ -94,59 +76,35 @@ describe("R17 · the Academy hub opens on courses", () => {
     expect(source).not.toContain("master.progress.all");
     expect(source).not.toMatch(/doneCount \/ total/);
     expect(source).not.toContain('data-module="academy-spine"');
-    // "Done" stays on each card.
+    // "Done" stays on each course.
     expect(source).toContain('t("master.done")');
     // NEGATIVE CONTROL: the shipped bar trips the same rule.
     expect('style={{ width: `${(doneCount / total) * 100}%`').toMatch(/doneCount \/ total/);
-  });
-
-  it("the desktop two-column shell is unchanged: rail left, gallery right at xl", () => {
-    expect(source).toContain('xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]');
-    expect(source).toContain('className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses"');
-    expect(source).toContain('className="space-y-5 order-2 xl:order-1" data-testid="academy-rail"');
-  });
-
-  it("the rail is declared once and rendered in exactly one of the two slots", () => {
-    // One definition — a phone and a desktop cannot show two different rails.
-    expect((source.match(/const railStack = \(/g) || []).length).toBe(1);
-    expect((source.match(/\{railStack\}/g) || []).length).toBe(2);
-    // …and the two placements are mutually exclusive.
-    const body = hubBody(source);
-    expect(body).toContain("{!phone && (");
-    expect(body).toContain("{phone && (");
-    expect(body).toContain('<details data-testid="academy-rail-disclosure"');
-  });
-
-  it("the phone seam is a media query, not a device sniff", () => {
-    expect(source).toContain('const PHONE_QUERY = "(max-width: 767.98px)"');
-    expect(source).toContain("useSyncExternalStore(subscribePhone, readPhone, () => false)");
   });
 
   it("the disclosure names what it holds, in both languages, with a 44 px summary", () => {
     expect(en["academy.rail.more"]).toBeTruthy();
     expect(he["academy.rail.more"]).toBeTruthy();
     expect(he["academy.rail.more"]).not.toBe(en["academy.rail.more"]);
-    // Hebrew is transcreated, not transliterated: it must be Hebrew script.
     expect(he["academy.rail.more"]).toMatch(/[֐-׿]/);
     const summary = /<summary[\s\S]{0,400}?>/.exec(source)?.[0] ?? "";
     expect(summary).toContain("minHeight: 44");
   });
 });
 
-describe("W2 — reading catalogue hierarchy", () => {
-  it("has one catalogue h1 and no decorative course roof", () => {
+describe("v10 — reading hierarchy", () => {
+  it("one h1, the pick's title, above the pick's one move; the catalogue maps the age-fit courses", () => {
     const body = hubBody(source);
     expect(body.match(/<h1[\s>]/g)).toHaveLength(1);
-    expect(body).not.toContain("height: 74");
     expect(body).not.toContain("<ProgressBar");
-    expect(body.indexOf("todaysRead.card.title")).toBeLessThan(body.indexOf('data-testid="academy-hero-cta"'));
-    expect(body).toContain("catalog.map((c)");
+    expect(body.indexOf('<h1 className="hero"')).toBeLessThan(body.indexOf('data-testid="academy-hero-cta"'));
+    expect(body).toContain("const courseList = catalog.filter(");
+    expect(body).toContain("shownCourses.map((c)");
   });
 });
 
-/* W2-SHELLPLAY critic r2 (G0): the rail heading said "Learning Map — Courses
- * matched to where Dylan is growing." over the no-signal branch, where nothing
- * is matched (the FU#23 claim B-PLAY-18 cut from the SpineRibbon). */
+/* W2-SHELLPLAY critic r2 (G0): the rail heading claims a match only where one
+ * exists — it renders inside the signal branch, and names the pick. */
 describe("W2-SHELLPLAY r2 · the rail heading claims a match only where one exists", () => {
   const code = source.replace(/\r\n/g, "\n").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
   const signal = code.indexOf("devMapHasSignal(devScore) ? (");
@@ -168,7 +126,6 @@ describe("W2-SHELLPLAY r2 · the rail heading claims a match only where one exis
       expect(d["academy.learnMap.title"]).not.toMatch(/Map|מפת/);
       expect(d["academy.learnMap.sub"]).toBeUndefined();
     }
-    // NEGATIVE CONTROL: the r1 heading is caught
     expect("Learning Map").toMatch(/Map|מפת/);
   });
 });

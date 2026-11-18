@@ -10,8 +10,10 @@ const context = read("context/ArborContext.tsx");
 describe("B-ASKJB-23: one capture and one record", () => {
   it("retires the duplicate capture writer and record grid", () => {
     expect(behaviors).not.toMatch(/\bnewLog\w*|\bsetNewLog\w*|<ConfirmCaptureReview|<motion\.form|pendingCaptureMode|grouped\.map/);
-    expect(behaviors).toContain('onText={() => openCaptureSheet({ mode: "text" })}');
-    expect(behaviors).toContain('onMode={(mode) => openCaptureSheet({ mode })}');
+    // v10.1: one log button opens the one capture sheet; voice and photo are
+    // the dock's (CompanionWorkspace), the same sheet in those modes.
+    expect(behaviors).toContain('data-testid="behaviors-log-hard" onClick={() => openCaptureSheet({ mode: "text" })}');
+    expect(read("components/companion/CompanionWorkspace.tsx")).toContain("openCaptureSheet({ mode });");
   });
   it("opens Journal hard moments rather than the shelves landing", () => {
     expect(behaviors).toContain('requestJournalFilter("hard")');

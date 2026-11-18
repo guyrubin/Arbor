@@ -38,7 +38,7 @@ describe("B-KID-52: origin and ages per story", () => {
   it("the kid catalogue card prints no age chip (the age view already chose the list)", () => {
     const tab = readFileSync(path.resolve(__dirname, "..", "components", "tabs", "HeroJourneyTab.tsx"), "utf8");
     // B-KID-85: the kid branch is KidLibrary — neither it nor its cover prints an age.
-    const kid = tab.slice(tab.indexOf("return kidMode ? ("), tab.indexOf(") : (\n      <div className=\"space-y-6 max-w-[1100px]\">"));
+    const kid = tab.slice(tab.indexOf("return kidMode ? ("), tab.indexOf(") : (\n      <DsRoot composition={composition} className=\"ds-mychild stories-v10\""));
     expect(kid).toContain("<KidLibrary");
     expect(kid).not.toContain("{story.ageRange[0]}–{story.ageRange[1]}");
     for (const f of ["KidLibrary.tsx", "KidBookCover.tsx"]) {

@@ -15,6 +15,11 @@
  * landing's modules.
  */
 import React from "react";
+import { treeElements } from "./elementTree.testutil";
+import VisitsComposition from "../care/v10/VisitsComposition";
+import VisitTimeline from "../care/v10/VisitTimeline";
+import { DsRoot } from "../../design/primitives";
+import { careCopy } from "../care/v10/careV10Copy";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ts from "typescript";
@@ -75,6 +80,8 @@ const collection = (name: string) => ({
 const env = {
   React, AskSpecialist, CareVisitHead, CareAside, CareShared, Icon, HomeProgramDays: () => null, HomeProgramEntry: () => null,
   visitForConsult, consultAudienceForProfession, appointmentStatus, makeFollowUp,
+  // design v10.1: the Visits composition (AskSpecialist's layout), its timeline, the root and the scene's counts
+  VisitsComposition, VisitTimeline, DsRoot, useComposition: () => "desk", reportsLeadCounts: () => ({ moments: 0, milestones: 0, sinceMs: 0 }),
   useRef: (initial: unknown) => slots[cursor++] ??= { current: initial },
   useState: (initial: unknown) => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], (value: unknown) => { slots[i] = value; }]; },
   useMemo: (calculate: () => unknown) => calculate(),
@@ -87,18 +94,13 @@ const env = {
   useChildCollection: (_child: string, name: string) => collection(name),
   // the real open-loop rule: a follow-up for the visit closes it
   visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,
-  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", lowerFor: (_lang: string, value: string) => value,
+  appointmentRoleLabel: () => "Speech therapist", fmtDay: () => "date", fmtDayV10: () => "date", careCopy, lowerFor: (_lang: string, value: string) => value,
   homeProfessionForAppointment: () => "slp", nextVisitDayFor: () => null,
 };
 const component = new Function(...Object.keys(env), code)(...Object.values(env));
 
 type El = React.ReactElement<Record<string, any>>;
-function elements(node: React.ReactNode): El[] {
-  if (Array.isArray(node)) return node.flatMap(elements);
-  if (!React.isValidElement<Record<string, any>>(node)) return [];
-  const element = node as El;
-  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
-}
+const elements = (node: React.ReactNode): El[] => treeElements(node) as El[];
 function render(): El[] { cursor = 0; return elements(component({ query: new URLSearchParams(""), isOwnerCurrent: () => true })); }
 const byId = (all: El[], id: string) => all.find((el) => el.props["data-testid"] === id || el.props.id === id);
 const save = (all: El[]) => byId(all, "consult-visit-outcome-save")!;
@@ -259,11 +261,13 @@ describe("v3 EXTRA-CARE · only #/consult is the landing", () => {
     const all = render();
     expect(all.filter((el) => el.type === CareAside)).toHaveLength(1);
     expect(all.filter((el) => el.type === CareShared)).toHaveLength(1);
-    const card = byId(all, "consult-visit-card")!;
-    expect(card.type).toBe("section");
-    const inCard = elements(card.props.children);
-    expect(inCard.filter((el) => el.type === AskSpecialist)).toHaveLength(1);
-    expect(inCard.find((el) => el.type === AskSpecialist)!.props.landing).toBe(true);
+    // design v10.1: the builder lays its parts out through the Visits
+    // composition (the visit card is its section 1, rendered there).
+    const builders = all.filter((el) => el.type === AskSpecialist);
+    expect(builders).toHaveLength(1);
+    expect(builders[0].props.landing).toBe(true);
+    expect(builders[0].props.layout.component).toBe(VisitsComposition);
+    expect(builders[0].props.layout.props.landing).toBe(true);
     expect(all.filter((el) => el.props["data-module"]).map((el) => el.props["data-module"])).toEqual(["consult-packet"]);
   });
 });

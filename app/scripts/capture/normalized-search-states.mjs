@@ -116,22 +116,16 @@ export async function collectNormalizedSearchStates(h) {
     check(cell, 'MARKS_ONLY_VISIBLE_NO_MATCH_STATE', await noMatches.isVisible());
     cell.normalizedEmptyBoundary = 'global-private-record-non-enumeration; normalized-empty-query-has-no-Ask-prefill';
     await globalInput().fill('');
-    // The topbar deliberately closes its overlay for a truly empty input.
-    // Empty public commands live in the existing Ctrl+K modal on both sizes.
-    if (!mobile) {
-      await surface().waitFor({ state: 'detached' });
-      check(cell, 'DESKTOP_TRUE_EMPTY_DISMISSES_EXISTING_OVERLAY', await globalInput().getAttribute('aria-expanded') === 'false');
-      await page.keyboard.press('Control+k');
-    }
-    const commands = page.getByRole('dialog');
-    await commands.locator('button.group').filter({ has: page.getByText(he ? 'פגישות' : 'Appointments', { exact: true }) }).waitFor({ state: 'visible' });
+    // v10 "Jump to or ask": a truly empty input is the jump map on both sizes
+    // (every pill of every home, as chips under its home): the topbar keeps its
+    // overlay open, the phone keeps its dialog. It lists no private record.
+    const commands = surface();
+    const visits = he ? 'ביקורים' : 'Visits';
+    await commands.getByText(visits, { exact: true }).first().waitFor({ state: 'visible' });
+    if (!mobile) check(cell, 'DESKTOP_TRUE_EMPTY_SHOWS_JUMP_MAP', await globalInput().getAttribute('aria-expanded') === 'true');
     const publicText = await commands.innerText();
     check(cell, 'TRUE_EMPTY_PUBLIC_COMMANDS_KEEP_THREE_PLACES', (he ? ['עכשיו', 'הילד שלי', 'ביחד'] : ['Now', 'My child', 'Together']).every(label => publicText.includes(label)) && fixture.collections.behaviorLogs.every(row => !publicText.includes(row.trigger)));
     check(cell, 'NO_RETIRED_HUB_LABELS_IN_PUBLIC_COMMANDS', !/Journal & Memories|יומן וזיכרונות/.test(publicText));
-    if (!mobile) {
-      await commands.getByRole('button', { name: he ? 'סגור' : 'Close', exact: true }).click();
-      await commands.waitFor({ state: 'detached' });
-    }
     await globalInput().fill(Q.empty); await noMatches.waitFor({ state: 'visible' });
     await frame(cell, 'MARKS_ONLY_QUERY_INPUT_REACHABLE', globalInput());
   });

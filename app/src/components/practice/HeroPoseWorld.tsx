@@ -99,9 +99,9 @@ export default function HeroPoseWorld() {
             reading of the child's identity. */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-3">
           <HeroAvatar size={88} mood="cheer" alt={t("elev.kids.pose.heroAlt", { name: first, pose: poseName })} />
-          <span className="text-[4.5rem] leading-none" aria-hidden="true">{pose.emoji}</span>
+          <span className="text-[34px] leading-none" aria-hidden="true">{pose.emoji}</span>
         </div>
-        <h2 className="font-black text-[1.7rem]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>
+        <h2 className="font-black text-[26px]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>
         <p className="text-[15px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{poseCue}</p>
         <p className="play-story-caption text-[13px] font-semibold mt-3">{adaptedCue}</p>
       </div>

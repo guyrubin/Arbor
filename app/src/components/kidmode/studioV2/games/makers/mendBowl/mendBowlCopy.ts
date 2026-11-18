@@ -6,18 +6,28 @@
  * The story is the valley's own, told by what happens and never as a lesson:
  * a bowl slips in Chock's workshop, it is put right, and the mend is left
  * showing. Every cue is eight words or fewer. Blanks (`{0}`) are filled in
- * by the game. */
+ * by the game.
+ *
+ * The Game Cut: the cues are spoken by the host in the HUD (Chock, whose
+ * table it is; Bebe when his ClearPatch roller comes out). `where` and the
+ * `quest*` names are the opening lockup and the three chapters. */
 export const MEND_BOWL_COPY = {
   en: {
     title: 'Mend the Bowl', description: 'Gold fills the cracks.',
     instruction: 'At the Wonderworks table with Bebe and Chock: choose a glaze, fit the pieces together, then roll gold along the cracks.',
-    choose: 'Choose a glaze for the bowl.', chooseNext: 'Tap a dish of glaze. Then press Ready.', ready: 'Ready',
+    where: 'Wonderworks · Chock’s table', welcome: 'A tea bowl, fresh from the kiln.',
+    questName: 'Three jobs', questGlaze: 'Glaze', questFit: 'Fit', questGold: 'Gold',
+    choose: 'Touch a dish. Pick its glaze.', chooseThen: 'Lovely. Now lift it to the light.', chooseNext: 'Touch a dish of glaze. Then lift the bowl.', ready: 'Lift it up',
     glazes: 'Glaze', glazeNames: { celadon: 'Celadon', indigo: 'Indigo', rose: 'Rose', cream: 'Cream' },
-    broke: 'Oh — it slipped. Let’s mend it.', brokeNext: 'Chock kept every piece.',
-    fit: 'Find where each piece belongs.', fitFirst: 'Drag a piece to its place.',
+    broke: 'Oh — it slipped. We can mend it.', brokeNext: 'Chock kept every piece.',
+    fit: 'Every piece has its place.', fitFirst: 'Drag a piece to its place.',
     fitTurn: 'Turn it until it fits.', fitPlace: 'Now put it in its place.', fitMore: 'Click. Now the next piece.',
-    gold: 'Now roll gold along each crack.', goldFirst: 'Run Bebe’s ClearPatch roller along a crack.', goldFlow: 'ClearPatch leaves a seam that shows.', goldMore: 'Now another crack.',
+    whole: 'Whole again. Now for the cracks.', wholeToast: 'Whole again',
+    gold: 'Roll my ClearPatch along a crack.', goldFirst: 'Run Bebe’s ClearPatch roller along a crack.', goldFlow: 'ClearPatch leaves a seam that shows.', goldMore: 'Now another crack.',
+    goldToast: 'Gold in every crack',
     admire: 'Mended. The seams are meant to show.', admireNext: 'A ClearPatch mend always shows.',
+    tea: 'Now it can hold tea again.', lit: 'Look how the gold catches the light.',
+    secret: 'A petal for the tea', hostPat: 'Chock is watching every piece.',
     finish: 'Mended. The seams are meant to show.', transfer: 'Away from the screen: look for something that was mended once — a patched sleeve, a glued cup, a sewn-up toy.',
     keep: 'Your mended bowl',
     stage: 'The bowl on the workshop table', piece: 'Piece {0}', upright: 'upright', tilted: 'tilted', placed: 'in place', chosen: 'chosen',
@@ -29,13 +39,19 @@ export const MEND_BOWL_COPY = {
   he: {
     title: 'מתקנים את הקערה', description: 'זהב ממלא את הסדקים.',
     instruction: 'ליד שולחן הסדנה, יחד עם בבה וצ׳וק: בוחרים זיגוג, מחברים את השברים, ואז מגלגלים זהב לאורך הסדקים.',
-    choose: 'בוחרים זיגוג לקערה.', chooseNext: 'נוגעים בצלוחית של זיגוג. ואז לוחצים על מוכנים.', ready: 'מוכנים',
+    where: 'וונדרוורקס · השולחן של צ׳וק', welcome: 'קערת תה, ישר מהתנור.',
+    questName: 'שלוש משימות', questGlaze: 'זיגוג', questFit: 'חיבור', questGold: 'זהב',
+    choose: 'נוגעים בצלוחית. בוחרים זיגוג.', chooseThen: 'יפה. עכשיו מרימים אותה אל האור.', chooseNext: 'נוגעים בצלוחית של זיגוג. ואז מרימים את הקערה.', ready: 'מרימים',
     glazes: 'זיגוג', glazeNames: { celadon: 'ירוק סלדון', indigo: 'כחול אינדיגו', rose: 'ורוד', cream: 'שמנת' },
-    broke: 'אוי, היא החליקה. בואו נתקן אותה.', brokeNext: 'צ׳וק שמר על כל השברים.',
-    fit: 'מחפשים לכל שבר את המקום שלו.', fitFirst: 'גוררים שבר למקום שלו.',
+    broke: 'אוי, היא החליקה. אפשר לתקן אותה.', brokeNext: 'צ׳וק שמר על כל השברים.',
+    fit: 'לכל שבר יש מקום משלו.', fitFirst: 'גוררים שבר למקום שלו.',
     fitTurn: 'מסובבים עד שהוא מתאים.', fitPlace: 'עכשיו מניחים אותו במקום שלו.', fitMore: 'קליק. עכשיו השבר הבא.',
-    gold: 'עכשיו מגלגלים זהב לאורך כל סדק.', goldFirst: 'מעבירים את גלגלת התיקון של בבה לאורך סדק.', goldFlow: 'התפר נשאר גלוי, וזה בכוונה.', goldMore: 'עכשיו סדק נוסף.',
+    whole: 'שוב שלמה. עכשיו הסדקים.', wholeToast: 'שוב שלמה',
+    gold: 'מגלגלים את גלגלת התיקון שלי לאורך סדק.', goldFirst: 'מעבירים את גלגלת התיקון של בבה לאורך סדק.', goldFlow: 'התפר נשאר גלוי, וזה בכוונה.', goldMore: 'עכשיו סדק נוסף.',
+    goldToast: 'זהב בכל סדק',
     admire: 'מתוקנת. התפרים נועדו להיראות.', admireNext: 'תיקון כזה תמיד רואים.',
+    tea: 'עכשיו שוב אפשר למזוג בה תה.', lit: 'איך הזהב תופס את האור.',
+    secret: 'עלה כותרת לתה', hostPat: 'צ׳וק שומר על כל שבר.',
     finish: 'מתוקנת. התפרים נועדו להיראות.', transfer: 'הרחק מהמסך: מחפשים משהו שתוקן פעם — שרוול עם טלאי, ספל שהודבק, בובה שנתפרה.',
     keep: 'הקערה שתיקנת',
     stage: 'הקערה על שולחן הסדנה', piece: 'שבר {0}', upright: 'ישר', tilted: 'עקום', placed: 'במקום', chosen: 'נבחר',

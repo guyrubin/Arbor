@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react';
 import type { TextileFlower } from './stitchGardenRules';
 import { CLOTH_R, HOOP_CX, HOOP_CY, motifStitches } from './stitchGardenStitches';
-import { AYA_GLAD, BUD, TABLE, WATERING_CAN } from './stitchGardenKit';
+import { FERN, PINCUSHION, TABLE } from './stitchGardenKit';
 import { MotifThreads } from './StitchArt';
 import '../makerPalette.css';
 
@@ -15,8 +15,8 @@ const WOOD_LIGHT = 'color-mix(in srgb, var(--mk-wood-light) 48%, var(--mk-white)
 const WOOD_SHADE = 'color-mix(in srgb, var(--mk-wood) 58%, var(--mk-steel-dark))';
 
 /** Stitch Garden cover, a kit picture: Aya's round linen table from above
- * (`scene-table`), the hoop on it with three stitched flowers, Aya beside it
- * with her watering can and the bud that would not hurry. One clear subject,
+ * (`scene-table`), the hoop on it with three stitched flowers, her fern and
+ * the knit pincushion beside it, all seen from straight above. One clear subject,
  * no text; fills its box (the box sets the size). */
 export default function StitchGardenCover({ size = 'tile' }: { size?: 'tile' | 'card' }) {
   const raw = useId(), id = raw.replace(/:/g, '');
@@ -45,10 +45,10 @@ export default function StitchGardenCover({ size = 'tile' }: { size?: 'tile' | '
     <rect x={cx - 11} y={cy - hoop - 24} width="9" height="18" rx="3" fill={`url(#${id}wood)`} /><rect x={cx + 2} y={cy - hoop - 24} width="9" height="18" rx="3" fill={`url(#${id}wood)`} />
     <rect x={cx - 22} y={cy - hoop - 20} width="46" height="7" rx="3.5" fill={`url(#${id}brass)`} />
     <circle cx={cx + 28} cy={cy - hoop - 16.5} r="7.5" fill={`url(#${id}brass)`} />
-    {/* Aya with her watering can on one side, the bud on the other. */}
-    <image href={BUD[2].src480 ?? BUD[2].src} x="322" y="6" width="62" height={62 * BUD[2].height / BUD[2].width} />
-    <image href={WATERING_CAN.src} x="6" y="12" width="84" height={84 * WATERING_CAN.height / WATERING_CAN.width} />
-    <ellipse cx="62" cy="290" rx="34" ry="7" style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 24%, transparent)' }} />
-    <image href={AYA_GLAD.src} x="-22" y="128" width="168" height="168" />
+    {/* Seen from above like the table: the fern at the far corner, the knit pincushion by the hoop. */}
+    <ellipse cx="368" cy="46" rx="42" ry="30" style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 22%, transparent)' }} />
+    <image href={FERN.src} x="296" y="-34" width="128" height={128 * FERN.height / FERN.width} />
+    <ellipse cx="58" cy="262" rx="30" ry="22" style={{ fill: 'color-mix(in srgb, var(--mk-shadow) 22%, transparent)' }} />
+    <image href={PINCUSHION.src} x="22" y="222" width="66" height={66 * PINCUSHION.height / PINCUSHION.width} />
   </svg>;
 }

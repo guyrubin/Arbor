@@ -82,8 +82,11 @@ export default function Sidebar() {
         <p className="text-[24px] font-semibold leading-none" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>Arbor</p>
       </div>
 
-      {/* Child profile card */}
-      <ProfileSwitcher />
+      {/* Child profile card. v10 (canvas V77): a hairline under the switcher sets
+          the child apart from the three places, as the N-*-D boards draw it. */}
+      <div className="pb-5 -mb-1" style={{ borderBottom: "1px solid var(--arbor-rule)" }}>
+        <ProfileSwitcher />
+      </div>
 
       <nav aria-label={t("elev.sidebar.nav.aria")} className="flex flex-col gap-1 flex-1">
         {COMPANION_PLACES.map(place => {
@@ -92,7 +95,7 @@ export default function Sidebar() {
             className="flex items-start gap-3 rounded-2xl px-3 py-3 text-start min-h-11 transition-colors"
             style={{ background: active ? "var(--arbor-clay-dim)" : "transparent", color: active ? "var(--arbor-clay-deep)" : "var(--arbor-ink)" }}>
             <Icon name={place.icon} size={24} chrome active={active} />
-            <span><span className="block text-[15.5px] font-bold">{he ? place.he : place.en}</span>
+            <span><span className="block text-[15px] font-bold">{he ? place.he : place.en}</span>
               <span className="block mt-1 text-xs leading-snug" style={{ color: "var(--arbor-muted)" }}>{he ? place.detailHe : place.detailEn}</span></span>
           </button>;
         })}
@@ -121,7 +124,7 @@ export default function Sidebar() {
       {/* v3 F-SHELL-2 (critic ruling 12): the account row is ONE button that
           opens Settings through the settings bus (B-SHELL-23: Shell's one
           SettingsModal, same Kid Mode gate as the More sheet's Settings row).
-          It shows the parent's avatar, name and plan, and a settings glyph; no
+          It shows the parent's avatar, name and plan, and the sliders glyph; no
           email in chrome and no popover. Sign out and the language switch live
           in Settings (OBJ-SHELL-02: languageSettingsCanonical.test.ts fails on
           any setUiLang call outside SettingsModal). The plan line prints
@@ -141,7 +144,8 @@ export default function Sidebar() {
             <span className="block text-[13px] font-bold truncate" style={{ color: "var(--arbor-ink)" }}>{user?.displayName || t("nav.parent")}</span>
             {planKey && <span data-testid="sidebar-plan" className="block text-xs truncate" style={{ color: "var(--arbor-muted)" }}>{t(planKey)}</span>}
           </span>
-          <Icon name="settings" size={18} style={{ color: "var(--arbor-muted)" }} />
+          {/* V77: the boards draw the sliders glyph here, not a gear. */}
+          <Icon name="tune" size={18} style={{ color: "var(--arbor-muted)" }} />
           <span className="sr-only">{t("nav.popover.settings")}</span>
         </button>
       </div>

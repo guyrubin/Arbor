@@ -19,6 +19,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 
 const h = vi.hoisted(() => ({
+  // v10.3: the area the index has selected (via ?aspect=, as a link would).
+  aspect: null as null | string,
   locale: "he" as "en" | "he",
   pending: [] as unknown[],
   approved: [] as unknown[],
@@ -52,18 +54,24 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Noa" }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));
+vi.mock("../../hooks/useHashQuery", async (orig) => ({ ...(await orig<typeof import("../../hooks/useHashQuery")>()), useHashQuery: () => new URLSearchParams(h.aspect ? `aspect=${h.aspect}` : ""), useHashRouteKey: () => "profile" }));
+vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
 vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
+// v10: this suite reads the desktop composition (the phone's is ChildProfile.layout.test's).
+vi.mock("../../design/useComposition", () => ({ useComposition: () => "desk" }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: () => ({ items: [], loaded: true, upsert: async () => {}, remove: async () => {} }),
 }));
 
 import ChildProfile from "./ChildProfile";
+import { aboutCopy } from "../about/aboutViewCopy";
 import PhysicalGrowthCard from "./PhysicalGrowthCard";
 
 const text = (html: string) =>
   html.replace(/<span class="msr\b[^"]*"[^>]*>[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
 
 beforeEach(() => {
+  h.aspect = null;
   h.locale = "he";
   h.pending = [];
   h.approved = [{ memoryId: "a1", fact: "Noa answers in Hebrew when tired", status: "approved", createdAt: "2026-09-02T10:00:00.000Z", source: "chat", retention: "90d" }];
@@ -71,7 +79,13 @@ beforeEach(() => {
   h.factsAsOf = undefined;
 });
 
-const area = (html: string, id: string) => html.slice(html.indexOf(`data-testid="about-aspect-${id}"`), html.indexOf("</article>", html.indexOf(`data-testid="about-aspect-${id}"`)));
+// v10.3: one area shows at a time (the index selects it); render the page with that area selected.
+const area = (_html: string, id: string) => {
+  h.aspect = id;
+  const html = renderToStaticMarkup(<ChildProfile />);
+  h.aspect = null;
+  return html.slice(html.indexOf(`data-testid="about-aspect-${id}"`), html.indexOf('class="line about-area-acts"', html.indexOf(`data-testid="about-aspect-${id}"`)));
+};
 const detailsLine = (html: string) => html.slice(html.indexOf('data-testid="profile-identity-line"'), html.indexOf("</span>", html.indexOf('data-testid="profile-identity-line"')));
 
 describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
@@ -87,10 +101,11 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
     expect(roles).toContain("אנגלית");
     expect(s).not.toMatch(/\bMoment\b/);
   });
-  it("each Details segment is its own bidi island (name · age · birth date)", () => {
+  it("each Details segment is its own bidi island (name · birth date · languages; the age is in the heading)", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const line = detailsLine(html);
     expect(line).toContain('<bdi dir="auto">Noa</bdi>');
+    // v10.3: name · birth date · languages; "Noa · 5 years" is the row's heading
     expect(line.match(/<bdi dir="auto">/g)!.length).toBe(3);
     expect(text(line)).toContain("2023");
   });
@@ -109,7 +124,7 @@ describe("#/profile Hebrew page — no Latin chrome (Law 8)", () => {
       h.locale = loc;
       const school = text(area(renderToStaticMarkup(<ChildProfile />), "school")).replace(/\s+/g, " ");
       expect(school).toContain("City kindergarten, first year");
-      expect(school).toMatch(loc === "en" ? /In your words · Sep 1, 2026/ : /מהמילים שלכם · [^·]*2026/);
+      expect(school).toMatch(loc === "en" ? /In your words · (Tue 1 Sep|1 Sep 2026)/ : /מהמילים שלכם · [^·]*1 בספט/);
     }
   });
 });
@@ -161,8 +176,11 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     const html = renderToStaticMarkup(<ChildProfile />);
     const lang = text(area(html, "lang")).replace(/\s+/g, " ");
     expect(lang).toContain("Noa answers in Hebrew when tired");
-    expect(lang).toContain("Noted · Sep 2, 2026");
-    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
+    expect(lang).toMatch(/Noted · (Wed 2 Sep|2 Sep 2026)/);
+    // once on the page face; "What the coach sees" names the approved facts that
+    // travel with a question verbatim (GP-14), which is a disclosure, not a quote
+    const face = html.replace(/<section[^>]*data-testid="coach-contract-panel"[\s\S]*?<\/section>/, "");
+    expect(face.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
     expect(html).not.toMatch(/\d+ (child|children|family members?|captured moments)/);
   });
   it("nothing approved, nothing pending: the voice door is the stamped zero state; the count line counts told areas only", () => {
@@ -182,32 +200,34 @@ describe("#/profile — the cut chapters, the count line and the dated areas", (
     expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     expect(html).toMatch(/data-testid="about-voice" data-primary-move="capture-moment"/);
     expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
-    expect(html.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
+    const face = html.replace(/<section[^>]*data-testid="coach-contract-panel"[\s\S]*?<\/section>/, "");
+    expect(face.split("Noa answers in Hebrew when tired").length - 1).toBe(1);
   });
-  // v4 re-pin (supersedes review r1's sentence-under-the-door): proposals no
-  // area shows wait IN What Arbor remembers, each with Remember / Not this, the
-  // first three on the page and the rest one tap away on #/memory. The badge
-  // counts facts waiting in the ledger (never anything about the child); the
-  // door stays the ONE door and the page keeps its one primary move.
-  it("v4: proposals no area shows wait in What Arbor remembers (first three), counted as facts waiting; one door, one stamp (EN + HE)", () => {
+  // v4 → v10 re-pin: proposals no area shows wait in Arbor's notebook (the
+  // stage card, then "Also waiting"), each with Remember / Not this, the
+  // first four on the page and the rest one tap away in the ledger. The figure
+  // counts notes waiting (never anything about the child), with its unit in
+  // words; the door stays the ONE door and the page keeps its one primary move.
+  it("v10.3: proposals no area shows wait in the notebook (first four), counted as notes waiting; one door, one stamp (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
-      h.pending = [1, 2, 3, 4].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
+      h.pending = [1, 2, 3, 4, 5].map((n) => ({ memoryId: `p${n}`, fact: `fact ${n}`, status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }));
       const html = renderToStaticMarkup(<ChildProfile />);
-      expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(3);
-      expect(text(html)).toContain(translate(locale, "companion.about.memory.waiting", { n: 4 }));
-      if (locale === "he") expect(translate("he", "companion.about.memory.waiting", { n: 4 })).not.toMatch(/[A-Za-z]/);
+      expect(html.match(/data-testid="about-memory-pending"/g)).toHaveLength(4);
+      const unit = aboutCopy(locale).figWaiting;
+      expect(html).toContain(`<b>5</b><span>${unit}`);
+      if (locale === "he") expect(unit).not.toMatch(/[A-Za-z]/);
       expect(html).not.toContain('data-testid="about-memory-waiting"');
       expect(html.match(/data-testid="profile-remember-check"/g)).toHaveLength(1);
       expect(html.match(/data-primary-move=/g)).toHaveLength(1);
     }
   });
-  it("the first fold is the describe card → the eight areas → Details (EN + HE)", () => {
+  it("the route reads top to bottom: the band (tell box, index) → the area → the child (EN + HE)", () => {
     for (const locale of ["en", "he"] as const) {
       h.locale = locale;
       h.pending = [{ memoryId: "p1", fact: "fact 1", status: "pending", createdAt: "2026-10-02T10:00:00.000Z", source: "chat", retention: "90d" }];
       const html = renderToStaticMarkup(<ChildProfile />);
-      const order = ['data-module="about-describe"', 'data-testid="about-told-line"', 'data-testid="about-voice"', 'data-testid="about-write"', 'data-module="about-aspects"', 'data-testid="profile-remember-check"', 'data-module-disclosure="about-details"'].map((m) => html.indexOf(m));
+      const order = ['data-module="about-aspects"', 'data-testid="about-voice"', 'data-testid="about-write"', 'data-testid="about-area-index"', 'data-testid="about-told-line"', 'data-module="about-answer"', 'data-module="about-told"', 'data-module-disclosure="about-details"', 'data-testid="profile-remember-check"'].map((m) => html.indexOf(m));
       expect(order.every((at) => at > -1)).toBe(true);
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       expect(html).not.toContain(translate(locale, "cp.askAbout", { name: "Noa" }));
@@ -255,7 +275,7 @@ describe("P1-NEXTLEVEL critic r2 — an identity fact is never undated", () => {
         for (const id of ["school", "lang"]) {
           const src = text(area(html, id)).replace(/\s+/g, " ");
           expect(src, id).toContain(lead.trim());
-          expect(src, id).toMatch(/2026/);
+          expect(src, id).toMatch(/\d{1,2} (\S+)/); // V77 day-first: the day, then the month
         }
         // every told area is dated, so the count line says so
         expect(text(html.replace(/&#x27;/g, "'")).replace(/\s+/g, " ")).toContain(translate(loc, "companion.about.toldMany", { n: 2 }));

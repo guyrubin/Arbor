@@ -29,7 +29,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROUTE_IDS, HASH_ALIASES, RETIRED_ROUTES, SUB_ROUTES, hashQuery, resolveRouteId } from "./routes";
-import { SECTIONS, hubTabsForSection } from "./navigation";
+import { HOME_PILLS, SECTIONS, hubTabsForSection } from "./navigation";
 import { UNSEARCHABLE_ROUTES, getSearchIndex } from "./searchIndex";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -54,6 +54,8 @@ export function navigationTargets(code: string): Set<string> {
     /setActiveTab\(\s*["']([a-z][a-z0-9-]*)["']/g,
     /\btab:\s*["']([a-z][a-z0-9-]*)["']\s*(?:as const)?/g,
     /\bonFollow=\{\(\) => setActiveTab\(["']([a-z][a-z0-9-]*)["']\)/g,
+    // goToRoute is navigation too (a route with its query, e.g. the journal's Moments door).
+    /\bgoToRoute\(\s*["']([a-z][a-z0-9-]*)["']/g,
   ]) {
     for (const m of src.matchAll(re)) out.add(m[1]);
   }
@@ -126,7 +128,8 @@ function registryAliases(): Set<string> {
 }
 
 describe("IA-09 — every non-pill route has a real entry point", () => {
-  const pills = new Set<string>(SECTIONS.flatMap((s) => hubTabsForSection(s).map((i) => i.tab)));
+  // v10: a home's pill row (HOME_PILLS) is a real door too — Family plan's only door is its Now pill.
+  const pills = new Set<string>([...SECTIONS.flatMap((s) => hubTabsForSection(s).map((i) => i.tab)), ...Object.values(HOME_PILLS).flat().map((i) => i.tab)]);
   const files = [...walk(path.join(SRC, "components")), ...walk(path.join(SRC, "hooks")), ...walk(path.join(SRC, "context"))]
     .filter((f) => !/[\\/]layout[\\/]Shell\.tsx$/.test(f));
   const callSites = new Set<string>();
@@ -145,11 +148,11 @@ describe("IA-09 — every non-pill route has a real entry point", () => {
     // Rewrite one real navigation out of a real component and the scanner
     // stops seeing it — so an empty result above means "nothing navigates
     // here", not "the regexes matched nothing at all".
-    // v4 re-pin: About's door to #/memory lives in the What Arbor remembers card.
-    const current = read("components/about/AboutMemoryCard.tsx");
-    expect(navigationTargets(current).has("memory")).toBe(true);
-    const preFix = current.replace(/setActiveTab\("memory"\)/g, 'setActiveTab("profile")');
-    expect(navigationTargets(preFix).has("memory")).toBe(false);
+    // v10 re-pin: About's last-visit line navigates to #/appointments (Visits).
+    const current = read("components/about/AboutLastVisit.tsx");
+    expect(navigationTargets(current).has("appointments")).toBe(true);
+    const preFix = current.replace(/setActiveTab\("appointments"\)/g, 'setActiveTab("profile")');
+    expect(navigationTargets(preFix).has("appointments")).toBe(false);
   });
 
   it("the registry alias detector finds the known retired doors and nothing bogus", () => {

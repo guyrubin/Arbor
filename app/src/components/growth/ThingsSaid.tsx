@@ -1,9 +1,10 @@
+import { Icon } from "../ui/Icon";
 import React, { useMemo, useRef, useState } from "react";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { translate } from "../../lib/i18n";
 import { languageName } from "../../lib/languageName";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 import { genderedKey, type ChildGender } from "../../lib/today/fromRecord";
 import { quoteKeepsakeDoc, quotesFromDocs, type KeptQuote } from "../../lib/loop/tonight";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
@@ -75,18 +76,21 @@ export function SaidCapture({
   first,
   gender,
   onKept,
+  defaultLanguage = null,
 }: {
   childId: string;
   languages: string[];
   first: string;
   gender: ChildGender;
   onKept: (kept: { text: string; language: string | null }) => void;
+  /** v10.3: the page's language index pre-selects its language in the picker. */
+  defaultLanguage?: string | null;
 }) {
   const { t } = useLanguage();
   const gk = (k: string) => genderedKey(k, gender);
   const col = useChildCollection<QuoteDoc>(childId, "keepsakes");
   const [text, setText] = useState("");
-  const [lang, setLang] = useState("");
+  const [lang, setLang] = useState(() => (defaultLanguage ? plainLanguage(defaultLanguage) : ""));
   const [hint, setHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const options = useMemo(() => [...new Set(languages.map(plainLanguage).filter(Boolean))], [languages]);
@@ -103,7 +107,7 @@ export function SaidCapture({
     const language = lang || quoteLanguage(words, languages);
     void col.upsert({ ...doc, ...(language ? { language } : {}) });
     setText("");
-    setLang("");
+    setLang(defaultLanguage ? plainLanguage(defaultLanguage) : "");
     onKept({ text: doc.note, language });
   };
 
@@ -166,17 +170,60 @@ export function SaidCapture({
   );
 }
 
+const NO_LANGUAGES: readonly string[] = [];
+
 /** The kept quotes, newest first: the child's words and their dates. Nothing counted. */
-export function SaidList({ childId, first, gender, max = 8 }: { childId: string; first: string; gender: ChildGender; max?: number }) {
+export function SaidList({ childId, first, gender, max = 8, language = null, rows = false, languages = NO_LANGUAGES, emptyText }: {
+  childId: string; first: string; gender: ChildGender; max?: number;
+  /** The family's languages: a quote kept without one (Tonight's keepsakes)
+   *  reads as the language its script names, by the same rule a keep uses. */
+  languages?: readonly string[];
+  /** The empty line when a language narrows the list (the page's own copy). */
+  emptyText?: string;
+  /** v10.3: only the quotes kept in this language (the page's language index). */
+  language?: string | null;
+  /** v10.3: the frame's quote rows (glyph, the words, the day at the end). */
+  rows?: boolean;
+}) {
   const { t, uiLang } = useLanguage();
   const col = useChildCollection<QuoteDoc>(childId, "keepsakes");
-  const quotes: KeptQuote[] = useMemo(() => quotesFromDocs(col.items).slice(0, max), [col.items, max]);
-  const langs = useMemo(() => quoteLanguages(col.items), [col.items]);
+  const langs = useMemo(() => {
+    const stored = quoteLanguages(col.items);
+    for (const q of quotesFromDocs(col.items)) {
+      if (stored.has(q.id)) continue;
+      const guess = quoteLanguage(q.note, languages);
+      if (guess) stored.set(q.id, guess);
+    }
+    return stored;
+  }, [col.items, languages]);
+  const quotes: KeptQuote[] = useMemo(() => quotesFromDocs(col.items)
+    .filter((q) => !language || (langs.get(q.id) ?? "").toLowerCase() === language.toLowerCase())
+    .slice(0, max), [col.items, max, language, langs]);
   if (quotes.length === 0) {
     return (
       <p data-testid="said-empty" className="text-[14px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-        {t(genderedKey("elev.words.said.empty", gender), { name: first })}
+        {(language && emptyText) || t(genderedKey("elev.words.said.empty", gender), { name: first })}
       </p>
+    );
+  }
+  if (rows) {
+    return (
+      <ul data-testid="said-list" className="said-rows">
+        {quotes.map((q) => {
+          const lang = langs.get(q.id);
+          return (
+            /* N-SaidHe: under one language, a right-to-left saying is its own card, set large and right to left. */
+            <li key={q.id} className={language && /[\u0590-\u05FF\u0600-\u06FF]/.test(q.note) ? "sqr he" : "sqr"}>
+              <span className="sqg" aria-hidden="true"><Icon name="format_quote" size={16} /></span>
+              <span className="min-w-0">
+                <span className="q" dir="auto">“{q.note}”</span>
+              </span>
+              {/* N-Said: the day, day-first; the language is the index's job (and the words row's). */}
+              <span className="sqd" data-language={lang ?? undefined}>{q.noticedOn ? fmtDayV10(`${q.noticedOn}T12:00:00`, uiLang) : ""}</span>
+            </li>
+          );
+        })}
+      </ul>
     );
   }
   return (

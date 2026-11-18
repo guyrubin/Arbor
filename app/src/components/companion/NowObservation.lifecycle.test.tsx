@@ -14,6 +14,9 @@ import { UrgentSupport } from "../safety/UrgentSupport";
 import { dayPart } from "./rightNowModel";
 import { VISIT_DRAFT_COPY } from "./nowV41Copy";
 import { daysUntil, inDaysLabel } from "../care/CareVisitHead";
+import { NOW_V10_COPY } from "./now10/nowV10Copy";
+import { planString } from "../../lib/plans/planStrings";
+import { clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR } from "./now10/dayArcModel";
 // Only the mounted UrgentSupport render below reaches the real LanguageContext;
 // NowContent is compiled with injected hooks and never touches this mock.
 const mockLang = vi.hoisted(() => ({ lang: "en" as "en" | "he" }));
@@ -46,18 +49,24 @@ function setup(lang: "en" | "he" = "en") {
     fmtDay: () => "",
     // B-DATA-14: the kept-on-this-phone line reads the live connection.
     useOnline: () => true, savedOnPhoneKey: (online: boolean) => (online ? "elev.sync.savedOnPhoneSending" : "elev.sync.savedOnPhone"),
-    useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null, leadPlan: () => null, recordNight: (d: any) => d, unrecordNight: (d: any) => d, nightMomentText: () => "", NowPlanLead: "plan-lead",
+    useNowClock: () => new Date("2026-10-10T12:00:00Z"), useNowRecord: () => ({}), useChildCollection: () => ({ items: [] }), activeProgramWeek: () => null, leadPlan: () => null, recordNight: (d: any) => d, unrecordNight: (d: any) => d, nightMomentText: () => "",
     // B-PROG-16: the handback stays unmounted in this harness (the flag is off).
     programSharedObjectOn: () => false, ProgramBookHandback: () => null,
     useNowLoop: () => ({ plan: { order: [] }, blockNotices: [], evening: false, rhythm: {} }), useLastVisit: () => ({}), useLifecycleMoment: () => ({}), useCompanionOffer: () => ({}),
     availableHardMomentCards: () => [], ageMonthsFromProfile: () => 48, formatChildAge: () => "", childPicture: () => ({}), trackCompanionPlaceOpen: vi.fn(), markPracticeShown: vi.fn(), trackActionOffered: vi.fn(),
     Avatar: "avatar", Icon: "icon", PrimaryMove: "primary-move", Receipt: "receipt", UrgentSupport: "urgent-support", NowRecommendation: "recommendation", NowAgendaExtras: "agenda-extras", NowNoticeExtras: "notice-extras", NowWhatChangedLines: "what-changed-lines", BrandChip: "brand-chip", NowNoticeBlock: "notice", NowTonightPointer: "tonight-pointer", TOGETHER_ART: {},
-    useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world", NowWeekSoFar: "week-so-far",
+    useObservations: () => [], NowQuestionRow: "question-row", NowPlanFrame: "plan-frame", NowKidWorld: "kid-world",
     NowPlanBody: "plan-body", NowGuideReader: "guide-reader", stepLines: (text: string) => [text], WHY_KEY: {}, shelfLabel: () => "",
     // S1 (surfacing): the Everyday plans card under the lead (its own render test: components/plans/planSurfaces.test).
     PlansSection: "plans-section", usePlanVisibility: () => null, openPrintablePlan: vi.fn(), keepPlan: (d: any) => d, closePlan: (d: any) => d,
-    // v4.1: Right now and Arbor learned this week (their own render tests: nowV41.test).
-    dayPart, NowRightNow: "now-right-now", NowLearned: "now-learned",
+    // v4.1: Right now (its own render tests: nowV41.test).
+    dayPart, NowRightNow: "now-right-now",
+    // v10.1 (N-Now): the composition's primitives and objects (their own render tests: now10/now10.test).
+    NOW_V10_COPY, planString, clock24, EVENING_FROM_HOUR, EVENING_TO_HOUR, useComposition: () => "phone",
+    loadPrefs: () => ({ types: { guidance: true, moments: true }, quietStart: 21, quietEnd: 8, calmWindowOnly: false }), shownNudgesToday: () => [],
+    eveningMoments: () => ({ inBand: 0, total: 0 }), useFamilyPlanDatesForNow: () => [], NowStageContext: React.createContext(null),
+    DsRoot: "ds-root", Guide: "guide", LivingForm: "living-form", MoreLink: "more-link", Route: "route", RouteSection: "route-section", Row12: "row12", Scene: "scene", StartHere: "start-here", Tile: "tile",
+    NowDayArc: "day-arc", NowWaiting: "now-waiting", NowChallengePlan: "challenge-plan", NowNotebookBadge: "notebook-badge", NowThisWeek: "this-week", NowWorthKnowing: "worth-knowing", NowActionPlan: "action-plan", NowRow: "now-row",
     // v4.1 (12 Nov): the drafted visit summary (its own tests: visitDraft.test, nowV41.test).
     useVisitDraft: () => null, VISIT_DRAFT_COPY, daysUntil, inDaysLabel,
   };

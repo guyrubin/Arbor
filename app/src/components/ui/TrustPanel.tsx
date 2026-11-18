@@ -53,12 +53,12 @@ export function TrustPanel({
       {groups.map(({ key, glyph, items }) =>
         items.length > 0 ? (
           <div key={key} className="space-y-1">
-            <p className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
+            <p className="flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>
               <Icon name={glyph} size={14} className="flex-shrink-0" /> {t(key)}
             </p>
             <ul className="space-y-0.5 ps-5">
               {items.map((item, i) => (
-                <li key={i} className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
+                <li key={i} className="text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>
                   {item}
                 </li>
               ))}
@@ -106,7 +106,7 @@ export function ReviewBeforeShare({
         {body ? <p style={{ color: "var(--arbor-muted)" }}>{body}</p> : null}
         {children}
         {eraseReachNoticeKey ? (
-          <p className="text-[11px] rounded-xl p-2.5" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
+          <p className="text-[12px] rounded-xl p-2.5" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
             {t(eraseReachNoticeKey)}
           </p>
         ) : null}

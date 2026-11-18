@@ -7,8 +7,8 @@ import { kidAudioAllowed, kidAudioContext, kidSfx, onKidHush } from '../../../..
  * detuned a hair, so no two taps are quite the same. Everything is soft: a
  * 10 ms attack at the least, no single voice above 0.06, and the rain, the
  * only loop, is a whisper (0.02). A game step never waits for a sound. */
-export type ToySound = 'aya' | 'pep' | 'chock' | 'bebe' | 'gobgob' | 'dome' | 'bell' | 'fountain' | 'bridge' | 'cascade' | 'echo' | 'boat'
-  | 'knitArch' | 'stone' | 'lily' | 'skybridge' | 'glasshouse' | 'lamp' | 'cloud' | 'lantern' | 'buggy' | 'moored';
+export type ToySound = 'aya' | 'pep' | 'chock' | 'bebe' | 'gobgob' | 'dome' | 'bell' | 'fountain' | 'bridge' | 'echo' | 'boat'
+  | 'stone' | 'lily' | 'skybridge' | 'glasshouse' | 'lamp' | 'cloud' | 'lantern' | 'buggy' | 'meadow';
 export interface BoatAudio {
   /** A page lifted. */
   swish(): void;
@@ -19,8 +19,14 @@ export interface BoatAudio {
   /** A wooden tick of the wheel. */
   tick(): void;
   lap(): void;
-  /** A gate passed: two soft rising notes. */
+  /** A small success: two soft rising notes. */
   chime(step: number): void;
+  /** A paper lantern rung: one glass bell, higher with each one in a row. */
+  ring(step: number): void;
+  /** Water thrown up: the launch, a stone, the bow in a wave. */
+  spray(): void;
+  /** Stiff paper standing up: the cover opening. */
+  creak(): void;
   bump(): void;
   gust(): void;
   rumble(): void;
@@ -140,10 +146,8 @@ export function createBoatAudio(): BoatAudio {
     bell: (c, n) => { for (const [ratio, peak] of [[1, 0.05], [2.01, 0.022], [2.76, 0.014]] as const) tone(c, 'sine', note(5 + (n % 3) * 2) * ratio, null, peak, 1.4); },
     fountain: (c) => { hiss(c, 'bandpass', 1500, 2600, 0.8, 0.035, 0.12, 0.7); glass(c, 13, 0.02, 0.3, 0.1); },
     bridge: (c, n) => { const up = n % 2 === 0; for (let i = 0; i < 5; i++) pluck(c, 5 + (up ? i : 4 - i), 0.045, 0.28, i * 0.075); },
-    cascade: (c) => { hiss(c, 'bandpass', 2200, 900, 0.7, 0.04, 0.05, 0.5); tone(c, 'sine', note(9), note(5), 0.025, 0.2); },
     echo: (c, n) => { const a = 7 + (n % 3), b = a - 2; pluck(c, a, 0.045, 0.3); pluck(c, b, 0.045, 0.34, 0.16); pluck(c, a, 0.02, 0.3, 0.62); pluck(c, b, 0.016, 0.34, 0.78); pluck(c, a, 0.008, 0.3, 1.2); },
     boat: (c, n) => { hiss(c, 'bandpass', 2400, 1700, 2, 0.03, 0.01, 0.07); pluck(c, 7 + (n % 3), 0.035, 0.2, 0.02); },
-    knitArch: (c, n) => { glass(c, 5 + (n % 5), 0.045, 0.5); glass(c, 7 + (n % 5), 0.03, 0.5, 0.09); },
     stone: (c, n) => { tone(c, 'sine', note(n % 2 ? 1 : 0), note(0) * 0.7, 0.055, 0.12, 0, 0.01); hiss(c, 'lowpass', 500, 220, 0.7, 0.03, 0.01, 0.16); },
     lily: (c, n) => { glass(c, 10 + (n % 5), 0.04, 0.55); },
     skybridge: (c, n) => { const up = n % 2 === 0; for (let i = 0; i < 6; i++) glass(c, 8 + (up ? i : 5 - i), 0.03, 0.45, i * 0.06); },
@@ -152,7 +156,7 @@ export function createBoatAudio(): BoatAudio {
     cloud: (c, n) => { hiss(c, 'lowpass', 700, 300, 0.7, 0.04, 0.05, 0.32); for (let i = 0; i < 4; i++) tone(c, 'sine', note(12 - i - (n % 3)), null, 0.018, 0.07, 0.1 + i * 0.07); },
     lantern: (c, n) => { for (let i = 0; i < 3; i++) glass(c, 9 + ((n + i) % 3) * 2, 0.03, 0.9, i * 0.14); },
     buggy: (c, n) => { tone(c, 'triangle', note(4), null, 0.045, 0.12, 0, 0.02); tone(c, 'triangle', note(n % 2 ? 5 : 4), null, 0.045, 0.2, 0.16, 0.02); },
-    moored: (c, n) => { hiss(c, 'lowpass', 600, 240, 0.8, 0.035, 0.06, 0.4); glass(c, 8 + (n % 5), 0.03, 0.9, 0.05); },
+    meadow: (c, n) => { hiss(c, 'bandpass', 3200, 2200, 1.2, 0.03, 0.03, 0.24); glass(c, 9 + (n % 5), 0.022, 0.4, 0.04); },
   };
 
   return {
@@ -167,6 +171,9 @@ export function createBoatAudio(): BoatAudio {
     },
     lap: safely(context => { hiss(context, 'lowpass', 900, 260, 0.8, 0.05, 0.08, 0.55); }),
     chime(step) { safely(context => { glass(context, 5 + step, 0.055, 0.3); glass(context, 7 + step, 0.05, 0.46, 0.11); })(); },
+    ring(step) { safely(context => { const at = 5 + Math.max(0, Math.min(8, Math.round(step))); glass(context, at, 0.055, 1.1); glass(context, at + 2, 0.03, 0.9, 0.07); tone(context, 'sine', note(at) * 2.76, null, 0.012, 0.5); })(); },
+    spray: safely(context => { hiss(context, 'bandpass', 2600, 1200, 0.8, 0.045, 0.02, 0.34); hiss(context, 'highpass', 4200, 5200, 0.7, 0.014, 0.05, 0.3, 0.05); }),
+    creak: safely(context => { hiss(context, 'bandpass', 520, 1500, 3, 0.03, 0.2, 0.9); for (let i = 0; i < 5; i++) hiss(context, 'bandpass', 1400 + i * 180, 1100 + i * 180, 5, 0.02, 0.008, 0.045, 0.25 + i * 0.14); }),
     bump: safely(context => { tone(context, 'sine', 196, 131, 0.055, 0.24); hiss(context, 'lowpass', 500, 200, 0.7, 0.03, 0.01, 0.3); }),
     gust: safely(context => { hiss(context, 'bandpass', 380, 900, 0.9, 0.035, 0.35, 1.1); }),
     rumble: safely(context => { hiss(context, 'lowpass', 160, 70, 0.7, 0.05, 0.45, 1.8); tone(context, 'sine', 65.4, 49, 0.03, 1.6, 0, 0.3); }),

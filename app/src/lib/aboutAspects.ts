@@ -189,6 +189,10 @@ export interface AspectState {
   languages: AspectLanguages | null;
   /** The newest proposal waiting for the parent's Confirm or No. */
   pending: MemoryReviewItem | null;
+  /** v10 index: how many things the parent told or approved for this area
+   *  (each kept line, approved fact and setting once; each language). A count
+   *  of the parent's record, never a share of the area. */
+  toldCount: number;
 }
 
 type AboutProfile = Partial<Pick<ChildProfile,
@@ -217,9 +221,13 @@ function newer(current: AspectFact | null, next: AspectFact): AspectFact {
 
 export function buildAspects({ profile, approved = [], pending = [], words = (fact) => fact }: AboutInputs): AspectState[] {
   const known = new Map<AspectId, AspectFact>();
+  const counts = new Map<AspectId, Set<string>>();
   const offer = (id: AspectId | null, fact: AspectFact) => {
     if (!id || !fact.words.trim()) return;
     known.set(id, newer(known.get(id) ?? null, fact));
+    const seen = counts.get(id) ?? new Set<string>();
+    seen.add(fact.words.trim().toLowerCase());
+    counts.set(id, seen);
   };
   const p = profile ?? {};
   const onboarded = p.onboardingCompletedAt;
@@ -289,7 +297,17 @@ export function buildAspects({ profile, approved = [], pending = [], words = (fa
     known: known.get(id) ?? null,
     languages: id === "lang" ? languages : null,
     pending: waiting.get(id) ?? null,
+    toldCount: id === "lang" && languages ? langs.length + (counts.get(id)?.size ?? 0) : counts.get(id)?.size ?? 0,
   }));
+}
+
+/** v10 — the area one kept line belongs to, by the same rule buildAspects
+ *  places it (strengths and interests → Strengths & loves; a worry or a focus
+ *  by its words, then its domain). A preference names no area (null). */
+export function aspectOfKept(item: { kind: string; words: string; domainId?: unknown }): AspectId | null {
+  if (item.kind === "strength" || item.kind === "interest") return "strengths";
+  if (item.kind === "worry" || item.kind === "focus") return aspectOfWords(item.words) ?? aspectOfDomain(item.domainId);
+  return null;
 }
 
 /** An area is told when it holds the parent's words (or, for "lang", the languages). */

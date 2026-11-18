@@ -51,7 +51,7 @@ describe("HeroJourneyTab — cover, shelf save, child ending", () => {
     expect(tab).toContain("pageIndex: 0,\n    cover: true as const,");
     // a cover that failed at start gets exactly one more try at finish
     expect(tab).toContain("if (!comicPageKeys.current.has(0)) {");
-    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, renderLang, kidMode]);"); // B-KID-121 re-pin: the cover follows the render's language
+    expect(tab).toContain("}, [activeStory?.id, heroAvatarUrl, renderLang, kidMode, reviewedKidCoverAvailable]);"); // The parent's dependency remains false; kid art changes cannot redraw a parent cover.
   });
 
   it("saves the book only when the cover and every illustrated beat resolved — never a book that cannot open", () => {
@@ -127,9 +127,10 @@ describe("M2 — the cover is the opening page of the book", () => {
     expect(tab).not.toMatch(/disabled=\{[^}]*coverArt\./);
   });
 
-  it("opens on the cover only when a hero exists — without one the reader is unchanged", () => {
-    expect(tab).toContain("setOnCover(Boolean(activeStory && render && heroAvatarUrl));");
-    expect(tab).toContain("const hasCoverPage = Boolean(heroAvatarUrl);");
+  it("keeps the hero rule, with a reviewed static-cover exception only in Kid Mode", () => {
+    expect(tab).toContain("Boolean(heroAvatarUrl || (kidMode && storyBookArt(kidTheme, storyId)))");
+    expect(tab).toContain("setOnCover(Boolean(activeStory && render && canShowCover(activeStory.id)));");
+    expect(tab).toContain("const hasCoverPage = canShowCover(activeStory?.id);");
     expect(tab).toContain("const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);");
   });
 

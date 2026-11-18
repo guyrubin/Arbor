@@ -84,7 +84,7 @@ export default function DevScoreCard() {
               {t("devscore.noticed", { count: noticed })}
             </div>
             {/* Developmental mechanism (parent observation + one-thing-to-try). */}
-            <div className="text-[12.5px] mt-1.5 leading-relaxed" style={{ color: MUTED }}>
+            <div className="text-[12px] mt-1.5 leading-relaxed" style={{ color: MUTED }}>
               {t("devscore.mechanism", { name: firstName })}
             </div>
           </div>

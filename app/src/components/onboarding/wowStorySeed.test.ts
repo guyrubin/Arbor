@@ -114,6 +114,7 @@ describe("CHILD_SUBCOLLECTIONS registry pin — the seed invented NO new sink", 
       "heroSheet", // B-GAME-13c: the hero's pose sheet (generated art, registered for export + erase)
       "studioCreations", // B-GA-09: the child's saved studio toys (kid mode), found by the sink sweep
       "bookReads", // B-BOOK-51: the one finished-book ledger (catalogue id, language, time; no path or choice)
+      "familyPlanDates", // Family plan v1: kindergarten dates, who has each, requests between the family's adults, history
     ]);
   });
 });

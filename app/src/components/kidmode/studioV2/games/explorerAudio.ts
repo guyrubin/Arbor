@@ -13,7 +13,9 @@ export interface ExplorerAudio {
 export function createExplorerAudio(): ExplorerAudio {
   const buffers = new Map<ExplorerSound, AudioBuffer>();
   const sources = new Map<AudioBufferSourceNode, GainNode>();
-  const controller = new AbortController();
+  // A failed first load (offline, unavailable audio context, or timeout) is retryable.
+  // Never reuse an aborted signal or discard clips which already decoded.
+  let controller: AbortController | null = null;
   let disposed = false;
   let generation = 0;
   let loading: Promise<boolean> | null = null;
@@ -31,29 +33,41 @@ export function createExplorerAudio(): ExplorerAudio {
   return {
     load() {
       if (loading) return loading;
-      loading = (async () => {
-        if (disposed) return false;
+      if (disposed) return Promise.resolve(false);
+      const attempt = (async () => {
         const context = kidAudioContext();
         if (!context || typeof fetch !== "function") return false;
-        const timeout = setTimeout(() => controller.abort(), 10_000);
+        const currentController = new AbortController();
+        controller = currentController;
+        const timeout = setTimeout(() => currentController.abort(), 10_000);
         try {
-          await Promise.all(EXPLORER_SOUNDS.map(async sound => {
+          await Promise.all(EXPLORER_SOUNDS.filter(sound => !buffers.has(sound)).map(async sound => {
             try {
-              const response = await fetch(EXPLORER_CLIPS[sound], { signal: controller.signal });
-              if (!response.ok || disposed) return;
+              const response = await fetch(EXPLORER_CLIPS[sound], { signal: currentController.signal });
+              if (!response.ok || disposed || currentController.signal.aborted) return;
               const data = await response.arrayBuffer();
-              if (disposed) return;
+              if (disposed || currentController.signal.aborted) return;
               const buffer = await new Promise<AudioBuffer>((resolve, reject) => {
                 const promise = context.decodeAudioData(data, resolve, reject);
                 promise?.then(resolve, reject);
               });
-              if (!disposed) buffers.set(sound, buffer);
-            } catch { /* Each round always has its non-audio clue. */ }
+              if (!disposed && !currentController.signal.aborted) buffers.set(sound, buffer);
+            } catch { /* Failed clip retains its visual clue; a later Hear tap retries. */ }
           }));
           return !disposed && buffers.size === EXPLORER_SOUNDS.length;
-        } finally { clearTimeout(timeout); }
+        } finally {
+          clearTimeout(timeout);
+          if (controller === currentController) controller = null;
+        }
       })();
-      return loading;
+      loading = attempt;
+      // Preserve successful decoded audio; release a failed attempt so it can
+      // retry after a network/device recovery without remounting Kid Mode.
+      void attempt.then(
+        ready => { if (!ready && loading === attempt) loading = null; },
+        () => { if (loading === attempt) loading = null; },
+      );
+      return attempt;
     },
     play(sound) {
       stop();
@@ -79,6 +93,6 @@ export function createExplorerAudio(): ExplorerAudio {
       } catch { stop(); return false; }
     },
     stop,
-    dispose() { disposed = true; stop(); buffers.clear(); controller.abort(); unhush(); globalThis.document?.removeEventListener?.("visibilitychange", onVisibility); },
+    dispose() { disposed = true; stop(); buffers.clear(); controller?.abort(); unhush(); globalThis.document?.removeEventListener?.("visibilitychange", onVisibility); },
   };
 }

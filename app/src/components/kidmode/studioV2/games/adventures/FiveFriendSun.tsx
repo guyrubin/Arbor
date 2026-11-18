@@ -13,11 +13,11 @@ import { defaultChallenge, type Challenge } from './adventureRules';
 import { BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { FIVE_FRIEND_SUN_COPY, countAlong, countOnLine, sunLine, turnLine } from './fiveFriendSunCopy';
-import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor } from './fiveFriendSunRules';
+import { CHOCK_SEAT, FRIEND_TOTAL, HOP_MS, JOIN_MS, PADS, PATH_END, SEAT_PADS, SUN_MS, SUN_SEATS, TURN_MS, TURN_TICKS, WOBBLE_MS, hintShown, hopCheck, nextArrival, padCell, spinFor, spinMax, wheelTurn } from './fiveFriendSunRules';
 import './fiveFriendSun.css';
 
 /** `make-room` is the beat where the child brings Chock's far pad into the circle. */
-type Phase = 'ready' | 'spin' | 'count' | 'hop' | 'make-room' | 'sun' | 'done';
+type Phase = 'ready' | 'spin' | 'turning' | 'count' | 'hop' | 'make-room' | 'sun' | 'done';
 
 export default function FiveFriendSun() {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
@@ -29,6 +29,8 @@ export default function FiveFriendSun() {
   const [position, setPosition] = useState(0);
   const [at, setAt] = useState(0);
   const [spin, setSpin] = useState(0);
+  /** Where the spinner wheel has turned to, in degrees; it only ever turns on. */
+  const [wheel, setWheel] = useState(0);
   const [seated, setSeated] = useState(0);
   /** The seat that was filled a moment ago, so its friend can show it. */
   const [fresh, setFresh] = useState<number | null>(null);
@@ -66,7 +68,10 @@ export default function FiveFriendSun() {
     if (phaseRef.current !== 'spin') return;
     const next = spinFor(challenge, position);
     if (next < 1) return;
-    void selectionHaptic(); setSpin(next); setMisses(0); setWobble(0); setStatus(''); setPhase('count');
+    // The wheel clicks as it turns; the hop is only named once it stops (B-GAME-46).
+    void selectionHaptic(); kidSfx('tap'); setWheel(from => wheelTurn(from, next, spinMax(challenge))); setSpin(next); setMisses(0); setWobble(0); setStatus(''); setPhase('turning');
+    for (const tick of TURN_TICKS) later(tick.at, () => kidSfx('tap', tick.gain));
+    later(TURN_MS, () => setPhase('count'));
   };
   const tapPad = (pad: number) => {
     if (phaseRef.current !== 'count') return;
@@ -94,10 +99,10 @@ export default function FiveFriendSun() {
 
   const hopping = phase === 'hop' && fresh === null;
   const cue = phase === 'ready' ? w.ready : phase === 'make-room' ? w.roomCue : phase === 'sun' || phase === 'done' ? w.sun
-    : fresh !== null ? w.arrived[Math.min(fresh, w.arrived.length - 1)] : turnLine(w, position, spin);
+    : fresh !== null ? w.arrived[Math.min(fresh, w.arrived.length - 1)] : phase === 'turning' ? w.turning : turnLine(w, position, spin);
   // A hop is counted by its tones and the written count; the voice waits for the landing.
   const narration = phase === 'count' && status ? status : cue;
-  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${phase}:${position}:${spin}:${fresh ?? -1}:${misses}`, enabled: phase !== 'done' && !hopping });
+  const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${phase}:${position}:${spin}:${fresh ?? -1}:${misses}`, enabled: phase !== 'done' && phase !== 'turning' && !hopping });
   const hinted = phase === 'count' && hintShown(challenge, misses) ? position + spin : 0;
   const here = padCell(at), before = padCell(Math.max(0, at - 1));
 
@@ -106,12 +111,14 @@ export default function FiveFriendSun() {
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--sun" data-adventure="sun" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={seated} total={FRIEND_TOTAL} /></div>
-        <AdventureHeading focusKey={`${phase}:${position}:${spin}:${fresh ?? -1}`} onHear={guide.replay} muted={guide.muted || hopping}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${phase}:${position}:${spin}:${fresh ?? -1}`} onHear={guide.replay} muted={guide.muted || hopping} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage sun-stage">
           <BopScene scene="scene-sun" />
           <div className="sun-board">
             <div className="sun-ring">
-              <div className="sun-flower" data-lit={seated} style={{ '--sun-lit': seated } as CSSProperties}>
+              <div className="sun-flower" data-lit={seated} data-full={phase === 'sun' || undefined} style={{ '--sun-lit': seated } as CSSProperties}>
+                <span className="sun-rays" aria-hidden="true" />
+                {seated > 0 && <span className="sun-burst" key={seated} aria-hidden="true" />}
                 <BopSprite name="sun-unlit" size="100%" flat />
                 <BopSprite name="sun-lit" size="100%" flat className="sun-flower__lit" />
                 <span className="sun-count">{sunLine(w.friendsHere, seated)}</span>
@@ -137,6 +144,7 @@ export default function FiveFriendSun() {
                 return <button type="button" key={pad} className="bop-piece sun-pad" style={{ gridColumn: cell.column + 1, gridRow: 2 - cell.row }} data-pad={pad} data-row={cell.row} data-here={pad === at} data-hint={pad === hinted} data-wobble={pad === wobble} disabled={phase !== 'count'} aria-label={sunLine(pad === at ? w.padHero : w.pad, pad)} onClick={() => tapPad(pad)}>
                   <BopSprite name="pad-cream" size={50} flat />
                   <span className="bop-chip sun-pad__chip">{String(pad)}</span>
+                  {pad === position && <span className="sun-pad__burst" key={position} aria-hidden="true">{Array.from({ length: 6 }, (_, ray) => <span key={ray} style={{ '--ray': ray } as CSSProperties} />)}</span>}
                 </button>;
               })}
               {phase !== 'sun' && <span className="sun-walker" style={{ gridColumn: here.column + 1, gridRow: 2 - here.row, '--hop-x': before.column - here.column, '--hop-y': here.row - before.row } as CSSProperties} data-row={here.row} data-beat={at ? at % 2 : undefined} aria-hidden="true">
@@ -144,15 +152,22 @@ export default function FiveFriendSun() {
               </span>}
             </div>
           </div>
+          {phase === 'sun' && <div className="sun-confetti" aria-hidden="true">{Array.from({ length: 14 }, (_, petal) => <span key={petal} style={{ '--petal': petal } as CSSProperties} />)}</div>}
         </div>
         {guide.muted && <p className="adventure-quiet">{w.quiet}</p>}
         <p className="adventure-status" role="status">{status}</p>
         <div className="adventure-actions">
           {phase === 'ready'
             ? <button type="button" className="studio-game-button-v2 studio-game-button-v2--primary adventure-go" onClick={() => setPhase('spin')}><Play size={21} aria-hidden="true" />{w.start}</button>
-            : <button type="button" className="sun-spinner" data-face={spin} data-ready={phase === 'spin'} disabled={phase !== 'spin'} aria-label={spin ? sunLine(w.spinnerShows, spin) : w.spinner} onClick={turn}>
-              {spin ? <span className="sun-spinner__pips" aria-hidden="true">{Array.from({ length: spin }, (_, index) => <i key={index} />)}</span> : <RotateCw size={38} aria-hidden="true" />}
-              {spin > 0 && <span className="bop-chip sun-spinner__count">{String(spin)}</span>}
+            : <button type="button" className="sun-spinner" data-face={spin} data-ready={phase === 'spin'} data-faces={spinMax(challenge)} disabled={phase !== 'spin'} aria-label={phase === 'turning' ? w.turning : spin ? sunLine(w.spinnerShows, spin) : w.spinner} onClick={turn}>
+              {/* The wheel: one wedge per hop it can ask for, each marked with its dots. It turns, and the wedge under the pointer is the hop. */}
+              <span className="sun-wheel" aria-hidden="true" style={{ '--wheel-turn': `${wheel}deg` } as CSSProperties}>
+                {Array.from({ length: spinMax(challenge) }, (_, wedge) => <span key={wedge} className="sun-wheel__wedge" style={{ '--wedge': wedge, '--wedges': spinMax(challenge) } as CSSProperties}>{Array.from({ length: wedge + 1 }, (_, dot) => <span key={dot} className="sun-wheel__dot" />)}</span>)}
+              </span>
+              <span className="sun-spinner__hub" key={spin ? `hub-${wheel}` : 'hub-idle'}>
+                {spin ? <span className="sun-spinner__pips" aria-hidden="true">{Array.from({ length: spin }, (_, index) => <i key={index} />)}</span> : <RotateCw size={26} aria-hidden="true" />}
+              </span>
+              {spin > 0 && <span className="bop-chip sun-spinner__count" key={`count-${wheel}`}>{String(spin)}</span>}
             </button>}
         </div>
       </section>}

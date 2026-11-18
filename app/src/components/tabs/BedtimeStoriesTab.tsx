@@ -352,7 +352,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
               {story.title}
             </h1>
           </div>
-          <p className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
+          <p className={he ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
             {t("elev.bedtime.reader.header", { name, n: pageIndex + 1, total: pages.length })}
           </p>
         </div>
@@ -442,7 +442,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             data-testid="bedtime-discussion-questions"
           >
             <p
-              className={he ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"}
+              className={he ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"}
               style={{ color: "var(--arbor-muted)" }}
             >
               {t("elev.bedtime.questions")}
@@ -478,7 +478,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                 ) : (
                   <div className="flex items-end gap-2">
                     <label className="flex-1 min-w-0">
-                      <span className="block text-[11.5px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                      <span className="block text-[12px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
                         {he ? resolveHebrewSlash(t("elev.bedtime.keep.label", { name }), childProfile.gender) : t("elev.bedtime.keep.label", { name })}
                       </span>
                       <input
@@ -598,7 +598,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
             <blockquote className="m-0 text-[18px] leading-snug" dir="auto" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>
               {t("elev.loop.ms.quoted", { text: quote.text })}
             </blockquote>
-            <figcaption className="mt-1.5 text-[11.5px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
+            <figcaption className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-peach-ink)" }}>
               {t(
                 prefillFrom === "today" ? "elev.bedtime.quote.today" : prefillFrom === "yesterday" ? "elev.bedtime.quote.yesterday" : "elev.bedtime.quote.earlier",
                 { time: quote.time, day: prefillDay ? new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { weekday: "long" }).format(prefillDay) : "" },

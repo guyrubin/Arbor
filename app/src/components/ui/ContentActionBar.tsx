@@ -106,7 +106,7 @@ export function ContentWhyLine({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-x-2 gap-y-1 flex-wrap text-[11.5px] ${className}`.trim()}
+      className={`inline-flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] ${className}`.trim()}
       style={{ color: "var(--arbor-muted)" }}
     >
       <span dir="auto">{why}</span>
@@ -237,7 +237,7 @@ export function ContentActionBar({
               }}
             >
               <Icon name={item.icon} size={20} fill={item.fill} />
-              <span className="text-[11.5px] font-bold" dir="auto">
+              <span className="text-[12px] font-bold" dir="auto">
                 {item.label}
               </span>
             </button>

@@ -3,7 +3,7 @@
 import { isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type Slot = { value?: any; deps?: readonly unknown[]; cleanup?: () => void };
-const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, hush: [] as (() => void)[],
+const h = vi.hoisted(() => ({ cursor: 0, slots: [] as Slot[], effects: [] as (() => void)[], lang: 'en', muted: false, replay: undefined as number | undefined, hush: [] as (() => void)[],
   tones: { play: vi.fn((_step: number): boolean => true), stop: vi.fn(), dispose: vi.fn() }, say: vi.fn(), sound: vi.fn() }));
 vi.mock('react', async original => {
   const actual = await original<typeof import('react')>();
@@ -26,6 +26,7 @@ vi.mock('../../../../../context/LanguageContext', () => ({ useLanguage: () => ({
 vi.mock('../../../../../context/ArborContext', () => ({ useArborOptional: () => ({ childProfile: { id: 'child-a', age: 5 } }) }));
 vi.mock('../../../../../lib/native', () => ({ selectionHaptic: async () => {} }));
 vi.mock('../../../game/GameShell', () => ({ GameShell: () => null, GameFinish: () => null }));
+vi.mock('../../../game/GameSessionContext', () => ({ useGameSession: () => h.replay === undefined ? null : { playOnly: true, replay: h.replay, onComplete: vi.fn() } }));
 vi.mock('../../../audio/kidAudio', () => ({ kidSfx: h.sound, kidSay: h.say, useKidReadAloudMuted: () => h.muted, onKidHush: (fn: () => void) => { h.hush.push(fn); return () => {}; } }));
 vi.mock('../../../../../lib/voice', () => ({ stopVoice: vi.fn(), isActive: () => false, voiceState: () => ({ speaking: false }), subscribeVoice: () => () => {} }));
 vi.mock('./bopTones', () => ({ createBopTones: () => h.tones }));
@@ -36,7 +37,7 @@ import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import type { Challenge } from './adventureRules';
 import { ROVER_DELIVERY_COPY, roverLine, type RoverDeliveryWords } from './roverDeliveryCopy';
-import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_ROUNDS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
+import { ARRIVED_MS, HEADINGS, HINT_AFTER, OOPS_MS, PRESS_MS, RETURN_MS, ROVER_IDLE_MS, ROVER_ROUNDS, ROVER_SPINS, STEP_MS, fixSigns, initialSigns, levelFor, roverTone, runRover, turnsOf, type Heading, type RoverEnd, type RoverLevel, type RoverRun } from './roverDeliveryRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -110,9 +111,9 @@ function solve(level: RoverLevel, w: RoverDeliveryWords) {
   return render();
 }
 /** A whole adventure the short way, from its first floor. */
-function playOut(challenge: Challenge, w: RoverDeliveryWords) {
+function playOut(challenge: Challenge, w: RoverDeliveryWords, spin = 0) {
   let tree = render();
-  for (let round = 0; round < ROVER_ROUNDS; round++) tree = solve(levelFor(challenge, round), w);
+  for (let round = 0; round < ROVER_ROUNDS; round++) tree = solve(levelFor(challenge, round, spin), w);
   return tree;
 }
 /** A whole adventure the long way round: a flower is folded and opened once to
@@ -163,7 +164,7 @@ function shown(tree: unknown): string[] {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  h.slots = []; h.lang = 'en'; h.muted = false; h.hush = []; watch = null;
+  h.slots = []; h.lang = 'en'; h.muted = false; h.replay = undefined; h.hush = []; watch = null;
   h.tones.play.mockClear(); h.tones.play.mockReturnValue(true); h.tones.stop.mockClear(); h.tones.dispose.mockClear(); h.say.mockClear(); h.sound.mockClear();
   vi.stubGlobal('window', { matchMedia: () => ({ matches: true }) });
   vi.stubGlobal('document', { visibilityState: 'visible', addEventListener: vi.fn(), removeEventListener: vi.fn() });
@@ -189,7 +190,8 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     expect(one(tree, 'the stage', classed('rover-stage')).props['data-size']).toBe(3); expect(cells(tree)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
     // One sign, a real button named by the way it points; the rover on its mat; Pep on the rug.
     expect(buttons(tree)).toHaveLength(2);
-    expect(sign(tree, 0).props).toMatchObject({ type: 'button', disabled: false, 'aria-disabled': false, 'data-cell': 0, 'data-heading': 'n', 'data-hint': false, 'aria-label': roverLine(w.sign, w.directions.n) });
+    expect(sign(tree, 0).props).toMatchObject({ type: 'button', disabled: false, 'aria-disabled': false, 'data-cell': 0, 'data-heading': 'n', 'data-hint': true, 'aria-label': `${roverLine(w.sign, w.directions.n)} ${w.hintHere}` });
+    // B-GAME-46: before anything is touched on the first floor, the sign to turn pulses.
     expect(nodes(sign(tree, 0)).some(n => n.props.name === 'rover-sign')).toBe(true);
     expect(rover(tree).props).toMatchObject({ 'data-at': 6, 'data-heading': 'n', 'data-parked': false, role: 'img', 'aria-label': roverLine(w.rover, w.directions.n), style: { '--rover-col': 0, '--rover-row': 2, '--rover-turn': 0 } });
     expect(one(tree, 'the start mat', classed('rover-start')).props).toMatchObject({ 'data-cell': 6, role: 'img', 'aria-label': w.startMat });
@@ -203,12 +205,17 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     for (let round = 0; round < ROVER_ROUNDS; round++) {
       const level = levelFor('gentle', round);
       expect(pointing(tree, level)).toEqual(initialSigns(level)); expect(at(tree)).toBe(level.start); expect(done(tree)).toBe(round); expect(trail(tree)).toEqual([]);
+      expect(nodes(tree).some(classed('rover-swirl'))).toBe(false);
       plan(fixSigns(level), true);
+      // B-GAME-45: every sign the child turned answers with a swirl.
+      const turned = pointing(render(), level).filter((heading, sign) => heading !== initialSigns(level)[sign]).length;
+      expect(nodes(render()).filter(classed('rover-swirl'))).toHaveLength(turned);
       const sent = send(level, w); tree = sent.tree;
       expect(sent.run.end).toBe('goal'); expect(phase(tree)).toBe('arrived'); expect(heading(tree)).toBe(w.arrived); expect(status(tree)).toBe(''); expect(shell(tree).props.hearIt).toBe(w.arrived);
       expect(at(tree)).toBe(level.goal); expect(done(tree)).toBe(round + 1); expect(trail(tree)).toEqual(ordered(sent.run.path));
       // Pep's welcome is a wag and a hop, never a word; the hero joins in.
       expect(pep(tree).props.mood).toBe('happy'); expect(hero(tree).props.celebrate).toBe(true);
+      expect(one(tree, 'the rug', classed('rover-goal')).props['data-arrived']).toBe(true); expect(nodes(tree).some(classed('rover-puff'))).toBe(false);
       expect(buttons(tree).every(n => n.props.disabled === true && n.props['aria-disabled'] === true)).toBe(true);
       vi.advanceTimersByTime(ARRIVED_MS - 1); tree = render(); expect(finish(tree)).toBeUndefined(); expect(phase(tree)).toBe('arrived');
       vi.advanceTimersByTime(1); tree = render();
@@ -421,32 +428,50 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     }
   });
 
-  it('starts again from the first floor on play again, and drops a run that is cut short', () => {
-    const first = levelFor('gentle', 0);
+  it('starts again from the first floor on play again, turned a quarter, and drops a run that is cut short', () => {
+    // B-GAME-46: each play again turns the floors a quarter clockwise; picking a challenge does not.
+    const first = levelFor('gentle', 0, 1);
     let tree = playOut('gentle', w);
     finish(tree)!.props.onPlayAgain(); tree = render();
+    expect(first.start).not.toBe(levelFor('gentle', 0).start);
     expect(finish(tree)).toBeUndefined(); expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0);
-    expect(pointing(tree, first)).toEqual(initialSigns(first)); expect(at(tree)).toBe(first.start); expect(trail(tree)).toEqual([]); expect(hints(tree)).toEqual([]);
+    expect(pointing(tree, first)).toEqual(initialSigns(first)); expect(at(tree)).toBe(first.start); expect(trail(tree)).toEqual([]); expect(hints(tree)).toHaveLength(1);
     expect(picker(tree).props.value).toBe('gentle'); expect(hero(tree).props).toMatchObject({ pose: 'idle', kick: 0, celebrate: false }); expect(h.tones.stop).toHaveBeenCalled();
-    expect(finish(playOut('gentle', w))).toBeDefined();
+    expect(finish(playOut('gentle', w, 1))).toBeDefined();
     // The bigger adventure plays again as the bigger adventure, from its first floor.
     finish(render())!.props.onPlayAgain(); picker(render()).props.onChange('explore');
-    tree = playOut('explore', w); finish(tree)!.props.onPlayAgain(); tree = render();
+    tree = playOut('explore', w, 2); finish(tree)!.props.onPlayAgain(); tree = render();
+    const big = levelFor('explore', 0, 3), last = levelFor('gentle', 0, 3);
     expect(picker(tree).props.value).toBe('explore'); expect(board(tree).props.style['--rover-n']).toBe(4); expect(done(tree)).toBe(0);
-    expect(pointing(tree, levelFor('explore', 0))).toEqual(['n', 'n']); expect(at(tree)).toBe(12); expect(bloom(tree)).toBeUndefined();
+    expect(pointing(tree, big)).toEqual(initialSigns(big)); expect(at(tree)).toBe(big.start); expect(bloom(tree)).toBeUndefined();
     // A new start in the middle of a run: nothing of the old run lands afterwards.
     const restart = picker(tree).props.onChange as (level: Challenge) => void;
     startButton(tree, w).props.onClick!(); tree = render(); expect(phase(tree)).toBe('drive');
-    vi.advanceTimersByTime(STEP_MS); expect(at(render())).toBe(13);
+    vi.advanceTimersByTime(STEP_MS); expect(at(render())).toBe(runRover(big, initialSigns(big), false).path[1]);
     restart('gentle'); h.sound.mockClear(); h.tones.play.mockClear();
     vi.advanceTimersByTime(30_000); tree = render();
-    expect(phase(tree)).toBe('ready'); expect(at(tree)).toBe(6); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0); expect(trail(tree)).toEqual([]);
+    expect(phase(tree)).toBe('ready'); expect(at(tree)).toBe(last.start); expect(status(tree)).toBe(''); expect(done(tree)).toBe(0); expect(trail(tree)).toEqual([]);
     expect(h.sound).not.toHaveBeenCalled(); expect(h.tones.play).not.toHaveBeenCalled();
-    // A new start after parked runs forgets them: no hint, the first prompt again.
-    send(first, w); tree = send(first, w).tree; expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(0);
+    // A new start after parked runs forgets them: only the first-floor pulse, the first prompt again.
+    send(last, w); tree = send(last, w).tree; expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(runRover(last, initialSigns(last), false).at);
     restart('gentle'); tree = render();
-    expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(hints(tree)).toEqual([]); expect(at(tree)).toBe(6); expect(pointing(tree, first)).toEqual(['n']);
-    expect(send(first, w).tree).toBeDefined(); expect(hints(render())).toEqual([]);
+    expect(phase(tree)).toBe('ready'); expect(heading(tree)).toBe(w.plan); expect(hints(tree)).toHaveLength(1); expect(at(tree)).toBe(last.start); expect(pointing(tree, last)).toEqual(initialSigns(last));
+    expect(send(last, w).tree).toBeDefined(); expect(hints(render())).toEqual([]);
+  });
+
+  it('keeps turned replay floors when Studio remounts the game after its own result', () => {
+    // Studio owns the finish and remounts the mechanic, so its replay counter
+    // must seed all three initial values: floor, sign headings and rover.
+    for (let replay = 0; replay <= ROVER_SPINS; replay++) {
+      h.replay = replay;
+      const tree = mount(), spin = replay % ROVER_SPINS, first = levelFor('gentle', 0, spin);
+      expect(at(tree)).toBe(first.start);
+      expect(pointing(tree, first)).toEqual(initialSigns(first));
+      expect(one(tree, 'the start mat', classed('rover-start')).props['data-cell']).toBe(first.start);
+      expect(one(tree, 'the rug', classed('rover-goal')).props['data-cell']).toBe(first.goal);
+      expect(finish(playOut('gentle', w, spin))).toBeDefined();
+    }
+    h.replay = undefined;
   });
 
   it('plays the whole game with sound off: the floor and the words carry it', () => {
@@ -481,20 +506,20 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     sign(tree, 0).props.onClick!(); tree = render(); vi.advanceTimersByTime(200);
     expect(h.say.mock.calls.at(-1)).toEqual(['child-a', roverLine(w.signNow, w.directions.e), lang]); expect(h.say).toHaveBeenCalledTimes(3);
     prompt(tree).props.onHear(); expect(h.say).toHaveBeenCalledTimes(4); expect(h.say.mock.calls.at(-1)).toEqual(['child-a', roverLine(w.signNow, w.directions.e), lang]);
-    // Pep's welcome is a short beat carried by the picture: no line is cut off by the next floor.
+    // B-GAME-46: Pep's welcome is said aloud, then the next floor's line follows.
     const sent = send(level, w);
     expect(phase(sent.tree)).toBe('arrived'); expect(prompt(sent.tree).props.muted).toBe(true); prompt(sent.tree).props.onHear();
-    vi.advanceTimersByTime(ARRIVED_MS - 1); render(); expect(h.say).toHaveBeenCalledTimes(4);
+    vi.advanceTimersByTime(ARRIVED_MS - 1); render(); expect(h.say).toHaveBeenCalledTimes(5); expect(h.say.mock.calls.at(-1)).toEqual(['child-a', w.arrived, lang]);
     vi.advanceTimersByTime(1); tree = render(); vi.advanceTimersByTime(200);
-    expect(h.say).toHaveBeenCalledTimes(5); expect(h.say.mock.calls.at(-1)).toEqual(['child-a', w.plan, lang]);
+    expect(h.say).toHaveBeenCalledTimes(6); expect(h.say.mock.calls.at(-1)).toEqual(['child-a', w.plan, lang]);
 
     // Both adventures the long way round, listening to every line.
     const allowed = lines(lang);
     let quietFrom: number | null = null, quietBeats = 0;
     watch = seen => {
-      // Nothing was said during the stretch of time that followed a driving or arriving frame.
+      // Nothing was said during the stretch of time that followed a driving frame (B-GAME-46: the arrival is spoken).
       if (quietFrom !== null) { expect(h.say.mock.calls.length).toBe(quietFrom); quietBeats++; }
-      quietFrom = !finish(seen) && (phase(seen) === 'drive' || phase(seen) === 'arrived') ? h.say.mock.calls.length : null;
+      quietFrom = !finish(seen) && phase(seen) === 'drive' ? h.say.mock.calls.length : null;
     };
     for (const challenge of ['gentle', 'explore'] as const) {
       picker(mount()).props.onChange(challenge);
@@ -503,7 +528,7 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     watch = null; expect(quietBeats).toBeGreaterThan(20);
     const spoken = h.say.mock.calls.map(call => call[1] as string);
     expect(spoken).toEqual(expect.arrayContaining([w.plan, ...Object.values(w.ends), w.bloomNowFolded, w.bloomNowOpen]));
-    expect(spoken).not.toContain(w.drive); expect(spoken).not.toContain(w.arrived);
+    expect(spoken).not.toContain(w.drive); expect(spoken).toContain(w.arrived);
     for (const call of h.say.mock.calls) { expect(call[0]).toBe('child-a'); expect(call[2]).toBe(lang); expect(allowed.has(call[1]), call[1]).toBe(true); }
     // A hush stops the voice; the game goes on.
     mount(); h.hush.forEach(fn => fn());
@@ -533,9 +558,18 @@ describe.each(['en', 'he'] as const)('Rover Delivery (%s)', lang => {
     expect(unique.filter(text => text.endsWith(` ${w.hintHere}`)).length).toBeGreaterThanOrEqual(3);
   });
 
+  it('shows the next sign again when a child sits still on the plan (B-GAME-46)', () => {
+    const level = levelFor('gentle', 0);
+    // Turned once, still the wrong way: the first-floor pulse is gone, and nothing rings yet.
+    mount(); point(0, 's'); let tree = render(); expect(hints(tree)).toEqual([]);
+    vi.advanceTimersByTime(ROVER_IDLE_MS - 1); tree = render(); expect(hints(tree)).toEqual([]);
+    vi.advanceTimersByTime(1); tree = render(); expect(hints(tree).map(n => n.props['data-cell'])).toEqual([level.signs[0].cell]);
+  });
+
   it('leaves no timer running when the game closes', () => {
     const level = levelFor('gentle', 0);
-    render(); expect(vi.getTimerCount()).toBe(1);
+    // The voice and the idle nudge.
+    render(); expect(vi.getTimerCount()).toBe(2);
     unmount(); expect(vi.getTimerCount()).toBe(0); expect(h.tones.dispose).toHaveBeenCalledTimes(1);
     // Closed in the middle of a run.
     let tree = mount(); startButton(tree, w).props.onClick!(); tree = render();
@@ -580,8 +614,8 @@ describe('Rover Delivery words', () => {
   });
   it('keeps the tile words and the closing words of the brief', () => {
     expect(en.title).toBe('Rover Delivery'); expect(en.description).toBe('Plan the way. Fix one thing.');
-    expect(en.instruction).toBe('Turn the signs so the rover reaches Pep, then press start.');
-    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Try it for real: when something does not work, change one thing and try again.');
+    expect(en.instruction).toBe('Turn the signs so the rover reaches Pep, then press Start.');
+    expect(en.finishTitle).toBe('The rover made it to Pep!'); expect(en.transfer).toBe('Away from the screen: put paper arrows on the floor and drive a toy car to a teddy.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
     expect(he.title).not.toMatch(/[A-Za-z]/); expect(he.title.length).toBeGreaterThan(0);
   });
@@ -591,8 +625,8 @@ describe('Rover Delivery words', () => {
     expect(roverLine(en.signNow, en.directions.e)).toBe('The sign is pointing right.'); expect(roverLine(en.rover, en.directions.s)).toBe('The rover, facing down');
     expect(roverLine(he.sign, he.directions.e)).toBe('שלט שמצביע ימינה. נוגעים כדי לסובב.'); expect(roverLine(he.signNow, he.directions.n)).toBe('השלט מצביע למעלה.');
     // Each parked line says where the rover stopped and what kind of thing to change.
-    expect(en.ends.edge).toBe('The rover parked at the edge. Which sign needs a turn?'); expect(en.ends.planter).toBe('The rover parked at the planter. Which sign needs a turn?');
-    expect(en.ends.bloom).toBe('The rover parked at the flower. Fold the flower down or change the way.'); expect(en.ends.loop).toBe('The rover is going in circles. Turn one sign.');
+    expect(en.ends.edge).toBe('The rover stopped at the edge. Which sign needs a turn?'); expect(en.ends.planter).toBe('The rover stopped at the flower pot. Which sign needs a turn?');
+    expect(en.ends.bloom).toBe('The rover stopped at the flower. Tap the flower to fold it down.'); expect(en.ends.loop).toBe('The rover is going in circles. Turn one sign.');
     expect(roverLine('{0}{1}{2}', 'a')).toBe('a'); expect(roverLine('no blank', 'a')).toBe('no blank'); expect(roverLine('{0} and {0}', 'a')).toBe('a and a');
   });
 });

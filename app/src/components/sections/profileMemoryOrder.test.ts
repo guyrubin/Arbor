@@ -28,9 +28,12 @@ import path from "node:path";
 const SRC = path.resolve(__dirname, "..", "..");
 const memory = readFileSync(path.join(SRC, "components/sections/ChildMemory.tsx"), "utf8");
 const profile = readFileSync(path.join(SRC, "components/sections/ChildProfile.tsx"), "utf8");
-// v4: About's one memory room is the What Arbor remembers card it mounts.
-const memoryCard = readFileSync(path.join(SRC, "components/about/AboutMemoryCard.tsx"), "utf8");
-const page = profile + memoryCard;
+// v4 → v10: About's one memory room is Arbor's notebook (the stage, the rail's
+// notes — about/AboutAnswer.tsx — and the door to the ledger on the page).
+const memoryCard = readFileSync(path.join(SRC, "components/about/AboutAnswer.tsx"), "utf8");
+// v10.3: the door to everything Arbor remembers sits in the child row.
+const childTile = readFileSync(path.join(SRC, "components/about/AboutChildTile.tsx"), "utf8");
+const page = profile + memoryCard + childTile;
 
 /** Position of a marker in a file, asserted to exist. */
 const at = (src: string, marker: string) => {
@@ -71,11 +74,12 @@ describe("Child Memory · the action queue comes first", () => {
 
 describe("Profile · one door per room", () => {
   it("OBJ-PROFILE-03 — the memory door is the chapter, not a chapter plus a tile", () => {
-    // v4 re-pin: the room is the What Arbor remembers card (AboutMemoryCard,
-    // mounted once by the page); its ONE door to #/memory keeps the testid.
-    expect(profile.match(/<AboutMemoryCard /g) ?? []).toHaveLength(1);
+    // v10 re-pin: the room is Arbor's notebook (the stage card once per
+    // composition); its ONE door — the ledger, opened in place — keeps the testid.
+    expect(profile.match(/<StageCard /g) ?? []).toHaveLength(1);
     expect(page.match(/data-testid="profile-remember-check"/g) ?? []).toHaveLength(1);
-    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
+    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(0);
+    expect(profile.match(/onLedger=\{toggleLedger\}/g) ?? []).toHaveLength(1);
     expect(profile).not.toContain('t("cp.footer.memory")');
     // v3 F-CHILD-3 re-pin: the footer jump strip left #/profile with the old
     // page (About is the describe card, the eight areas and Details), so no
@@ -91,13 +95,13 @@ describe("Profile · one door per room", () => {
      review button, so `#/profile` still printed "What Arbor remembers" twice.
      The chapter is the door; the tile is gone. */
   it("R9 — the memory heading is rendered exactly once on the page", () => {
-    // v4 re-pin: the one heading is the card's "What Arbor remembers"; the
-    // older band title and chapter 6 are gone, so the room is named once.
+    // v10 re-pin: the one heading is the stage's "Arbor's notebook about
+    // {name}" (the route h1); the older band title and chapter 6 are gone.
     expect(page.match(/t\("companion\.about\.memory\.title"/g) ?? []).toHaveLength(1);
     expect(page.match(/t\("elev\.profile\.remembers\.title"\)/g) ?? []).toHaveLength(0);
     expect(page.match(/t\("cp\.ch\.memory"\)/g) ?? []).toHaveLength(0);
-    // ONE door to #/memory; the old Keep / Not quite pair is not back.
-    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(1);
+    // ONE door to the ledger (in place, no route change); the old Keep / Not quite pair is not back.
+    expect(page.match(/setActiveTab\("memory"\)/g) ?? []).toHaveLength(0);
     expect(page).not.toContain('t("elev.profile.remember.notQuite")');
   });
 

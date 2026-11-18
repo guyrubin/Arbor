@@ -1,5 +1,9 @@
 import { translate as inputText } from "../../lib/i18n";
 import React, { useRef, useState, useEffect, useMemo } from "react";
+import TalkReadingKey from "../companion/TalkReadingKey";
+import TalkStarters from "../companion/TalkStarters";
+import { formatChildAge } from "../../lib/age/format";
+import { recentRecordStarters } from "../../lib/talkStarters";
 import { motion } from "motion/react";
 // Directional glyphs are RTL-aware: the caller already picks the start/end
 // variant by uiLang (he ⇒ left, otherwise right), so the Material Symbols
@@ -475,6 +479,18 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [topicChipBefore, topicChipAfter = ""] = inputText(uiLang, "companion.talk.topic-chip").split("{title}");
   const scenarioSeats = embedded ? 4 : 3;
   const staticShown = Math.max(0, scenarioSeats - (topicChip ? 1 : 0) - (echoScenario ? 1 : 0));
+  // V77 (N-Talk, empty state): the parent's two most recent records lead; with
+  // none, the fixed scenarios stay. Deterministic, zero model calls.
+  const recordStarters = useMemo(() => recentRecordStarters(behaviorLogs), [behaviorLogs]);
+  const focusComposer = (from: HTMLElement) => {
+    const scope: ParentNode = from.closest(".companion-coach") ?? document;
+    requestAnimationFrame(() => {
+      const field = scope.querySelector<HTMLTextAreaElement>('[data-testid="coach-composer-well"] textarea');
+      if (!field || field.disabled) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(field.value.length, field.value.length);
+    });
+  };
   const continueWithTopic = (from: HTMLElement, title: string) => {
     setChatInput((current) => current.trim() && current.trim() !== title ? `${current}\n\n${title}` : title);
     const scope: ParentNode = from.closest(".companion-coach") ?? document;
@@ -1452,9 +1468,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}
             >
               <div className="min-w-0 flex-1 py-1.5">
-                <p className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.eyebrow")}</p>
+                <p className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.eyebrow")}</p>
                 <p className="text-[13px] font-extrabold break-words" style={{ color: "var(--arbor-ink)" }}>{locText(askRefCard.title, uiLang === "he" ? "he" : "en")}</p>
-                <p className="mt-0.5 text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.note")}</p>
+                <p className="mt-0.5 text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("hm.ref.note")}</p>
               </div>
               <button
                 type="button"
@@ -1567,8 +1583,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 </button>
               )}
               {/* B-ASKJB-10: the child's own recurring moment (after the family
-                  question, when one is set), then the static chips. */}
-              {echoScenario && (
+                  question, when one is set), then the static chips. V77: when
+                  the parent has records, their own records take those seats. */}
+              {recordStarters.length === 0 && echoScenario && (
                 <button
                   key="echo"
                   data-testid="coach-scenario-echo"
@@ -1580,7 +1597,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   <Icon name="replay" size={16} style={{ color: "var(--arbor-green-ink)" }} /> <span dir="auto">{echoScenario.label}</span>
                 </button>
               )}
-              {SCENARIOS.slice(0, staticShown).map((s) => (
+              {recordStarters.length === 0 && SCENARIOS.slice(0, staticShown).map((s) => (
                 <button
                   key={s.labelKey}
                   // ASK-5: the parent's bubble shows the localized label they
@@ -1594,6 +1611,15 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                 </button>
               ))}
             </div>
+            {recordStarters.length > 0 && (
+              <TalkStarters
+                starters={recordStarters}
+                lang={uiLang === "he" ? "he" : "en"}
+                disabled={isChatLoading}
+                onPick={(from, words) => continueWithTopic(from, words)}
+                onElse={(from) => focusComposer(from)}
+              />
+            )}
           </div>
         )}
         {/* F-TALK-1: the research trust chip left the panel — every answer
@@ -1639,7 +1665,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       className="flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-xl px-2 py-1.5 text-start focus:outline-none focus-visible:ring-2"
                     >
                       <span className="w-full truncate text-[13px] font-bold" dir="auto" style={{ color: on ? "var(--arbor-green-ink)" : "var(--arbor-ink)" }}>{c.title}</span>
-                      <span className="text-[11px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
+                      <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>{fmtDay(c.updatedAt, uiLang === "he" ? "he" : "en")}</span>
                     </button>
                     <button
                       type="button"
@@ -1670,7 +1696,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             chip; "What the coach sees" and its weekly switch live on
             #/memory; the loading state is the streaming row below. */}
         <div data-companion-messages className={hasThreadContent ? "flex-1 p-4 md:p-6" : "p-0"}>
-         <div className="max-w-[760px] mx-auto space-y-3.5">
+         <div className="max-w-[760px] mx-auto space-y-3.5 coach-thread-col">
+          {/* v10.3: the reading guide and key, once above the thread (shown only when expanded). */}
+          {chatMessages.some((m) => m.sender === "ai" && m.contract) && <TalkReadingKey lang={uiLang === "he" ? "he" : "en"} />}
           {/* Empty state — orient a first-run parent on what Ask Arbor does.
               COACH-4: the title line lives ONCE, on the hero composer above;
               the thread empty state keeps only the mascot + body copy.
@@ -1701,10 +1729,10 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   soft shadow to lift the conversation off the canvas. */}
               <div dir="auto" className={`min-w-0 p-4 rounded-[18px] text-sm font-medium leading-[1.55]${msg.sender === "ai" ? " flex-1" : ""}`}
                 style={msg.sender === "user"
-                  ? { background: "var(--arbor-ink)", color: "var(--arbor-on-accent)", borderEndEndRadius: 6 }
+                  ? { background: "var(--talk-you-bg, var(--arbor-ink))", color: "var(--talk-you-fg, var(--arbor-on-accent))", borderEndEndRadius: "var(--talk-you-tail, 6px)" }
                   : { background: T.paperElevated, color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderEndStartRadius: 6, boxShadow: "var(--shadow-sm)" }}>
                 {msg.sender === "ai" && !msg.contract && msg.lens && msg.lens !== "Integrated Balanced" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
+                  <span className="text-[12px] font-bold px-2 py-0.5 rounded-full mb-3 inline-block" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}>
                     {t("coach.alignedWith", { lens: lensDisplay(msg.lens) })}
                   </span>
                 )}
@@ -1768,6 +1796,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                       // went out with a family question (its stamped topicId).
                       basedOn={!msg.chatLive && !msg.voiceLive ? talkBasedOn(idx) : undefined}
                       onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
+                      childName={[(childProfile.name || "").split(" ")[0] || childProfile.name, formatChildAge(childProfile, t)].filter(Boolean).join(", ")}
                       provenance={!msg.chatLive && !msg.voiceLive ? { topic: askedWithTopic(chatMessages, idx) } : undefined}
                     />
                     </>
@@ -1784,6 +1813,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
                   // navy bubble (MarkdownBlock paints its paragraphs in ink).
                   <>
                     {msg.attachments?.map(file => <div key={file.id} className="companion-file-receipt"><Icon name={file.kind === "photo" ? "photo" : "description"} size={20}/><span>{file.name}<small className="block">{inputText(uiLang, "companion.input.attached-to-this-turn-original-not-saved")}</small></span></div>)}
+                    {/* V77 (N-Talk-D): expanded, the question card leads with "You asked" (shown only there). */}
+                    <span className="talk-you-asked">{t("elev.waveR.capture.asked")}</span>
                     <p className="whitespace-pre-wrap break-words">{msg.displayText || msg.text}</p>
                   </>
                 )}

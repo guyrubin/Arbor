@@ -19,7 +19,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // shared action cluster every other content object uses.
 import { ContentActionBar } from "../ui/ContentActionBar";
 import { UrgentSupport } from "../safety/UrgentSupport";
-import { cardCls, Split } from "../ui/kit";
+import { cardCls } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
 import { DOMAIN_REFERENCES, DOMAIN_REFERENCE_LABEL_KEY } from "../../lib/milestoneReferences";
 import { noticedMilestoneCounts } from "../../lib/record/counts";
@@ -34,7 +34,7 @@ import { isRenderableMilestoneMedia } from "../../content/governance";
 import { ageLabelForMonths, ageYearsFromProfile } from "../../lib/childAge";
 // GP-10 — the record keeps DATES and "first time" language; Wave G strings.
 import { tGCare } from "../../lib/growthCareText";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDay, fmtDayV10 } from "../../lib/formatDate";
 // LL-A3 — milestone → Learn Library "why this matters" door
 import { bestCardForDomain } from "../../learn/learnLibrary";
 import { LEARN_CARDS } from "../../learn/learnCards";
@@ -52,14 +52,14 @@ import {
   type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { DEVELOPMENTAL_DOMAIN_IDS, primaryDomainLabel } from "../../lib/domains/registry";
+import { DEVELOPMENTAL_DOMAIN_IDS, DOMAIN_IDS, domainName, primaryDomainLabel, type DomainId } from "../../lib/domains/registry";
 import { DevelopmentalDomainId, Milestone } from "../../types";
 import { ageMonthsOf } from "../../lib/age/forChild";
 import { localDay, type ObserveStatus } from "../../lib/milestones/observe";
 import { milestoneAgeLine } from "../../lib/milestoneAgeLine";
 import { selectNextMilestonesByShelf, shelfOfMilestone } from "../../lib/milestones/selectByShelf";
 import { groupMilestonesByShelf, matchesMilestoneQuery, noticedByShelf, shelfBands } from "../../lib/milestones/shelfMap";
-import { SHELF_IDS, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
+import { SHELF_IDS, shelfDef, shelfLabel, type ShelfId } from "../../lib/shelves/registry";
 import NoticeCard from "../loop/NoticeCard";
 // B-DESIGN-03 (P7-DESIGN blend frame): the route's answers are the ONE segmented
 // control; each shelf row group leads with its duotone glyph and a section head.
@@ -70,6 +70,21 @@ import { PRACTICES } from "../../content/practices";
 // B-DESIGN-03: the 44 px duotone glyph (components/ui). Today / Journal keep the
 // shipped flat chip (components/loop/ShelfGlyph) until B-DESIGN-04 moves them.
 import { ShelfGlyph } from "../ui/ShelfGlyph";
+// v10.1: the list view of My child › Milestones, in the design system's frame.
+import { DsRoot, Guide, Route, RouteHead, RouteSection, Token } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import MilestonesBand from "../companion/MilestonesBand";
+import DevelopmentMap from "../companion/DevelopmentMap";
+import { EarlierLater } from "../companion/AreaRowDetail";
+import { firstMilestoneRecord } from "../companion/milestonesModel";
+import { useMilestonesRowEnd } from "../companion/useMilestonesRowEnd";
+import { NOTICE_ANSWER_KEYS } from "../loop/NoticeCard";
+import { DOMAIN_ICONS } from "../../lib/domains/icons";
+import { bandForAgeMonths as screeningBand } from "../../lib/screening";
+import MilestonesReadGuide from "../companion/MilestonesReadGuide";
+import { seenTotals } from "../companion/milestonesModel";
+import { milestonesV10Copy } from "../companion/milestonesV10Copy";
+import "../companion/milestonesV10.css";
 
 /** NEXTLEVEL critic r1: "Born early?" leads the rail only while correction
  *  applies (under ~24 months, or a gestation is set); otherwise the same
@@ -127,6 +142,10 @@ export default function MilestonesTab() {
   } = useArbor();
 
   const { t, uiLang, aiLang } = useLanguage();
+  const composition = useComposition();
+  const desk = composition === "desk";
+  useMilestonesRowEnd(milestones, uiLang);
+  const v10 = milestonesV10Copy(uiLang);
   /* B-GROWTH-26 — the catalogue's domain list and every domain NAME come from
      the one domain registry (lib/domains/registry.ts, EN + HE in
      lib/i18nElevation/domains.ts): the same names Growth and Science print.
@@ -200,6 +219,11 @@ export default function MilestonesTab() {
     // B-LOOP-04: the one write seam (lib/milestones/observe via the context),
     // shared with Today's and the Journal's Notice cards.
     setMilestoneObservation(item.id, status);
+    // V77: an answer never moves the list to another area (the default area
+    // follows the first unanswered card, so it is pinned in the same render).
+    if (!areaPick || areaPick.childId !== childProfile.id) setAreaPick({ childId: childProfile.id, area: listArea });
+    // The card the parent just answered holds the route's one stamp while its receipt shows.
+    setHeldCard({ childId: childProfile.id, id: item.id });
     if (status !== "yes" || item.checked) return;
     // P5 critic r1 (framer ruling 3): the confetti burst fires ONCE per
     // milestone id ever (a completion moment, never a repeat reward); an Undo and a
@@ -223,6 +247,10 @@ export default function MilestonesTab() {
   const corrected = correctedAge(chronoMonths, gestationalWeeks);
   const comparisonMonths = comparisonAgeMonths(chronoMonths, gestationalWeeks);
   const currentBand = bandForAgeMonths(comparisonMonths);
+  // The check's own band (Screening asks exactly its items).
+  const checkBand = screeningBand(comparisonMonths);
+  const checkRuns = useChildCollection<{ id: string; answeredAt: string }>(childProfile.id, "screenings");
+  const lastCheckAt = useMemo(() => checkRuns.items.reduce<string | null>((latest, r) => (r.answeredAt && (!latest || r.answeredAt > latest) ? r.answeredAt : latest), null), [checkRuns.items]);
   // GP-08: every count on this surface is over the child's AGE WINDOW (current
   // corrected band + one earlier — the shared lib/milestoneData helper), never
   // the whole 0–6y catalogue ("0 of 133" / "0/28" on day 0).
@@ -292,29 +320,6 @@ export default function MilestonesTab() {
   const [openShelves, setOpenShelves] = useState<Partial<Record<ShelfId, boolean>>>({});
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  /* B-DESIGN-03 — the jump rail is NAVIGATION only: the ring marks the shelf
-     the parent jumped to (never an answer, a count or a verdict). A jump
-     closes a running search first, then scrolls once the shelf is rendered,
-     and moves focus to the shelf (tabIndex -1) for keyboard and screen reader. */
-  const [jumpedTo, setJumpedTo] = useState<ShelfId | null>(null);
-  const [pendingJump, setPendingJump] = useState<ShelfId | null>(null);
-  const jumpTo = (shelf: ShelfId) => {
-    setJumpedTo(shelf);
-    if (query || searchOpen) {
-      setQuery("");
-      setSearchOpen(false);
-    }
-    setPendingJump(shelf);
-  };
-  useEffect(() => {
-    if (!pendingJump) return;
-    setPendingJump(null);
-    const target = document.getElementById(`ms-at-${pendingJump}`) ?? document.getElementById("ms-at-quiet");
-    if (!target) return;
-    const still = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ block: "start", behavior: still ? "auto" : "smooth" });
-    target.focus({ preventScroll: true });
-  }, [pendingJump]);
   // P5 critic r1 (design P0): the map in ACTION order — shelves holding a
   // Notice card first, then the shelves with only their door; a shelf with no
   // catalogue row (Sleep, Family) closes the map as a quiet row with its
@@ -326,6 +331,46 @@ export default function MilestonesTab() {
   // P5 critic r2 (P1-4): the route's ONE stamp sits on the first card the
   // parent has NOT answered this session; an answered (held) card keeps none.
   const stampShelf = mapShelves.find((id) => noticeFor(id) && !heldNotice[id]);
+  // V77 (N-ChildList boards): the area tiles are the list's filter. The area the
+  // list opens on holds the first card the parent can answer; "All" lists every
+  // area. The pick is per child (a sibling never inherits it).
+  const [areaPick, setAreaPick] = useState<{ childId: string; area: DomainId | "all" } | null>(null);
+  const [heldCard, setHeldCard] = useState<{ childId: string; id: string } | null>(null);
+  const firstArea: DomainId = stampShelf ? shelfDef(stampShelf).domain : mapShelves[0] ? shelfDef(mapShelves[0]).domain : DOMAIN_IDS[0];
+  const listArea: DomainId | "all" = areaPick && areaPick.childId === childProfile.id ? areaPick.area : firstArea;
+  const pickArea = (area: DomainId | "all") => {
+    setAreaPick({ childId: childProfile.id, area });
+    if (query || searchOpen) { setQuery(""); setSearchOpen(false); }
+  };
+  const inArea = (shelf: ShelfId) => listArea === "all" || shelfDef(shelf).domain === listArea;
+  const isSeenIt = (m: Milestone) => m.observationStatus === "yes" || (!m.observationStatus && m.checked === true);
+  /** The area's cards: what to notice next (the shelf's Notice card, then the
+   *  rest of its around-now and own rows not yet Seen), then every Seen it,
+   *  oldest first by its day. Order is the record's, never a ranking. */
+  const gridCards = useMemo(() => {
+    const out: { m: Milestone; shelf: ShelfId; kind: "next" | "seen"; pick: boolean }[] = [];
+    for (const shelf of SHELF_IDS.filter(inArea)) {
+      const pick = noticeFor(shelf);
+      const bands = shelfBands(shelfItems[shelf], currentBand.months);
+      const around = bands.filter((b) => b.current || b.months === -1).flatMap((b) => b.items);
+      if (pick) out.push({ m: pick, shelf, kind: "next", pick: true });
+      for (const m of around) if (m.id !== pick?.id && !isSeenIt(m)) out.push({ m, shelf, kind: "next", pick: false });
+    }
+    const seen: typeof out = [];
+    for (const shelf of SHELF_IDS.filter(inArea)) {
+      for (const m of shelfItems[shelf]) if (isSeenIt(m) && !out.some((c) => c.m.id === m.id)) seen.push({ m, shelf, kind: "seen", pick: false });
+    }
+    seen.sort((a, b) => (Date.parse(a.m.observationUpdatedAt ?? "") || 0) - (Date.parse(b.m.observationUpdatedAt ?? "") || 0));
+    return [...out, ...seen];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listArea, shelfItems, noticePicks, heldNotice, milestones, currentBand.months]);
+  const gridIds = useMemo(() => new Set(gridCards.map((c) => c.m.id)), [gridCards]);
+  // The route's ONE stamp: on the card the parent just answered while it is held
+  // (its receipt, When?, Keep and Undo are the next move), otherwise on the first
+  // card in the grid the parent has not answered.
+  const heldId = heldCard && heldCard.childId === childProfile.id && gridIds.has(heldCard.id) ? heldCard.id : null;
+  const gridStampId = heldId ?? gridCards.find((c) => c.kind === "next" && !c.m.observationStatus && !c.m.checked && !(c.pick && heldNotice[c.shelf]))?.m.id ?? null;
+  const allCount = useMemo(() => SHELF_IDS.reduce((n, shelf) => n + shelfItems[shelf].length, 0), [shelfItems]);
   const quietWindow = milestoneAgeWindow(comparisonMonths);
   const quietShelves = SHELF_IDS.filter((id) => shelfItems[id].length === 0).map((shelf) => ({
     shelf,
@@ -464,7 +509,7 @@ export default function MilestonesTab() {
               ) : (
                 <img src={item.exampleMedia.src} alt={item.exampleMedia.alt} loading="lazy" className="w-full max-h-56 object-cover" />
               )}
-              <figcaption className="px-3 py-1.5 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              <figcaption className="px-3 py-1.5 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
                 <span className="font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.mediaExample")}</span>
                 {" · "}
                 {t("ms.mediaCredit")} {item.exampleMedia.credit}
@@ -488,26 +533,26 @@ export default function MilestonesTab() {
             ariaLabel={tGCare(uiLang, "elev.gcare.ms.observePrompt")}
             className="mt-2"
           />
-          {item.observationStatus === "not_sure" && <p className="pt-1 text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
+          {item.observationStatus === "not_sure" && <p className="pt-1 text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.observeNotSureHint")}</p>}
           <div className="flex items-center gap-2 flex-wrap pt-1">
             {/* GP-10 — `observationUpdatedAt` has been written on every mark since
                 ArborContext setMilestoneObservation, but nothing ever rendered it:
                 a milestone without a date is a checkbox, with one it is a keepsake
                 ("First steps — 14 Aug"). Dates only; the chip never grades. */}
             {item.checked && (
-              <span data-testid="ms-noticed-chip" className="text-[11px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+              <span data-testid="ms-noticed-chip" className="text-[12px] font-extrabold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                 {item.observationUpdatedAt
-                  ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDay(item.observationUpdatedAt, uiLang) })
+                  ? tGCare(uiLang, "elev.gcare.ms.noticedOn", { date: fmtDayV10(item.observationUpdatedAt, uiLang) })
                   : tGCare(uiLang, "elev.gcare.ms.noticedUndated")}
               </span>
             )}
-            {item.custom && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
+            {item.custom && <span className="text-[12px] font-bold px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-peach-ink)", background: "var(--arbor-peach-soft)" }}>{t("ms.custom")}</span>}
             {item.custom && (
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); setConfirmDeleteId(null); setRenameDraft(item.title); setRenamingId(item.id); }}
                 aria-label={t("aria.renameCustomMilestone")}
-                className="min-h-11 text-[11px] transition"
+                className="min-h-11 text-[12px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="edit" size={11} />
@@ -518,14 +563,14 @@ export default function MilestonesTab() {
                 type="button"
                 onClick={(e) => { e.preventDefault(); setRenamingId(null); setConfirmDeleteId(item.id); }}
                 aria-label={t("aria.deleteCustomMilestone")}
-                className="min-h-11 text-[11px] transition"
+                className="min-h-11 text-[12px] transition"
                 style={{ color: "var(--arbor-muted)" }}
               >
                 <Icon name="delete" size={11} />
               </button>
             )}
             {item.references?.map((r, i) => (
-              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[11px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
+              <a key={i} href={r.url} target="_blank" rel="noreferrer" className="text-[12px] font-bold flex items-center gap-0.5" style={{ color: "var(--arbor-sky-ink)" }}>
                 {r.label} <Icon name="open_in_new" size={11} />
               </a>
             ))}
@@ -535,7 +580,7 @@ export default function MilestonesTab() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-[11px] font-bold flex items-center gap-0.5"
+                className="text-[12px] font-bold flex items-center gap-0.5"
                 style={{ color: "var(--arbor-sky-ink)" }}
               >
                 {t(DOMAIN_REFERENCE_LABEL_KEY(item.domain))} <Icon name="open_in_new" size={11} />
@@ -545,7 +590,7 @@ export default function MilestonesTab() {
               type="button"
               onClick={(e) => { e.preventDefault(); void explain(item); }}
               disabled={explaining[item.id]}
-              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}
             >
               {explaining[item.id] ? <Icon name="progress_activity" size={11} className="animate-spin" /> : <Icon name="menu_book" size={11} />}
@@ -557,7 +602,7 @@ export default function MilestonesTab() {
               type="button"
               data-testid="ms-ask-arbor"
               onClick={(e) => { e.preventDefault(); askAboutMilestone(item); }}
-              className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+              className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
               style={{ color: "var(--arbor-ink)", background: "var(--arbor-paper-deep)" }}
             >
               <Icon name="forum" size={11} />
@@ -571,7 +616,7 @@ export default function MilestonesTab() {
                 <button
                   type="button"
                   onClick={(e) => { e.preventDefault(); requestLearnRead({ cardId: read.id, source: "milestone" }); }}
-                  className="min-h-11 text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
+                  className="min-h-11 text-[12px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition"
                   style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
                 >
                   <Icon name="local_library" size={11} />
@@ -596,7 +641,7 @@ export default function MilestonesTab() {
                   data-testid="ms-keepsake-add"
                   aria-label={t("elev.waveR.keepsake.aria")}
                   onClick={(e) => { e.preventDefault(); setKeepsakeFor(item.id); }}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-bold"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-bold"
                   style={{ color: "var(--arbor-lav-ink)", background: "var(--arbor-lav-soft)" }}
                 >
                   <Icon name="bookmark_add" size={13} fill={1} /> {t("elev.waveR.keepsake.add")}
@@ -626,7 +671,7 @@ export default function MilestonesTab() {
           {/* UND-8 — inline delete confirm row — no native window.confirm. */}
           {item.custom && confirmDeleteId === item.id && (
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <span className="text-[11px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
+              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-ink)" }}>{t("ms.deleteConfirm")}</span>
               <button type="button" onClick={() => { deleteMilestone(item.id); setConfirmDeleteId(null); }} className="min-h-11 text-xs font-extrabold px-3 py-1.5 rounded-xl text-white" style={{ background: "var(--arbor-clay-deep)" }}>{t("ms.deleteYes")}</button>
               <button type="button" onClick={() => setConfirmDeleteId(null)} className="min-h-11 text-xs px-2" style={{ color: "var(--arbor-muted)" }}>{t("ms.cancel")}</button>
             </div>
@@ -651,7 +696,7 @@ export default function MilestonesTab() {
                 written from), a door to the Trust Center, and ONE tap to keep
                 it in the child's record. Failure is its own honest, translated
                 state — not a markdown heading pretending to be guidance. */}
-            <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[11px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+            <div data-testid={`ms-explain-${item.id}`} className="mt-2 p-3 rounded-xl text-[12px] leading-relaxed select-text" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
               {explanations[item.id]?.escalation ? (
                 <UrgentSupport testId="ms-explain-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")} className="min-w-0 t-sm leading-relaxed text-[var(--arbor-ink)]" />
               ) : explainFailed[item.id] ? (
@@ -661,7 +706,7 @@ export default function MilestonesTab() {
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); setExplainFailed((prev) => ({ ...prev, [item.id]: false })); void explain(item); }}
-                    className="mt-2 min-h-11 text-[11px] font-extrabold"
+                    className="mt-2 min-h-11 text-[12px] font-extrabold"
                     style={{ color: "var(--arbor-green-ink)" }}
                   >
                     {t("err.retry")}
@@ -696,7 +741,7 @@ export default function MilestonesTab() {
    *  answer already given shown as selected. A parent-added row keeps its own
    *  controls (rename / delete live only there). */
   const [beforeRow, setBeforeRow] = useState<Record<string, Milestone>>({});
-  const renderRow = (m: Milestone, shelf: ShelfId) =>
+  const renderRow = (m: Milestone, shelf: ShelfId, answersAttrs?: Record<string, string>, asCard = false) =>
     m.custom ? renderItem(m) : (
       <React.Fragment key={m.id}>
       <NoticeCard
@@ -708,6 +753,11 @@ export default function MilestonesTab() {
         variant="row"
         hideShelf
         answers="segmented"
+        answersAttrs={answersAttrs}
+        heldAttrs={answersAttrs}
+        /* V77 list card: a stored answer shows as the pressed answer; the
+           receipt, When? and Keep follow the parent's own answer, as before. */
+        initialPhase={asCard ? "ask" : undefined}
         selected={m.observationStatus ?? (m.checked ? "yes" : null)}
         onAnswer={(status) => {
           setBeforeRow((p) => ({ ...p, [m.id]: m }));
@@ -730,13 +780,16 @@ export default function MilestonesTab() {
    *  "Earlier" (a closed disclosure, the same rows) and "Coming next" (a
    *  closed disclosure, titles only — read, never tick). The only age text a
    *  row carries is its own sourced sentence (milestoneAgeLine). */
-  const renderShelfBands = (shelf: ShelfId) => {
+  const renderShelfBands = (shelf: ShelfId, inGrid = false) => {
     const bands = shelfBands(shelfItems[shelf], currentBand.months);
     const skip = noticeFor(shelf)?.id;
-    const now = bands.filter((b) => b.current).flatMap((b) => b.items).filter((m) => m.id !== skip);
-    const earlier = bands.filter((b) => !b.current && !b.later && b.months !== -1).flatMap((b) => b.items).filter((m) => m.id !== skip).reverse();
-    const next = bands.filter((b) => b.later).flatMap((b) => b.items);
-    const own = bands.filter((b) => b.months === -1).flatMap((b) => b.items);
+    // V77 list: the around-now and own rows (and every Seen it) are the area
+    // grid's cards above; the door keeps what the grid does not show.
+    const inCard = (m: Milestone) => inGrid && gridIds.has(m.id);
+    const now = bands.filter((b) => b.current).flatMap((b) => b.items).filter((m) => m.id !== skip && !inCard(m));
+    const earlier = bands.filter((b) => !b.current && !b.later && b.months !== -1).flatMap((b) => b.items).filter((m) => m.id !== skip && !inCard(m)).reverse();
+    const next = bands.filter((b) => b.later).flatMap((b) => b.items).filter((m) => !inCard(m));
+    const own = bands.filter((b) => b.months === -1).flatMap((b) => b.items).filter((m) => !inCard(m));
     const group = "t-sm font-semibold";
     return (
       <div className="space-y-3">
@@ -783,6 +836,50 @@ export default function MilestonesTab() {
 
   /** B-LOOP-05 — word search across shelves: the page-language catalogue
    *  text and the stored words (a parent-added row keeps its own). */
+  /** B-LOOP-05 — the shelf's ONE Notice card (held in place once answered, its
+   *  Undo restoring the document byte-equal, the next title on the same shelf
+   *  after an answer); in the V77 list it is a card in the area grid. */
+  const renderPick = (card: Milestone, shelf: ShelfId, answersAttrs?: Record<string, string>) => (
+    <>
+
+                        <NoticeCard
+                          key={card.id}
+                          milestone={card}
+                          shelf={shelf}
+                          gender={childProfile.gender}
+                          childName={firstName}
+                          variant="row"
+                          hideShelf
+                          answersAttrs={answersAttrs}
+                          heldAttrs={answersAttrs}
+                          onAnswer={(status) => {
+                            setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
+                            setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
+                            observeMilestone(card, status);
+                          }}
+                          onUndo={() => {
+                            const previous = beforeAnswer[shelf];
+                            if (previous) restoreMilestone(previous);
+                          }}
+                          onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
+                          onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
+                          onKeepPhoto={() => setKeepsakeFor(card.id)}
+                          answers="segmented"
+                          /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
+                          besideWords={ownWords[shelf]?.[0]?.text ?? null}
+                        />
+                        {renderKeepsake(card)}
+                        {heldNotice[shelf] === card.id && (() => {
+                          const next = nextOnShelf(shelf, card.id);
+                          return next ? (
+                            <p data-testid="ms-shelf-next" className="mt-1 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
+                              {t("elev.loop.ms.nextOn", { shelf: shelfLabel(shelf, t), title: milestoneText(next, "title", t, msGender) })}
+                            </p>
+                          ) : null;
+                        })()}
+                        
+    </>
+  );
   const searchText = (m: Milestone): string[] => [milestoneText(m, "title", t, msGender), milestoneText(m, "looks", t, msGender), m.title, m.skillLooksLike ?? ""];
   const searchHits = query.trim()
     ? SHELF_IDS.map((shelf) => ({ shelf, items: shelfItems[shelf].filter((m) => matchesMilestoneQuery(searchText(m), query)) })).filter((g) => g.items.length > 0)
@@ -823,83 +920,45 @@ export default function MilestonesTab() {
   /* B-DESIGN-03 (product c2.r3 P2-3): ONE quote pair per locale for the
      family's words on this route — ״…״ in Hebrew, “…” in English. */
   const quoted = (text: string) => t("elev.loop.ms.quoted", { text });
-  /* B-DESIGN-03 (P7-DESIGN blend frame, DESIGN-DIRECTION.md §Chosen row 7):
-     the nine shelf glyphs as a jump rail under the header — 44 px duotone,
-     registry order (never the action order, never a count, never a state
-     colour: the tint is the shelf's own). Search leads the rail (the map's
-     44 px search icon, P5 r1 design P0). Below sm the names ride in the
-     accessible name only (the fold at 375); from sm they print under each glyph.
-     P7-DESIGN fix r1 (framer ruling R4, milestones design P1-1): the names print
-     at EVERY width on ONE line (each item at least 64 px, as wide as its name —
-     the design of record's 375 frame sets every name on one line); Shell drops
-     the hub kicker on phones for this route, the portrait is 44 px and the
-     rail's top margin 8 px, so the stamp keeps the 375 fold (designBlend model). */
-  const jumpRail = (
-    <nav data-testid="ms-jump-rail" aria-labelledby="ms-map-title" className="no-scrollbar -mx-4 mt-2 overflow-x-auto px-4 py-1 sm:mx-0 sm:px-0">
-      <ul className="flex items-start gap-2">
-        <li className="flex flex-none items-start gap-2">
-          <button
-            type="button"
-            data-testid="ms-search-open"
-            aria-label={t("elev.loop.ms.search")}
-            aria-expanded={searchOpen || !!query}
-            onClick={() => setSearchOpen((v) => !v)}
-            className="flex min-h-11 min-w-16 flex-col items-center gap-1"
-            style={{ color: "var(--arbor-ink-soft)" }}
-          >
-            <span className="inline-flex h-11 w-11 items-center justify-center" style={{ borderRadius: "var(--r)", background: "var(--arbor-paper-deep)", boxShadow: "inset 0 0 0 1px var(--arbor-rule)" }}>
-              <Icon name="search" size={20} />
-            </span>
-            <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{t("top.search")}</span>
-          </button>
-          <span aria-hidden="true" className="h-11 w-px flex-none" style={{ background: "var(--arbor-rule)" }} />
-        </li>
-        {SHELF_IDS.map((shelf) => {
-          const on = jumpedTo === shelf;
-          return (
-            <li key={shelf} className="flex-none">
-              <button
-                type="button"
-                data-testid="ms-jump"
-                data-shelf={shelf}
-                aria-label={shelfLabel(shelf, t)}
-                aria-current={on ? "location" : undefined}
-                onClick={() => jumpTo(shelf)}
-                className="flex min-h-11 min-w-16 flex-col items-center gap-1"
-                style={{ color: on ? "var(--arbor-ink)" : "var(--arbor-ink-soft)" }}
-              >
-                <span className="inline-flex" style={{ borderRadius: "var(--r)", boxShadow: on ? "0 0 0 2px var(--arbor-paper), 0 0 0 4px var(--arbor-ink)" : undefined }}>
-                  <ShelfGlyph shelf={shelf} />
-                </span>
-                <span aria-hidden="true" className="text-center t-xs font-semibold leading-tight whitespace-nowrap">{shelfLabel(shelf, t)}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
   // P5-LOOP c2 r1: the rail exists only for the under-2 lead.
   const hasRail = comparisonMonths < 24;
   // The first card the parent can answer (the route's stamp) — named by the first-open lede.
   const firstCard = stampShelf ? noticeFor(stampShelf) : undefined;
+  /* B1 — under-2 reassurance lead: name the current stage, no checklist
+     framing (it led a side rail; in the V77 list it opens the area's stage). */
+  const underTwoLead = (
+    <div data-testid="ms-under-two" className="msl-lead rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[12px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
+                              <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
+                              {corrected.applied && (
+                                <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
+                                  {t("ms.correctedBadge")} · {corrected.correctedMonths}m
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
+                          </div>
+  );
   const shelfMap = (
           <div data-testid="ms-shelf-map" className={`${cardCls} min-w-0 p-4 sm:p-6`}>
             {/* B-DESIGN-03: at 375 the jump rail above IS the map's heading
                 (the first answers stay above the fold); the h2 keeps the outline,
                 names the rail, and prints from sm up. */}
-            <h2 id="ms-map-title" className="arbor-type-title sr-only sm:not-sr-only" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.loop.shelfMap.title")}
-            </h2>
+            {/* V77: the chosen area names the stage; the search and "All" sit beside it. */}
+            <div className="msl-top">
+            <div className="msl-head">
+              {listArea !== "all" && <span className="tg" aria-hidden="true"><Icon name={DOMAIN_ICONS[listArea]} size={22} /></span>}
+              <h2 id="ms-map-title" className="msl-tt">{listArea === "all" ? t("elev.loop.shelfMap.title") : domainName(listArea, t)}</h2>
+            </div>
             <MilestoneKeptStatus history={keptNotes} />
-            {(searchOpen || !!query) && (
-              <label className="field-pill mb-1 flex sm:mt-3 min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
+            {(desk || searchOpen || !!query) && <div className="msl-tools">
+              <label className="field-pill msl-search flex min-h-11 items-center gap-2 rounded-xl ps-3 pe-1">
                 <Icon name="search" size={18} style={{ color: "var(--arbor-muted)" }} />
                 <input
                   data-testid="ms-search"
                   type="search"
                   dir="auto"
-                  autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={t("elev.loop.search.placeholder")}
@@ -913,7 +972,12 @@ export default function MilestonesTab() {
                   </button>
                 )}
               </label>
-            )}
+              {desk && <button type="button" className={`chip msl-all min-h-11${listArea === "all" ? " on" : ""}`} data-testid="ms-area-all" aria-pressed={listArea === "all"} onClick={() => pickArea(listArea === "all" ? firstArea : "all")}>
+                {v10.allAreas} <b className="arbor-num">{allCount}</b>
+              </button>}
+            </div>}
+            </div>
+            {hasRail && underTwoLead}
 
             {searchHits ? (
               <div data-testid="ms-search-results" className="mt-4 space-y-4">
@@ -939,11 +1003,28 @@ export default function MilestonesTab() {
               </div>
             ) : (
               <div className="mt-1">
+                <ul className="msl-grid" data-testid="ms-area-grid" role="list">
+                  {gridCards.map(({ m, shelf, kind, pick }) => {
+                    const stamp = m.id === gridStampId ? { "data-primary-move": "notice-milestone" } : undefined;
+                    const at = kind === "seen" ? m.observationUpdatedAt : undefined;
+                    return (
+                      <li key={m.id} className={`msl-card ${kind}`} data-testid="ms-card" data-milestone={m.id} data-state={kind}>
+                        <p className="msl-chip" data-testid="ms-card-chip">
+                          <span aria-hidden="true"><Token kind="moment" size="sm" state={kind === "seen" ? undefined : "ai"} label={kind === "seen" ? t(NOTICE_ANSWER_KEYS.yes) : v10.nextToNotice} /></span>
+                          <b>{kind === "seen" ? t(NOTICE_ANSWER_KEYS.yes) : v10.nextToNotice}</b>
+                          {at && <span> · <time dateTime={at}>{fmtDayV10(at, uiLang)}</time></span>}
+                        </p>
+                        {pick ? renderPick(m, shelf, stamp) : renderRow(m, shelf, stamp, true)}
+                        {!m.custom && <EarlierLater milestone={m} milestones={milestones} gender={childProfile.gender ?? null} />}
+                      </li>
+                    );
+                  })}
+                </ul>
                 {/* P5 critic r1 (design P0): shelves in ACTION order — the
                     shelves holding a Notice card first, then the shelves with
                     only their door; the shelves with no catalogue row close
                     the map as quiet rows (framer ruling 2). */}
-                {mapShelves.map((shelf, i) => {
+                {mapShelves.filter(inArea).map((shelf, i) => {
                   const card = noticeFor(shelf);
                   const n = shelfCounts[shelf];
                   const open = Boolean(openShelves[shelf]);
@@ -976,47 +1057,7 @@ export default function MilestonesTab() {
                           <span style={{ fontFamily: "var(--font-sans)", color: "var(--arbor-muted)" }}> · <bdi>{shelfDayLabel(shelfWords[shelf]!.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi></span>
                         </p>
                       )}
-                      {card ? (
-                        /* A ROW inside the map (no card in a card); the shelf is
-                           named once by the header; the first shelf's answers
-                           carry the route's one stamp. */
-                        <>
-                        <NoticeCard
-                          key={card.id}
-                          milestone={card}
-                          shelf={shelf}
-                          gender={childProfile.gender}
-                          childName={firstName}
-                          variant="row"
-                          hideShelf
-                          answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}
-                          onAnswer={(status) => {
-                            setHeldNotice((p) => ({ ...p, [shelf]: card.id }));
-                            setBeforeAnswer((p) => ({ ...p, [shelf]: card }));
-                            observeMilestone(card, status);
-                          }}
-                          onUndo={() => {
-                            const previous = beforeAnswer[shelf];
-                            if (previous) restoreMilestone(previous);
-                          }}
-                          onWhen={(when) => setMilestoneObservation(card.id, "yes", { when })}
-                          onKeepQuote={(note) => saveKeepsake({ milestoneId: card.id, note, noticedOn: localDay(new Date()) })}
-                          onKeepPhoto={() => setKeepsakeFor(card.id)}
-                          answers="segmented"
-                          /* c2 r2 (B-LOOP-NEW-2f): "Seen it" is filed next to the shelf's newest kept line */
-                          besideWords={ownWords[shelf]?.[0]?.text ?? null}
-                        />
-                        {renderKeepsake(card)}
-                        {heldNotice[shelf] === card.id && (() => {
-                          const next = nextOnShelf(shelf, card.id);
-                          return next ? (
-                            <p data-testid="ms-shelf-next" className="mt-1 t-sm" style={{ color: "var(--arbor-ink-soft)" }}>
-                              {t("elev.loop.ms.nextOn", { shelf: shelfLabel(shelf, t), title: milestoneText(next, "title", t, msGender) })}
-                            </p>
-                          ) : null;
-                        })()}
-                        </>
-                      ) : windowShelfItems[shelf].length === 0 ? (
+                      {!card && windowShelfItems[shelf].length === 0 ? (
                         <p className="mt-2 t-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.loop.shelf.noneNow")}</p>
                       ) : null}
                       <button
@@ -1032,7 +1073,7 @@ export default function MilestonesTab() {
                       </button>
                       {open && (
                         <div className="mt-2 space-y-3">
-                          {renderShelfBands(shelf)}
+                          {renderShelfBands(shelf, true)}
                           <button
                             type="button"
                             data-testid="ms-play-ideas"
@@ -1083,6 +1124,8 @@ export default function MilestonesTab() {
                     never says "No milestones": it shows its shelf-level practice
                     as one thing to try, and no door; with none for this age the
                     shelves fold into ONE quiet line. */}
+                {/* The shelves with no catalogue row (Sleep, Family) keep their one
+                    thing to try under every area: the boards have no other home for it. */}
                 {quietShelves.length > 0 && (
                   <div data-testid="ms-quiet-shelves" className="space-y-2 pt-3" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
                     {quietShelves.filter((q) => q.practice).map((q) => (
@@ -1148,7 +1191,7 @@ export default function MilestonesTab() {
             <span data-testid="ms-latest-area"><span className="hidden sm:inline"> · </span>{t("elev.ms.latest.area", { area: latestShelfName })} · </span>
             <span className="hidden sm:inline">{t("elev.ms.latest.when")} </span>
             <time data-testid="ms-latest-date" dateTime={latestNoticed.at} className="whitespace-nowrap">
-              <bdi>{new Date(latestNoticed.at).toLocaleDateString(uiLang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" })}</bdi>
+              <bdi>{fmtDayV10(latestNoticed.at, uiLang)}</bdi>
             </time>
           </>
         )}
@@ -1165,119 +1208,73 @@ export default function MilestonesTab() {
     </p>
   ) : null;
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`flex w-full min-w-0 flex-col gap-5 sm:gap-6 ${hasRail ? "mx-auto max-w-[1180px]" : "me-auto max-w-[760px]"}`}>
-      {/* B-DESIGN-03 (P7-DESIGN blend frame; critics c2.r3 P2-12 / P2-13): the
-          header collapses to the H1 (hero step), the ONE warm accent and ONE
-          muted line, then the jump rail. */}
-      <div data-testid="ms-header" className="min-w-0">
-        <div className="flex min-w-0 items-center gap-3.5">
-          {/* The child's memory portrait — modest, no comic frame in the parent register. */}
-          <HeroAvatar size={44} mood="wave" animate={false} ring={false} className="flex-shrink-0" />
-          <h1 className="arbor-type-hero min-w-0" style={{ color: "var(--arbor-ink)" }}>{t("ms.title")}</h1>
-        </div>
-        {/* The ONE warm accent: the family's newest kept words (last 7 days),
-            editorial face on the 2 px ink rule; the shelf and the day on their
-            own t-sm line beneath (P2-13, no stranded separator). No count, no
-            date pressure. */}
-        {headerQuote ? (
-          <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
-            <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
-              {quoted(headerQuote.text)}
-            </blockquote>
-            <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
-              <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
-            </figcaption>
-          </figure>
-        ) : !latestNoticed ? (
-          <>
-            {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
-                open is ONE editorial sentence — it names the child and the
-                first card, with no second instruction; no number, no chip. */}
-            <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
-              {firstCard
-                ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
-                : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+  // The band names the child as the map's does ("Dylan's growth, in your words.").
+  const [bandBefore, bandAfter = ""] = t("companion.milestones.title").split("{name}");
+  const bandTitle = <>{bandBefore}<bdi dir="auto">{firstName || t("ms.watch.childFallback")}</bdi>{bandAfter || null}</>;
+  const sinceAt = firstMilestoneRecord(milestones);
+  const recordSinceDay = sinceAt === null ? null : fmtDayV10(sinceAt, uiLang);
+  const stops = [
+    { id: "ms-list", title: desk ? v10.listGuideList : v10.listShort, sub: v10.listGuideListSub },
+    { id: "ms-tools", title: desk ? v10.listGuideTools : v10.toolsShort, sub: v10.listGuideToolsSub },
+    { id: "ms-check", title: desk ? v10.listGuideCheck : v10.checkShort, sub: v10.listGuideCheckSub },
+  ];
+  // v10.1: the latest line (with Not right? Change), Born early and Add milestone — the list's tools.
+  // The ONE warm accent (the newest kept words, or the first-open sentence).
+  // v10.1: on a desk it leads the list's rail, so the first Seen it stays above the fold.
+  /* The ONE warm accent: the family's newest kept words (last 7 days),
+        editorial face on the 2 px ink rule; the shelf and the day on their
+        own t-sm line beneath (P2-13, no stranded separator). No count, no
+        date pressure. */
+  const headerWords = headerQuote ? (
+      <figure data-testid="ms-header-quote" className="arbor-accent-rule mt-3 min-w-0">
+        <blockquote dir="auto" className="arbor-type-say" style={{ color: "var(--arbor-ink)" }}>
+          {quoted(headerQuote.text)}
+        </blockquote>
+        <figcaption className="mt-1 t-sm leading-snug" style={{ color: "var(--arbor-muted)" }}>
+          <bdi>{shelfLabel(headerQuote.shelf, t)}</bdi> · <bdi>{shelfDayLabel(headerQuote.at, noticeNow, uiLang === "he" ? "he" : "en")}</bdi>
+        </figcaption>
+      </figure>
+    ) : !latestNoticed ? (
+      <>
+        {/* P5-LOOP c2 r1 (B-LOOP-NEW-1f) → c2 r2 (B-LOOP-NEW-2e): first
+            open is ONE editorial sentence — it names the child and the
+            first card, with no second instruction; no number, no chip. */}
+        <p data-testid="ms-first-line" dir="auto" className="mt-3 leading-snug" style={{ fontFamily: "var(--font-editorial)", fontSize: "var(--t-lg)", color: "var(--arbor-ink)" }}>
+          {firstCard
+            ? t("elev.loop.ms.firstCard", { name: firstName || t("ms.watch.childFallback"), title: quoted(milestoneText(firstCard, "title", t, msGender)) })
+            : t("elev.loop.ms.firstLine", { name: firstName || t("ms.watch.childFallback") })}
+        </p>
+        {!firstCard && (
+          <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
+            {t("elev.loop.ms.lede")}
+          </p>
+        )}
+      </>
+    ) : null;
+  const tools = (
+    <div className="ms-list-tools">
+      {(latestLine || (latestNoticed && changingLatest)) && (
+        <div className="obj ms-latest">
+          {latestNoticed && (
+            <p className="ms-latest-h" data-testid="ms-latest-title">
+              <span className="ogi" aria-hidden="true"><Icon name="star" size={18} /></span>
+              <span>{v10.latestTitle.replace("{name}", firstName || t("ms.watch.childFallback"))}</span>
             </p>
-            {!firstCard && (
-              <p data-testid="ms-lede" className="t-sm mt-1 max-w-2xl" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.loop.ms.lede")}
-              </p>
-            )}
-          </>
-        ) : null}
-        {latestLine}
-        {/* Critic r3 (P1): correctable where it is read — "Not right?
-            Change" opens the ONE answer group for the latest milestone. */}
-        {latestNoticed && changingLatest ? (
-          <div data-testid="ms-latest-change-answers">
-            <SegmentedAnswers
-              onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
-              ariaLabel={t("ms.observePrompt")}
-              className="mt-2"
-            />
-          </div>
-        ) : null}
-        {jumpRail}
-      </div>
-
-      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
-          but Rule A caps Today's module budget, so it lives here: the Map is
-          where crossings are born. Renders nothing when there is no new
-          crossing; ≤1/session via the shared CelebrationMoment guard. */}
-      <PrideMomentCard />
-
-      {/* Master/detail spine: left rail = the persistent Development Map summary
-          (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
-          right pane = the seven-domain master list, or a single-domain drill-in. */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route. */}
-      {/* P5-LOOP c2 r1 (milestones P1 ×2): the Split renders only when its
-          rail has content (the under-2 lead); otherwise the map is ONE
-          start-aligned column with the header and the cards below it (the
-          root narrows to 760 px). The spine is a real box, so the root's gap
-          lands between it and Born early (it was a display:contents wrapper —
-          the space-y margin was dropped and the two touched at 0 px). */}
-      <div data-module="milestones-spine" className="min-w-0">
-      {hasRail ? (
-      <Split
-        ratio="minmax(300px,1fr) minmax(0,1.4fr)"
-        className="md:[&>div]:!contents xl:[&>div]:!grid"
-        left={
-          <div className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:space-y-5">
-            {/* P5 critic r2 (P1-2 / P2-1): the summary card is gone — "Not
-                right? Change" and "{n} noticed" sit under the lede in the
-                header; the rail keeps only the under-2 lead. */}
-            {comparisonMonths < 24 && (
-            <div className={`${cardCls} min-w-0 p-4 sm:p-6`}>
-              {/* B1 — under-2 reassurance lead: name the current stage, no checklist framing. */}
-              {comparisonMonths < 24 && (
-                <div className="mt-4 rounded-xl p-3.5" style={{ background: "var(--arbor-green-soft)" }}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] uppercase font-extrabold tracking-wider" style={{ color: "var(--arbor-green-ink)" }}>{t("ms.rightNow")}</span>
-                    <span className="text-lg" style={{ fontFamily: "var(--font-editorial)", color: "var(--arbor-ink)" }}>{milestoneBandLabel(currentBand.months, t)}</span>
-                    {corrected.applied && (
-                      <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
-                        {t("ms.correctedBadge")} · {corrected.correctedMonths}m
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[12px] leading-relaxed mt-1.5" style={{ color: "var(--arbor-ink)" }}>{t("ms.rightNowBody")}</p>
-                </div>
-              )}
+          )}
+          {latestLine}
+          {/* Critic r3 (P1): correctable where it is read — "Not right?
+              Change" opens the ONE answer group for the latest milestone. */}
+          {latestNoticed && changingLatest ? (
+            <div data-testid="ms-latest-change-answers">
+              <SegmentedAnswers
+                onAnswer={(status) => { observeMilestone(latestNoticed.milestone, status); setChangingLatest(false); }}
+                ariaLabel={t("ms.observePrompt")}
+                className="mt-2"
+              />
             </div>
-            )}
-
-
-          </div>
-        }
-        right={shelfMap}
-      />
-      ) : shelfMap}
-      </div>
-
+          ) : null}
+        </div>
+      )}
       {/* P5 critic r1 (P1-1): Born early sits AFTER the shelf map at every
           width (the contract's disclosure), never ahead of the one move. */}
             <BornEarlyFrame inline={comparisonMonths < 24 || !!gestationalWeeks} summary={t("ms.bornEarly")}>
@@ -1288,12 +1285,12 @@ export default function MilestonesTab() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("ms.bornEarly")}</span>
                       {corrected.applied && (
-                        <span className="text-[11px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
+                        <span className="text-[12px] font-extrabold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-green-soft)" }}>
                           {t("ms.correctedBadge")} · {corrected.correctedMonths}m
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
+                    <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("ms.gestationHint")}</p>
                   </div>
                 </div>
                 {!showGestation && (
@@ -1312,7 +1309,7 @@ export default function MilestonesTab() {
                   onSubmit={(e) => { e.preventDefault(); const n = Number(gestationDraft); saveGestation(Number.isFinite(n) && n > 0 ? n : null); }}
                   className="flex flex-col gap-2 items-stretch mt-3"
                 >
-                  <label className="flex-1 flex items-center gap-2 text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <label className="flex-1 flex items-center gap-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                     {t("ms.gestationLabel")}
                     <input
                       autoFocus
@@ -1341,9 +1338,12 @@ export default function MilestonesTab() {
       {/* Add custom milestone */}
       <div data-module="milestones-custom" className={`${cardCls} p-5`}>
         {!showAdd ? (
-          <button onClick={() => setShowAdd(true)} className="touch-target -mx-2 gap-2 px-2 text-sm font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="add" size={16} /> {t("ms.addMilestone")}
-          </button>
+          <div className="ms-add-row">
+            <span className="ms-add-text"><b>{v10.notOnList}</b><span>{v10.notOnListSub}</span></span>
+            <button onClick={() => setShowAdd(true)} className="btn sm min-h-11 ms-add-go">
+              {t("ms.addMilestone")}
+            </button>
+          </div>
         ) : (
           <form onSubmit={submitCustom} className="flex flex-col sm:flex-row gap-2 items-stretch">
             <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={t("ms.newPlaceholder")} className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }} />
@@ -1356,18 +1356,93 @@ export default function MilestonesTab() {
         )}
       </div>
 
-      {/* B-GROWTH-12: the "What to nurture next" analyzer (a second AI door
-          with a fixed "Vygotsky's Scaffolding" lens) is gone — each milestone
-          row and the Map's area pane carry the ONE door, "Ask Arbor about this". */}
+    </div>
+  );
 
-      {/* P5-LOOP c2 r1 (milestones product P1): the "Gentle watch points"
-          panel is gone from the map — it counted not-yet answers by domain in
-          a second vocabulary, reassured where the card's A4 close says
-          "worth mentioning", and pointed to a pediatrician (out of the lane).
-          The not-yet answer's only close is the card's A4 line; the derived
-          watch signal still lives in Screening (useMonitoring) and in Today's
-          door (ArborNoticedCard). The corrected-age note is one line in the
-          map foot. */}
+  return (
+    <DsRoot composition={composition} className="ms-v10 ms-list" dir={uiLang === "he" ? "rtl" : "ltr"}>
+      <Guide stops={stops} label={v10.onThisPage} mini={!desk} />
+      <Route composition={composition}>
+        <RouteSection id="ms-list" n={1} on aria-labelledby="ms-list-title">
+          {/* v10.1: the band shared with the map (header, figure, Map / List). The
+              list's own jump rail is its index of areas, so the band carries no
+              second one and the first Seen it stays above the fold on a desk. */}
+          <MilestonesBand composition={composition} kicker={v10.kicker} title={desk ? bandTitle : t("ms.title")} titleId="ms-list-title"
+            current="milestones" totals={{ ...seenTotals(milestones), since: recordSinceDay }} compact>
+            {/* The fold law: the list's first answer stays above the Ask bar, so
+                the band is the compact one and the tiles carry the hint on a desk only. */}
+            <DevelopmentMap milestones={milestones} observations={observations} openDomain={listArea === "all" ? null : listArea}
+              onToggle={(area) => pickArea(area)} composition={composition} caption={desk ? "hint" : "none"}
+              lead={desk ? undefined : (
+                <span className="msl-lead-tools">
+                  <button type="button" className="msl-icon min-h-11" data-testid="ms-search-open" aria-label={t("elev.loop.ms.search")} aria-expanded={searchOpen || !!query} onClick={() => setSearchOpen((v) => !v)}>
+                    <Icon name="search" size={22} />
+                  </button>
+                  <button type="button" className={`chip msl-all min-h-11${listArea === "all" ? " on" : ""}`} data-testid="ms-area-all" aria-pressed={listArea === "all"} onClick={() => pickArea(listArea === "all" ? firstArea : "all")}>
+                    {v10.allAreas} <b className="arbor-num">{allCount}</b>
+                  </button>
+                </span>
+              )} />
+          </MilestonesBand>
+          <div className="ms-row">
+            <div className="stg">
+              <div className="mcst ms-list-stage">
+      <div data-testid="ms-header" className="min-w-0">
+
+                </div>
+
+      {/* W5 mount — the R3 threshold-crossing pride moment. Designed for Today,
+                    but Rule A caps Today's module budget, so it lives here: the Map is
+                    where crossings are born. Renders nothing when there is no new
+                    crossing; ≤1/session via the shared CelebrationMoment guard. */}
+                <PrideMomentCard />
+          
+                {/* Master/detail spine: left rail = the persistent Development Map summary
+                    (firewall-safe COUNT headline — never a 0–100 gauge or trend delta);
+                    right pane = the seven-domain master list, or a single-domain drill-in. */}
+                {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+                    marks a top-level sibling module (what moduleBudget counts);
+                    `data-primary-move` marks the ONE control that performs the move
+                    surfaceContract.ts declares for this route. */}
+                {/* P5-LOOP c2 r1 (milestones P1 ×2): the Split renders only when its
+                    rail has content (the under-2 lead); otherwise the map is ONE
+                    start-aligned column with the header and the cards below it (the
+                    root narrows to 760 px). The spine is a real box, so the root's gap
+                    lands between it and Born early (it was a display:contents wrapper —
+                    the space-y margin was dropped and the two touched at 0 px). */}
+                <div data-module="milestones-spine" className="min-w-0">
+                {shelfMap}
+                </div>
+              </div>
+            </div>
+            <div className="rlc" id="ms-tools">
+              <MilestonesReadGuide steps="list" suggests={false} />
+              {headerWords && <div className="obj ms-words-lead" data-testid="ms-words-lead">{headerWords}</div>}
+              {tools}
+            </div>
+          </div>
+        </RouteSection>
+        <RouteSection id="ms-check" n={3} aria-labelledby="ms-check-title">
+          <RouteHead id="ms-check-title" title={v10.checkSection} />
+          {/* The Development check is its own page (#/screening); this is its one door
+              from the list, introduced in Screening's own words (its band, its item
+              count, its basis and trust lines). */}
+          <div className="ms-check-link" data-testid="ms-check-link">
+            <p className="ms-check-for"><span className="ogi" aria-hidden="true"><Icon name="fact_check" size={18} /></span>
+              <span>{t("screen.introTitle", { name: firstName || t("ms.watch.childFallback"), band: t(`screen.band.${checkBand.id}`) })}</span></p>
+            <p className="ms-check-body">{t("screen.intro.body", { n: checkBand.items.length })}</p>
+            <p className="ms-check-chips"><span className="chip">{t("kit.trust.calm")}</span><span className="chip">{t("kit.trust.escalation")}</span></p>
+            <div className="ms-check-go-row">
+              <button type="button" className="btn primary min-h-11" data-testid="ms-check-start" onClick={() => setActiveTab("screening")}>
+                <Icon name="fact_check" size={18} />
+                {t("screen.start")}
+              </button>
+              <span className="ms-check-state" data-testid="ms-check-state">{lastCheckAt ? t("companion.milestones.checkLast", { date: fmtDayV10(lastCheckAt, uiLang) }) : t("companion.milestones.checkNever")}</span>
+            </div>
+            <p className="ms-check-basis">{t("screen.intro.basis")} {t("screen.trustNote")}</p>
+          </div>
+        </RouteSection>
+      </Route>
 
       {/* GP-31 — the keepsake editor. One sheet for the whole list; a null
           milestone keeps it closed. Save/remove write through the pure
@@ -1387,7 +1462,6 @@ export default function MilestonesTab() {
         onRemove={() => (openKeepsake ? dropKeepsake(openKeepsake.id) : Promise.resolve())}
         onClose={() => setKeepsakeFor(null)}
       />
-
-    </motion.div>
+    </DsRoot>
   );
 }

@@ -117,27 +117,27 @@ function HeroSheetReview({ child, heroUrl, hash }: HeroSheetPanelProps & { heroU
               {d && !busy[pose] ? (
                 <img src={d.dataUrl} alt={label} className="h-24 w-auto object-contain" draggable={false} />
               ) : (
-                <div className="h-24 flex items-center text-[11px] text-center" style={muted}>
+                <div className="h-24 flex items-center text-[12px] text-center" style={muted}>
                   {busy[pose] ? t("elev.hero.sheet.review.redrawing") : t("elev.hero.sheet.review.failed")}
                 </div>
               )}
               {d && !busy[pose] && (
                 <>
-                  <span className="text-[11px] text-center" style={muted}>{t("elev.hero.sheet.review.ask", name)}</span>
+                  <span className="text-[12px] text-center" style={muted}>{t("elev.hero.sheet.review.ask", name)}</span>
                   <div className="flex gap-1.5">
                     {d.review === "ok" ? (
-                      <span className="inline-flex min-h-11 items-center gap-1 text-[11px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+                      <span className="inline-flex min-h-11 items-center gap-1 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
                         <Icon name="check" size={14} /> {t("elev.hero.sheet.review.kept")}
                       </span>
                     ) : (
-                      <button type="button" onClick={() => { void ok(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
+                      <button type="button" onClick={() => { void ok(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[12px] font-bold" style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}>
                         <Icon name="check" size={14} /> {t("elev.hero.sheet.review.yes")}
                       </button>
                     )}
                     {d.redrawn ? (
-                      <span className="inline-flex min-h-11 items-center text-[11px]" style={muted}>{t("elev.hero.sheet.review.redrawn")}</span>
+                      <span className="inline-flex min-h-11 items-center text-[12px]" style={muted}>{t("elev.hero.sheet.review.redrawn")}</span>
                     ) : d.review !== "ok" && (
-                      <button type="button" onClick={() => { void redraw(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[11px] font-bold" style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
+                      <button type="button" onClick={() => { void redraw(pose); }} className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[12px] font-bold" style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                         <Icon name="refresh" size={14} /> {t("elev.hero.sheet.review.redraw")}
                       </button>
                     )}

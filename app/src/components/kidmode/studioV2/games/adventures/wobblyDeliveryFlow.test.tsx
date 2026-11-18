@@ -124,7 +124,7 @@ function act(tree: unknown, w: Words, mind: Mind, how: Play): void {
   if (now !== 'fetch') { vi.advanceTimersToNextTimer(); return; }
   const next = mind.request[landed(tree).length];
   if (!next || (how.ask && !mind.asked)) { mind.asked = true; askAgain(tree).props.onClick!(); return; }
-  const other = onShelf(tree).find(item => item !== next)!;
+  const other = onShelf(tree).find(item => item !== next && !landed(tree).includes(item))!;
   shelfItem(tree, how.fumble && status(tree) !== w.notYet ? other : next).props.onClick!();
 }
 function playOut(w: Words, seen?: (tree: unknown) => void, how: Play = {}) {
@@ -262,11 +262,16 @@ describe.each(['en', 'he'] as const)('Wobbly Delivery (%s)', lang => {
           vi.advanceTimersByTime(CARRY_STEP_MS); tree = render();
           expect(phase(tree)).toBe('carry'); expect(heroStop(tree)).toBe(stop); expect(carried(tree)).toBe(item);
           expect(tiles(tree).map(n => n.props['data-lit'])).toEqual(DELIVERY_TILES.map((_, tile) => tile + 1 === stop));
+          // B-GAME-45: the lit tile, and only that one, sends up its note.
+          expect(tiles(tree).map(n => nodes(n.props.children).some(classed('delivery-note')))).toEqual(DELIVERY_TILES.map((_, tile) => tile + 1 === stop));
         }
         expect(h.tones.play.mock.calls).toEqual([[at], [at + 1], [at + 2]]); expect(landed(tree)).toEqual(request.slice(0, at));
         vi.advanceTimersByTime(CARRY_MS - CARRY_STEP_MS * (DELIVERY_TILES.length + 1)); tree = render();
         // It lands in the next free place on the rug, in the order it was brought.
         expect(landed(tree)).toEqual(request.slice(0, at + 1)); expect(carried(tree)).toBeNull();
+        // One puff a thing on the rug, and one lantern lit a thing brought.
+        expect(nodes(tree).filter(classed('delivery-puff'))).toHaveLength(at + 1);
+        expect(nodes(one(tree, 'the lanterns', classed('delivery-lanterns')).props.children).map(n => n.props['data-on'])).toEqual(request.map((_, slot) => slot <= at));
         expect(rug(tree).props['aria-label']).toBe(`${w.rug[round]}: ${request.slice(0, at + 1).map(name => w.items[name]).join(w.listJoin)}`);
         expect(shelfItem(tree, item).props).toMatchObject({ 'data-away': true, 'aria-label': `${w.items[item]}. ${w.onRug}` });
         if (at === count - 1) return;
@@ -338,11 +343,11 @@ describe.each(['en', 'he'] as const)('Wobbly Delivery (%s)', lang => {
     // The right thing still works.
     tree = carry(request[0]);
     expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(''); expect(askAgain(tree).props['data-hint']).toBe(false);
-    // A thing that is already on the rug: the same kind answer, and nothing moves.
+    // A thing that is already on the rug is not "not yet": it only wobbles, with no line and no sound, and nothing moves.
     h.sound.mockClear();
     shelfItem(tree, request[0]).props.onClick!(); tree = render();
-    expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(w.notYet); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(true);
-    expect(hero(tree).props.pose).toBe('oops'); expect(sounds()).toEqual(['tryAgain']); expect(pictures(tree)).toEqual([request[0], null]);
+    expect(landed(tree)).toEqual([request[0]]); expect(status(tree)).toBe(''); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(true);
+    expect(hero(tree).props.pose).not.toBe('oops'); expect(sounds()).toEqual([]); expect(pictures(tree)).toEqual([request[0], null]);
     // No waiting: the next thing can be carried while the hero is still shrugging.
     shelfItem(tree, request[1]).props.onClick!(); tree = render();
     expect(phase(tree)).toBe('carry'); expect(hero(tree).props.pose).toBe('hold-up'); expect(status(tree)).toBe(''); expect(shelfItem(tree, request[0]).props['data-wobble']).toBe(false);
@@ -651,7 +656,7 @@ describe('Wobbly Delivery words', () => {
   it('keeps the tile words and the closing words of the brief', () => {
     expect(en.title).toBe('Wobbly Delivery'); expect(en.description).toBe('Listen. Remember. Deliver.');
     expect(en.instruction).toBe('Listen to what a friend needs, then bring each thing in order.');
-    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Try it for real: ask a grown-up for two things to bring, and carry them in order.');
+    expect(en.finishTitle).toBe('Delivered!'); expect(en.transfer).toBe('Away from the screen: ask a grown-up for two things to bring, and carry them in order.');
     expect(en.notYet).toBe('Not that one yet. You can ask again.'); expect(en.askAgain).toBe('Ask again'); expect(en.goodAsking).toBe('Good asking.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });

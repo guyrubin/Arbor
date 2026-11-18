@@ -133,3 +133,8 @@ export function selectNextMilestonesByShelf(
   // stable: current band first, earlier band second, thinnest shelf within each
   return [...all.filter((p) => isCurrent(p.milestone)), ...all.filter((p) => !isCurrent(p.milestone))].slice(0, total);
 }
+
+/** v10.1 — the ids of the next `limit` Notice cards, one per shelf (What to notice next on the map). */
+export function nextNoticeIds(milestones: readonly Milestone[], comparisonMonths: number, limit: number): string[] {
+  return selectNextMilestonesByShelf([...milestones], comparisonMonths, { perShelf: 1, total: limit }).map((p) => p.milestone.id);
+}

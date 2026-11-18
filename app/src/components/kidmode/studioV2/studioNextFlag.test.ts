@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STUDIO_NEXT_FLAG_KEY, STUDIO_NEXT_HOSTS, resetStudioNextFlagForTests, studioNextFlagOn } from './studioNextFlag';
-import { studioNextCover } from '../../../lib/kidThemeManifest';
+import { studioCrewCover, studioNextCover } from '../../../lib/kidThemeManifest';
 import { resetHeroBandFlagForTests } from './heroBandFlag';
 import { studioCopy } from './studioCopy';
 import { HERO_BAND_COPY } from './games/adventures/heroBandCopy';
@@ -22,38 +22,42 @@ const TILES = Object.keys(GAMES) as Tile[];
 let store: Map<string, string>;
 function open(search: string) { vi.stubGlobal('location', { search }); resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); }
 beforeEach(() => {
-  store = new Map();
+  // Every case below starts on a device that opted out, so 'off' is explicit; the default is its own case.
+  store = new Map([[STUDIO_NEXT_FLAG_KEY, '0']]);
   vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
   open('');
 });
 afterEach(() => { vi.unstubAllGlobals(); resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); });
 
 describe('next Studio games switch', () => {
-  it('is off on a device that never opted in, and shows no cover', () => {
+  it('is on for every child by default (B-GAME-39 switch-on, 16 Nov), with no write to the device', () => {
+    store.clear(); open(''); expect(studioNextFlagOn()).toBe(true); expect(store.size).toBe(0);
+    for (const host of STUDIO_NEXT_HOSTS) expect(studioNextCover(host)).not.toBeNull();
+  });
+  it('is off on a device that opted out, and shows no cover', () => {
     expect(studioNextFlagOn()).toBe(false);
     for (const host of STUDIO_NEXT_HOSTS) expect(studioNextCover(host)).toBeNull();
-    expect(store.size).toBe(0);
   });
-  it('opts a device in with ?studioNext=1 and keeps it in after the query is gone', () => {
+  it('opts a device back in with ?studioNext=1 and keeps it in after the query is gone', () => {
     open('?studioNext=1'); expect(studioNextFlagOn()).toBe(true); expect(store.get(STUDIO_NEXT_FLAG_KEY)).toBe('1');
     open(''); expect(studioNextFlagOn()).toBe(true);
   });
-  it('opts a device out again with ?studioNext=0', () => {
-    store.set(STUDIO_NEXT_FLAG_KEY, '1'); open(''); expect(studioNextFlagOn()).toBe(true);
-    open('?studioNext=0'); expect(studioNextFlagOn()).toBe(false); expect(store.has(STUDIO_NEXT_FLAG_KEY)).toBe(false);
+  it('opts a device out with ?studioNext=0 and keeps it out after the query is gone', () => {
+    store.clear(); open('?studioNext=0'); expect(studioNextFlagOn()).toBe(false); expect(store.get(STUDIO_NEXT_FLAG_KEY)).toBe('0');
+    open(''); expect(studioNextFlagOn()).toBe(false);
   });
   it('reads the answer once per page, so a tile and its game always agree', () => {
-    store.set(STUDIO_NEXT_FLAG_KEY, '1'); open(''); expect(studioNextFlagOn()).toBe(true);
-    store.delete(STUDIO_NEXT_FLAG_KEY); expect(studioNextFlagOn()).toBe(true);
+    store.clear(); open(''); expect(studioNextFlagOn()).toBe(true);
+    store.set(STUDIO_NEXT_FLAG_KEY, '0'); expect(studioNextFlagOn()).toBe(true);
   });
   it('stays off when storage is missing or refuses', () => {
     vi.stubGlobal('localStorage', undefined); resetStudioNextFlagForTests(); expect(studioNextFlagOn()).toBe(false);
     vi.stubGlobal('localStorage', { getItem: () => { throw new Error('denied'); }, setItem: () => {}, removeItem: () => {} });
     resetStudioNextFlagForTests(); expect(studioNextFlagOn()).toBe(false);
   });
-  it('ignores any other value of the query or of the stored key', () => {
-    open('?studioNext=yes'); expect(studioNextFlagOn()).toBe(false); expect(store.size).toBe(0);
-    store.set(STUDIO_NEXT_FLAG_KEY, 'true'); open(''); expect(studioNextFlagOn()).toBe(false);
+  it('ignores any other value of the query, and treats any stored value but "0" as the default', () => {
+    store.clear(); open('?studioNext=yes'); expect(studioNextFlagOn()).toBe(true); expect(store.size).toBe(0);
+    store.set(STUDIO_NEXT_FLAG_KEY, 'true'); open(''); expect(studioNextFlagOn()).toBe(true);
   });
   it('gives each of the five game tiles its own cover, and only those', () => {
     store.set(STUDIO_NEXT_FLAG_KEY, '1'); open('');
@@ -66,15 +70,32 @@ describe('next Studio games switch', () => {
     }
     for (const other of ['feelings-forest', 'calm-builder', 'sneak', 'toString', '__proto__', '']) expect(studioNextCover(other)).toBeNull();
   });
+  it("B-KID-171: switched on, each Bop host tile wears Bebe and GobGob in its own game's film frame; off, it keeps its old game's frame", () => {
+    const off = Object.fromEntries(STUDIO_NEXT_HOSTS.map(host => [host, studioCrewCover(host)?.src ?? null]));
+    expect(off['river-rescue']).toBe('/visuals/studio-v2/film/cover-canal-crew2.webp');
+    store.set(STUDIO_NEXT_FLAG_KEY, '1'); open('');
+    const on = STUDIO_NEXT_HOSTS.map(host => studioCrewCover(host)!);
+    expect(on.map(cover => cover.src.replace('/visuals/studio-v2/film/', ''))).toEqual(['cover-delivery-crew2.webp', 'cover-sun-crew2.webp', 'cover-oops-crew2.webp', 'cover-rover-crew2.webp']);
+    for (const [i, host] of STUDIO_NEXT_HOSTS.entries()) {
+      expect(on[i].src, host).not.toBe(off[host]);
+      for (const file of [on[i].src, on[i].src480]) expect(existsSync(path.join(PUBLIC, file)), `${file} is not shipped`).toBe(true);
+    }
+    // B-KID-176: the rhythm-garden tile shows Hero Band's stage while it hosts Hero Band; Sneak keeps its own.
+    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-band-crew2.webp');
+    expect(studioCrewCover('sneak')?.src).toBe('/visuals/studio-v2/film/cover-sneak-crew.webp');
+    for (const maker of STUDIO_MAKERS) expect(studioCrewCover(maker.id), maker.id).toBeNull();
+  });
   it("Hero Band's own switch shows its cover (v30 pavilion) and no other", () => {
     open('?heroBand=1');
     expect(studioNextFlagOn()).toBe(false);
     expect(studioNextCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/bop/card-band.webp');
+    expect(studioCrewCover('rhythm-garden')?.src).toBe('/visuals/studio-v2/film/cover-band-crew2.webp');
+    expect(studioCrewCover('memory')?.src).toBe('/visuals/studio-v2/film/cover-memory-crew2.webp');
     for (const host of STUDIO_NEXT_HOSTS) expect(studioNextCover(host)).toBeNull();
   });
   it('names five tiles after the games they open, in both languages, and only while on', () => {
     const off = { en: studioCopy('en'), he: studioCopy('he') };
-    expect(TILES.map(id => off.en.activities[id].title)).toEqual(['Memory Match', 'Sequence Quest', 'Puzzle Planet', 'Canal Quest', 'Sound Orbit']);
+    expect(TILES.map(id => off.en.activities[id].title)).toEqual(['Mind Vault', 'Pattern Power', 'Puzzle Planet', 'Canal Quest', 'Sound Orbit']);
     open('?studioNext=1');
     for (const lang of ['en', 'he'] as const) {
       const on = studioCopy(lang);

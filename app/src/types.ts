@@ -203,6 +203,8 @@ export interface ShareGrant {
   id: string;
   ownerUid: string;
   ownerEmail: string | null;
+  /** E-Invite: the inviter's display name, on invites created since it was stored. */
+  ownerName?: string;
   childId: string;
   childName: string | null;
   recipientEmail: string;
@@ -318,6 +320,10 @@ export interface CoachContract {
    *  `memoryId` the approved fact's memory id; the keep seam carries it onto
    *  the proposal so a kept step keeps its provenance. */
   todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
+  /** V77: SERVER-set provenance — the active program (id + week) this answer's
+   *  prompt carried (server/companionContext programEcho). Absent on older
+   *  answers and when no program was in the context. */
+  activeProgramUsed?: { id: string; week: number };
 }
 
 /**

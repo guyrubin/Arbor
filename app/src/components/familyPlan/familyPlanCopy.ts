@@ -1,0 +1,681 @@
+/**
+ * Family plan v1 — every parent-facing string on the screen, EN and HE.
+ *
+ * Words (COPY-RULES): things are "dates"; a date "has an adult" or "nobody
+ * yet"; a message to another adult is a request, to yourself a reminder;
+ * Arbor's reading of a message is "Arbor draft · you decide" until kept.
+ * Counts are figures with units, never a verdict, and nothing describes the
+ * child. Reminders are in the app only in v1 (no phone alert).
+ */
+type Fn<A extends unknown[] = []> = (...a: A) => string;
+
+export interface FamilyPlanCopy {
+  pageTitle: string;
+  guideLabel: string;
+  stops: { who: string; dates: string; cameIn: string; standing: string };
+  stopSub: { dates: Fn<[number]> };
+  /** The guide's second lines (canvas V77): what each section shows. */
+  guideSub: { who: string; dates: string; cameIn: string; standing: string };
+  kicker: Fn<[string]>;
+  isNew: string;
+  startHere: string;
+  figDates: Fn<[number]>;
+  figWithAdult: Fn<[number]>;
+  figNobody: string;
+  figRange: Fn<[string, string]>;
+  later: string;
+  you: string;
+  /** "you" inside a sentence ("Added by you"). */
+  youMid: string;
+  nobodyYet: string;
+  legendHas: string;
+  legendNone: string;
+  tokenLabel: Fn<[string, string]>;
+  stateHas: Fn<[string]>;
+  /** The reader has it ("You have it"). */
+  stateHasYou: string;
+  stateAsked: Fn<[string]>;
+  stateNone: string;
+  whoTakes: string;
+  askSomeone: string;
+  openDate: string;
+  datesTitle: string;
+  datesSub: string;
+  inDays: Fn<[number]>;
+  today: string;
+  tomorrow: string;
+  dueOn: Fn<[string]>;
+  askedAt: Fn<[string, string]>;
+  noAnswer: string;
+  emptyTitle: string;
+  emptyBody: string;
+  cameInTitle: string;
+  addMessage: string;
+  addDate: string;
+  addToCalendar: string;
+  calendarSaved: string;
+  calendarShared: string;
+  calendarUnavailable: string;
+  theMessage: string;
+  messagesKept: Fn<[number, number]>;
+  noMessage: string;
+  requestsReminders: string;
+  /** The bell line (canvas N-Plan): what each dot is. */
+  alineRequest: Fn<[string]>;
+  alineReminder: Fn<[string, string]>;
+  askedNoAnswer: string;
+  whatChanged: string;
+  inAppOnly: string;
+  noReminders: string;
+  forYou: string;
+  forAdult: Fn<[string]>;
+  figRequests: Fn<[number]>;
+  figReminders: Fn<[number]>;
+  standingTitle: string;
+  standingTile: string;
+  asked: string;
+  accepted: string;
+  done: string;
+  askedNone: string;
+  acceptedNone: string;
+  doneNone: string;
+  datesEmpty: string;
+  // review
+  reviewTitle: string;
+  reviewPaste: string;
+  reviewPasteHint: string;
+  reviewRead: string;
+  reviewReading: string;
+  reviewFound: Fn<[number, number]>;
+  reviewNothing: string;
+  reviewDraft: string;
+  reviewTickHint: string;
+  reviewAddToPlan: string;
+  reviewAddN: Fn<[number]>;
+  reviewNotNow: string;
+  reviewEdit: string;
+  reviewDone: string;
+  reviewNoDate: string;
+  reviewAddADate: string;
+  reviewKeepAsPrep: string;
+  reviewDuplicate: string;
+  reviewChecked: string;
+  reviewCheckedNone: string;
+  reviewChange: string;
+  reviewIfApply: Fn<[string]>;
+  reviewIfApplyNobody: string;
+  reviewApply: string;
+  reviewApplyAsk: Fn<[string]>;
+  reviewKeepBoth: string;
+  /** Hold a change to decide later ("One change to review"). */
+  reviewLater: string;
+  /** N-Plan-M: the phone's section names and heads. */
+  stopsPhone: { change: string; found: string; alerts: string };
+  changeHead: string;
+  changeDraftFrom: Fn<[number, string]>;
+  reviewApplyAskAgain: string;
+  reviewThings: Fn<[number]>;
+  figFound: Fn<[number]>;
+  figNoDate: Fn<[number]>;
+  beforeAdd: string;
+  keepsTitle: string;
+  keepsSub: string;
+  relDay: Fn<[number]>;
+  whatThisDoes: string;
+  ifYouApplyIt: string;
+  doesRequest: Fn<[string, string]>;
+  doesRequestSub: Fn<[string, string]>;
+  doesReask: Fn<[string, string]>;
+  doesReminder: Fn<[string]>;
+  doesReminderSub: string;
+  notAffected: Fn<[string]>;
+  stillWhen: Fn<[string]>;
+  versionsTitle: string;
+  versionLine: Fn<[number, string]>;
+  versionWaiting: string;
+  versionsKeep: string;
+  coCanYou: string;
+  coFromMessage: Fn<[number]>;
+  coYesTitle: string;
+  coStepAsked: string;
+  coStepAccepted: string;
+  coStepDone: string;
+  oneChangeToReview: string;
+  staysNote: string;
+  changeDraftOne: string;
+  kindTags: Record<"deadline" | "event" | "join" | "note", string>;
+  changeStill: Fn<[string]>;
+  askSomeoneElse: string;
+  reviewTheChange: string;
+  lineOf: Fn<[number]>;
+  prepWith: Fn<[string]>;
+  foundOf: Fn<[number, number]>;
+  reviewError: string;
+  reviewBlocked: string;
+  reviewCrisis: string;
+  reviewQuota: string;
+  reviewOffline: string;
+  kinds: Record<"deadline" | "event" | "join" | "note", string>;
+  // manual add & edit
+  manualTitle: string;
+  fieldName: string;
+  fieldKind: string;
+  fieldDay: string;
+  fieldTime: string;
+  fieldTimeHint: string;
+  save: string;
+  cancel: string;
+  // ask
+  askTitle: string;
+  askOne: string;
+  takeItYourself: string;
+  coParent: string;
+  invitedNotJoined: string;
+  inviteCoParent: string;
+  noteTo: Fn<[string]>;
+  notePrefill: Fn<[string, string]>;
+  askButton: Fn<[string]>;
+  takeButton: string;
+  askHint: string;
+  askFlowNow: string;
+  askFlowAsked: string;
+  askFlowYes: string;
+  // date detail
+  hasIt: Fn<[string]>;
+  confirmedFor: Fn<[string]>;
+  prepTitle: string;
+  prepAdd: string;
+  prepPlaceholder: string;
+  prepNone: string;
+  fromTheMessage: string;
+  historyTitle: string;
+  historyKeeps: string;
+  history: {
+    added: Fn<[string]>; asked: Fn<[string, string]>; took: Fn<[string]>; accepted: Fn<[string, string]>; declined: Fn<[string]>;
+    changed: Fn<[string]>; reminder_stopped: Fn<[string]>; request_closed: string; prep_added: Fn<[string]>; done: Fn<[string]>; cancelled: Fn<[string]>; edited: Fn<[string]>;
+  };
+  markDone: string;
+  cancelDate: string;
+  editDate: string;
+  versionLabel: Fn<[number]>;
+  wasTime: Fn<[string]>;
+  // receipts
+  receipt: Record<"added" | "took" | "asked" | "changed" | "held" | "done" | "cancelled" | "prep" | "edited" | "undone" | "kept_note", Fn<[number]>>;
+  duplicatesSkipped: Fn<[number]>;
+  undo: string;
+  saveError: string;
+  retry: string;
+  loading: string;
+  // co-parent side
+  coTitle: string;
+  coAsksYou: Fn<[string]>;
+  coTakeIt: string;
+  coCant: string;
+  coYesMeans: string;
+  coYesFor: Fn<[number]>;
+  coAddCalendar: string;
+  coChanged: string;
+  coNoRequests: string;
+  coPlanTitle: string;
+  coYouHaveIt: string;
+  coMarkDone: string;
+  coDoneSaved: string;
+  coError: string;
+  coUnavailable: string;
+}
+
+const en: FamilyPlanCopy = {
+  pageTitle: "The family plan",
+  guideLabel: "On this page",
+  stops: { who: "Who has what", dates: "The dates", cameIn: "What came in", standing: "Where each thing stands" },
+  stopSub: {
+    dates: (n) => (n ? "soonest first" : "none yet"),
+  },
+  guideSub: { who: "the week, by day", dates: "soonest first", cameIn: "message, change, reminders", standing: "asked, accepted, done" },
+  kicker: (range) => `Who has what · ${range}`,
+  isNew: "New",
+  startHere: "Start here",
+  figDates: (n) => (n === 1 ? "date" : "dates"),
+  figWithAdult: () => "with an adult",
+  figNobody: "nobody yet",
+  figRange: (a, b) => (a === b ? a : `${a} to ${b}`),
+  later: "Later",
+  you: "You",
+  youMid: "you",
+  nobodyYet: "Nobody yet",
+  legendHas: "an adult has it",
+  legendNone: "nobody yet",
+  tokenLabel: (title, state) => `${title}, ${state}`,
+  stateHas: (who) => `${who} has it`,
+  stateHasYou: "You have it",
+  stateAsked: (who) => `asked ${who}, no answer yet`,
+  stateNone: "nobody yet",
+  whoTakes: "Who takes this?",
+  askSomeone: "Ask someone",
+  openDate: "Open",
+  datesTitle: "The dates",
+  datesSub: "soonest first",
+  inDays: (n) => `In ${n} ${n === 1 ? "day" : "days"}`,
+  today: "Today",
+  tomorrow: "Tomorrow",
+  dueOn: (day) => `Due ${day}`,
+  askedAt: (who, at) => `Asked ${who} ${at}.`,
+  noAnswer: "No answer yet.",
+  emptyTitle: "Nothing in the plan yet",
+  emptyBody: "Paste a message from the kindergarten, or add a date yourself. Nothing joins the plan until you keep it.",
+  cameInTitle: "What came in",
+  addMessage: "Add a school message",
+  addDate: "Add a date",
+  addToCalendar: "Add to my calendar",
+  calendarSaved: "Calendar file saved",
+  calendarShared: "Calendar file ready to share",
+  calendarUnavailable: "The calendar file could not be saved on this device",
+  theMessage: "The message",
+  messagesKept: (dates, msgs) => `${dates} ${dates === 1 ? "date" : "dates"} kept from ${msgs} ${msgs === 1 ? "message" : "messages"}`,
+  noMessage: "No message yet. Paste one and Arbor drafts the dates it finds; you decide what joins the plan.",
+  requestsReminders: "Requests and reminders",
+  alineRequest: (who) => `request to ${who}, sent in Arbor`,
+  alineReminder: (title, forWho) => `reminder for ${title}, ${forWho}`,
+  askedNoAnswer: "Asked, no answer yet.",
+  whatChanged: "What changed",
+  inAppOnly: "Reminders show here in Arbor. No phone alert is sent.",
+  noReminders: "No reminders queued.",
+  forYou: "for you",
+  forAdult: (who) => `for ${who}`,
+  figRequests: (n) => (n === 1 ? "request with no answer" : "requests with no answer"),
+  figReminders: (n) => (n === 1 ? "reminder queued" : "reminders queued"),
+  standingTitle: "Where each thing stands",
+  standingTile: "Asked, accepted, done",
+  asked: "Asked",
+  accepted: "Accepted",
+  done: "Done",
+  askedNone: "Nothing waiting for an answer.",
+  acceptedNone: "No date has an adult yet.",
+  doneNone: "Nothing yet. The adult who has it marks it.",
+  datesEmpty: "No dates yet.",
+  reviewTitle: "School message",
+  reviewPaste: "Paste the message",
+  reviewPasteHint: "Arbor reads it for dates and keeps only the lines a kept date came from, never the whole message.",
+  reviewRead: "Find the dates",
+  reviewReading: "Reading the message…",
+  reviewFound: (dated, notes) => `${dated} ${dated === 1 ? "date" : "dates"} found${notes ? `, ${notes} ${notes === 1 ? "note" : "notes"} with no date` : ""}`,
+  reviewNothing: "Arbor found no dates in this message. You can add one yourself.",
+  reviewDraft: "Arbor draft · you decide",
+  reviewTickHint: "tick what joins the plan",
+  reviewAddToPlan: "Add to the plan",
+  reviewAddN: (n) => (n === 1 ? "Add 1 to the family plan" : `Add ${n} to the family plan`),
+  reviewNotNow: "Not now",
+  reviewEdit: "Edit",
+  reviewDone: "Done",
+  reviewNoDate: "No date in the message. Arbor does not guess one.",
+  reviewAddADate: "Add a date",
+  reviewKeepAsPrep: "Keep as prep",
+  reviewDuplicate: "Already in your plan: it will not be added twice.",
+  reviewChecked: "Checked against your plan",
+  reviewCheckedNone: "None of these is already in it.",
+  reviewChange: "One thing changed",
+  reviewIfApply: (who) => `If you apply it, ${who} is asked again for the new time and the old reminder stops.`,
+  reviewIfApplyNobody: "If you apply it, the old reminder stops and a new one waits for the new time.",
+  reviewApply: "Apply the change",
+  reviewApplyAsk: (who) => `Apply and ask ${who} again`,
+  reviewKeepBoth: "Keep both dates",
+  reviewLater: "Review it later",
+  stopsPhone: { change: "Change", found: "Found", alerts: "Reminders" },
+  changeHead: "One change to review",
+  changeDraftFrom: (v, at) => `Arbor draft · from version ${v} of the message, ${at}`,
+  reviewApplyAskAgain: "Apply and ask again",
+  reviewThings: (n) => (n === 1 ? "One thing in this message" : `${["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"][n] ?? n} things in this message`),
+  figFound: (n) => (n === 1 ? "date found" : "dates found"),
+  figNoDate: (n) => (n === 1 ? "note with no date" : "notes with no date"),
+  beforeAdd: "Before you add",
+  keepsTitle: "Arbor keeps the lines it used",
+  keepsSub: "Not the whole message.",
+  relDay: (n) => (n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 ? `In ${n} days` : `${-n} days ago`),
+  whatThisDoes: "What this does",
+  ifYouApplyIt: "if you apply it",
+  doesRequest: (who, old) => `The request to ${who} was for ${old}`,
+  doesRequestSub: (old, nw) => `It closes. A yes to ${old} would not count for ${nw}.`,
+  doesReask: (who, nw) => `${who} is asked again, for ${nw}`,
+  doesReminder: (when) => `The reminder for ${when} stops`,
+  doesReminderSub: "It stops when you apply the change. The next one follows the new time.",
+  notAffected: (title) => `${title} is not affected`,
+  stillWhen: (when) => `Still ${when}.`,
+  versionsTitle: "Versions",
+  versionLine: (v, what) => `Version ${v} · ${what}`,
+  versionWaiting: "waiting for you",
+  versionsKeep: "Both versions stay with the plan. Nothing is replaced silently.",
+  coCanYou: "Can you take this?",
+  coFromMessage: (v) => `From the kindergarten's message, version ${v}`,
+  coYesTitle: "What your yes means",
+  coStepAsked: "Asked. Not yours yet.",
+  coStepAccepted: "Yours once you say yes.",
+  coStepDone: "You mark it after the date.",
+  oneChangeToReview: "Arbor draft · one change to review",
+  staysNote: "No date in the message: it stays a note",
+  changeDraftOne: "Arbor draft · one thing changed",
+  kindTags: { deadline: "Deadline", event: "Event", join: "Event", note: "Note" },
+  changeStill: (when) => `Still ${when} in your plan until you apply it.`,
+  askSomeoneElse: "Ask someone else",
+  reviewTheChange: "Review the change",
+  lineOf: (n) => `line ${n} of the message`,
+  prepWith: (title) => `To bring, with ${title}`,
+  foundOf: (i, n) => `Found ${i} of ${n}`,
+  reviewError: "Arbor could not read the message just now. Try again, or add the dates yourself.",
+  reviewBlocked: "Arbor could not safely draft from this message. Add the dates yourself.",
+  reviewCrisis: "This message may need more than a plan. Safety & urgent help is in the top bar.",
+  reviewQuota: "Arbor has reached its limit for now. Add the dates yourself, or try again later.",
+  reviewOffline: "You are offline. Add the dates yourself, or try again when you are back online.",
+  kinds: { deadline: "Deadline", event: "Event", join: "A parent is asked to join", note: "Note" },
+  manualTitle: "Add a date",
+  fieldName: "What it is",
+  fieldKind: "Kind",
+  fieldDay: "Day",
+  fieldTime: "Time",
+  fieldTimeHint: "Leave empty when there is no time.",
+  save: "Save",
+  cancel: "Cancel",
+  askTitle: "Who takes this?",
+  askOne: "Ask one person",
+  takeItYourself: "Take it yourself",
+  coParent: "Co-parent",
+  invitedNotJoined: "Invited, not joined",
+  inviteCoParent: "Invite a co-parent",
+  noteTo: (who) => `Your note to ${who}`,
+  notePrefill: (title, when) => `Can you take ${title} on ${when}?`,
+  askButton: (who) => `Ask ${who}`,
+  takeButton: "I'll take it",
+  askHint: "They get it in Arbor. It stays open until they say yes.",
+  askFlowNow: "Now: nobody yet",
+  askFlowAsked: "When you ask: asked, no answer yet",
+  askFlowYes: "Only on their yes: they have it",
+  hasIt: (who) => `${who} has it`,
+  confirmedFor: (when) => `confirmed for ${when}`,
+  prepTitle: "To prepare",
+  prepAdd: "Add",
+  prepPlaceholder: "A form to return, something to bring",
+  prepNone: "Nothing to prepare yet.",
+  fromTheMessage: "From the kindergarten's message",
+  historyTitle: "How it got here",
+  historyKeeps: "The history stays with the plan.",
+  history: {
+    added: (who) => `Added by ${who}`,
+    asked: (who, to) => `${who} asked ${to}`,
+    took: (who) => `${who} took it`,
+    accepted: (who, ver) => `${who} said yes, ${ver}`,
+    declined: (who) => `${who} can't take it`,
+    changed: (old) => `Moved from ${old}`,
+    reminder_stopped: (old) => `The reminder for ${old} stopped`,
+    request_closed: "The open request closed",
+    prep_added: (who) => `${who} added something to prepare`,
+    done: (who) => `${who} marked it done`,
+    cancelled: (who) => `${who} cancelled it`,
+    edited: (who) => `${who} edited it`,
+  },
+  markDone: "Mark as done",
+  cancelDate: "Cancel this date",
+  editDate: "Edit",
+  versionLabel: (n) => `version ${n}`,
+  wasTime: (old) => `was ${old}`,
+  receipt: {
+    added: (n) => (n === 1 ? "1 date added to the family plan" : `${n} dates added to the family plan`),
+    took: () => "You have it",
+    asked: () => "Request sent in Arbor",
+    changed: () => "Change applied",
+    held: () => "Kept to review",
+    done: () => "Marked as done",
+    cancelled: () => "Date cancelled",
+    prep: () => "Added to prepare",
+    edited: () => "Date saved",
+    undone: () => "Undone",
+    kept_note: () => "Kept as prep",
+  },
+  duplicatesSkipped: (n) => (n === 1 ? "1 was already in your plan" : `${n} were already in your plan`),
+  undo: "Undo",
+  saveError: "That did not save. Try again.",
+  retry: "Try again",
+  loading: "Loading the family plan…",
+  coTitle: "Family plan",
+  coAsksYou: (who) => `${who} asks you`,
+  coTakeIt: "I'll take it",
+  coCant: "I can't",
+  coYesMeans: "If the kindergarten changes it, Arbor asks you again.",
+  coYesFor: (n) => `Your yes is for version ${n}.`,
+  coAddCalendar: "Add it to my calendar when I say yes",
+  coChanged: "This date changed since you were asked. Here is the new version.",
+  coNoRequests: "No requests for you right now.",
+  coPlanTitle: "This week's dates",
+  coYouHaveIt: "You have it",
+  coMarkDone: "Mark as done",
+  coDoneSaved: "Marked as done",
+  coError: "That did not save. Try again.",
+  coUnavailable: "The family plan is not available right now.",
+};
+
+const he: FamilyPlanCopy = {
+  pageTitle: "התוכנית המשפחתית",
+  guideLabel: "בעמוד הזה",
+  stops: { who: "מי לוקח מה", dates: "התאריכים", cameIn: "מה הגיע", standing: "איפה כל דבר עומד" },
+  stopSub: {
+    dates: (n) => (n ? "הקרוב ביותר קודם" : "עוד אין"),
+  },
+  guideSub: { who: "השבוע, לפי יום", dates: "הקרוב ביותר קודם", cameIn: "הודעה, שינוי, תזכורות", standing: "נשלח, אושר, בוצע" },
+  kicker: (range) => `מי לוקח מה · ${range}`,
+  isNew: "חדש",
+  startHere: "מתחילים כאן",
+  figDates: (n) => (n === 1 ? "תאריך" : "תאריכים"),
+  figWithAdult: () => "עם מבוגר",
+  figNobody: "עוד בלי מבוגר",
+  figRange: (a, b) => (a === b ? a : `${a} עד ${b}`),
+  later: "בהמשך",
+  you: "את/ה",
+  youMid: "את/ה",
+  nobodyYet: "עוד אף אחד",
+  legendHas: "אצל מבוגר",
+  legendNone: "עוד אף אחד",
+  tokenLabel: (title, state) => `${title}, ${state}`,
+  stateHas: (who) => `אצל ${who}`,
+  stateHasYou: "אצלך",
+  stateAsked: (who) => `נשלחה בקשה ל${who}, עוד אין תשובה`,
+  stateNone: "עוד אף אחד",
+  whoTakes: "מי לוקח את זה?",
+  askSomeone: "לבקש ממישהו",
+  openDate: "פתיחה",
+  datesTitle: "התאריכים",
+  datesSub: "הקרוב ביותר קודם",
+  inDays: (n) => (n === 1 ? "בעוד יום" : `בעוד ${n} ימים`),
+  today: "היום",
+  tomorrow: "מחר",
+  dueOn: (day) => `עד ${day}`,
+  askedAt: (who, at) => `נשלחה בקשה ל${who} ${at}.`,
+  noAnswer: "עוד אין תשובה.",
+  emptyTitle: "עוד אין כלום בתוכנית",
+  emptyBody: "הדביקו הודעה מהגן, או הוסיפו תאריך בעצמכם. שום דבר לא נכנס לתוכנית עד שתשמרו.",
+  cameInTitle: "מה הגיע",
+  addMessage: "הוספת הודעה מהגן",
+  addDate: "הוספת תאריך",
+  addToCalendar: "הוספה ליומן שלי",
+  calendarSaved: "קובץ היומן נשמר",
+  calendarShared: "קובץ היומן מוכן לשיתוף",
+  calendarUnavailable: "לא ניתן לשמור את קובץ היומן במכשיר הזה",
+  theMessage: "ההודעה",
+  messagesKept: (dates, msgs) => `${dates === 1 ? "תאריך אחד נשמר" : `${dates} תאריכים נשמרו`} מ${msgs === 1 ? "הודעה אחת" : `${msgs} הודעות`}`,
+  noMessage: "עוד אין הודעה. הדביקו אחת ו-Arbor ינסח את התאריכים שהוא מוצא; אתם מחליטים מה נכנס לתוכנית.",
+  requestsReminders: "בקשות ותזכורות",
+  alineRequest: (who) => `בקשה ל${who}, נשלחה ב-Arbor`,
+  alineReminder: (title, forWho) => `תזכורת ל${title}, ${forWho}`,
+  askedNoAnswer: "נשלחה בקשה, עוד אין תשובה.",
+  whatChanged: "מה השתנה",
+  inAppOnly: "התזכורות מופיעות כאן ב-Arbor. לא נשלחת התראה לטלפון.",
+  noReminders: "אין תזכורות ממתינות.",
+  forYou: "בשבילך",
+  forAdult: (who) => `בשביל ${who}`,
+  figRequests: (n) => (n === 1 ? "בקשה בלי תשובה" : "בקשות בלי תשובה"),
+  figReminders: (n) => (n === 1 ? "תזכורת ממתינה" : "תזכורות ממתינות"),
+  standingTitle: "איפה כל דבר עומד",
+  standingTile: "נשלח, אושר, בוצע",
+  asked: "נשלח",
+  accepted: "אושר",
+  done: "בוצע",
+  askedNone: "אין בקשה שמחכה לתשובה.",
+  acceptedNone: "עוד אין תאריך עם מבוגר.",
+  doneNone: "עוד כלום. המבוגר שלקח מסמן.",
+  datesEmpty: "עוד אין תאריכים.",
+  reviewTitle: "הודעה מהגן",
+  reviewPaste: "הדביקו את ההודעה",
+  reviewPasteHint: "Arbor קורא אותה כדי למצוא תאריכים ושומר רק את השורות שמהן הגיעו התאריכים שנשמרו, לא את כל ההודעה.",
+  reviewRead: "מציאת התאריכים",
+  reviewReading: "קורא את ההודעה…",
+  reviewFound: (dated, notes) => `${dated === 1 ? "נמצא תאריך אחד" : `נמצאו ${dated} תאריכים`}${notes ? `, ${notes === 1 ? "הערה אחת" : `${notes} הערות`} בלי תאריך` : ""}`,
+  reviewNothing: "Arbor לא מצא תאריכים בהודעה הזאת. אפשר להוסיף תאריך בעצמכם.",
+  reviewDraft: "טיוטה של Arbor · אתם מחליטים",
+  reviewTickHint: "סמנו מה נכנס לתוכנית",
+  reviewAddToPlan: "להוסיף לתוכנית",
+  reviewAddN: (n) => (n === 1 ? "הוספת תאריך אחד לתוכנית" : `הוספת ${n} לתוכנית המשפחתית`),
+  reviewNotNow: "לא עכשיו",
+  reviewEdit: "עריכה",
+  reviewDone: "סיום",
+  reviewNoDate: "אין תאריך בהודעה. Arbor לא מנחש.",
+  reviewAddADate: "הוספת תאריך",
+  reviewKeepAsPrep: "לשמור כהכנה",
+  reviewDuplicate: "כבר בתוכנית שלכם: לא יתווסף פעמיים.",
+  reviewChecked: "נבדק מול התוכנית שלכם",
+  reviewCheckedNone: "אף אחד מאלה עוד לא נמצא בה.",
+  reviewChange: "דבר אחד השתנה",
+  reviewIfApply: (who) => `אם תעדכנו, ${who} יתבקש שוב לשעה החדשה והתזכורת הישנה תיעצר.`,
+  reviewIfApplyNobody: "אם תעדכנו, התזכורת הישנה תיעצר ותזכורת חדשה תחכה לשעה החדשה.",
+  reviewApply: "עדכון השינוי",
+  reviewApplyAsk: (who) => `לעדכן ולבקש שוב מ${who}`,
+  reviewKeepBoth: "לשמור את שני התאריכים",
+  reviewLater: "לבדוק אחר כך",
+  stopsPhone: { change: "שינוי", found: "נמצא", alerts: "תזכורות" },
+  changeHead: "שינוי אחד לבדיקה",
+  changeDraftFrom: (v, at) => `טיוטה של Arbor · מגרסה ${v} של ההודעה, ${at}`,
+  reviewApplyAskAgain: "לעדכן ולבקש שוב",
+  reviewThings: (n) => (n === 1 ? "דבר אחד בהודעה הזאת" : `${n} דברים בהודעה הזאת`),
+  figFound: (n) => (n === 1 ? "תאריך נמצא" : "תאריכים נמצאו"),
+  figNoDate: (n) => (n === 1 ? "הערה בלי תאריך" : "הערות בלי תאריך"),
+  beforeAdd: "לפני שמוסיפים",
+  keepsTitle: "Arbor שומר את השורות שבהן השתמש",
+  keepsSub: "לא את כל ההודעה.",
+  relDay: (n) => (n === 0 ? "היום" : n === 1 ? "מחר" : n === -1 ? "אתמול" : n > 1 ? `בעוד ${n} ימים` : `לפני ${-n} ימים`),
+  whatThisDoes: "מה זה עושה",
+  ifYouApplyIt: "אם מעדכנים",
+  doesRequest: (who, old) => `הבקשה ל${who} הייתה ל־${old}`,
+  doesRequestSub: (old, nw) => `היא נסגרת. "כן" ל־${old} לא נחשב ל־${nw}.`,
+  doesReask: (who, nw) => `נבקש שוב מ${who}, ל־${nw}`,
+  doesReminder: (when) => `התזכורת ל־${when} נעצרת`,
+  doesReminderSub: "היא נעצרת כשמעדכנים את השינוי. התזכורת הבאה הולכת לפי הזמן החדש.",
+  notAffected: (title) => `${title} לא משתנה`,
+  stillWhen: (when) => `עדיין ${when}.`,
+  versionsTitle: "גרסאות",
+  versionLine: (v, what) => `גרסה ${v} · ${what}`,
+  versionWaiting: "מחכה לכם",
+  versionsKeep: "שתי הגרסאות נשמרות בתוכנית. שום דבר לא מוחלף בשקט.",
+  coCanYou: "תוכלו לקחת את זה?",
+  coFromMessage: (v) => `מההודעה של הגן, גרסה ${v}`,
+  coYesTitle: "מה ה״כן״ שלכם אומר",
+  coStepAsked: "נשאלתם. עוד לא שלכם.",
+  coStepAccepted: "שלכם ברגע שתגידו כן.",
+  coStepDone: "אתם מסמנים אחרי התאריך.",
+  oneChangeToReview: "טיוטה של Arbor · שינוי אחד לבדיקה",
+  staysNote: "אין תאריך בהודעה: נשאר כהערה",
+  changeDraftOne: "טיוטה של Arbor · דבר אחד השתנה",
+  kindTags: { deadline: "מועד אחרון", event: "אירוע", join: "אירוע", note: "הערה" },
+  changeStill: (when) => `בתוכנית שלכם עדיין ${when} עד שתעדכנו.`,
+  askSomeoneElse: "לבקש ממישהו אחר",
+  reviewTheChange: "בדיקת השינוי",
+  lineOf: (n) => `שורה ${n} בהודעה`,
+  prepWith: (title) => `להביא, ל${title}`,
+  foundOf: (i, n) => `נמצא ${i} מתוך ${n}`,
+  reviewError: "Arbor לא הצליח לקרוא את ההודעה כרגע. נסו שוב, או הוסיפו את התאריכים בעצמכם.",
+  reviewBlocked: "Arbor לא יכול לנסח בבטחה מההודעה הזאת. הוסיפו את התאריכים בעצמכם.",
+  reviewCrisis: "ייתכן שההודעה הזאת צריכה יותר מתוכנית. בטיחות ועזרה דחופה נמצאים בסרגל העליון.",
+  reviewQuota: "Arbor הגיע למגבלה לעכשיו. הוסיפו את התאריכים בעצמכם, או נסו שוב מאוחר יותר.",
+  reviewOffline: "אין חיבור. הוסיפו את התאריכים בעצמכם, או נסו שוב כשתחזרו לרשת.",
+  kinds: { deadline: "מועד אחרון", event: "אירוע", join: "מבקשים שהורה יצטרף", note: "הערה" },
+  manualTitle: "הוספת תאריך",
+  fieldName: "מה זה",
+  fieldKind: "סוג",
+  fieldDay: "יום",
+  fieldTime: "שעה",
+  fieldTimeHint: "השאירו ריק כשאין שעה.",
+  save: "שמירה",
+  cancel: "ביטול",
+  askTitle: "מי לוקח את זה?",
+  askOne: "לבקש מאדם אחד",
+  takeItYourself: "לקחת בעצמך",
+  coParent: "הורה שותף",
+  invitedNotJoined: "הוזמן, עוד לא הצטרף",
+  inviteCoParent: "הזמנת הורה שותף",
+  noteTo: (who) => `ההודעה שלך ל${who}`,
+  notePrefill: (title, when) => `תוכל/י לקחת את ${title} ב${when}?`,
+  askButton: (who) => `לבקש מ${who}`,
+  takeButton: "אני לוקח/ת",
+  askHint: "הבקשה מגיעה אליו ב-Arbor ונשארת פתוחה עד שיגיד כן.",
+  askFlowNow: "עכשיו: עוד אף אחד",
+  askFlowAsked: "כשמבקשים: נשלחה בקשה, אין תשובה",
+  askFlowYes: "רק כשיגיד כן: זה אצלו",
+  hasIt: (who) => `אצל ${who}`,
+  confirmedFor: (when) => `אושר ל${when}`,
+  prepTitle: "להכין",
+  prepAdd: "הוספה",
+  prepPlaceholder: "טופס להחזיר, משהו להביא",
+  prepNone: "עוד אין מה להכין.",
+  fromTheMessage: "מההודעה של הגן",
+  historyTitle: "איך זה הגיע לכאן",
+  historyKeeps: "ההיסטוריה נשארת עם התוכנית.",
+  history: {
+    added: (who) => `נוסף על ידי ${who}`,
+    asked: (who, to) => `${who} ביקש מ${to}`,
+    took: (who) => `${who} לקח`,
+    accepted: (who, ver) => `${who} אמר כן, ${ver}`,
+    declined: (who) => `${who} לא יכול לקחת`,
+    changed: (old) => `הוזז מ${old}`,
+    reminder_stopped: (old) => `התזכורת ל${old} נעצרה`,
+    request_closed: "הבקשה הפתוחה נסגרה",
+    prep_added: (who) => `${who} הוסיף משהו להכין`,
+    done: (who) => `${who} סימן שבוצע`,
+    cancelled: (who) => `${who} ביטל`,
+    edited: (who) => `${who} ערך`,
+  },
+  markDone: "סימון שבוצע",
+  cancelDate: "ביטול התאריך",
+  editDate: "עריכה",
+  versionLabel: (n) => `גרסה ${n}`,
+  wasTime: (old) => `היה ${old}`,
+  receipt: {
+    added: (n) => (n === 1 ? "תאריך אחד נוסף לתוכנית" : `${n} תאריכים נוספו לתוכנית`),
+    took: () => "זה אצלך",
+    asked: () => "הבקשה נשלחה ב-Arbor",
+    changed: () => "השינוי עודכן",
+    held: () => "נשמר לבדיקה",
+    done: () => "סומן שבוצע",
+    cancelled: () => "התאריך בוטל",
+    prep: () => "נוסף להכנה",
+    edited: () => "התאריך נשמר",
+    undone: () => "בוטל",
+    kept_note: () => "נשמר כהכנה",
+  },
+  duplicatesSkipped: (n) => (n === 1 ? "אחד כבר היה בתוכנית" : `${n} כבר היו בתוכנית`),
+  undo: "ביטול",
+  saveError: "זה לא נשמר. נסו שוב.",
+  retry: "לנסות שוב",
+  loading: "טוען את התוכנית המשפחתית…",
+  coTitle: "התוכנית המשפחתית",
+  coAsksYou: (who) => `${who} מבקש ממך`,
+  coTakeIt: "אני לוקח/ת",
+  coCant: "לא יכול/ה",
+  coYesMeans: "אם הגן ישנה אותו, Arbor ישאל אותך שוב.",
+  coYesFor: (n) => `ה״כן״ שלך הוא לגרסה ${n}.`,
+  coAddCalendar: "להוסיף ליומן שלי כשאני אומר/ת כן",
+  coChanged: "התאריך השתנה מאז שביקשו ממך. זו הגרסה החדשה.",
+  coNoRequests: "אין בקשות בשבילך כרגע.",
+  coPlanTitle: "התאריכים של השבוע",
+  coYouHaveIt: "זה אצלך",
+  coMarkDone: "סימון שבוצע",
+  coDoneSaved: "סומן שבוצע",
+  coError: "זה לא נשמר. נסו שוב.",
+  coUnavailable: "התוכנית המשפחתית לא זמינה כרגע.",
+};
+
+export const familyPlanCopy: Record<"en" | "he", FamilyPlanCopy> = { en, he };

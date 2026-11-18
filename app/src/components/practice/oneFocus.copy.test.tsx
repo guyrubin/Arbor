@@ -17,6 +17,8 @@ vi.mock("../../context/ArborContext", () => ({ useArbor: () => ({
   plansLoaded: true, planChallengeTopic: "", isPlanGenerating: false, activeTodayAction: null,
   setActiveTab: h.setActiveTab, updateChild: vi.fn(), setPlanChallengeTopic: vi.fn(), seedCoach: vi.fn(), openCaptureSheet: vi.fn(), requestJournalFocus: vi.fn(),
 }), useArborOptional: () => null }));
+// v10.1: #/daily-play also renders Together › Play (PlayStudio), which asks for the Kid Mode entry.
+vi.mock("../kidmode/useKidModeEntry", () => ({ useKidModeEntry: () => ({ request: vi.fn(), step: null }) }));
 vi.mock("../../hooks/useObservationRecord", () => ({ useObservationRecord: () => ({ observations: [], sources: { behaviorLogs: [] }, loading: false, error: false, more: false, confirmed: true }) }));
 vi.mock("../../hooks/useChildCollection", () => ({ useChildCollection: () => ({ items: [], loaded: true, error: false, remote: false, upsert: vi.fn(), remove: vi.fn() }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));

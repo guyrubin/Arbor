@@ -48,9 +48,11 @@ export const RETURN_MS = 300;
 /** How long the hero holds the start press. */
 export const PRESS_MS = 480;
 /** Pep and the rover together, long enough to enjoy, before the next floor. */
-export const ARRIVED_MS = 2400;
+export const ARRIVED_MS = 3200;
 /** The hero shrugging off a run that parked somewhere else. */
 export const OOPS_MS = 700;
+/** B-GAME-46: how long the plan may sit untouched before the sign to turn is shown. */
+export const ROVER_IDLE_MS = 7000;
 /** Parked runs on one floor before one thing to change is pointed out. */
 export const HINT_AFTER = 2;
 
@@ -58,7 +60,8 @@ export const HINT_AFTER = 2;
  * one setting that reaches the rug, and its first setting never does.
  *
  * Little adventure, 3 by 3: one sign a quarter turn away; one sign two turns
- * away with a planter on the first try; two signs, one of them already right.
+ * away (the first try stops at the edge, a planter blocks a wrong guess); two
+ * signs, one of them already right.
  * Bigger adventure, 4 by 4: two signs, one to turn; two signs behind a wall of
  * planters, both to turn; three signs and a flower to fold on the only way. */
 const LEVELS: Record<Challenge, readonly RoverLevel[]> = {
@@ -74,9 +77,61 @@ const LEVELS: Record<Challenge, readonly RoverLevel[]> = {
   ],
 };
 
-export function levelFor(challenge: Challenge, round: number): RoverLevel {
+/** B-GAME-46: each play again turns every floor a quarter turn clockwise, so
+ * a replay is a fresh map; after four turns the floor is also mirrored, so
+ * eight plays in a row never repeat a map. A turn or a mirror of the whole floor
+ * keeps its one answer and how many presses each sign needs; only where things
+ * stand changes. */
+export const ROVER_SPINS = 8;
+
+const MIRROR: Record<Heading, Heading> = { n: 'n', e: 'w', s: 's', w: 'e' };
+
+/** The floor seen in a mirror, left for right. Each sign's answer is mirrored;
+ * its first setting is put back the same number of presses before the answer,
+ * so a mirrored floor asks for exactly the presses the plain one did. */
+export function mirrorLevel(level: RoverLevel): RoverLevel {
+  const size = level.size, cell = (value: number) => Math.floor(value / size) * size + (size - 1 - (value % size));
+  return {
+    size,
+    start: cell(level.start),
+    heading: MIRROR[level.heading],
+    goal: cell(level.goal),
+    signs: level.signs.map(sign => {
+      const fix = MIRROR[sign.fix], presses = (turnsOf(sign.fix) - turnsOf(sign.initial) + 4) % 4;
+      return { cell: cell(sign.cell), initial: headingOf(turnsOf(fix) - presses), fix };
+    }),
+    planters: level.planters.map(cell),
+    ...(level.bloom === undefined ? {} : { bloom: cell(level.bloom) }),
+  };
+}
+
+function spinCell(cell: number, size: number): number {
+  const row = Math.floor(cell / size), column = cell % size;
+  return column * size + (size - 1 - row);
+}
+
+export function spinLevel(level: RoverLevel, spin: number): RoverLevel {
+  const whole = ((Math.trunc(spin) % ROVER_SPINS) + ROVER_SPINS) % ROVER_SPINS;
+  let next = whole >= 4 ? mirrorLevel(level) : level;
+  for (let at = 0; at < whole % 4; at++) {
+    const size = next.size, cell = (value: number) => spinCell(value, size);
+    next = {
+      size,
+      start: cell(next.start),
+      heading: quarterTurn(next.heading),
+      goal: cell(next.goal),
+      signs: next.signs.map(sign => ({ cell: cell(sign.cell), initial: quarterTurn(sign.initial), fix: quarterTurn(sign.fix) })),
+      planters: next.planters.map(cell),
+      ...(next.bloom === undefined ? {} : { bloom: cell(next.bloom) }),
+    };
+  }
+  return next;
+}
+
+export function levelFor(challenge: Challenge, round: number, spin = 0): RoverLevel {
   const levels = LEVELS[challenge];
-  return levels[Number.isInteger(round) ? Math.min(Math.max(round, 0), levels.length - 1) : 0];
+  const level = levels[Number.isInteger(round) ? Math.min(Math.max(round, 0), levels.length - 1) : 0];
+  return spin ? spinLevel(level, spin) : level;
 }
 
 export function isHeading(value: unknown): value is Heading {

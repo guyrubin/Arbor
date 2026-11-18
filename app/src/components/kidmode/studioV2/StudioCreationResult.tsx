@@ -14,6 +14,8 @@ import { StudioMakerPreview, isMakerCreation } from './StudioMakerArt';
 import { BOTTLE_LAB_COPY } from './games/makers/bottleLab/bottleLabCopy';
 import { MEND_BOWL_COPY } from './games/makers/mendBowl/mendBowlCopy';
 import { STITCH_GARDEN_COPY } from './games/makers/stitchGarden/stitchGardenCopy';
+// The keepsake's play button is the Studio's own button (studioGame.css), on the keepsakes page too.
+import './studioGame.css';
 import './studioCreations.css';
 
 export const CORNER_GLYPHS = { cushion: RectangleHorizontal, plant: Sprout, books: LibraryBig, lamp: LampFloor, blanket: RectangleVertical, panda: Panda, flowers: Flower2, basket: ShoppingBasket };

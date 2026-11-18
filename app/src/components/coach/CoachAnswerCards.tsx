@@ -9,7 +9,9 @@ import { MarkdownBlock } from "../ui/MarkdownBlock";
 import type { KeepableField } from "../../lib/captureProposals";
 import "./coachReport.css";
 import { TrustLink } from "../trust/TrustLink";
-import BasedOnReceipt, { type BasedOnModel } from "../trust/BasedOnReceipt";
+import type { BasedOnModel } from "../trust/BasedOnReceipt";
+import WhatArborUsed from "./WhatArborUsed";
+import { GUIDANCE_ART } from "../../lib/parentArt";
 import { trackShareInitiated, trackShareCompleted } from "../../lib/loopEvents";
 import { track } from "../../lib/analytics";
 import { toDomains, domainLabel } from "../../lib/domains/registry";
@@ -65,7 +67,7 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: 
   if (state === "accepted" && today) {
     return (
       <div data-testid="coach-try-it" data-state="accepted" role="status" className="mt-2 flex flex-wrap items-center gap-x-2 pt-2" style={{ borderTop: "1px solid var(--arbor-rule)" }}>
-        <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
+        <span className="inline-flex flex-1 min-w-0 items-center gap-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-k-plan-i)" }}>
           <Icon name="check_circle" size={14} /> {t("coach.tryIt.accepted")}
         </span>
         <button type="button" {...hostAttrs} onClick={() => onUndo(today.id)} className="inline-flex min-h-11 items-center px-2 text-[12px] font-bold underline underline-offset-2" style={{ color: "var(--arbor-muted)" }}>
@@ -81,12 +83,12 @@ export function CoachTryIt({ step, today, lang, onTryIt, onUndo, buttonProps }: 
         {...hostAttrs}
         onClick={() => onTryIt(step)}
         className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13px] font-extrabold"
-        style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule-strong)", ...hostStyle }}
+        style={{ background: "var(--arbor-k-plan-w)", color: "var(--arbor-k-plan-i)", border: "1px solid var(--arbor-rule-strong)", ...hostStyle }}
       >
         <Icon name="flag" size={14} /> {state === "replace" ? t("coach.tryIt.replace") : t("coach.tryIt")}
       </button>
       {state === "replace" && today && (
-        <p className="text-[11px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("coach.tryIt.replaces", { current: today.recommendation })}</p>
+        <p className="text-[12px] leading-snug" style={{ color: "var(--arbor-muted)" }}>{t("coach.tryIt.replaces", { current: today.recommendation })}</p>
       )}
     </div>
   );
@@ -346,7 +348,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1">
-      <span className="text-[11px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+      <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
         {vote ? t("elev.coachcontract.feedback.thanks") : t("elev.coachcontract.feedback.prompt")}
       </span>
       <button
@@ -355,7 +357,7 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
         aria-pressed={vote === "up"}
         aria-label={t("elev.coachcontract.feedback.up")}
         title={vote === "up" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.up")}
-        className="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
         style={buttonStyle(vote === "up")}
       >
         <Icon name="thumb_up" size={13} aria-hidden /> {t("elev.coachcontract.feedback.up")}
@@ -366,14 +368,14 @@ function AnswerFeedback({ contract, lens, surface, lang, sources }: {
         aria-pressed={vote === "down"}
         aria-label={t("elev.coachcontract.feedback.down")}
         title={vote === "down" ? t("elev.coachcontract.feedback.undo") : t("elev.coachcontract.feedback.down")}
-        className="inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="inline-flex items-center gap-1 text-[12px] font-bold px-3 py-1 min-h-11 rounded-full transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
         style={buttonStyle(vote === "down")}
       >
         <Icon name="thumb_down" size={13} aria-hidden /> {t("elev.coachcontract.feedback.down")}
       </button>
       {/* States plainly what the control is about, so a thumb is never read as
           a judgement on the child (clinical firewall, stated in the UI). */}
-      <span className="text-[10px] w-full" style={{ color: "var(--arbor-muted)" }}>
+      <span className="text-[12px] w-full" style={{ color: "var(--arbor-muted)" }}>
         {t("elev.coachcontract.feedback.note")}
       </span>
     </div>
@@ -407,7 +409,7 @@ export default function CoachAnswerCards({
   contract, lens, council, lang = "en", onSaveToPlan, onGoDeeper,
   onAddToHandoff, onManageMemory, reviewUnavailable = false,
   todayStep, onTryIt, onUndoTryIt, renderKeepAction, onProposeMemory, provenance, basedOn, onOpenFact,
-  onPrepareVisit, goDeeperReads, onRead,
+  onPrepareVisit, goDeeperReads, onRead, childName,
 }: {
   contract: CoachContract;
   /** EXTRA-TALK: opt-in provenance line for a settled Talk answer. Absent →
@@ -416,6 +418,8 @@ export default function CoachAnswerCards({
   /** Settled-answer receipt: approved fact names, profile field names, weekly counts. Absent → no receipt. */
   basedOn?: BasedOnModel;
   onOpenFact?: (memoryId: string) => void;
+  /** V77: the child's first name for the "What Arbor used" child line. */
+  childName?: string;
   /** F-TALK-2: the visit handoff ("Build a summary") left the row under the
    *  Talk thread for the answer's actions, next to Teacher note. */
   onPrepareVisit?: () => void;
@@ -581,8 +585,15 @@ export default function CoachAnswerCards({
         </section>
       )}
 
+      {/* V77 (N-Talk): what this answer was built from, read-only, ahead of the draft. */}
+      {basedOn && !prominentHelp && <WhatArborUsed basedOn={basedOn} guides={sources} childName={childName} onOpenFact={onOpenFact} program={contract.activeProgramUsed} />}
+
       {contract.text?.trim() && !longOpening && (
         <header className="coach-report__opening" data-testid="coach-report-opening">
+          {/* v10 (COPY-RULES): Arbor wrote this text — its one voice label. */}
+          {/* V77 (N-Talk-D): the answer's picture beside the draft (decorative; wide layout only). */}
+          <span className="coach-report__art" aria-hidden="true"><img src={GUIDANCE_ART.src} srcSet={GUIDANCE_ART.srcSet} alt="" loading="lazy" decoding="async" width={112} height={84} /></span>
+          <span className="coach-report__draft"><Icon name="edit" size={14} />{t("coach.report.draftLabel")}</span>
           <MarkdownBlock text={contract.text} className="coach-report__lead" />
         </header>
       )}
@@ -606,6 +617,8 @@ export default function CoachAnswerCards({
 
       {contract.parentScript && (
         <section className="coach-report__section coach-report__script" id={`${reportId}-script`}>
+          {/* V77 (N-Talk): the words card carries its visible heading, as the board draws it. */}
+          <h3 className="coach-report__script-title"><Icon name="forum" size={17} />{t("coach.cards.sayThis")}</h3>
           {/* F-TALK-2 (mock L405): the say-quote, display face behind a navy
               inline-start rule, never the sans card. */}
           <SayThis
@@ -777,7 +790,6 @@ export default function CoachAnswerCards({
       {!door && sourcesPanel}
 
       <footer className="coach-report__footer" data-testid="coach-answer-footer">
-        {basedOn && onOpenFact && !prominentHelp && <BasedOnReceipt model={basedOn} onOpenFact={onOpenFact} />}
         {/* EXTRA-TALK: one muted line, never a verdict, never a number. An
             answer led by the urgent-help panel carries no "you decide" line. */}
         {provenance && !prominentHelp && (

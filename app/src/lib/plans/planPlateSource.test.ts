@@ -1,9 +1,8 @@
 /**
  * B-BOOK-75 (plates painted in-product) — the device side of a shared-storage
  * plate: read ONCE with the app's bearer token, shown as a blob: URL; a 404
- * (unpainted) yields null so the renderer keeps today's behaviour (the route
- * stays in the chain, the <img> errors, the page advances). Static plates
- * never go through the loader.
+ * (unpainted) yields null so the reader can offer a retry without handing an
+ * unauthenticated route to <img>. Static plates never go through the loader.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setAuthTokenProvider } from "../api";
@@ -34,5 +33,43 @@ describe("loadPlanPlateUrl", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("offline"); }));
     expect(await loadPlanPlateUrl("/api/plans/plates/plan-poo-sit/PP3")).toBeNull();
+  });
+
+  it("does not cache a 200 app shell or an empty image as a successful picture", async () => {
+    const create = vi.fn(() => "blob:recovered-picture");
+    vi.stubGlobal("URL", Object.assign(Object.create(URL), { createObjectURL: create }));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("<html>Sign in</html>", { headers: { "Content-Type": "text/html" } }))
+      .mockResolvedValueOnce(new Response(new Blob([], { type: "image/webp" })))
+      .mockResolvedValueOnce(new Response(new Blob([new Uint8Array([1])], { type: "image/png" })));
+    vi.stubGlobal("fetch", fetchMock);
+    const url = "/api/plans/plates/plan-poo-sit/PP4";
+    expect(await loadPlanPlateUrl(url)).toBeNull();
+    expect(await loadPlanPlateUrl(url)).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+    expect(await loadPlanPlateUrl(url)).toBe("blob:recovered-picture");
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("an older failed request cannot evict a newer in-flight read after cache invalidation", async () => {
+    let first!: (response: Response) => void, second!: (response: Response) => void;
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { first = resolve; }))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => { second = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", Object.assign(Object.create(URL), { createObjectURL: () => "blob:current-picture" }));
+    const url = "/api/plans/plates/plan-poo-sit/PP5";
+    const old = loadPlanPlateUrl(url);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    resetPlanPlateSources();
+    const current = loadPlanPlateUrl(url);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    first(new Response("", { status: 404 }));
+    expect(await old).toBeNull();
+    const joined = loadPlanPlateUrl(url);
+    second(new Response(new Blob([new Uint8Array([1])], { type: "image/webp" })));
+    expect(await current).toBe("blob:current-picture");
+    expect(joined).toBe(current);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

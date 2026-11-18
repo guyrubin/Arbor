@@ -18,7 +18,7 @@ export const en: Record<string, string> = {
 
   // ── Crisis script (pinned)
   "elev.safety.crisis.kicker": "Crisis script — say this",
-  "elev.safety.crisis.kickerNamed": "Say this to {name} — slowly, at eye level",
+  "elev.safety.crisis.kickerNamed": "Say this to {name}, slowly, at eye level",
   "elev.safety.numbersChecked": "Numbers checked {date}",
   "elev.safety.firstContact": "{name}'s first call: {contact}",
   "elev.safety.yourChild": "Your child",

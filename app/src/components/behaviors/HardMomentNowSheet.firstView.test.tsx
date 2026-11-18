@@ -178,7 +178,8 @@ describe("FEAT-06 — the 'you first' view (rendered, EN + HE)", () => {
   it("RTL-safe: logical properties only (the rule sits on the inline end, no left/right)", () => {
     expect(FIRST).toContain("borderBlockEnd");
     expect(FIRST).toContain('<SayThis presentation="quote"');
-    expect(FIRST).toContain('className="ms-auto inline-flex min-h-11');
+    // O-HardMoment (V77): the safety link sits at the foot's inline start.
+    expect(FIRST).toContain('className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold underline');
     expect(FIRST).not.toMatch(/\b(borderLeft|borderRight|paddingLeft|paddingRight|marginLeft|marginRight)\b|\b(ml|mr|pl|pr)-\d|text-(left|right)\b/);
   });
 });
@@ -296,7 +297,7 @@ describe("FEAT-06 — the sheet: the first view sits ABOVE the picker, never rep
   }
 
   it("source: the first view renders only before a card; back from a card the plain pacer returns above the pick prompt", () => {
-    const branch = SHEET.slice(SHEET.indexOf(") : !card ? ("), SHEET.indexOf('{t("hm.now.pick")}'));
+    const branch = SHEET.slice(SHEET.indexOf(") : !card ? ("), SHEET.indexOf("{pastFirst && pickerFold}"));
     expect(branch).toContain("{!pastFirst && (");
     expect(branch).toContain("<HardMomentFirstView");
     expect(branch).toContain("{pastFirst && <ParentBreathPacer t={t} />}");
@@ -394,7 +395,9 @@ describe("F-TALK-2 — the hard sheet's surface, title and picker fold", () => {
   }
 
   it("the fold applies only after the first view; back from a card the picker shows directly", () => {
-    expect(SHEET).toContain('<PickerFold folded={!pastFirst} label={t("companion.hard.choose")}>');
+    // O-HardMoment (V77): on the first view the fold sits under the matches as "Something else".
+    expect(SHEET).toContain('<PickerFold folded={!pastFirst} label={!pastFirst && lead.length > 0 ? t("hm.now.else") : t("companion.hard.choose")}>');
+    expect(SHEET).toContain("picker={pickerFold}");
     const fold = SHEET.slice(SHEET.indexOf("function PickerFold("), SHEET.indexOf("export function hardMomentSheetOrder"));
     expect(fold).toContain("if (!folded) return <>{children}</>;");
     expect(fold).toContain('className="inline-flex min-h-11');

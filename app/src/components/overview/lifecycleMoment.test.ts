@@ -107,8 +107,9 @@ describe("ENG-09 — the lifecycle module is wired into Today", () => {
     expect(view).toContain("headerNote={lifecycleNote}");
     const note = view.indexOf('className="now-lifecycle-note"');
     expect(note).toBeGreaterThan(view.indexOf("<NowRecommendation"));
-    expect(note).toBeLessThan(view.indexOf("{showNotice ?"));
-    expect(view.indexOf("<NowWhatChangedLines")).toBeGreaterThan(view.indexOf("<NowWeekSoFar"));
+    // v10.1: the lead chain (with the note) is built before what waits (the Notice block).
+    expect(note).toBeLessThan(view.indexOf("const noticeStep"));
+    expect(view.indexOf("<NowWhatChangedLines")).toBeGreaterThan(view.indexOf("<NowThisWeek"));
     const lines = stripComments(todayFile("NowTodayLines.tsx"));
     expect(lines).toContain('<WhatChanged variant="lines"');
   });

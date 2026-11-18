@@ -46,7 +46,7 @@ vi.mock("react/jsx-dev-runtime", async original => {
   const runtime = await original<typeof import("react/jsx-dev-runtime")>();
   return { ...runtime, jsxDEV: (...a: Parameters<typeof runtime.jsxDEV>) => { capture(a[0], a[1]); return runtime.jsxDEV(...a); } };
 });
-import AreaRowDetail, { type AreaRowDetailProps } from "./AreaRowDetail";
+import AreaRowDetail, { shelfNeighbours, type AreaRowDetailProps } from "./AreaRowDetail";
 import { translate } from "../../lib/i18n";
 import { tGCare } from "../../lib/growthCareText";
 import { ALL_MILESTONES, bandForAgeMonths } from "../../lib/milestoneData";
@@ -260,6 +260,47 @@ describe("v3 F-CHILD-1 — AreaRowDetail", () => {
     expect(onOpenObservation).toHaveBeenCalledWith(NOW[0].id);
   });
 
+  it("V77: a skill already Seen is not asked again (it is on the dated line); it stays one tap away under earlier answers", () => {
+    const [a] = NOW;
+    const onOpenObservation = vi.fn();
+    const milestones = catalogue().map((m) => m.id === a.id ? { ...m, checked: true, observationStatus: "yes" as const } : m);
+    const html = render({ milestones, onOpenObservation });
+    expect(ids(html)).toEqual(NOW.slice(1).map((m) => m.id));
+    expect(html.match(new RegExp(esc(a.title), "g"))).toHaveLength(1);
+    expect(html.slice(html.indexOf('data-testid="area-detail-earlier-answers"'))).toContain(esc(a.title));
+    // Negative control: with no door to open it, the Seen row stays where it can be changed.
+    expect(ids(render({ milestones }))).toEqual(NOW.map((m) => m.id));
+  });
+
+  it("V77 rows: Next to notice, each skill's words and an Earlier and later disclosure; no area sentence", () => {
+    // Nothing Seen in the area yet: the quiet board's "Mark what you have seen".
+    expect(render({ v10: true })).toContain(">Mark what you have seen<");
+    const seenOne = catalogue().map((m) => m.id === EARLIER[0].id ? { ...m, checked: true, observationStatus: "yes" as const } : m);
+    const html = render({ v10: true, milestones: seenOne });
+    expect(html).toContain(">Next to notice<");
+    expect(html).not.toContain(">Mark what you have seen<");
+    expect(html).not.toContain(">" + esc(translate("en", "ms.currentBand")) + "<");
+    expect(html).not.toContain('class="area-detail-why"');
+    expect(html.match(/data-testid="area-detail-skill-words"/g)?.length ?? 0).toBeGreaterThan(0);
+    expect(html.match(/data-testid="area-detail-around"/g)?.length ?? 0).toBeGreaterThan(0);
+    expect(html).toContain("Earlier and later");
+    // Reading only: the disclosure carries no answer control.
+    const around = html.slice(html.indexOf('data-testid="area-detail-around"'));
+    expect(around.slice(0, around.indexOf("</details>"))).not.toContain("segmented-answers");
+    // Negative control: production's layout without the flag.
+    const plain = render();
+    expect(plain).toContain('class="area-detail-why"');
+    expect(plain).not.toContain("area-detail-around");
+  });
+
+  it("shelfNeighbours: the nearest lower and higher band on the same shelf", () => {
+    const [m] = NOW;
+    const { earlier, later } = shelfNeighbours(m, WORDS);
+    expect(earlier && bandOf(earlier)).toBe(Math.max(...EARLIER.map(bandOf)));
+    expect(later && bandOf(later)).toBe(Math.min(...LATER.map(bandOf)));
+    expect(shelfNeighbours({ ...m, custom: true }, WORDS)).toEqual({ earlier: null, later: null });
+  });
+
   it("the three doors call their callbacks", () => {
     const onCheck = vi.fn(), onExplore = vi.fn(), onOpenMoments = vi.fn();
     render({ onCheck, onExplore, onOpenMoments });
@@ -423,9 +464,10 @@ describe("v3 F-CHILD-4 (MOB-02) — the sheet opens on the newest moment", () =>
     expect(line).toMatch(/<time datetime="2026-05-02T10:00:00\.000Z">/i);
     expect(line).toContain('<span dir="auto">Asked for more juice at breakfast</span>');
     expect(html.indexOf('data-testid="area-detail-last"')).toBeLessThan(html.indexOf('class="area-detail-why"'));
-    // The rule takes the AREA's ink (DOMAIN_VARS), never a state colour.
-    expect(line).toMatch(/style="border-inline-start-color:[^"]+"/);
+    // v10.1: a neutral rule (no area ink, no state colour) and no area picture.
+    expect(line).not.toMatch(/style=/);
     expect(line).not.toMatch(/--arbor-(?:green|red|amber|yellow)/);
+    expect(html).not.toContain("area-detail-art");
   });
 
   it("inline under a row there is no line: the row already quotes the moment", () => {

@@ -6,5 +6,8 @@ import { ArborMascot } from "../../ui/ArborMascot";
 export function StudioPortrait({ className = "", label = "", fallback = true }: { className?: string; label?: string; fallback?: boolean }) {
   const hero = useHeroAvatar();
   const [failed, setFailed] = useState<string | null>(null);
-  return <span className={className}>{hero.url && failed !== hero.url ? <img key={hero.url} src={hero.url} alt={label} onError={() => setFailed(hero.url)} draggable={false} referrerPolicy="no-referrer" /> : fallback ? <ArborMascot size={90} mood="wave" animate={false} /> : null}</span>;
+  const shown = Boolean(hero.url && failed !== hero.url);
+  // Without a picture and without the Sprout fallback there is nothing to frame, so no empty ring is drawn.
+  if (!shown && !fallback) return null;
+  return <span className={className}>{shown ? <img key={hero.url} src={hero.url!} alt={label} onError={() => setFailed(hero.url)} draggable={false} referrerPolicy="no-referrer" /> : <ArborMascot size={90} mood="wave" animate={false} />}</span>;
 }

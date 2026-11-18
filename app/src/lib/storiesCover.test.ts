@@ -46,9 +46,16 @@ function playerView(src: string): string {
   return src.slice(at);
 }
 
+/**
+ * The parent arm of the kidMode ternary. v10.1 recomposed it as one DsRoot
+ * (Guide → ChainStrip → Route of three RouteSections); the anchor is the
+ * DsRoot open tag that follows the kid branch.
+ */
+const PARENT_ARM = '    ) : (\n      <DsRoot composition={composition} className="ds-mychild stories-v10" data-testid="stories-screen"';
+
 /** The parent branch of the catalogue view: everything after the kid ternary. */
 function parentBranch(src: string): string {
-  const at = src.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">");
+  const at = src.indexOf(PARENT_ARM);
   expect(at, "the parent branch of the #/stories catalogue was not found").toBeGreaterThan(-1);
   return src.slice(at, src.indexOf("const playerBody = (immersiveMode: boolean)"));
 }
@@ -56,10 +63,32 @@ function parentBranch(src: string): string {
 /** The kid branch: from the kidMode ternary's true arm to the parent arm. */
 function kidBranch(src: string): string {
   const from = src.indexOf("    return kidMode ? (");
-  const to = src.indexOf("    ) : (\n      <div className=\"space-y-6 max-w-[1100px]\">");
+  const to = src.indexOf(PARENT_ARM);
   expect(from).toBeGreaterThan(-1);
   expect(to).toBeGreaterThan(from);
   return src.slice(from, to);
+}
+
+/**
+ * V77 (N-Stories-D): the page's ONE move, defined once as `readTonight` and
+ * passed as the header band's FrameHead `action` — the band's hero is
+ * tonight's story itself.
+ */
+function readTonightMove(src: string): string {
+  const at = src.indexOf("const readTonight = (");
+  const end = src.indexOf("const tonightTitle", at);
+  expect(at, "the readTonight move was not found").toBeGreaterThan(-1);
+  expect(end).toBeGreaterThan(at);
+  return src.slice(at, end);
+}
+
+/** The header band's FrameHead element (open tag through its self-close). */
+function bandHead(parent: string): string {
+  const at = parent.indexOf("<FrameHead");
+  expect(at, "the header band's FrameHead was not found").toBeGreaterThan(-1);
+  const end = parent.indexOf('{composition === "desk" && storiesChain}', at);
+  expect(end).toBeGreaterThan(at);
+  return parent.slice(at, end);
 }
 
 describe("§3f row 3 — the parent door leads with tonight's cover", () => {
@@ -87,9 +116,19 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
     // B-PLAY-12: the "Your library" module moved to the Comics shelf (every
     // run read is a comic or a text book there — lib/storyShelf).
     expect(parent).not.toContain('data-module="stories-library"');
-    expect(parent).toContain('data-primary-move="read-tonights-story"');
-    // The move is inside the cover module, not somewhere below the shelf.
-    expect(parent.indexOf('data-primary-move="read-tonights-story"')).toBeLessThan(catalogue);
+    // V77: the declared move is defined once (readTonight) and is the header
+    // band's action — reachable before the cover, never below the shelf.
+    expect(readTonightMove(HERO)).toContain('data-primary-move="read-tonights-story"');
+    expect(bandHead(parent)).toContain("action={readTonight}");
+    expect((HERO.match(/\breadTonight\b/g) || []).length).toBe(2); // defined once, used once
+    const action = parent.indexOf("action={readTonight}");
+    expect(action).toBeGreaterThan(parent.indexOf("<FrameHead"));
+    expect(action).toBeLessThan(tonight);
+    expect(action).toBeLessThan(catalogue);
+    // NEGATIVE CONTROL: the cover module no longer carries the move (it moved to the band)
+    const cover = parent.slice(tonight, parent.indexOf("</section>", tonight));
+    expect(cover).not.toContain("data-primary-move");
+    expect(cover).not.toContain("readTonight");
   });
 
   it("stays inside the declared module budget, with exactly one primary move", () => {
@@ -102,7 +141,10 @@ describe("§3f row 3 — the parent door leads with tonight's cover", () => {
   });
 
   it("the cover is the FIRST thing under the page header — nothing above it", () => {
-    const header = parent.indexOf("<PageHeader");
+    // V77: the page header is the shared header band's FrameHead (the h1); the
+    // kit PageHeader is gone from the parent branch (negative control).
+    expect(parent).not.toContain("<PageHeader");
+    const header = parent.indexOf("<FrameHead");
     const tonight = parent.indexOf('data-module="stories-tonight"');
     const between = parent.slice(header, parent.indexOf('<section data-module="stories-tonight"'));
     expect(header).toBeGreaterThan(-1);
@@ -200,11 +242,21 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(parent).toContain('t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length })');
   });
 
-  it("the 'Builds · Ask after' well sits under the cover title and before Play, in uiLang (the essay moved to the reader)", () => {
+  it("the 'Builds · Ask after' well sits under the noted moment and the reason line, and nothing after it but the pack chip; in uiLang (the essay moved to the reader)", () => {
     const cover = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
     const well = cover.indexOf('data-testid="stories-tonight-insight"');
-    expect(well).toBeGreaterThan(cover.indexOf("tonightStory.titleHe"));
-    expect(well).toBeLessThan(cover.indexOf('t("elev.stories.tonight.cta")'));
+    // V77: the cover has no title (the band's h1 is the story title) and no read button.
+    expect(well).toBeGreaterThan(cover.indexOf('data-testid="stories-tonight-noted"'));
+    expect(well).toBeGreaterThan(cover.indexOf('data-testid="stories-tonight-reason"'));
+    expect(cover.indexOf('data-testid="stories-tonight-reason"')).toBeGreaterThan(-1);
+    // after the well: only the quiet pack chip — nothing clickable
+    const tail = cover.slice(well);
+    expect(tail).toContain("STORY_PACK_LABEL[tonightStory.pack]");
+    expect(tail).not.toMatch(/<button|onClick|<a\s|href=/);
+    // NEGATIVE CONTROLS: the cover's h2 title and its read button moved to the band
+    expect(cover).not.toContain("tonightStory.titleHe");
+    expect(cover).not.toContain("<h2");
+    expect(cover).not.toContain('t("elev.stories.tonight.cta")');
     expect(cover).toContain('t("elev.stories.tonight.builds")');
     expect(cover).toContain('t("elev.stories.tonight.askAfter")');
     expect(cover).not.toContain("parentInsight");
@@ -216,26 +268,51 @@ describe("B-PLAY-11 — Tonight cover: no virtue tallies, insight first, catalog
     expect(HERO).not.toContain('aiLang === "he" ? activeStory.parentInsight.he');
   });
 
-  it("W2-SHELLPLAY r1: the move is stamped on the Play control, not a 586 px card; Play fits the phone fold", () => {
+  it("W2-SHELLPLAY r1 → V77: the move is stamped on the read control (the band's action), not a 586 px card; the cover fits the phone fold", () => {
     const cover = parent.slice(parent.indexOf('data-module="stories-tonight"'), parent.indexOf("</section>", parent.indexOf('data-module="stories-tonight"')));
-    const stamp = cover.indexOf('data-primary-move="read-tonights-story"');
-    const btnOpen = cover.lastIndexOf("<button", stamp);
-    // the stamped element is the button whose label is the CTA
-    expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).toContain('t("elev.stories.tonight.cta")');
-    expect(cover.slice(btnOpen, cover.indexOf("</button>", stamp))).not.toContain("tonightStory.titleHe");
+    const move = readTonightMove(HERO);
+    const stamp = move.indexOf('data-primary-move="read-tonights-story"');
+    const btnOpen = move.lastIndexOf("<button", stamp);
+    expect(btnOpen).toBeGreaterThan(-1);
+    const btn = move.slice(btnOpen, move.indexOf("</button>", stamp));
+    // nothing sits between the <button and the stamp but its own attributes
+    expect(move.slice(btnOpen, stamp)).not.toContain(">");
+    // the stamped element is a real button whose label is the CTA, with the loading state, disabled without a story
+    expect(btn).toContain('type="button"');
+    expect(btn).toContain('t("elev.stories.tonight.cta")');
+    expect(btn).toContain("onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}");
+    expect(btn).toContain("disabled={!tonightStory || !!loadingId}");
+    expect(btn).toContain('tonightStory && loadingId === tonightStory.id');
+    expect(btn).toContain('statesText("elev.states.hero.opening", he)');
+    expect(btn).not.toContain("tonightStory.titleHe");
+    // V77: one filled kit button, no gradient fill
+    expect(btn).toContain('className="btn primary nowrap disabled:opacity-60"');
+    expect(btn).not.toContain("--gradient-cta");
+    expect(bandHead(parent)).toContain("action={readTonight}");
+    // NEGATIVE CONTROL: the cover no longer holds the stamp or the CTA label
+    expect(cover).not.toContain("data-primary-move");
+    expect(cover).not.toContain('t("elev.stories.tonight.cta")');
     // W2-SHELLPLAY r2: the art band is a min-height (it now holds the hero row).
     // SHIP-FIX r3: below sm it is ONE row (avatar + hero row side by side, 100 px)
-    expect(cover).toContain("flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px]");
+    // The phone art band is one 96 px row (56 px on a phone under 900 px tall, so Read it
+    // together clears the Ask bar); sm and up keep their column heights.
+    expect(cover).toContain('flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full ${phoneShort ? "min-h-[56px] py-1" : "min-h-[96px] py-2"} sm:min-h-[168px]');
     // NEGATIVE CONTROL: the r3 148 px column band is caught
     expect(cover).not.toContain("flex flex-col items-center justify-center gap-1 w-full min-h-[112px]");
     expect(cover).toContain("lg:grid-cols-[2fr_3fr]");
     expect(cover).toContain("lg:max-w-[60ch]");
-    // the CTA is the one gradient, with the on-accent ink
-    expect(cover).toContain('style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}');
-    // no cover eyebrow, no subtitle, the H1 names tonight
+    // NEGATIVE CONTROL: the pre-V77 gradient-filled CTA is gone from the whole file
+    expect(HERO).not.toContain('style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}');
+    // no cover eyebrow, no subtitle; V77: the band's H1 IS tonight's story title
+    // (the generic tonight h1 only without a story), the sub names it as tonight's
     expect(cover).not.toContain('t("elev.stories.tonight.eyebrow")');
     expect(parent).not.toContain('subtitle={t("elev.stories.sub"');
-    expect(parent).toMatch(/childProfile\.avatar \? t\("elev\.stories\.tonight\.h1\.starring", \{ name \}\) : t\("elev\.stories\.tonight\.h1"\)/);
+    expect(HERO).toContain("const tonightTitle = tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : null;");
+    const head = bandHead(parent);
+    expect(head).toContain('title={tonightTitle ?? t("elev.stories.tonight.h1")}');
+    expect(head).toContain("sub={tonightStory ? `${tCopy.chainTonight} · ${he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}` : undefined}");
+    // NEGATIVE CONTROL: the "starring" h1 variant is gone (the h1 is the story's title)
+    expect(HERO).not.toContain("elev.stories.tonight.h1.starring");
   });
 
   it("W2-SHELLPLAY r1 (law 8): a library tile resolves its title in the UI language", async () => {
@@ -299,13 +376,35 @@ describe("W2-SHELLPLAY r2 · #/stories — one filled button, honest 'starring',
     expect(cover).toContain('data-testid="hero-first-gate"');
     expect(cover).toContain('t("elev.stories.tonight.heroRow", { name: heroName })');
     expect(parent).not.toMatch(/<PlayPanel|<PlayButton/);
-    expect((parent.match(/--gradient-cta/g) || []).length).toBe(1);
+    // V77: the hero row sits in the cover art band (before the text column)
+    const art = cover.indexOf('data-testid="hero-first-gate"');
+    expect(art).toBeGreaterThan(cover.indexOf("flex flex-row sm:flex-col items-center justify-center"));
+    expect(art).toBeLessThan(cover.indexOf('<div className="p-4 sm:p-5 lg:max-w-[60ch]">'));
+    // one filled button on the page: the band's read move. No gradient fill anywhere.
+    const door = readTonightMove(HERO) + parent;
+    expect((door.match(/\bbtn primary\b/g) || []).length).toBe(1);
+    expect((HERO.match(/\bbtn primary\b/g) || []).length).toBe(1);
+    expect(readTonightMove(HERO)).toMatch(/\bbtn primary\b/);
+    expect((door.match(/--gradient-cta/g) || []).length).toBe(0);
+    expect((HERO.match(/--gradient-cta/g) || []).length).toBe(0);
+    // the hero row itself is quiet: not filled
+    const gate = cover.slice(cover.lastIndexOf("<button", art), cover.indexOf("</button>", art));
+    expect(gate).not.toMatch(/btn primary|--gradient-cta|data-primary-move/);
     // NEGATIVE CONTROL: the r1 gate shape is caught
     expect('<PlayPanel tone="lav" data-testid="hero-first-gate"><PlayButton tone="clay" />').toMatch(/<PlayPanel|<PlayButton/);
   });
 
-  it("no hero: the cover's first act is the hero row (before Play), and the shell says 'starring' only once a hero exists", () => {
-    expect(cover.indexOf('data-testid="hero-first-gate"')).toBeLessThan(cover.indexOf('data-primary-move="read-tonights-story"'));
+  it("no hero: the cover's first act is the hero row (the cover holds no read button; the band holds it), and the shell says 'starring' only once a hero exists", () => {
+    // V77: the read move is the band's action, drawn before the cover (band first is fine).
+    expect(parent.indexOf("action={readTonight}")).toBeGreaterThan(-1);
+    expect(parent.indexOf("action={readTonight}")).toBeLessThan(parent.indexOf('data-testid="stories-cover"'));
+    // Inside the cover, the hero row is the first control.
+    const gate = cover.indexOf('data-testid="hero-first-gate"');
+    expect(gate).toBeGreaterThan(-1);
+    expect(cover.indexOf("<button")).toBe(cover.lastIndexOf("<button", gate));
+    // NEGATIVE CONTROL: the cover holds no read button
+    expect(cover).not.toContain("data-primary-move");
+    expect(cover).not.toContain('t("elev.stories.tonight.cta")');
     expect(read("components/layout/Shell.tsx")).not.toContain('t("nav.sub." + hubSubKey');
     // v3 F-SHELL-2 re-pin (critic ruling 6): the header's hub sentence is
     // deleted everywhere, so no chrome can say "starring" before a hero exists:
@@ -352,14 +451,20 @@ describe("W2-SHELLPLAY r2 · #/stories — Builds is a glance, and one moment li
     expect("The child learns that the fastest, shiniest path is not always the right one".split(/\s+/).length).toBeGreaterThan(6);
   });
 
-  it("SHIP-FIX r3: the moment line quotes ONE parent-noted moment INSIDE the cover text column, above the title — no band above the cover, no second door into From today", () => {
+  it("SHIP-FIX r3 → V77: the moment line quotes ONE parent-noted moment INSIDE the cover text column, above the reason line — no band above the cover, no second door into From today", () => {
     const at = section.indexOf('data-testid="stories-tonight-noted"');
     const line = section.slice(at, section.indexOf("</p>", at));
-    // inside the cover, after the art band, before the title and Play
+    // inside the cover's text column, after the art band, before the reason line
     expect(at).toBeGreaterThan(section.indexOf('data-testid="stories-cover"'));
     expect(at).toBeGreaterThan(section.indexOf('data-testid="hero-first-gate"'));
-    expect(at).toBeLessThan(section.indexOf("tonightStory.titleHe"));
-    expect(at).toBeLessThan(section.indexOf('data-primary-move="read-tonights-story"'));
+    expect(at).toBeGreaterThan(section.indexOf('<div className="p-4 sm:p-5 lg:max-w-[60ch]">'));
+    const reason = section.indexOf('data-testid="stories-tonight-reason"');
+    expect(reason).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(reason);
+    // NEGATIVE CONTROL: there is no cover title or read move to sit above any more
+    expect(section).not.toContain("tonightStory.titleHe");
+    expect(section).not.toContain("<h2");
+    expect(section).not.toContain('data-primary-move="read-tonights-story"');
     expect(line).toContain('borderInlineStart: "3px solid var(--arbor-peach-ink)"');
     expect(line).toContain("line-clamp-2");
     expect(line).toContain('fontFamily: "var(--font-editorial)"');

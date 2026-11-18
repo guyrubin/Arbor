@@ -38,21 +38,18 @@ book
 bookmark
 bookmark_add
 bookmark_added
-bookmark_remove
 boy
 brush
 bubble
 build
 cake
 calendar_month
-calendar_today
 call
 camera
 campaign
 capture
 category
 celebration
-center_focus_strong
 chair
 chat
 chat_bubble
@@ -73,6 +70,7 @@ cloud_off
 code
 cognition
 communication
+compare
 contacts
 content_copy
 contract
@@ -90,10 +88,10 @@ delete_forever
 delete_sweep
 dentistry
 description
+desk
 details
 devices
 diagnosis
-diamond
 directions_car
 directions_run
 directions_walk
@@ -164,6 +162,8 @@ interests
 ios
 ios_share
 iso
+join
+keep
 key
 keyboard
 keyboard_return
@@ -176,7 +176,6 @@ light_mode
 lightbulb
 link
 list
-local_hospital
 local_library
 lock
 logout
@@ -197,7 +196,6 @@ mobile
 mode
 money
 monitor
-monitor_heart
 monitoring
 mood
 more
@@ -223,6 +221,7 @@ palette
 park
 password
 pattern
+pause
 pending
 person
 person_add
@@ -232,6 +231,7 @@ photo
 photo_album
 photo_camera
 photo_library
+pill
 pin
 place
 play_arrow
@@ -241,6 +241,7 @@ playlist_add
 portrait
 preview
 privacy
+problem
 progress_activity
 psychiatry
 psychology
@@ -283,6 +284,7 @@ shadow
 shapes
 share
 shield
+shift
 sign_language
 skip_next
 snail
@@ -320,6 +322,7 @@ thumb_up
 timeline
 timer
 title
+toast
 today
 toys
 train
@@ -331,7 +334,6 @@ tune
 undo
 unfold_more
 upload
-uppercase
 verified
 verified_user
 view_agenda

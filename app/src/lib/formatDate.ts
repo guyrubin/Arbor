@@ -81,3 +81,121 @@ export const fmtDayTime = (input: DateInput, lang: UiLang): string => {
  *  (a week header) where the year is carried by the surrounding context. */
 export const fmtDayShort = (input: DateInput, lang: UiLang): string =>
   fmt(input, lang, { day: "numeric", month: "short" });
+
+/**
+ * v10 — the shell's "when" beside the pill row: weekday, day and month, then the
+ * time, as every v10 board draws it ("Monday 16 November · 17:40" /
+ * "יום שני, 16 בנובמבר · 17:40"): day-first and a 24-hour clock in both
+ * languages (canvas V77). The separator is the app's middle dot.
+ */
+export const fmtShellNow = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  return isolate(`${shellDay(d, lang)} · ${fmtTimeV10(d, lang)}`);
+};
+
+/** The shell's day alone — "Monday 16 November" / "יום שני, 16 בנובמבר" (V77:
+ *  a route that replaces the time with its own words, or shows the day only). */
+export const fmtShellDay = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  return d ? isolate(shellDay(d, lang)) : "";
+};
+
+function shellDay(d: Date, lang: UiLang): string {
+  const locale = lang === "he" ? "he-IL" : "en-GB";
+  try {
+    return d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+  } catch {
+    return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  }
+}
+
+/* ── v10 / canvas V77: the day as the boards draw it ───────────────────────
+   Every v10 board writes a day as weekday, day, short month ("Sat 14 Nov",
+   "Wed 25 Nov, 10:00") with a 24-hour clock, and a time alone as "10:00".
+   English uses en-GB for that day-first order; Hebrew keeps he-IL. The year
+   appears only when the date is not in the current year, so an old date can
+   never pass as this year's. Same seam rules as above: explicit month names,
+   isolate() for Hebrew, display-time only. Legacy screens keep fmtDay. */
+const V10_LOCALES: Record<UiLang, string> = { en: "en-GB", he: "he-IL" };
+
+/** The boards abbreviate every English month to three letters ("16 Sep");
+ *  en-GB's ICU data writes September as "Sept". */
+const threeLetterMonth = (s: string): string => s.replace(/\bSept\b/g, "Sep");
+
+const v10DayOptions = (d: Date, now: Date): Intl.DateTimeFormatOptions => ({
+  weekday: "short", day: "numeric", month: "short",
+  ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+});
+
+const v10Time = (d: Date, lang: UiLang): string => {
+  const options: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+  try {
+    return d.toLocaleTimeString(V10_LOCALES[lang] ?? V10_LOCALES.en, options);
+  } catch {
+    return d.toLocaleTimeString(undefined, options);
+  }
+};
+
+/** v10 day — "Sat 14 Nov" / "שבת, 14 בנוב׳" (year added outside the current year). */
+export const fmtDayV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options = v10DayOptions(d, now);
+  let s: string;
+  try {
+    if (lang === "he") {
+      s = d.toLocaleDateString(V10_LOCALES.he, options);
+    } else {
+      // The boards' English form has no punctuation: "Sat 14 Nov", "Fri 14 Nov 2025".
+      const parts = new Intl.DateTimeFormat(V10_LOCALES.en, options).formatToParts(d);
+      const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+      s = threeLetterMonth([pick("weekday"), pick("day"), pick("month"), pick("year")].filter(Boolean).join(" "));
+    }
+  } catch {
+    s = d.toLocaleDateString(undefined, options);
+  }
+  return isolate(s);
+};
+
+/** The same day-first short form without the weekday: "8 Oct" / "8 באוק׳". */
+export const fmtDayMonth = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  try {
+    const s = d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", { day: "numeric", month: "short" });
+    return isolate(lang === "he" ? s : threeLetterMonth(s));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, { day: "numeric", month: "short" }));
+  }
+};
+
+/** v10 day and long month, no weekday — "8 October" / "8 באוקטובר" (year only outside the current year). */
+export const fmtDayMonthLongV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const options: Intl.DateTimeFormatOptions = {
+    day: "numeric", month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" as const } : {}),
+  };
+  try {
+    return isolate(d.toLocaleDateString(lang === "he" ? LOCALES.he : "en-GB", options));
+  } catch {
+    return isolate(d.toLocaleDateString(undefined, options));
+  }
+};
+
+/** v10 day and time — "Wed 25 Nov, 10:00" / "יום ד׳, 25 בנוב׳, 10:00" (24-hour clock). */
+export const fmtDayTimeV10 = (input: DateInput, lang: UiLang, now: Date = new Date()): string => {
+  const d = toDate(input);
+  if (!d) return "";
+  const day = fmtDayV10(d, lang, now).replace(/[⁨⁩]/g, "");
+  return isolate(`${day}, ${v10Time(d, lang)}`);
+};
+
+/** v10 time alone — "10:00" / "17:40" (24-hour clock, both languages). */
+export const fmtTimeV10 = (input: DateInput, lang: UiLang): string => {
+  const d = toDate(input);
+  return d ? v10Time(d, lang) : "";
+};
+

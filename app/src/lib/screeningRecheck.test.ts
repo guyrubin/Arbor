@@ -174,13 +174,17 @@ describe("re-check reminder source contract", () => {
   // table. The date is still plain text, now under the areas heading (no
   // watch) or inside the watched skill's area row; MilestoneAreas reads it.
   it("B-GROWTH-04: My child states the re-check DATE as text, no chip", () => {
-    const map = readSrc("components/companion/DevelopmentMap.tsx");
+    // v10.1: the check is its own object on the map (DevelopmentCheckCard).
+    const map = readSrc("components/companion/DevelopmentCheckCard.tsx");
     const row = readSrc("components/companion/AreaRowDetail.tsx");
     const areas = readSrc("components/companion/MilestoneAreas.tsx");
     expect(map).toContain('data-testid="dev-map-recheck"');
-    expect(map).toContain('t("elev.growth.recheck.date", { date: fmtDay(recheckDueAt, uiLang) })');
+    // V77: the date in the boards' V10 form (still text, still the one date seam).
+    expect(map).toContain('t("elev.growth.recheck.date", { date: fmtDayV10(recheckDueAt, uiLang) })');
+    expect(map).not.toContain('date: fmtDay(recheckDueAt');
     expect(row).toContain('data-testid="area-detail-recheck"');
-    expect(row).toContain('t("elev.growth.recheck.date", { date: fmtDay(watch.recheckDueAt, uiLang) })');
+    expect(row).toContain('t("elev.growth.recheck.date", { date: fmtDayV10(watch.recheckDueAt, uiLang) })');
+    expect(row).not.toContain('date: fmtDay(watch.recheckDueAt');
     expect(areas).toContain("latestRecheckDueAt");
     // the yellow proactive chip is gone
     for (const src of [map, row, areas]) {

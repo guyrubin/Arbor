@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
@@ -7,35 +7,65 @@ import { SectionSkeleton } from "../ui/Skeleton";
 import { EmptyState, GhostBlock } from "../ui/EmptyState";
 import { statesText } from "../../lib/i18nElevation/states";
 import { track } from "../../lib/analytics";
-import { PageHeader, cardCls } from "../ui/kit";
 import { ContentWhyLine } from "../ui/ContentActionBar";
-import { SayThis } from "../ui/AiBlock";
 import PlanSteps from "../plans/PlanSteps";
-import PlanTrackCard, { planAdjustSeed } from "../plans/PlanTrackCard";
+import { planAdjustSeed } from "../plans/planTrack";
 import RoutinesCard from "../plans/RoutinesCard";
 // B-GROWTH-25: the ready-made routines, as one-tap plan templates.
 import RoutineTemplates from "../plans/RoutineTemplates";
 // v3 FEAT-07: a routine plan runs again every day, on its own board.
 import RoutineRunBoard from "../plans/RoutineRunBoard";
-import { nextStartedPlan, routineIdOfPlan } from "../../lib/routineTemplates";
+import PlanComposer from "../plans/PlanComposer";
+import { nextStartedPlan, routineIdOfPlan, routineTemplatesForAge } from "../../lib/routineTemplates";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { useChildCollection } from "../../hooks/useChildCollection";
+import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
 /* B-ASKJB-28: the routines row only counts docs; their shape stays RoutinesCard's. */
 import { lastPlanOutcomes, planDoneSteps, planEcho, suggestedChallenges, todaysPlanStep } from "../../lib/plans";
 import { dayKey } from "../../practice/signals";
-import { HeroAvatar } from "../ui/HeroAvatar";
 import { EMPTY_ART } from "../../lib/parentArt";
+import { ageMonthsFromProfile } from "../../lib/childAge";
+import { authoredPatterns, getPattern } from "../../lib/library/plans/planBooks";
+import { heGender } from "../../lib/library/bookText";
+import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
+import type { PatternDef } from "../../lib/library/plans/patterns";
+import { activePlans, closePlan, keepPlan, nightMomentText, recordNight, unrecordNight, type ActivePlan } from "../../lib/plans/planWeek";
+import { composerFromDoc } from "../../lib/plans/composerFromDoc";
+import { openPrintablePlan } from "../../lib/plans/planPrint";
+import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
+import { openChallengeName, readChallengeQuery } from "../../lib/plans/challengeLinks";
+import { useShellCrumb } from "../../lib/shellSlots";
+import { DsRoot, Guide, Route, RouteHead, RouteSection, type GuideStop } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { ActionPlanStage } from "../plans/v10/ActionPlanStage";
+import { PlanPicker } from "../plans/v10/PlanPicker";
+import { PlanScripts } from "../plans/v10/PlanScripts";
+import { PlanWhole } from "../plans/v10/PlanWhole";
+import { StartAnother } from "../plans/v10/StartAnother";
+import { ChallengeScreen } from "../plans/v10/ChallengeScreen";
+import { PrintPreview } from "../plans/v10/PrintPreview";
+import { plansCopy } from "../plans/v10/plansCopy";
+import "../plans/v10/plans.css";
 
-/* R22g (Builder M) — Builder L's local isolate-Latin workaround is GONE, not moved.
-   Builder L wrapped the phase name here because isolate() (lib/bidi.ts) was
-   one-directional: it wrapped RTL-bearing values only, so a Latin phase name
-   dropped into the Hebrew `plan.phaseProgress` template glued to the
-   preposition and rendered "אתם בPhase 1". isolate() now takes the reader's
-   paragraph direction and translate() passes it, so EVERY interpolated value
-   in the app is isolated when its script is the foreign one — this call site
-   included, with no local helper and nothing to fan out. */
-
+/**
+ * Now › Plans (v10.1, boards N-Plans and N-Challenge). The pill shows the
+ * family's action plan(s) and Challenge plan(s) side by side, each named by its
+ * own title; the action plan's trail and steps live here (their only home).
+ *
+ *   1 Your plans   the picker, then the open action plan's stage (today's step,
+ *                  the trail, "I'll try it") and, beside it,
+ *   2 What to say  the plan's scripts (Say / Read aloud / Avoid),
+ *   3 The whole plan  "Working on:", the phases and every step (tap to move on,
+ *                  edit, Delete plan),
+ *   4 Start another plan  Challenge Plans · a ready-made routine or your own
+ *                  routines · "Create a plan for a specific challenge".
+ *
+ * `#/plans?challenge=…` opens Challenge Plans here (lib/plans/challengeLinks):
+ * a running plan's page, the list, or the composer (recognise → agree → preview
+ * → approve), whose approved row is the same `books` document as before.
+ * No "Worth knowing" note on Plans (COPY-RULES).
+ */
 export default function PlansTab() {
   const {
     childProfile,
@@ -54,19 +84,37 @@ export default function PlansTab() {
     recordPlanWeeklyCheck,
     escalatedSurface,
     setActiveTab,
+    addMoment,
   } = useArbor();
   const now = Date.now();
   const todayKey = dayKey(new Date(now));
   const { t, uiLang, aiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
+  const c = plansCopy(lang);
+  const composition = useComposition();
+  const desk = composition === "desk";
   const first = childProfile.name.split(" ")[0];
+  const query = useHashQuery();
+  const target = readChallengeQuery(query);
   // B-ASKJB-28: the routines row's count (the same collection RoutinesCard reads).
   const routinesCol = useChildCollection<{ id: string }>(childProfile.id, "routines");
   const routineCount = routinesCol.items.length;
+  const readyMadeCount = useMemo(() => routineTemplatesForAge(ageMonthsFromProfile(childProfile)).length, [childProfile]);
 
-  // Masterplan 4.3 teach-empty: the ONE CTA focuses the existing challenge
-  // input above — no second create path.
-  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  // Challenge Plans: the child's plan books (the `books` seam) and the server's table.
+  const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
+  const planVisibility = usePlanVisibility();
+  const nowDate = useMemo(() => new Date(now), [planRows.items]); // eslint-disable-line react-hooks/exhaustive-deps
+  const running = useMemo(() => activePlans(planRows.items, nowDate), [planRows.items, nowDate]);
+  const composable = useMemo(() => authoredPatterns().filter((d) => planVisibility?.composable[d.id]?.[lang]), [planVisibility, lang]);
+  const runningIds = new Set(running.map((r) => r.def.id));
+  const choosable = composable.filter((d) => !runningIds.has(d.id));
+  const challengeCount = running.length + choosable.length;
+  const openChallenge = (pattern?: string, compose = false) => goToRoute("plans", { challenge: pattern ?? "all", compose: compose ? "1" : null });
+  const printPlan = (doc: PlanBookDoc) => void openPrintablePlan({ doc, child: childProfile, lang, now: new Date() });
+
+  // Masterplan 4.3 teach-empty: the ONE CTA focuses the existing challenge input.
+  const topicInputRef = useRef<HTMLTextAreaElement | null>(null);
   const focusTopicInput = () => {
     try { track("empty_cta_tap", { surface: "plans" }); } catch { /* noop */ }
     const el = topicInputRef.current;
@@ -81,275 +129,280 @@ export default function PlansTab() {
     [behaviorLogs]
   );
 
-  // Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-  // marks a top-level sibling module (what moduleBudget counts);
-  // `data-primary-move` marks the ONE control that performs the move
-  // surfaceContract.ts declares for this route.
-  // Critic r1 (W2-ASKJB plans, P1 G0 + G1): the contract stamp sat on the
-  // 2 000 px plans-active wrapper and the page's one gradient on the secondary
-  // Create. ONE object now carries both — the stamp and the primary fill — and
-  // lands on exactly one control: today's "I'll try it" on the first plan, or
-  // Create in the empty state (where creating IS the way to a step).
-  // B-ASKJB-26 (critic r1): a plan that has just started (a ready-made
-  // routine, or a created plan) leads the page above the row the parent
-  // tapped — one receipt line on it, scrolled into view (ReceiptNoteLine).
+  // B-ASKJB-26: a plan that has just started leads the page, with one receipt line.
   const startedReceipt = useReceiptNote();
-  // Critic r2: null until the first load, which primes it (nextStartedPlan).
   const seenPlanIds = useRef<Set<string> | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   React.useEffect(() => {
     if (!plansLoaded) return;
     const { seen, leadId } = nextStartedPlan(seenPlanIds.current, actionPlans, Date.now());
     seenPlanIds.current = seen;
     const lead = leadId ? actionPlans[0] : null;
-    if (lead) startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
+    if (lead) {
+      setSelectedId(lead.id);
+      startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plansLoaded, actionPlans]);
   const hasPlan = actionPlans.length > 0;
+  const plan = actionPlans.find((p) => p.id === selectedId) ?? actionPlans[0] ?? null;
   const primaryStamp = {
     "data-primary-move": "advance-plan-step",
     style: { background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)", border: "1px solid transparent" },
   } as const;
-  const createCard = (
-    <div data-module="plans-create" className={`${cardCls} p-6 space-y-4`}>
-      <span className="text-[13px] font-semibold block" style={{ color: "var(--arbor-ink)" }}>{t("plan.create")}</span>
 
-      {/* B-ASKJB-26: the nine challenge-named chips folded into these boards
-          (each started one of them) — ONE row starts a board. */}
-      {/* B-GROWTH-25: #/routines retired here — the twelve boards are templates
-          (age-windowed), one tap starts a plan with no goal. */}
-      <RoutineTemplates />
+  /* ── Challenge Plans: the composer and the plan's page ─────────────────── */
+  const composerDef = target.kind === "pattern" && (target.compose || !runningIds.has(target.pattern)) ? getPattern(target.pattern) : undefined;
+  // The shell's breadcrumb ends with the plan this view has open ("Now › Plans › {plan}"); none on the home.
+  useShellCrumb(openChallengeName(target, running, composerDef, lang === "he" ? "he" : "en"));
+  // One stable wrapper for every view of Plans (see the return below): the
+  // shell's tab exit (AnimatePresence, wait mode) must never see this screen
+  // swap its top-level motion element mid-exit, or the next tab never mounts
+  // (leaving `#/plans?challenge=…` for any other route stranded the old view).
+  const shell = (view: "compose" | "parent-copy" | "challenge" | "home", body: React.ReactNode) => (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0" data-plans-view={view}>
+      <DsRoot composition={composition} className="ds-plans">{body}</DsRoot>
+    </motion.div>
+  );
+  if (composerDef) {
+    const saved = planRows.items.find((r) => r?.id === `${composerDef.id}.${childProfile.id}` && r.status === "active");
+    return shell("compose", (
+          <PlanComposer
+            key={composerDef.id}
+            def={composerDef}
+            child={{ id: childProfile.id, name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
+            initialState={composerFromDoc(composerDef, saved, lang)}
+            ownerPaint={planVisibility?.admin === true}
+            onSaved={async (doc) => { await planRows.upsert(doc); }}
+            onClose={() => (runningIds.has(composerDef.id) ? openChallenge(composerDef.id) : openChallenge())}
+            onPrint={printPlan}
+            onSafety={() => setActiveTab("safety")}
+          />
+    ));
+  }
+  const printing = target.kind === "pattern" && target.print ? running.find((r) => r.def.id === target.pattern) : undefined;
+  if (printing) {
+    return shell("parent-copy", <PrintPreview input={{ doc: printing.doc, child: childProfile, lang, now: nowDate }} childName={first} lang={lang} onPrint={() => printPlan(printing.doc)} onBack={() => openChallenge(printing.def.id)} />);
+  }
+  if (target.kind !== "none") {
+    const focus = target.kind === "pattern" ? target.pattern : null;
+    return shell("challenge", (
+          <ChallengeScreen
+            lang={lang}
+            composition={composition}
+            childName={first}
+            gender={heGender(childProfile.gender)}
+            planRows={planRows.items}
+            composable={composable}
+            now={nowDate}
+            focus={focus}
+            onFocus={(id) => openChallenge(id)}
+            onStart={(d: PatternDef) => openChallenge(d.id)}
+            onOpenBook={(p: ActivePlan) => openChallenge(p.def.id, true)}
+            onChange={(p) => openChallenge(p.def.id, true)}
+            onPrint={(p) => goToRoute("plans", { challenge: p.def.id, printout: "1" })}
+            onKeep={(p) => void planRows.upsert(keepPlan(p.doc, new Date()))}
+            onClose={(p) => void planRows.upsert(closePlan(p.doc, new Date()))}
+            onNight={(p) => void planRows.upsert(recordNight(p.doc, new Date()))}
+            onUndoNight={(p) => void planRows.upsert(unrecordNight(p.doc, new Date()))}
+            onJournal={(p) => void addMoment(nightMomentText(p.def, lang, first))}
+          />
+    ));
+  }
 
-      {/* Data-driven: suggestions from {name}'s recent logged behavior */}
+  /* ── the Plans home ─────────────────────────────────────────────────────── */
+  const writeOwn = (
+    <>
+      {/* Data-driven: suggestions from {name}'s recent logged behavior, each
+          with its evidence as a visible why-line (a COUNT of the parent's logs). */}
       {suggestions.length > 0 && (
-        /* TJB-30: the reason this topic was suggested lived in `title` — a
-           tooltip, which does not exist on touch. The parent saw a chip
-           proposing a plan for their child with no way to learn where it
-           came from. It is a visible ContentWhyLine now (the same
-           why-line primitive the growth cards use), so each suggestion
-           carries its own evidence: a COUNT of the parent's own logs. */
-        <div className="flex flex-col gap-2">
-          <span className="t-xs font-bold" style={{ color: "var(--arbor-green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
+        <div className="stack ds-col" style={{ gap: 8 }}>
+          <span className="small" style={{ fontWeight: 700, color: "var(--green-ink)" }}>{t("plan.suggestedFor", { name: first })}</span>
           {suggestions.map((s) => (
-            <div key={s.topic} className="flex flex-col items-start gap-1">
-              <button
-                type="button"
-                onClick={() => setPlanChallengeTopic(s.topic)}
-                className="min-h-11 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition inline-flex items-center gap-1.5 text-start"
-                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)" }}
-              >
-                <Icon name="auto_awesome" size={12} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
+            <div key={s.topic} className="stack ds-col" style={{ gap: 4, alignItems: "flex-start" }}>
+              <button type="button" onClick={() => setPlanChallengeTopic(s.topic)} className="ds-pencil ds-plans-suggest min-h-11">
+                <Icon name="auto_awesome" size={15} /> <span dir="auto">{s.topic.split("—")[0].trim()}</span>
               </button>
               <ContentWhyLine why={s.reason} />
             </div>
           ))}
         </div>
       )}
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          ref={topicInputRef}
-          type="text"
-          value={planChallengeTopic}
-          onChange={(e) => setPlanChallengeTopic(e.target.value)}
-          placeholder={t("plan.placeholder")}
-          className="flex-1 rounded-xl px-4 py-3 text-sm focus:outline-none"
-          style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-        />
-        <button
-          onClick={handleGenerateActionPlan}
-          disabled={isPlanGenerating}
-          className="min-h-11 font-extrabold text-sm px-6 py-3.5 rounded-xl transition flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
-          {...(hasPlan
-            ? { style: { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" } }
-            : primaryStamp)}
-        >
-          {isPlanGenerating ? (<><Icon name="progress_activity" size={16} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={16} /> {t("plan.createBtn")}</>)}
-        </button>
-      </div>
+      {/* A chosen suggestion can be long: the field wraps so the whole topic shows. */}
+      <textarea
+        ref={topicInputRef}
+        rows={planChallengeTopic.length > 40 ? 3 : 2}
+        value={planChallengeTopic}
+        onChange={(e) => setPlanChallengeTopic(e.target.value)}
+        placeholder={t("plan.placeholder")}
+        aria-label={t("plan.create")}
+        className="nx-in ds-plans-input ds-plans-topic"
+        dir="auto"
+      />
+      <button
+        type="button"
+        onClick={handleGenerateActionPlan}
+        disabled={isPlanGenerating}
+        className={hasPlan ? "btn ghost block" : "btn primary block"}
+        {...(hasPlan ? { style: { background: "var(--card)" } } : primaryStamp)}
+      >
+        {isPlanGenerating ? (<><Icon name="progress_activity" size={15} className="animate-spin" /> {t("plan.creating")}</>) : (<><Icon name="auto_awesome" size={15} /> {t("plan.createBtn")}</>)}
+      </button>
       {/* B-ASKJB-49: the crisis screen answered 409 to this challenge: the
-          shared crisis card (helplines in the request's language), never the
-          server's English error. */}
+          shared crisis card (helplines in the request's language). */}
       {escalatedSurface === "plans" && (
         <UrgentSupport testId="plans-urgent-support" requestLang={aiLang} lead={t("elev.safety.paused")} onSafety={() => setActiveTab("safety")}
           className="mt-3 min-w-0 rounded-xl border border-[var(--arbor-rule-strong)] bg-[var(--arbor-paper-deep)] px-3 py-2 t-sm leading-relaxed text-[var(--arbor-ink)]" />
       )}
-    </div>
+    </>
   );
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
-      <div className="flex items-center gap-4">
-        {/* This child's plan — anchored by their own hero. Critic r1: while a
-            plan exists the mascot and the intro step aside so today's step
-            reads first; both stay for the empty state that teaches. */}
-        {!hasPlan && <HeroAvatar size={56} mood="happy" ring className="flex-shrink-0" />}
-        <div className="flex-1 min-w-0">
-          <PageHeader
-            eyebrow={t("plan.eyebrow")}
-            title={t("plan.title")}
-            subtitle={hasPlan ? undefined : t("plan.subtitle")}
-            flush
-          />
-        </div>
-      </div>
+  /* B-ASKJB-28: the family's own routines fold into ONE quiet row: "Your
+     routines ({n})" opens the same RoutinesCard (open, reset, edit, add:
+     unchanged); with none it reads "Add a routine". */
+  const routinesRow = (
+    <details data-testid="plans-routines-row" className="group">
+      <summary className="ds-link" style={{ paddingInline: 0, listStyle: "none", cursor: "pointer" }}>
+        <Icon name={routineCount > 0 ? "checklist" : "add"} size={15} />
+        <span>{routineCount > 0 ? t("elev.plans.routines.row", { n: routineCount }) : t("elev.plans.routines.add")}</span>
+        <Icon name="expand_more" size={15} className="transition group-open:rotate-180" />
+      </summary>
+      <div className="mt-3"><RoutinesCard /></div>
+    </details>
+  );
 
-      {/* B-ASKJB-26: the active plan leads (today's step above the fold);
-          the create card follows it when a plan exists, and leads when none. */}
-      {actionPlans.length === 0 && createCard}
+  const routine = plan ? routineIdOfPlan(plan) !== null : false;
+  const step = plan && !routine ? todaysPlanStep(plan, actionLoop, todayKey) : null;
+  const showScripts = !!plan && !routine && plan.scripts.length > 0;
 
-      {!plansLoaded && (
-        /* Masterplan 4.3 — per-section skeleton reserving the plan cards'
-           real dimensions; ~10s → inline retry via the W0 syncStore. */
-        <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />
-      )}
-      {plansLoaded && actionPlans.length === 0 && (
-        /* Masterplan 4.3 — teach-empty upgrade: ghost of a filled plan card
-           (title + progress bar + step rows) + the ONE CTA focusing the
-           challenge input above. Headline/body keep the existing plan.empty.*
-           keys; only the CTA label is new (elev.states.plans.cta). */
-        <EmptyState
-          icon={<Icon name="tune" size={32} />}
-          illustration={EMPTY_ART.plans}
-          headline={t("plan.empty.head")}
-          body={t("plan.empty.body")}
-          cta={statesText("elev.states.plans.cta", uiLang === "he")}
-          onCta={focusTopicInput}
-          ctaTestId="plans-empty-cta"
-          preview={
-            <div className="mx-auto w-full max-w-md rounded-2xl border p-4 text-start" style={{ borderColor: "var(--arbor-rule)" }}>
-              <div className="flex items-center justify-between gap-3">
-                <GhostBlock className="h-4 w-40 rounded-full" />
-                <GhostBlock className="h-3 w-16 rounded-full" />
+  const anyPlan = hasPlan || running.length > 0;
+  const stops: GuideStop[] = [
+    ...(anyPlan || challengeCount > 0 || !plansLoaded ? [{ id: "plans-stage", title: c.yourPlans, sub: c.yourPlansSub(actionPlans.length > 0, running.length > 0) }] : []),
+    ...(showScripts ? [{ id: "plans-rail", title: c.whatToSay, sub: c.whatToSaySub }] : []),
+    ...(plan ? [{ id: "plans-whole", title: c.wholePlan, sub: c.wholePlanSub }] : []),
+    { id: "plans-start", title: desk ? c.startAnother : c.startAnotherShort, sub: c.startAnotherSub },
+  ];
+  const n = (id: string) => stops.findIndex((s) => s.id === id) + 1;
+
+  const stage = plan && (routine ? (
+    /* v3 FEAT-07: an active routine plan runs as its day board; the contract
+       stamp lands on its first step still to do today. */
+    <div className="vt" data-testid="plan-tracks" data-routine-plan="true">
+      <RoutineRunBoard plan={plan} primaryProps={primaryStamp} now={now} />
+    </div>
+  ) : (
+    <ActionPlanStage
+      plan={plan}
+      step={step}
+      today={activeTodayAction}
+      lang={lang}
+      now={now}
+      composition={composition}
+      primary={primaryStamp}
+      echo={planEcho(plan.id, actionLoop, step, todayKey, planDoneSteps(plan))}
+      childName={first}
+      onTryIt={(text, ref) => acceptTodayAction(text, "standard", "plan", ref)}
+      onUndo={(id) => removeTodayAction(id)}
+      onCheck={(answer) => recordPlanWeeklyCheck(plan.id, answer)}
+      onAdjust={() => seedCoach({ prompt: planAdjustSeed(lang, plan.title, lastPlanOutcomes(plan.id, actionLoop)), source: "plans-adjust" })}
+    />
+  ));
+  const picker = (
+    <PlanPicker
+      actionPlans={actionPlans}
+      selectedId={plan?.id ?? null}
+      challenges={running}
+      lang={lang}
+      composition={composition}
+      onSelect={setSelectedId}
+      onOpenChallenge={(p) => openChallenge(p.def.id)}
+      onAllChallenges={() => openChallenge()}
+      challengeCount={challengeCount}
+    />
+  );
+  const scripts = showScripts && plan && (
+    <PlanScripts plan={plan} lang={lang} composition={composition} n={n("plans-rail")} onRefine={() => seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" })} />
+  );
+
+  return shell("home", (
+      <>
+        {stops.length > 1 && <Guide stops={stops} label={c.onThisPage} mini={!desk} />}
+        <Route composition={composition} tight={!desk}>
+          {(anyPlan || challengeCount > 0 || !plansLoaded) && (
+            <RouteSection id="plans-stage" n={1} on>
+              <div data-module="plans-yours" className="stack ds-col" style={{ gap: desk ? 0 : 12 }}>
+                <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
+                {!plansLoaded && <SectionSkeleton title={false} rows={2} rowClassName="h-48" loaded={plansLoaded} testId="plans-skeleton" />}
+                {picker}
+                {plan && desk && (
+                  <div className="g12" data-testid={routine ? undefined : "plan-tracks"}>
+                    <div className={showScripts ? "x8" : "x12"} style={{ display: "flex", flexDirection: "column" }}>{stage}</div>
+                    {scripts}
+                  </div>
+                )}
+                {plan && !desk && <div data-testid={routine ? undefined : "plan-tracks"}>{stage}</div>}
               </div>
-              <GhostBlock className="mt-3 h-2 w-full rounded-full" />
-              <div className="mt-3 space-y-2">
-                <GhostBlock className="h-3 w-4/5" />
-                <GhostBlock className="h-3 w-3/5" />
+            </RouteSection>
+          )}
+          {!desk && scripts && (
+            <RouteSection id="plans-rail" n={n("plans-rail")}>{scripts}</RouteSection>
+          )}
+          {plan && (
+            <RouteSection id="plans-whole" n={n("plans-whole")} stopTop={2}>
+              <div data-module="plans-whole" className="stack ds-col" style={{ gap: 12 }}>
+                {routine ? (
+                  <>
+                    <RouteHead title={c.wholePlan} />
+                    <PlanSteps plan={plan} now={now} beside="board" />
+                  </>
+                ) : (
+                  <PlanWhole plan={plan} todayStep={step} lang={lang} composition={composition} />
+                )}
               </div>
-            </div>
-          }
-        />
-      )}
-
-      <div data-module="plans-active" className="space-y-8">
-        <ReceiptNoteLine note={startedReceipt.note} testId="plans-started-receipt" />
-        {/* B-ASKJB-35 (c): ONE active plan leads with today's step as the
-            single primary move; every other plan sits in one disclosure. */}
-        {actionPlans.map((plan, planIdx) => {
-          if (planIdx > 0) return null;
-          // v3 FEAT-07: an active routine plan runs as its day board; the
-          // contract stamp lands on its first step still to do today. The step
-          // list beside it keeps title, delete and edit; the counts are the board's.
-          if (routineIdOfPlan(plan) !== null) {
-            return (
-              <div key={plan.id} data-testid="plan-tracks" data-routine-plan="true" className="space-y-3 lg:grid lg:grid-cols-[minmax(0,360px)_minmax(0,640px)] lg:items-start lg:gap-6 lg:space-y-0">
-                <div className={`${cardCls} p-6 lg:sticky lg:top-4`}>
-                  <RoutineRunBoard plan={plan} primaryProps={primaryStamp} now={now} />
-                </div>
-                <PlanSteps plan={plan} now={now} beside="board" />
-              </div>
-            );
-          }
-          // B-ASKJB-26: today's step = the first not-done step of the current
-          // phase; accept → action loop (source "plan"), outcome moves the step.
-          const step = todaysPlanStep(plan, actionLoop, todayKey);
-          return (
-          <div key={plan.id} data-testid="plan-tracks" className="space-y-3 lg:grid lg:grid-cols-[minmax(0,360px)_minmax(0,640px)] lg:items-start lg:gap-6 lg:space-y-0">
-            {/* Critic r1: at lg the track card sits in a sticky start track
-                and the step list in the end track (measure ≤ 640 px) — no
-                936 px phone column. */}
-            <div className="lg:sticky lg:top-4">
-            <PlanTrackCard
-              primary={planIdx === 0 ? primaryStamp : undefined}
-              echo={planEcho(plan.id, actionLoop, step, todayKey, planDoneSteps(plan))}
-              childName={first}
-              plan={plan}
-              step={step}
-              today={activeTodayAction}
-              lang={lang}
-              now={now}
-              onTryIt={(text, ref) => acceptTodayAction(text, "standard", "plan", ref)}
-              onUndo={(id) => removeTodayAction(id)}
-              onCheck={(answer) => recordPlanWeeklyCheck(plan.id, answer)}
-              onAdjust={() => seedCoach({ prompt: planAdjustSeed(lang, plan.title, lastPlanOutcomes(plan.id, actionLoop)), source: "plans-adjust" })}
-            />
-
-            </div>
-            <PlanSteps plan={plan} todayStep={step} now={now} />
-
-            <details data-testid="plan-scripts" className={`${cardCls} p-6 space-y-5 lg:col-span-2 group`}>
-              <summary className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
-                {t("elev.words.plans.scripts")}
-                <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
-              </summary>
-              <div className="space-y-3 p-4 rounded-2xl" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                <div className="space-y-3 text-xs">
-                  {plan.scripts.map((sc, scIdx) => (
-                    <div key={scIdx} className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 p-3 rounded-xl" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-                      <div><strong dir="auto" className="block" style={{ color: "var(--arbor-green-ink)" }}>{sc.scenario}</strong></div>
-                      <div className="min-w-0 space-y-1.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                        {/* B-ASKJB-24: each plan script through the shared SayThis. */}
-                        <SayThis text={sc.say} title={t("plan.say")} lang={uiLang === "he" ? "he" : "en"} copyLabel={t("coach.action.copy")} copiedLabel={t("coach.cards.copied")} />
-                        {sc.avoid && <p><b style={{ color: "var(--arbor-pink-ink)" }}>{t("plan.avoid")}</b> <bdi dir="auto">{sc.avoid}</bdi></p>}
+            </RouteSection>
+          )}
+          <RouteSection id="plans-start" n={n("plans-start")} on={!anyPlan && plansLoaded} stopTop={2}>
+            <div data-module="plans-start" className="stack ds-col" style={{ gap: 12 }}>
+              <RouteHead title={c.startAnother} />
+              {plansLoaded && !anyPlan && (
+                /* Masterplan 4.3 teach-empty: a ghost of a filled plan card and
+                   the ONE CTA focusing the challenge input below. */
+                <EmptyState
+                  icon={<Icon name="tune" size={32} />}
+                  illustration={EMPTY_ART.plans}
+                  headline={t("plan.empty.head")}
+                  body={t("plan.empty.body")}
+                  cta={statesText("elev.states.plans.cta", uiLang === "he")}
+                  onCta={focusTopicInput}
+                  ctaTestId="plans-empty-cta"
+                  preview={
+                    <div className="mx-auto w-full max-w-md rounded-2xl border p-4 text-start" style={{ borderColor: "var(--arbor-rule)" }}>
+                      <div className="flex items-center justify-between gap-3">
+                        <GhostBlock className="h-4 w-40 rounded-full" />
+                        <GhostBlock className="h-3 w-16 rounded-full" />
+                      </div>
+                      <GhostBlock className="mt-3 h-2 w-full rounded-full" />
+                      <div className="mt-3 space-y-2">
+                        <GhostBlock className="h-3 w-4/5" />
+                        <GhostBlock className="h-3 w-3/5" />
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      seedCoach({ prompt: t("seed.planCoreg", { title: plan.title }), source: "plans-coreg" });
-                    }}
-                    className="min-h-11 t-xs font-bold px-3 py-1.5 rounded-xl transition inline-flex items-center gap-1.5 cursor-pointer"
-                    style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-                  >
-                    <Icon name="auto_awesome" size={12} /> {t("plan.refine")}
-                  </button>
-                </div>
-              </div>
-
-              {/* B-ASKJB-26: "Signs it's working" is asked weekly on the plan
-                  card (PlanTrackCard), not printed here as a static list. */}
-            </details>
-          </div>
-          );
-        })}
-        {actionPlans.length > 1 && (
-          <details data-testid="plans-others" className="group">
-            <summary className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 px-1 text-[14px] font-semibold" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.words.plans.others", { n: actionPlans.length - 1 })}
-              <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />
-            </summary>
-            <ul className="mt-2 space-y-2">
-              {actionPlans.slice(1).map((p) => (
-                <li key={p.id}><PlanSteps plan={p} todayStep={todaysPlanStep(p, actionLoop, todayKey)} now={now} /></li>
-              ))}
-            </ul>
-          </details>
-        )}
-      </div>
-
-      {actionPlans.length > 0 && createCard}
-
-      {/* B-ASKJB-28: routines fold into ONE quiet row BELOW the active plan —
-          not a top-level module (no data-module stamp). "Your routines ({n})"
-          opens the same RoutinesCard (open, reset, edit, add: unchanged); with
-          none it reads as a text link "Add a routine". Data, export and erase
-          are unchanged (law 6). */}
-      <details data-testid="plans-routines-row" className="group">
-        <summary
-          className="list-none cursor-pointer inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-extrabold"
-          style={{ color: routineCount > 0 ? "var(--arbor-ink)" : "var(--arbor-green-ink)" }}
-        >
-          <Icon name={routineCount > 0 ? "checklist" : "add"} size={16} />
-          <span className={routineCount > 0 ? undefined : "underline underline-offset-2"}>
-            {routineCount > 0 ? t("elev.plans.routines.row", { n: routineCount }) : t("elev.plans.routines.add")}
-          </span>
-          {routineCount > 0 && <Icon name="expand_more" size={16} className="transition group-open:rotate-180" />}
-        </summary>
-        <div className="mt-3"><RoutinesCard /></div>
-      </details>
-    </motion.div>
-  );
+                  }
+                />
+              )}
+              <StartAnother
+                lang={lang}
+                composition={composition}
+                childName={first}
+                readyMadeCount={readyMadeCount}
+                readyMade={<RoutineTemplates />}
+                onTogether={() => setActiveTab("practice")}
+                routines={routinesRow}
+                writeOwn={writeOwn}
+              />
+            </div>
+          </RouteSection>
+        </Route>
+      </>
+  ));
 }

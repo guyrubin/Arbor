@@ -50,7 +50,6 @@ const SCOPE_FILES = [
  *   WeekOpenAnchorCard   — the week-open ritual's CTA (same slot)
  *   DailyPlanCard        — the DailyPlay hub's own hero
  *   HubHero / Button     — the shared primary recipes
- *   WeeklyTab            — one gradient per weekly state (3b037bfe)
  *   RecapStoryCards      — `accept-recap-recommendation`, weekly's primaryMove
  */
 const ALLOWED = new Set([
@@ -67,7 +66,6 @@ const ALLOWED = new Set([
   "ui/HubHero.tsx",
   "ui/Button.tsx",
   "weekly/RecapStoryCards.tsx",
-  "tabs/WeeklyTab.tsx",
   // P1-NEXTLEVEL critic r2 (B-ASKJB-34 acceptance: 0 gradient backgrounds on
   // #/journal): the Text tile is a solid --arbor-clay fill; JournalTab left
   // this licence and the ratchet below.
@@ -254,11 +252,8 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     "sections/SchoolBrief.tsx",
     "sections/Screening.tsx",
     "sections/TrustedSharing.tsx",
-    // H3b/R17 — the #/stories cover button. Licensed, not tolerated: it carries
-    // `data-primary-move="read-tonights-story"`, which surfaceContract.ts:276
-    // declares as that route's ONE primary move, and it is the only gradient in
-    // the file. storiesCover.test.ts pins the stamp and its position.
-    "tabs/HeroJourneyTab.tsx",
+    // (V77: tabs/HeroJourneyTab.tsx left the ratchet — its read-tonights-story move is the
+    // header band's V77 primary button, no gradient; storiesCover.test.ts pins it.)
     // W2-SHELLPLAY critic r1: the Generate button carries
     // data-primary-move="generate-bedtime-story" (surfaceContract
     // bedtime-stories.primaryMove) and is the only gradient in the file (it was
@@ -279,7 +274,9 @@ describe("OBJ-TODAY-01 — repo-wide ratchet", () => {
     // (surfaceContract safety.primaryMove) and is the only gradient in the file
     // (it was a pink-ink fill — a text ink); SafetyTab.safety.test pins it.
     "tabs/SafetyTab.tsx",
-    "tabs/WeeklyTab.tsx",
+    // v10 Weekly report: WeeklyTab left the ratchet. Its primary move (the
+    // carry band's accept, else "Back to Now") is the design system's one
+    // solid `btn primary`; WeeklyTab.fold.test pins it.
     "ui/HubHero.tsx",
     "weekly/RecapStoryCards.tsx",
   ];

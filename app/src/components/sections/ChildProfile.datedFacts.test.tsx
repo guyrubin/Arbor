@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
 
 const h = vi.hoisted(() => ({
+  // v10.3: the area the index has selected (via ?aspect=, as a link would).
+  aspect: null as null | string,
   locale: "he" as "en" | "he",
   pending: [] as unknown[],
   approved: [] as unknown[],
@@ -41,6 +43,8 @@ vi.mock("../../context/LanguageContext", () => ({
 }));
 vi.mock("../ui/HeroAvatar", () => ({ HeroAvatar: () => null, useHeroAvatar: () => ({ hasHero: true, name: "Noa" }) }));
 vi.mock("../../lib/api", () => ({ api: { listShares: () => Promise.resolve({ shares: [] }) } }));
+vi.mock("../../hooks/useHashQuery", async (orig) => ({ ...(await orig<typeof import("../../hooks/useHashQuery")>()), useHashQuery: () => new URLSearchParams(h.aspect ? `aspect=${h.aspect}` : ""), useHashRouteKey: () => "profile" }));
+vi.mock("../describe/TellArborMore", () => ({ default: () => null }));
 vi.mock("../profile/ProfileEditDrawer", () => ({ default: () => null }));
 vi.mock("../../hooks/useChildCollection", () => ({
   useChildCollection: () => ({ items: [], loaded: true, upsert: async () => {}, remove: async () => {} }),
@@ -53,6 +57,7 @@ const text = (html: string) =>
   html.replace(/<span class="msr\b[^"]*"[^>]*>[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ");
 
 beforeEach(() => {
+  h.aspect = null;
   h.locale = "en";
   h.pending = [];
   h.approved = [{ memoryId: "a1", fact: "Entering Bilingual Kindergarten in 3 months", status: "approved", createdAt: "2026-06-10T10:00:00.000Z", source: "chat", retention: "90d" }];
@@ -64,14 +69,22 @@ beforeEach(() => {
 // in its area's source line ("Noted · {day}"), so a relative time ("in 3
 // months") is never read as today — the "written {day}:" prefix gave way to
 // the card's one date. The words are never rewritten.
-const area = (html: string, id: string) => html.slice(html.indexOf(`data-testid="about-aspect-${id}"`), html.indexOf("</article>", html.indexOf(`data-testid="about-aspect-${id}"`)));
+// v10.3: one area shows at a time (the index selects it); render the page with that area selected.
+const area = (_html: string, id: string) => {
+  h.aspect = id;
+  const html = renderToStaticMarkup(<ChildProfile />);
+  h.aspect = null;
+  return html.slice(html.indexOf(`data-testid="about-aspect-${id}"`), html.indexOf('class="line about-area-acts"', html.indexOf(`data-testid="about-aspect-${id}"`)));
+};
 
 describe("B-GROWTH-35 — a fact with a relative time carries the day it was written", () => {
   it("EN: the fact sits in its area with 'Noted · Jun 10, 2026'; the fact is unchanged", () => {
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("Entering Bilingual Kindergarten in 3 months");
-    expect(s).toContain("Noted · Jun 10, 2026");
+    // V77: the boards' day-first short date (the year only outside this year)
+    expect(s).toMatch(/Noted · (Wed 10 Jun|10 Jun 2026)/);
+    expect(s).not.toContain("Jun 10, 2026"); // negative control: never month-first
     // one date, not two
     expect(s).not.toContain("kept since");
     expect(html).not.toContain('data-testid="profile-fact-written"');
@@ -83,7 +96,7 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "school")).replace(/\s+/g, " ");
     expect(s).toContain("נרשם ·");
-    expect(s).toContain("ביוני 2026");
+    expect(s).toMatch(/10 ביוני/);
     expect(s).toContain("נועה מתחילה גן חדש בעוד חודשיים");
   });
 
@@ -92,7 +105,7 @@ describe("B-GROWTH-35 — a fact with a relative time carries the day it was wri
     const html = renderToStaticMarkup(<ChildProfile />);
     const s = text(area(html, "lang")).replace(/\s+/g, " ");
     expect(s).toContain("Noa answers in Hebrew when tired");
-    expect(s).toContain("Noted · Jun 10, 2026");
+    expect(s).toMatch(/Noted · (Wed 10 Jun|10 Jun 2026)/);
     expect(html).not.toContain('data-testid="profile-fact-written"');
   });
 });

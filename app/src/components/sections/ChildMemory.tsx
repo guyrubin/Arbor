@@ -38,8 +38,6 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { quotesFromDocs } from "../../lib/loop/tonight";
 import ThingsSaid from "../loop/ThingsSaid";
-import KeptDescription from "../describe/KeptDescription";
-import CoachDataContract from "../coach/CoachDataContract";
 
 const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : txt.en);
 
@@ -54,13 +52,15 @@ const pick = (he: boolean, txt: { en: string; he: string }) => (he ? txt.he : tx
  *  its own (About's one move stays), every module it stamps is demoted (About's
  *  budget counts its own three), and a pending fact the page already asks about
  *  (in its area, or on the card) is not asked twice (`hidePendingIds`).
- *  Approve, correct (Edit), forget, retention, the coach's view, the parent's
- *  own description and the learning trail all stay here. */
-export default function ChildMemory({ hidePendingIds, focusFactId }: {
+ *  Approve, correct (Edit), forget, retention and the learning trail stay
+ *  here; the coach's view and the parent's own description are About's. */
+export default function ChildMemory({ hidePendingIds, focusFactId, keepsakesOpen = false }: {
   /** Pending facts the host page already asks about — never asked twice on one page. */
   hidePendingIds?: ReadonlySet<string>;
   /** `#/memory?fact=` — scroll this row into view once the ledger has painted it. */
   focusFactId?: string | null;
+  /** v10: About's "Moments and keepsakes" row opens the ledger on its keepsakes fold. */
+  keepsakesOpen?: boolean;
 } = {}) {
   // B-LOOP-10 — "Things {name} said": the quote keepsakes from Tonight.
   const quoteChild = useArbor().childProfile;
@@ -209,19 +209,12 @@ export default function ChildMemory({ hidePendingIds, focusFactId }: {
           </div>
         )}
       </SectionCard>
-      {/* B-SHELL-39: what the parent told Arbor in their own words, editable
-          here, with the "Tell Arbor more" door. Inside the approved module. */}
-      <KeptDescription testId="memory-describe" />
       </>
       )}
-      {/* F-TALK-1: "What the coach sees" and the weekly-context consent
-          switch, moved here from the conversation's identity strip. Inside
-          the approved module (it names the approved facts that travel with a
-          question) but OUTSIDE the ledger gate: the switch is a consent
-          control, so a failed or rate-limited ledger read never takes it
-          away. While the ledger is unreadable its facts line says so, never
-          "none" (OWN-1). */}
-      <CoachDataContract ledgerUnreadable={memoryReviewError} />
+      {/* v10: "What you told Arbor" and "What the coach sees" (the weekly-context
+          consent switch) left the ledger for About's own section 3, where they
+          render in every state — the switch is a consent control, so it never
+          waits on this ledger read (F-TALK-1, OWN-1). */}
       </div>
 
       {/* Learning trail — the parent's saved Learn Library reads, part of the
@@ -260,10 +253,10 @@ export default function ChildMemory({ hidePendingIds, focusFactId }: {
                   >
                     <Icon name={cat.msIcon} size={16} />
                   </span>
-                  <span className="flex-1 min-w-0 truncate text-[13.5px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
+                  <span className="flex-1 min-w-0 truncate text-[13px] font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>
                     {pick(he, card.title)}
                   </span>
-                  <span className="text-[11px] font-bold shrink-0" style={{ color: "var(--arbor-muted)" }}>
+                  <span className="text-[12px] font-bold shrink-0" style={{ color: "var(--arbor-muted)" }}>
                     {t("learn.minutes", { n: card.minutes })}
                   </span>
                   <span className="shrink-0" style={{ color: "var(--arbor-muted)" }}>
@@ -294,7 +287,7 @@ export default function ChildMemory({ hidePendingIds, focusFactId }: {
           while the fold belongs to the primary move. Demoted modules keep their
           own `data-module` stamp and add `data-module-demoted`, which is what
           makes the budget rule countable: top-level = stamps minus demoted. */}
-      <details data-module-disclosure="memory-more" className={`${cardCls} p-0 overflow-hidden`}>
+      <details id="memory-keepsakes" data-module-disclosure="memory-more" open={keepsakesOpen || undefined} className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
             <Icon name="bookmark" size={18} />
@@ -497,134 +490,16 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
   // shipped behaviour on both sides; the date shown stays true, it simply moves.
   const showsExpiry = m.status === "approved";
   const [editing, setEditing] = useState(false);
-  const [factDraft, setFactDraft] = useState(m.fact ?? "");
-  const [retentionDraft, setRetentionDraft] = useState(() => nearestRetentionChoice(m.retention));
-  const [saving, setSaving] = useState(false);
-  const [saveFailed, setSaveFailed] = useState(false);
-
-  /* The edit box writes parent prose straight into the approved ledger, and the
-     approved ledger is an EGRESS input: `buildSharedScopePacket`
-     (consult/packet.ts) runs `findClinicalDiagnosisTerm` over the assembled
-     packet for every NON-clinician recipient, so one word like "delay" in a
-     memory fact makes a co-parent's or viewer's shared view fail closed with
-     `422 — This share cannot be displayed`. That guard is right and stays
-     exactly as it is. What was wrong is that it was silent and unattributable:
-     the parent who typed the word saw a successful save, and the co-parent saw
-     a wall with no cause and no way to reach one.
-
-     So run the SAME scanner here, at the moment the word is typed. This is
-     ADVICE, not a second guard: the save stays enabled, because a memory fact
-     is the parent's own record of their own child, clinician shares are exempt
-     by policy, and blocking the correction would be a worse trade than the
-     share they may never make. Fail-closed enforcement stays where it belongs,
-     at the egress. */
-  const clinicalTerm = editing ? findClinicalDiagnosisTerm(factDraft) : null;
   // B-CAREPRO-06: what the parent READS is the plain-words wording; the Edit
-  // box (factDraft) still opens on the stored text — the parent's own record.
+  // box (MemoryEditForm) still opens on the stored text — the parent's own record.
   const shownFact = toParentWords(m.fact);
   const showProvenance = !!dated && PARENT_MEMORY_SOURCES.has(m.source) && (!!lead || m.status === "approved");
-
-  const openEdit = () => {
-    setFactDraft(m.fact ?? "");
-    setRetentionDraft(nearestRetentionChoice(m.retention));
-    setSaveFailed(false);
-    setEditing(true);
-  };
-
-  /** The server has accepted { fact, retention, source } on this transition
-   *  since the ledger was written (memory/memoryService.transitionMemory) —
-   *  the UI simply never sent them. Editing keeps the row's CURRENT status, so
-   *  correcting an approved fact does not silently re-queue it. */
-  const saveEdit = async () => {
-    const fact = factDraft.trim();
-    if (!fact) return;
-    setSaving(true);
-    setSaveFailed(false);
-    try {
-      const res = await fetch(`/api/memory/${encodeURIComponent(m.memoryId)}`, {
-        method: "PATCH",
-        headers: await authHeaders(),
-        body: JSON.stringify({ status: m.status, fact, retention: retentionDraft }),
-      });
-      if (!res.ok) throw new Error("edit failed");
-      setEditing(false);
-      onEdited?.();
-    } catch {
-      setSaveFailed(true);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const openEdit = () => setEditing(true);
 
   return (
     <div className={`${nested ? "" : `${cardCls} p-4`} ${busy ? "opacity-60" : ""}`.trim()} data-testid="memory-row" data-memory-id={m.memoryId} style={{ scrollMarginBlockStart: "calc(var(--sticky-offset, 0px) + 12px)" }}>
       {editing ? (
-        <div className="space-y-2.5">
-          <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.waveR.mem.edit.factLabel")}
-            <textarea
-              autoFocus
-              rows={3}
-              dir="auto"
-              value={factDraft}
-              onChange={(e) => setFactDraft(e.target.value)}
-              data-testid="memory-edit-fact"
-              className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-normal focus:outline-none"
-              style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-            />
-          </label>
-          <label className="block text-[11px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
-            {t("elev.waveR.mem.edit.retentionLabel")}
-            <select
-              value={retentionDraft}
-              onChange={(e) => setRetentionDraft(e.target.value)}
-              data-testid="memory-edit-retention"
-              className="mt-1 block w-full rounded-xl px-3 py-2 text-xs font-normal"
-              style={{ minHeight: 44, background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-            >
-              {RETENTION_CHOICES.map((c) => (
-                <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
-              ))}
-            </select>
-          </label>
-          {clinicalTerm && (
-            <p
-              data-testid="memory-edit-clinical-note"
-              dir="auto"
-              className="text-[11px] font-bold leading-snug"
-              style={{ color: "var(--arbor-clay-ink)" }}
-            >
-              {t("elev.waveR.mem.clinicalNote", { term: clinicalTerm })}
-            </p>
-          )}
-          {saveFailed && (
-            <p className="text-[11px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void saveEdit()}
-              disabled={saving || !factDraft.trim()}
-              data-testid="memory-edit-save"
-              // The row is a quiet ledger row and its other controls are token-ink
-              // text buttons; a solid white-on-clay button would shout, and a
-              // white label inside the row's busy-opacity wrapper has no
-              // white-label proof (CR-01 ratchet). Soft-fill + ink instead.
-              className="rounded-xl px-4 text-xs font-extrabold transition disabled:opacity-60"
-              style={{ minHeight: 44, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
-            >
-              {t("elev.waveR.mem.save")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="px-2 text-xs font-bold"
-              style={{ minHeight: 44, color: "var(--arbor-muted)" }}
-            >
-              {t("elev.waveR.mem.cancel")}
-            </button>
-          </div>
-        </div>
+        <MemoryEditForm m={m} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); onEdited?.(); }} />
       ) : (
         <>
           {/* B-CAREPRO-NEW-2l: on the lead row, where the fact came from — the
@@ -642,7 +517,7 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
           Dismiss, never wrapping) — so EN and HE lay out the same way whatever
           the string widths; one row from sm up, the actions at inline end. */}
       <div data-testid="memory-row-controls" className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-      <div data-testid="memory-row-meta" className="flex flex-1 min-w-0 flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-0.5 text-[11px]" style={{ color: "var(--arbor-muted)" }}>
+      <div data-testid="memory-row-meta" className="flex flex-1 min-w-0 flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-0.5 text-[12px]" style={{ color: "var(--arbor-muted)" }}>
         {/* W2-CAREPRO r1: no "source" link icon over raw model text with no
             destination (an unkeepable "Source-linked" claim, English in HE). */}
         {dated && <span className="inline-flex items-center gap-1"><Icon name="schedule" size={12} /> {dated}</span>}
@@ -688,6 +563,124 @@ export function MemoryRow({ m, busy, onApprove, onReject, onForget, onEdited, le
         )}
       </div>
       )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * GP-13 — correct a fact ("she is 3" → "she is 4") and its retention, in place.
+ * The ONE edit form: the ledger's MemoryRow and About's answer cards (v10) both
+ * open it, so there is one write path.
+ *
+ * The server has accepted { fact, retention, source } on this transition since
+ * the ledger was written (memory/memoryService.transitionMemory). Editing keeps
+ * the row's CURRENT status, so correcting an approved fact does not silently
+ * re-queue it.
+ *
+ * NOTE for whoever touches the edit path: client `forgetsOnIso` and server
+ * `isMemoryExpired` read the SAME anchor, `createdAt`, which `foldMemoryEvents`
+ * takes from the LATEST ledger event. Every transition — including a pure text
+ * correction — appends an event with a fresh `createdAt`, so editing a fact
+ * restarts its retention clock. The date shown stays true, it simply moves.
+ *
+ * The edit box writes parent prose straight into the approved ledger, and the
+ * approved ledger is an EGRESS input: `buildSharedScopePacket` (consult/packet.ts)
+ * runs `findClinicalDiagnosisTerm` over the packet for every NON-clinician
+ * recipient, so one word like "delay" makes a co-parent's shared view fail
+ * closed. That guard stays exactly as it is; here the SAME scanner runs as
+ * ADVICE at the moment the word is typed. The save stays enabled: a memory fact
+ * is the parent's own record of their own child.
+ */
+export function MemoryEditForm({ m, onSaved, onCancel }: {
+  m: MemoryReviewItem;
+  /** Called once the corrected row has been written, so the list re-reads. */
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLanguage();
+  // The box opens on the STORED text — the parent's own record (B-CAREPRO-06).
+  const [factDraft, setFactDraft] = useState(m.fact ?? "");
+  const [retentionDraft, setRetentionDraft] = useState(() => nearestRetentionChoice(m.retention));
+  const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const clinicalTerm = findClinicalDiagnosisTerm(factDraft);
+
+  const saveEdit = async () => {
+    const fact = factDraft.trim();
+    if (!fact) return;
+    setSaving(true);
+    setSaveFailed(false);
+    try {
+      const res = await fetch(`/api/memory/${encodeURIComponent(m.memoryId)}`, {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: JSON.stringify({ status: m.status, fact, retention: retentionDraft }),
+      });
+      if (!res.ok) throw new Error("edit failed");
+      onSaved();
+    } catch {
+      setSaveFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2.5" data-testid="memory-edit">
+      <label className="block text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+        {t("elev.waveR.mem.edit.factLabel")}
+        <textarea
+          autoFocus
+          rows={3}
+          dir="auto"
+          value={factDraft}
+          onChange={(e) => setFactDraft(e.target.value)}
+          data-testid="memory-edit-fact"
+          className="mt-1 w-full rounded-xl px-3 py-2 text-sm font-normal focus:outline-none"
+          style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+        />
+      </label>
+      <label className="block text-[12px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+        {t("elev.waveR.mem.edit.retentionLabel")}
+        <select
+          value={retentionDraft}
+          onChange={(e) => setRetentionDraft(e.target.value)}
+          data-testid="memory-edit-retention"
+          className="mt-1 block w-full rounded-xl px-3 py-2 text-xs font-normal"
+          style={{ minHeight: 44, background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
+        >
+          {RETENTION_CHOICES.map((c) => (
+            <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
+          ))}
+        </select>
+      </label>
+      {clinicalTerm && (
+        <p data-testid="memory-edit-clinical-note" dir="auto" className="text-[12px] font-bold leading-snug" style={{ color: "var(--arbor-clay-ink)" }}>
+          {t("elev.waveR.mem.clinicalNote", { term: clinicalTerm })}
+        </p>
+      )}
+      {saveFailed && (
+        <p className="text-[12px] font-bold" style={{ color: "var(--arbor-pink-ink)" }}>{t("elev.waveR.mem.saveFailed")}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void saveEdit()}
+          disabled={saving || !factDraft.trim()}
+          data-testid="memory-edit-save"
+          // The row is a quiet ledger row and its other controls are token-ink
+          // text buttons; a solid white-on-clay button would shout, and a
+          // white label inside the row's busy-opacity wrapper has no
+          // white-label proof (CR-01 ratchet). Soft-fill + ink instead.
+          className="rounded-xl px-4 text-xs font-extrabold transition disabled:opacity-60"
+          style={{ minHeight: 44, background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }}
+        >
+          {t("elev.waveR.mem.save")}
+        </button>
+        <button type="button" onClick={onCancel} className="px-2 text-xs font-bold" style={{ minHeight: 44, color: "var(--arbor-muted)" }}>
+          {t("elev.waveR.mem.cancel")}
+        </button>
       </div>
     </div>
   );

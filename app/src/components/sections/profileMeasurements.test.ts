@@ -35,11 +35,12 @@ describe("B-GROWTH-05 — Measurements live on Profile, not on Growth", () => {
     // no stamp of its own: the route keeps exactly ONE demotion disclosure
     expect(profile).not.toContain('data-module="profile-measurements"');
     expect((profile.match(/data-module-disclosure=/g) ?? []).length).toBe(1);
-    // v3 F-CHILD-3 re-pin: the Who chapter and the Family Circle left the
-    // page; Measurements is the one closed disclosure inside Details (its log
-    // the demoted module), after the areas.
-    expect(open).toBeGreaterThan(profile.indexOf('data-module="about-details"'));
-    expect(profile.indexOf('data-module="about-details"')).toBeGreaterThan(profile.indexOf('data-module="about-aspects"'));
+    // v10 re-pin: Measurements is the one closed disclosure, a button-shaped
+    // summary in the child's tile (section 3), its log the demoted module; it
+    // is handed to the tile, which renders it beside Edit details.
+    expect(profile.slice(open, close)).toContain('data-module="about-measurements" data-module-demoted');
+    expect(profile).toContain("measurements={measurements}");
+    expect(read("components/about/AboutChildTile.tsx")).toContain("{measurements}");
     expect(profile).not.toContain('aria-labelledby="profile-family-title"');
   });
 

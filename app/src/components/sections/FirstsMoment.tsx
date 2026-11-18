@@ -140,7 +140,7 @@ export default function FirstsMoment() {
         >
           {title}
         </p>
-        <p className="text-[12.5px] mt-0.5" dir="auto" style={{ color: p.ink }}>
+        <p className="text-[12px] mt-0.5" dir="auto" style={{ color: p.ink }}>
           {sub}
         </p>
       </div>

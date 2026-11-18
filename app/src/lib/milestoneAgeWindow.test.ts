@@ -172,7 +172,8 @@ describe("GP-09 → B-LOOP-05 — later bands sit behind each shelf's door, titl
   it("MilestonesTab shows the bands only behind 'Earlier and later'; a later band renders titles, never answers (en + he)", () => {
     const code = stripComments(read("components/tabs/MilestonesTab.tsx"));
     // every band of a shelf renders only inside the open door
-    expect(code).toMatch(/\{open && \(\s*<div className="mt-2 space-y-3">\s*\{renderShelfBands\(shelf\)\}/);
+    // V77 RE-PIN: the door still opens the bands; in the area grid it leaves out the rows the grid shows.
+    expect(code).toMatch(/\{open && \(\s*<div className="mt-2 space-y-3">\s*\{renderShelfBands\(shelf, true\)\}/);
     // P5 critic r2 re-pin: the later band is the "Coming next" group, titles only.
     const later = code.slice(code.indexOf('data-band="next"'), code.indexOf('data-band="own"'));
     expect(later).toContain('data-testid="ms-later-item"');

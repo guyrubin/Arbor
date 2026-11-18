@@ -5,12 +5,14 @@ import type { StudioCreation } from '../studioV2/studioCreations';
  * recording behavior; V2 keeps round answers only in the active game. */
 interface GameSession {
   playOnly: true;
+  /** Deliberate replays in this mounted Studio visit; never a saved score. */
+  replay: number;
   onComplete: (creation?: StudioCreation) => void;
 }
 const GameSessionContext = createContext<GameSession | null>(null);
 
-export function GameCompletionProvider({ onComplete, children }: { onComplete: (creation?: StudioCreation) => void; children: React.ReactNode }) {
-  const value = useMemo<GameSession>(() => ({ playOnly: true, onComplete }), [onComplete]);
+export function GameCompletionProvider({ onComplete, replay = 0, children }: { onComplete: (creation?: StudioCreation) => void; replay?: number; children: React.ReactNode }) {
+  const value = useMemo<GameSession>(() => ({ playOnly: true, replay, onComplete }), [replay, onComplete]);
   return <GameSessionContext.Provider value={value}>{children}</GameSessionContext.Provider>;
 }
 

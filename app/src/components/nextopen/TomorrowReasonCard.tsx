@@ -103,7 +103,7 @@ export default function TomorrowReasonCard({ signals, childName, nowMs, onResolv
         </span>
         <div className="min-w-0 flex-1">
           <span
-            className="text-[11px] font-extrabold uppercase tracking-[0.16em]"
+            className="text-[12px] font-extrabold uppercase tracking-[0.16em]"
             style={{ color: "var(--arbor-green-ink)" }}
           >
             {t("elev.rh.tomorrow.eyebrow")}

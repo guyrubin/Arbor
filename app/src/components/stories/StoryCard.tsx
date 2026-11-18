@@ -99,7 +99,7 @@ export function StoryCard({ story, lang, theme, onOpen, disabled, ribbon, childr
         )}
       </span>
       <span className="block px-0.5">
-        <span className="block font-extrabold text-[14.5px] leading-tight line-clamp-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+        <span className="block font-extrabold text-[14px] leading-tight line-clamp-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
           {title}
         </span>
         {children}

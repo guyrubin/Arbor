@@ -55,12 +55,14 @@ import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest";
+import { storyBookArt, storyPageArt } from "../../lib/storyPlateArt";
+import { StoryArtwork } from "../stories/StoryArtwork";
 import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
 import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
 import { pickTonightsStory, TONIGHT_AIM_REASON_KEY } from "../kidmode/tonightsStory";
 import { dayKey } from "../../practice/signals";
-import { PageHeader, cardCls } from "../ui/kit";
+import { cardCls } from "../ui/kit";
 import { T, METRIC_VARS } from "../../lib/tokens";
 import { kidsStoriesText } from "../../lib/i18nElevation/kidsStories";
 import { authoredChoice, authoredScene, completeRender, type StoryHero } from "../../lib/heroJourneyRender";
@@ -78,6 +80,23 @@ import { stopVoice } from "../../lib/voice";
 import { KID_BOOK_ART_CLASS, KID_BOOK_SIDE_CLASS, KID_BOOK_SPREAD_CLASS } from "../stories/HeroScenePlayer";
 import { DecisionChoices } from "../stories/DecisionChoices";
 import { asksForHero } from "../../lib/childPicture";
+import { DsRoot, Guide, Route, RouteSection, scrollToSection, Token } from "../../design/primitives";
+import { Draw, FrameFigure, FrameHead, RailTile, ReadGuide } from "../moments/v10/frame";
+import "../moments/mychild.css";
+import { useComposition } from "../../design/useComposition";
+import { useShortViewport } from "../together/useShortViewport";
+import { ChainStrip } from "../together/ChainStrip";
+import { TOGETHER_COPY } from "../together/togetherCopy";
+import StoriesPlanBook from "../together/StoriesPlanBook";
+import "../together/together.css";
+import NowWorthKnowing from "../companion/now10/NowWorthKnowing";
+import { NOW_COPY } from "../companion/nowViewCopy";
+import "../companion/now10/nowV10.css";
+import { storiesWorthCardId, storiesWorthKicker } from "../together/storiesWorth";
+
+// v10.1: Hero Comics and the family ritual are sections of Stories (embedded, no route stamps).
+const EmbeddedComics = React.lazy(() => import("./ComicsTab"));
+const EmbeddedFamilyRitual = React.lazy(() => import("../sections/FamilyFormation"));
 
 /** B-KID-81 (KB-14): the pack tint + label tables live in ONE module
  *  (components/stories/StoryCard: STORY_PACK_SOFT, STORY_PACK_LABEL), shared
@@ -195,12 +214,29 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // one stamp); with no hero, the cover's FIRST act is the in-place hero row in
   // its art band, Play second — and the shell drops "starring".
   const [tonightMode, setTonightMode] = useState<TonightMode>(() => consumeTonightMode() ?? "hero");
+  // An evening entry that asks for "today" lands on A story of your own (V77: its own section).
+  useEffect(() => {
+    if (tonightMode !== "today") return;
+    const id = window.setTimeout(() => scrollToSection("own"), 120);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // KID-05: hub tiles navigate the PARENT shell — rendered only while the
   // shell is reachable (null inside Kid Mode, where the call would be a
   // silent no-op and a dead button in front of the child).
   const kidNav = useKidSafeNav();
   const { aiLang, t, uiLang } = useLanguage();
   const { toast } = useToast();
+  // v10.1: Stories' composition and its words.
+  const composition = useComposition();
+  // Under the boards' height the band goes compact ("Read it together" above the Ask bar).
+  const shortViewport = useShortViewport();
+  // A phone under the boards' height: the cover's spacing tightens too (SHIP-FIX: Read it together above the Ask bar).
+  const phoneShort = shortViewport && composition === "phone";
+  const tCopy = TOGETHER_COPY[uiLang === "he" ? "he" : "en"];
+  // Stories › Worth knowing: one reviewed read by the child's whole years (none outside the bands).
+  const childAgeMonths = ageMonthsFromProfile(childProfile);
+  const worthCard = storiesWorthCardId(childAgeMonths);
   // OBJ-KID-04: ToastContext QUEUES toasts while kid-locked, so a failed start
   // inside Kid Mode was silent — the child tapped Play and nothing moved. Branch
   // at the call site (never in ToastContext, which the parent shell relies on).
@@ -282,6 +318,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // may be sent for new art; a raw photo or remote URL is not a generation input.
   const canonicalHeroUrl = resolveHeroUrl(childProfile);
   const heroAvatarUrl = canonicalHeroUrl?.startsWith("data:image/") ? canonicalHeroUrl : undefined;
+  const kidTheme = useKidTheme();
+  // A reviewed static cover is a real page even without an inline hero.
+  // Parent generation and every other legacy book retain their prior rule.
+  const canShowCover = (storyId: string | undefined) => Boolean(heroAvatarUrl || (kidMode && storyBookArt(kidTheme, storyId)));
   const kidArtTheme = (story: HeroStorySpec) =>
     heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
   const kidPinInit = useRef<{ story: HeroStorySpec; refused: boolean; render?: HeroJourneyRender; personalised?: boolean; lang: "en" | "he" } | null | undefined>(undefined);
@@ -296,7 +336,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   }
   const kidPinOpen = kidPinInit.current && !kidPinInit.current.refused ? kidPinInit.current : null;
   const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
-  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && heroAvatarUrl));
+  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && canShowCover(kidPinOpen.story.id)));
   const coverRun = useRef(0);
   // R2: the shelf entry belongs to reading the book to its end, not to the
   // Finish button (a re-read has none). These three keep that idempotent.
@@ -305,7 +345,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const shelvingRef = useRef(false);
   const coverRetried = useRef(false);
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
-  const kidTheme = useKidTheme();
   // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null
   // — then today's rendering (emoji motif / SVG hills) stays; never another theme's file.
   const storyCover = (id: string) => storyCoverArt(kidTheme, id);
@@ -329,6 +368,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     });
   };
   const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(() => kidPinOpen?.story ?? null);
+  const reviewedKidCoverAvailable = kidMode && Boolean(storyBookArt(kidTheme, activeStory?.id));
   const [storedRender, setRender] = useState<HeroJourneyRender | null>(() => kidPinOpen?.render ?? null);
   // Gate switches cannot flash an earlier parent's personalized words while
   // effects settle. The child branch derives its authored render synchronously.
@@ -509,7 +549,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     setFinishing(false);
     finishingRef.current = false;
     setAtEnd(false);
-    setOnCover(Boolean(heroAvatarUrl));
+    setOnCover(canShowCover(story.id));
   };
   useEffect(() => {
     if (!initialStoryId || !pinKey) return;
@@ -598,13 +638,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     reachedEnding.current = false;
     coverRetried.current = false;
     setCoverArt({ loading: false, error: false });
-    // With a hero the book opens on its cover; without one there is no cover to
-    // show and the reader opens on beat 1 exactly as before.
-    setOnCover(Boolean(activeStory && render && heroAvatarUrl));
+    // A child's inline hero or a reviewed static kid cover can open the book.
+    setOnCover(Boolean(activeStory && render && canShowCover(activeStory.id)));
     if (kidMode || !activeStory || !render || !heroAvatarUrl) return;
     drawCover();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStory?.id, heroAvatarUrl, renderLang, kidMode]);
+  }, [activeStory?.id, heroAvatarUrl, renderLang, kidMode, reviewedKidCoverAvailable]);
 
   const saveStoryAsComic = async () => {
     if (isKidModeActive() || !activeStory || !render || !heroAvatarUrl) return;
@@ -766,7 +805,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     isDecision &&
     !choiceId && (
       <div className="space-y-2 w-full max-w-xl mx-auto" data-kid-question={kidMode ? "" : undefined}>
-        <p lang={renderLang} dir={langDir(renderLang)} className="text-[11px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
+        <p lang={renderLang} dir={langDir(renderLang)} className="text-[12px] uppercase tracking-widest font-bold text-center" style={{ color: "var(--arbor-green-ink)" }}>
           {/* B-KID-168: the question is part of the story — English asks in English letters. */}
           {kidsStoriesText("journey.decision", renderLang, { name: isolate(storyName(childProfile, renderLang), renderLang) })}
         </p>
@@ -779,7 +818,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const canAdvance = !isDecision || !!choiceId;
   // M2: the cover is a PAGE, not a beat. It sits before beat 1 and the counter
   // says so ("Cover", then "1 / 8") — the eight beats keep their own numbers.
-  const hasCoverPage = Boolean(heroAvatarUrl);
+  const hasCoverPage = canShowCover(activeStory?.id);
   const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);
   const goBack = () => {
     if (onCover) return;
@@ -804,7 +843,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       >
         <Icon name="chevron_left" size={16} /> {kidsStoriesText("journey.back", aiLang)}
       </button>
-      <span className="text-[10px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
+      <span className="text-[12px] uppercase tracking-wider" style={{ color: "var(--arbor-faint)" }}>
         {onCover
           ? kidsStoriesText("journey.cover", aiLang)
           : activeStory && `${sceneIndex + 1} / ${activeStory.beats.length}`}
@@ -819,7 +858,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           {kidsStoriesText("journey.next", aiLang)} <Icon name="chevron_right" size={16} />
         </button>
       ) : (
-        <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>{kidsStoriesText("journey.end", aiLang)}</span>
+        <span className="text-[12px] uppercase tracking-wider font-bold" style={{ color: "var(--arbor-green-ink)" }}>{kidsStoriesText("journey.end", aiLang)}</span>
       )}
     </div>
   );
@@ -913,7 +952,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     if (refusedPin) {
       const cover = storyCover(refusedPin.id);
       const pinTitle = uiLang === "he" ? refusedPin.titleHe : refusedPin.title;
-      return kidMode ? (
+    return kidMode ? (
         <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} style={{ marginInline: -20, marginBlockStart: -24 }}>
           <div className={KID_BOOK_ART_CLASS} style={{ background: "var(--arbor-paper-deep)" }}>
             {cover
@@ -928,6 +967,55 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </div>
       ) : null;
     }
+    // The page's one move: read tonight's story. V77: it sits in the header band beside the story's title.
+    const readTonight = (
+    <button
+      type="button"
+      data-primary-move="read-tonights-story"
+      onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
+      disabled={!tonightStory || !!loadingId}
+      className="btn primary nowrap disabled:opacity-60"
+    >
+      {tonightStory && loadingId === tonightStory.id
+        ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
+        : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
+    </button>
+    );
+    const tonightTitle = tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : null;
+    // B-PLAY-14: "From today" · "A hero adventure" — the two-option switch. V77: it sits in
+    // the header band, where the board draws it (above the figure); "From today" takes you to
+    // A story of your own (the shared bedtime body, generate-and-discard).
+    const tonightSwitch = (
+      <div role="group" aria-label={t("elev.stories.tonight.mode.label")} data-testid="stories-tonight-mode" className="inline-flex items-center gap-1 rounded-xl p-1" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+        {(["today", "hero"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={tonightMode === m}
+            onClick={() => { setTonightMode(m); if (m === "today") scrollToSection("own"); }}
+            data-testid={`stories-tonight-mode-${m}`}
+            className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
+            style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
+          >
+            {m === "today" ? t("elev.stories.tonight.mode.today") : t("elev.stories.tonight.mode.hero")}
+          </button>
+        ))}
+      </div>
+    );
+    // The chain strip (desk only): on a phone the cover already carries the note, the reason and Ask after (size pass).
+    const storiesChain = (
+      <ChainStrip
+          composition={composition}
+          line={shortViewport}
+          label={tCopy.chainLabel(name)}
+          // The strip starts from what you noted; without a note it would only repeat the cover's title.
+          nodes={!notedMoment ? [] : [
+            ...(notedMoment ? [{ kind: "you" as const, tag: tCopy.chainNoted, text: t("elev.loop.ms.quoted", { text: notedMoment.text }), said: true }] : []),
+            ...(tonightStory ? [{ kind: "arbor" as const, tag: tCopy.arborSuggests, text: tCopy.chainTonight, sub: tonightReasonLine || undefined }] : []),
+            ...(tonightAskAfter ? [{ kind: "back" as const, tag: t("elev.stories.tonight.askAfter"), text: tonightAskAfter }] : []),
+          ]}
+        />
+    );
     return kidMode ? (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -951,14 +1039,42 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         />
       </motion.div>
     ) : (
-      <div className="space-y-6 max-w-[1100px]">
-        {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue; no
-            eyebrow, no subtitle (four labels stood before the story). "Starring"
-            only once the child has a hero — the cover cannot keep that claim
-            with the generic mascot. */}
-        <PageHeader
-          title={childProfile.avatar ? t("elev.stories.tonight.h1.starring", { name }) : t("elev.stories.tonight.h1")}
+      <DsRoot composition={composition} className="ds-mychild stories-v10" data-testid="stories-screen" dir={he ? "rtl" : "ltr"}>
+      <div className="tg-stack" style={{ gap: composition === "phone" ? 8 : 16 }}>
+        <Guide
+          label={tCopy.onThisPage}
+          mini={composition === "phone"}
+          stops={[
+            { id: "tonight", title: tCopy.stopTonight, sub: tCopy.stopTonightSub },
+            { id: "own", title: tCopy.stopOwn, sub: tCopy.stopOwnSub },
+            { id: "family", title: tCopy.stopRitual, sub: tCopy.stopRitualSub },
+            { id: "pictures", title: tCopy.stopPictures, sub: tCopy.stopPicturesSub },
+          ]}
         />
+        <Route composition={composition}>
+        <RouteSection id="tonight" n={1} on>
+        {/* V77: the header band, as on Now and My child — the page's h1, the books figure and (desk) the chain. */}
+        <div className={shortViewport ? "scene now compact-band" : "scene now"} style={{ padding: composition === "phone" ? (shortViewport ? "10px 12px 8px" : "14px 14px 12px") : (shortViewport ? "16px 24px 14px" : "22px 28px 18px"), gap: shortViewport ? 6 : composition === "phone" ? 10 : 16 }}>
+          <i className="orb" style={{ width: 360, height: 360, right: -170, top: -230, opacity: 0.55 }} />
+          <FrameHead
+            phone={composition === "phone"}
+            kicker={tCopy.storiesKicker}
+            switcher={composition === "desk" ? tonightSwitch : undefined}
+            startHere={tCopy.startHere}
+            title={tonightTitle ?? t("elev.stories.tonight.h1")}
+            sub={tonightStory ? `${tCopy.chainTonight} · ${he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}` : undefined}
+            action={readTonight}
+            figure={!showAllAges && displayStories.length > 0
+              ? <FrameFigure n={displayStories.length} unit={tCopy.booksUnit(name)} sub={ageHiddenStories.length > 0 ? tCopy.booksMore(ageHiddenStories.length) : undefined} />
+              : undefined}
+          />
+          {composition === "desk" && storiesChain}
+        </div>
+        <div className={composition === "phone" ? "tg-stack" : "rowa"} style={phoneShort ? { gap: 6, marginTop: -6 } : undefined}>
+        <div className={composition === "phone" ? undefined : "stg"}>
+        <div className={composition === "phone" ? (phoneShort ? "space-y-2" : "space-y-3") : shortViewport ? "mcst space-y-3" : "mcst space-y-6"} style={composition === "desk" && shortViewport ? { padding: "14px 18px 12px", gap: 10 } : undefined}>
+        {/* W2-SHELLPLAY critic r1: the H1 names tonight, not the catalogue ("Starring" only once
+            the child has a hero). V77: it is the header band's h1 above. */}
         {/* §3f row 3 — ONE dominant cover, above the fold. The parent door used
             to open on a comic hero banner, a mascot bubble in the kid's voice,
             two in-hub tiles and a filter row, so the FIRST story card rendered
@@ -967,24 +1083,8 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             the kid home in 02e04b42, reused verbatim) already picks ONE story
             per local day, so the kid banner and this cover name the same one. */}
         <section data-module="stories-tonight">
-          {/* B-PLAY-14: "From today" · "A hero adventure" — a two-option switch
-              on the cover. "From today" renders the shared bedtime body inline
-              (generate-and-discard, the same code as #/bedtime-stories). */}
-          <div role="group" aria-label={t("elev.stories.tonight.mode.label")} data-testid="stories-tonight-mode" className="inline-flex items-center gap-1 rounded-xl p-1 mb-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-            {(["today", "hero"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                aria-pressed={tonightMode === m}
-                onClick={() => setTonightMode(m)}
-                data-testid={`stories-tonight-mode-${m}`}
-                className="px-3 min-h-11 rounded-lg text-[13px] font-bold transition"
-                style={tonightMode === m ? { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", boxShadow: "var(--shadow-xs)" } : { color: "var(--arbor-muted)" }}
-              >
-                {m === "today" ? t("elev.stories.tonight.mode.today") : t("elev.stories.tonight.mode.hero")}
-              </button>
-            ))}
-          </div>
+          {/* Phone: the switch opens the stage card, as N-Stories-M draws it (desk: in the band). */}
+          {composition === "phone" && <div className={phoneShort ? "mb-1.5" : "mb-3"}>{tonightSwitch}</div>}
           {/* W2-SHELLPLAY critic r1: the cover is a card, not one 586 px
               button — the declared move is stamped on the ONE control that
               plays it. Phone: a 112 px art band (avatar only), title, the
@@ -992,13 +1092,15 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               all inside 812 px. ≥1024: two columns, art at inline-start, the
               text column held to 60ch. The archetype essay lives in the reader
               (reflection beat), not on the cover. */}
-          {tonightMode === "today" ? <TonightFromToday /> : (
+          {/* V77: "From today" is its own section below (A story of your own, drawn
+              once); the switch takes you there and the cover stays tonight's story. */}
+          {(
           <div data-testid="stories-cover" className={`${cardCls} w-full overflow-hidden p-0 lg:grid lg:grid-cols-[2fr_3fr]`}>
             {/* SHIP-FIX (W2-SHELLPLAY r3 F1): below sm the art band is ONE row —
                 avatar at inline-start, the hero row beside it (100 px, was a
                 148 px column) — so Play clears the fixed bottom nav at 375. */}
             <div
-              className="flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full min-h-[96px] sm:min-h-[168px] lg:h-full lg:min-h-[220px] py-2 px-3"
+              className={`flex flex-row sm:flex-col items-center justify-center gap-3 sm:gap-1 w-full ${phoneShort ? "min-h-[56px] py-1" : "min-h-[96px] py-2"} sm:min-h-[168px] lg:h-full lg:min-h-[220px] px-3`}
               style={{ background: tonightStory ? STORY_PACK_SOFT[tonightStory.pack] : "var(--arbor-paper-deep)" }}
             >
               {/* B-KID-87 (KB-29): the cover shows the BOOK — its own cover in
@@ -1017,10 +1119,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                     decoding="async"
                     fetchPriority="high"
                     data-testid="stories-tonight-book-cover"
-                    className="block w-[72px] sm:w-[132px] lg:w-[200px] aspect-[3/4] rounded-xl object-cover"
+                    className={`block ${phoneShort ? "w-[48px]" : "w-[72px]"} sm:w-[132px] lg:w-[200px] aspect-[3/4] rounded-xl object-cover`}
                     style={{ objectPosition: tonightCover.objectPosition, border: "1px solid var(--arbor-rule)" }}
                   />
-                ) : <HeroAvatar size={84} ring animate={false} />}
+                ) : <HeroAvatar size={phoneShort ? 56 : 84} ring animate={false} />}
               </span>
               {/* W2-SHELLPLAY critic r2: hero-first is ONE quiet 44 px text row
                   inside the art band (was a kid-register PlayPanel/PlayButton
@@ -1057,12 +1159,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   <bdi dir="auto" style={{ fontFamily: "var(--font-editorial)" }}>{t("elev.loop.ms.quoted", { text: notedMoment.text })}</bdi>
                 </p>
               )}
-              <h2 className="text-[1.35rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
-                {tonightStory ? (he ? tonightStory.titleHe : tonightStory.title) : t("elev.stories.catalogue.title")}
-              </h2>
+              {/* V77: the story's title is the header band's h1 (said once). */}
               {/* B-PLAY-16: why THIS story tonight — from the family's own record. */}
               {tonightReasonLine && (
-                <p data-testid="stories-tonight-reason" className="mt-1.5 text-[12.5px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
+                <p data-testid="stories-tonight-reason" className="mt-1.5 text-[12px] font-bold" style={{ color: "var(--arbor-green-ink)" }} dir="auto">
                   {tonightReasonLine}
                 </p>
               )}
@@ -1071,7 +1171,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   language. A row with no text in that language is not drawn
                   (never English in the Hebrew UI). */}
               {(tonightBuilds || tonightAskAfter) && (
-                <dl data-testid="stories-tonight-insight" className="mt-3 rounded-[14px] p-4 space-y-1.5 text-[13px]" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+                <dl data-testid="stories-tonight-insight" className={phoneShort ? "mt-2 rounded-[14px] p-3 space-y-1 text-[13px]" : "mt-3 rounded-[14px] p-4 space-y-1.5 text-[13px]"} style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                   {tonightBuilds && (
                     <div className="flex gap-2">
                       <dt className="font-extrabold flex-shrink-0" style={{ color: "var(--arbor-ink)" }}>{t("elev.stories.tonight.builds")} ·</dt>
@@ -1090,22 +1190,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               )}
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 {tonightStory && (
-                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: STORY_PACK_LABEL[tonightStory.pack].ink }}>
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold" style={{ background: "var(--arbor-paper-deep)", color: STORY_PACK_LABEL[tonightStory.pack].ink }}>
                     {he ? STORY_PACK_LABEL[tonightStory.pack].he : STORY_PACK_LABEL[tonightStory.pack].en}
                   </span>
                 )}
-                <button
-                  type="button"
-                  data-primary-move="read-tonights-story"
-                  onClick={() => { if (!loadingId && tonightStory) void startJourney(tonightStory); }}
-                  disabled={!tonightStory || !!loadingId}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-4 min-h-[44px] text-[13px] font-extrabold ms-auto transition active:scale-[0.98] disabled:opacity-60 focus:outline-none focus-visible:ring-2"
-                  style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-                >
-                  {tonightStory && loadingId === tonightStory.id
-                    ? <><Icon name="autorenew" size={16} className="motion-safe:animate-spin" /> {statesText("elev.states.hero.opening", he)}</>
-                    : <><Icon name="play_arrow" size={16} fill={1} /> {t("elev.stories.tonight.cta")}</>}
-                </button>
               </div>
             </div>
           </div>
@@ -1120,7 +1208,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             parent page — a running per-virtue count of the child reads as a
             measurement (law 1). The one count kept is the shared-reading line. */}
         {runs.length > 0 && (
-          <p className="text-[11.5px] px-1" style={{ color: "var(--arbor-muted)" }}>
+          <p className="text-[12px] px-1" style={{ color: "var(--arbor-muted)" }}>
             {t(runs.length === 1 ? "elev.stories.counts.stories.one" : "elev.stories.counts.stories", { n: runs.length })}
           </p>
         )}
@@ -1137,6 +1225,55 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             onClose={() => setHeroDialogOpen(false)}
           />
         )}
+        {/* The running Challenge plan's book, read together (program flag). */}
+        <StoriesPlanBook />
+        </div>
+        </div>
+        <div className={composition === "phone" ? undefined : "rlc"}>
+          <RailTile icon="grid_view" title={tCopy.howToRead}>
+            <ReadGuide
+              phone={composition === "phone"}
+              steps={[
+                { drawing: Draw.cards(), label: tCopy.stopTonight },
+                { drawing: Draw.list(), label: tCopy.stopOwn },
+                { drawing: Draw.pick(6), label: tCopy.stopPictures },
+              ]}
+              keyItems={[
+                { mark: <span className="ds-pencil" style={{ padding: "0 6px" }} aria-hidden="true"><Icon name="edit" size={14} /></span>, label: tCopy.arborSuggests },
+                { mark: <Token kind="moment" size="sm" label="" />, label: tCopy.chainRead },
+              ]}
+            />
+          </RailTile>
+        </div>
+        </div>
+        </RouteSection>
+        {/* V77: A story of your own (the bedtime story from a moment you kept), where the board draws it. */}
+        <RouteSection id="own" n={2} aria-labelledby="stories-own-title">
+          <section className="vt" data-testid="stories-own" style={{ borderRadius: 18, gap: 10, padding: composition === "phone" ? "12px 12px 14px" : "16px 20px" }}>
+            <div className="line" style={{ gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              <h2 className="kicker" id="stories-own-title" style={{ margin: 0 }}>{tCopy.stopOwn}</h2>
+              <span className="small">{tCopy.stopOwnSub}</span>
+            </div>
+            <TonightFromToday />
+          </section>
+        </RouteSection>
+        <RouteSection id="family" n={3}>
+          {/* N-Stories-D/M: the ritual, and beside it (under it on a phone) one reviewed read on reading and stories. */}
+          <div className={composition === "phone" || !worthCard ? "tg-stack" : "rowa"} style={composition === "phone" ? { gap: 16 } : undefined}>
+            <div className={composition === "phone" || !worthCard ? undefined : "stg"}>
+              <React.Suspense fallback={null}><EmbeddedFamilyRitual embedded /></React.Suspense>
+            </div>
+            {worthCard && (
+              <div className={composition === "phone" ? "tg-know" : "rlc tg-know"} data-testid="stories-worth-knowing">
+                <NowWorthKnowing lang={uiLang === "he" ? "he" : "en"} kicker={storiesWorthKicker(childAgeMonths, uiLang)} readMinutes={NOW_COPY[uiLang === "he" ? "he" : "en"].readMinutes}
+                  cardId={worthCard} composition="phone" now={new Date()} source="stories-worth-knowing" />
+              </div>
+            )}
+          </div>
+        </RouteSection>
+        <RouteSection id="pictures" n={4}>
+        <div className="space-y-6">
+          <React.Suspense fallback={null}><EmbeddedComics embedded /></React.Suspense>
         {/* B-PLAY-11: the pack filter and the whole catalogue sit behind ONE
             collapsed "More stories" disclosure (R25: a demoted module inside a
             data-module-disclosure), so above the fold is cover + insight + Play. */}
@@ -1184,7 +1321,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             {(ageHiddenStories.length > 0 || showAllAges) && (
               <span className="ms-auto inline-flex items-center gap-2">
                 {!showAllAges && ageHiddenStories.length > 0 && (
-                  <span className="text-[11.5px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
+                  <span className="text-[12px] font-black" style={{ color: "var(--arbor-muted)" }} dir="auto">
                     {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHiddenStories.length })}
                   </span>
                 )}
@@ -1194,7 +1331,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   aria-checked={showAllAges}
                   onClick={toggleShowAllAges}
                   data-testid="agefilter-toggle-hero-journeys"
-                  className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[11.5px] font-black"
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-2.5 min-h-[44px] text-[12px] font-black"
                   style={{
                     background: showAllAges ? "var(--arbor-yellow)" : "var(--arbor-paper-elevated)",
                     border: "1px solid var(--arbor-rule-strong)",
@@ -1220,7 +1357,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               <button
                 type="button"
                 onClick={toggleShowAllAges}
-                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12.5px] font-black"
+                className="mt-3 inline-flex items-center gap-1 rounded-full px-3.5 py-2.5 min-h-[44px] text-[12px] font-black"
                 style={{ background: "var(--arbor-yellow)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
               >
                 <Icon name="unfold_more" size={15} /> {agefilterText("elev.agefilter.showAll", he)}
@@ -1244,14 +1381,14 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   onOpen={() => { void startJourney(story); }}
                   ribbon={isAimed(story) ? (
                     <span
-                      className="text-[10.5px] font-black px-2.5 py-1 inline-flex items-center gap-1"
+                      className="text-[12px] font-black px-2.5 py-1 inline-flex items-center gap-1"
                       style={{ background: "var(--arbor-yellow)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)", borderStartStartRadius: 12, borderEndEndRadius: 12 }}
                     >
                       ★ {he ? "המטרה שלכם" : "Your aim"}
                     </span>
                   ) : story.origin === "original" ? (
                     <span
-                      className="text-[11px] font-black px-2.5 py-1 inline-block"
+                      className="text-[12px] font-black px-2.5 py-1 inline-block"
                       style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-pink-ink)", border: "1px solid var(--arbor-rule)", borderStartStartRadius: 12, borderEndEndRadius: 12 }}
                     >
                       {he ? "מקורי" : "ORIGINAL"}
@@ -1259,10 +1396,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   ) : undefined}
                 >
                   <span className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                    <span className="inline-block text-[10.5px] font-black px-2 py-0.5 rounded-full" style={{ border: "1px solid var(--arbor-rule-strong)", color: label.ink }}>
+                    <span className="inline-block text-[12px] font-black px-2 py-0.5 rounded-full" style={{ border: "1px solid var(--arbor-rule-strong)", color: label.ink }}>
                       {he ? label.he : label.en}
                     </span>
-                    <span className="text-[10.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                       {he ? "גיל" : "Age"} {story.ageRange[0]}–{story.ageRange[1]}
                     </span>
                     <span className="ms-auto inline-flex items-center gap-1 min-h-[28px] text-[13px] font-black" style={{ color: label.ink }}>
@@ -1283,11 +1420,11 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
         </section>
         </details>
 
-        {/* B-PLAY-12: the "Your library" module (every run read, finished or
-            not) moved to the Comics shelf, one tap away on this hub: a run
-            with a read-along comic is that comic, every other run is a text
-            book reread in place (lib/storyShelf, components/stories/StoryTextReader). */}
+        </div>
+        </RouteSection>
+        </Route>
       </div>
+      </DsRoot>
     );
   }
 
@@ -1428,7 +1565,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <>
               {activeStory.parentInsight && (
                 <div className="rounded-2xl p-4 space-y-1.5" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-                  <p className={uiLang === "he" ? "text-[13px] font-bold" : "text-[10px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
+                  <p className={uiLang === "he" ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-muted)" }}>
                     {uiLang === "he" ? "למבוגרים · למה הסיפור הזה" : "For grown-ups · Why this story"}
                   </p>
                   <p dir="auto" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
@@ -1438,7 +1575,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 </div>
               )}
               <div className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
+                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "מה תרגלנו היום" : "Today we practiced"}</p>
                 <div className="flex flex-wrap gap-2">
                   {render.reflection.practiced.map((p, i) => (
                     <span key={i} className="text-xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1" style={{ color: "var(--arbor-green-ink)", background: "var(--arbor-paper-elevated)" }}>
@@ -1448,7 +1585,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[11px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
+                <p className={aiLang === "he" ? "text-[13px] font-bold" : "text-[12px] uppercase tracking-widest font-bold"} style={{ color: "var(--arbor-green-ink)" }}>{aiLang === "he" ? "דברו על זה יחד" : "Talk about it together"}</p>
                 {render.reflection.questions.map((q, i) => (
                   <button
                     key={i}
@@ -1544,6 +1681,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // is unchanged.
   if (kidMode) {
     const bookArt = storyCover(activeStory.id)?.src;
+    const authoredCover = storyBookArt(kidTheme, activeStory.id)?.cover;
     // B-BOOK-26: no shared picture (B-BOOK-31 dropped the reference family's
     // cover) -> the book's title card with the child's OWN portrait, the shelf
     // tile's composition scaled up; the card then carries the title, so the
@@ -1551,7 +1689,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
     const bookArtBox = (
       <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
-        {bookArt
+        {authoredCover
+          ? <StoryArtwork art={authoredCover} lang={renderLang} heroUrl={heroAvatarUrl ?? heroCameoUrl} heroName={childProfile.name?.split(" ")[0]} />
+          : bookArt
           ? <img src={bookArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: storyCover(activeStory.id)?.objectPosition }} />
           : <KidBookTitleCard title={isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)} pack={activeStory.pack} hero={coverHero} heroSize={162} titleSize={28} />}
       </div>
@@ -1566,7 +1706,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       setAtEnd(false);
       setChoiceId(undefined);
       setSceneIndex(0);
-      setOnCover(Boolean(heroAvatarUrl));
+      setOnCover(canShowCover(activeStory.id));
     };
     const bigButton = { minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer" } as const;
     // B-KID-128: the page's controls sit under the words - on the wide spread
@@ -1599,20 +1739,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     );
     const bookSide = (
       <>
-        {!onCover && <div className="px-5 pt-4">{renderChoices()}</div>}
+        {!onCover && <div className="px-5 pt-4" data-kid-book-choice-panel="">{renderChoices()}</div>}
         {bookNav}
       </>
     );
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" style={{ marginInline: -20, marginBlockStart: -24 }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" data-story-authored={authoredCover ? activeStory.id : undefined} style={{ marginInline: -20, marginBlockStart: -24 }}>
         <AnimatePresence mode="wait" initial={false}>
           {atEnd ? (
             <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
               {/* B-KID-94: the ONE finish moment — the hero cheers and the child
                   keeps this book's sticker (its cover, die-cut), earned once. */}
-              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
-              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
-                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+              <div className="pt-4" data-kid-book-ending-keepsake=""><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
+              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center" data-kid-book-ending-actions="">
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} data-kid-book-end-title="" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
                   <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
                   <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
@@ -1644,6 +1784,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 childId={childProfile.id}
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
+                authoredArt={storyPageArt(kidTheme, activeStory.id, displayScene.beatId)}
                 textLang={renderLang}
                 aside={bookSide}
                 decision={isDecision && !choiceId}

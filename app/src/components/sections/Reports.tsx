@@ -12,9 +12,18 @@ import { useChildCollection } from "../../hooks/useChildCollection";
 import type { LangObservation } from "../../growth/vocabAgg";
 import type { BehaviorLog } from "../../types";
 import { getLastExportedAt, recordExport } from "../../consult/exportHistory";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { requestOpenSettings } from "../layout/settingsBus";
 import { parentWords, recordStartIso, reportsLeadCounts } from "../../lib/recordCounts";
+import { DsRoot, Guide, Route, RouteSection, RouteHead, SideRail } from "../../design/primitives";
+import CareStage from "../care/v10/CareStage";
+import RecordLedger, { recordLedgerRows } from "../care/v10/RecordLedger";
+import { PastExports, pastExportRows } from "../care/CareShared";
+import { listExports } from "../../consult/exportHistory";
+import type { Appointment } from "../../lib/careTrack";
+import { useComposition } from "../../design/useComposition";
+import { careCopy } from "../care/v10/careV10Copy";
+import "../care/v10/care.css";
 export { reportsLeadCounts };
 
 /** W2-CAREPRO r2 / B-CAREPRO-NEW-2e — the device-local export-history slot the
@@ -142,7 +151,8 @@ export function useConsultPdf() {
  *  reviewed gate; the same documents are built in Consult behind that gate,
  *  so the page has ONE door there (through the B-CAREPRO-13 prefill seam). */
 export default function Reports() {
-  const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones } = useArbor();
+  const composition = useComposition();
+  const { childProfile, setActiveTab, requestConsultPrefill, behaviorLogs, milestones, actionPlans, approvedMemoryItems, pendingMemoryItems } = useArbor();
   const { t, uiLang } = useLanguage();
   const exportReport = useReportExport();
   const first = (childProfile.name || "").split(" ")[0];
@@ -151,13 +161,9 @@ export default function Reports() {
   const [lastSaved, setLastSaved] = React.useState<string | null>(() => getLastExportedAt(childProfile.id, REPORTS_WEEKLY_EXPORT_KEY));
   const nowMs = Date.now();
   const counts = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], sinceIso: lastSaved, nowMs });
-  const countText = (n: number, one: string, other: string) => t(n === 1 ? one : other, { n });
-  const kept = keptThisWeek(behaviorLogs ?? [], nowMs);
   // W2-CAREPRO c2 r1: before the first save the lead names the record, not
   // its absence — counts over the whole record since it began.
   const startIso = recordStartIso(behaviorLogs ?? [], milestones ?? []);
-  const recordMoments = (behaviorLogs ?? []).length;
-  const recordNoticed = (milestones ?? []).filter((m) => m.checked).length;
   const saveLead = () => {
     exportReport("record");
     const when = new Date().toISOString();
@@ -180,98 +186,98 @@ export default function Reports() {
     setActiveTab("consult");
   };
 
-  return (
-    // W2-CAREPRO r2: a ~720 px reading measure at every width (it was a
-    // stretched 935 px phone column at 1280 with ~800 px of eye travel per row).
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[720px]">
-      <PageHeader eyebrow={t("elev.reports.eyebrow")} title={t("sec.reports.title")} subtitle={t("sec.reports.sub", { name: childProfile.name.split(" ")[0] })} />
+  const c = careCopy(uiLang).records;
+  // V77 N-Records §3: the device's export history (Records' saves and Visits' summaries).
+  const pastRows = React.useMemo(() => pastExportRows(listExports(childProfile.id)), [childProfile.id, lastSaved]);
 
+  const desk = composition === "desk";
+  // Design V77 (N-Records): the record by kind, from what production already loads.
+  const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments");
+  const ledger = recordLedgerRows({
+    logs: behaviorLogs ?? [],
+    milestones: milestones ?? [],
+    plans: actionPlans ?? [],
+    remembered: approvedMemoryItems ?? [],
+    waiting: pendingMemoryItems ?? [],
+    appointments: apptsCol.items ?? [],
+    nowMs,
+    copy: c,
+  }).filter((row) => row.count > 0 || row.marks.length > 0); // a kind with no records yet prints no zero
+  // The page's one primary action (one tree per composition: placed once, by composition).
+  const saveButton = (
+    <button
+      type="button"
+      data-primary-move="export-report"
+      onClick={saveLead}
+      className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
+      style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
+      aria-label={t("elev.reports.exportAria", { title: t("elev.reports.record.title", { name: first }) })}
+    >
+      <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
+    </button>
+  );
+  const stops = [
+    { id: "records-record", title: c.stopRecord, sub: startIso ? c.stopRecordSub(fmtDayV10(startIso, uiLang)) : undefined },
+    { id: "records-docs", title: c.stopDocs, sub: c.stopDocsSub },
+    // V77 N-Records-M: the phone guide's short third stop ("Kept").
+    { id: "records-kept", title: desk ? c.stopKept : c.stopKeptShort, sub: c.stopKeptSub },
+  ];
+  return (
+    /* Design v10.1 (Care › Records): a guide; 1 · the record as a scene (the
+       page's H1, the whole record's counts, the parent's own words and the
+       one Save); 2 · the documents you can save, and the one door to a visit
+       summary; 3 · your data, kept in Settings, and how a report opens. */
+    <DsRoot composition={composition} className="care-v10 care-records">
+      <div className="care-visits">
+      <Guide stops={stops} mini={!desk} label={careCopy(uiLang).onThisPage} className="care-guide" />
+      <Route composition={composition}>
+      <RouteSection id="records-record" n={1} on>
       {/* Item 11 (IA-02): `data-module` marks the top-level sibling module
           (what moduleBudget counts). W2-CAREPRO r1: `data-primary-move` sits
           on the ONE control that performs the move — the lead record's Save
           button — never on a display:contents wrapper around the catalogue. */}
-      {/* W2-CAREPRO r2: no "Exportable reports" card header — the H1 frames the
-          list; one plain surface (one layer of chrome). */}
-      <div data-module="reports-catalogue" className="rounded-[22px] p-5 md:p-6" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
-        {/* The lead record: Weekly Insight, with the page's one gradient. */}
-        <div className="flex flex-col gap-3 pb-4" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
-          <div className="min-w-0">
-            <h2 data-testid="reports-lead-title" className="t-md font-extrabold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.record.title", { name: first })}</h2>
-            {/* B-CAREPRO-NEW-2e: one counts-only line from the record.
-                W2-CAREPRO c2 r2: the lead is PERMANENT — always the whole
-                record since it began (the H2 above names the child), never
-                replaced after a save. A second fact appears ONLY when new
-                moments exist since the parent last opened the PDF; it never
-                prints a zero. "Opened", not "saved": the print tab can be
-                cancelled and nothing listens for afterprint across windows. */}
-            {startIso ? (
-              <p data-testid="reports-lead-counts" className="t-sm mt-0.5 leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
-                {t("elev.reports.lead.first", {
-                  date: fmtDay(startIso, uiLang),
-                  moments: countText(recordMoments, "elev.reports.line.moments.one", "elev.reports.line.moments.other"),
-                  milestones: countText(recordNoticed, "elev.reports.lead.milestones.one", "elev.reports.lead.milestones.other"),
-                })}
-              </p>
-            ) : null}
-            {lastSaved && counts.moments > 0 ? (
-              <p data-testid="reports-lead-new" className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
-                {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDay(lastSaved, uiLang) })}
-              </p>
-            ) : null}
-          </div>
-          {/* B-CAREPRO-NEW-2f: the parent's own words, quoted — this week's
-              newest, else the newest in the record. W2-CAREPRO c2 r2: a FLAT
-              --arbor-peach-wash (the CTA is the page's only gradient); the
-              blockquote keeps the UI direction and only the quote is isolated
-              (<bdi>), so a Latin quote never flips a Hebrew card; the date
-              lives in the caption as a no-wrap <bdi>. */}
-          {kept ? (
-            <figure data-testid="reports-kept" className="p-3" style={{ background: "var(--arbor-peach-wash)", borderRadius: "var(--r)" }}>
-              <figcaption className="t-xs" style={{ color: "var(--arbor-muted)" }}>
-                {t("elev.reports.kept.label")} · <bdi data-testid="reports-kept-date" className="whitespace-nowrap">{fmtDay(kept.at, uiLang)}</bdi>
-              </figcaption>
-              <blockquote className="t-base mt-0.5" style={{ color: "var(--arbor-peach-ink)", fontFamily: uiLang === "he" ? "var(--font-display)" : "var(--font-editorial)" }}>
-                <bdi>“{kept.quote}”</bdi>
-              </blockquote>
-              {lastSaved && kept.at <= lastSaved ? (
-                <p data-testid="reports-kept-saved" className="t-xs mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.saved", { name: first })}</p>
-              ) : null}
-            </figure>
-          ) : recordMoments === 0 ? (
-            <p data-testid="reports-kept-empty" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.kept.empty")}</p>
-          ) : null}
-          <button
-            type="button"
-            data-primary-move="export-report"
-            onClick={saveLead}
-            className="touch-target self-start inline-flex items-center justify-center gap-2 t-sm font-extrabold rounded-xl px-5 min-h-11 transition hover:brightness-105"
-            style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
-            aria-label={t("elev.reports.exportAria", { title: t("elev.reports.record.title", { name: first }) })}
-          >
-            <Icon name="download" size={16} /> {t("elev.reports.lead.cta", { name: first })}
-          </button>
-        </div>
-        {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
-            the parent redacts, adds the reason and ticks the reviewed gate.
-            W2-CAREPRO r1: a quiet text row directly under the lead (above the
-            fold at 375), outside the stamped move, no card chrome. */}
-        <button
-          type="button"
-          onClick={openConsult}
-          data-testid="reports-consult-door"
-          className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
-          style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}
+      <div data-module="reports-catalogue" className={desk ? "g12 care-records-row" : "stack care-records-row"}>
+        <CareStage
+          composition={composition}
+          labelledBy="reports-h1"
+          className="care-records-scene"
+          // V77: desktop kicker "Your full record · since …"; the phone's is the page's name, the date under the heading.
+          kicker={startIso && desk ? c.since(fmtDayV10(startIso, uiLang)) : desk ? t("elev.reports.eyebrow") : t("sec.reports.title")}
+          art="/visuals/parent/v2/area-words-960.webp"
+          artOnPhone
+          // Design V77 (N-Records): the kicker names the page ("Your full record · since …"); the heading is the record itself.
+          heading={<div className="stack care-heading"><h1 id="reports-h1" data-testid="reports-lead-title" className="hero care-h1">{t("elev.reports.record.title", { name: first })}</h1>{desk || !startIso ? <p className="care-sub">{c.lede(first)}</p> : <p data-testid="reports-lead-since" className="care-sub">{c.ledgerSince(fmtDayV10(startIso, uiLang))}</p>}</div>}
         >
-          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="forum" size={18} /></span>
-          <span className="min-w-0 flex-1">
-            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.proDoor.title")}</span>
-            <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.proDoor.desc")}</span>
-          </span>
-          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
-        </button>
+          <div className="flex flex-col gap-3 care-records-lead">
+          {/* Design V77 (N-Records): the record by kind — each kind's count,
+              its latest date and the way to where it lives. It replaces the
+              counts sentence and the quote card (the quote is offered once,
+              in Visits). B-CAREPRO-NEW-2e: a second fact appears ONLY when new
+              moments exist since the parent last opened the PDF. */}
+          {/* V77 phone composition (thumb order, as Play's and Stories' one action under their
+              header band): Save leads the ledger. Desktop keeps N-Records-D's order. Rendered once. */}
+          {!desk && saveButton}
+          <RecordLedger composition={composition} rows={ledger} copy={c} uiLang={uiLang} labelledBy="reports-h1" onOpen={setActiveTab} />
+          {lastSaved && counts.moments > 0 ? (
+            <p data-testid="reports-lead-new" className="t-xs leading-relaxed" style={{ color: "var(--arbor-muted)" }}>
+              {t(counts.moments === 1 ? "elev.reports.lead.new.one" : "elev.reports.lead.new.other", { n: counts.moments, date: fmtDayV10(lastSaved, uiLang) })}
+            </p>
+          ) : null}
+          {desk ? (
+            <div className="line care-records-save">
+              {saveButton}
+              <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
+            </div>
+          ) : (
+            <span className="small care-ledger-note">{c.ledgerMarksNote}</span>
+          )}
+        </div>
+        </CareStage>
+        <SideRail id="records-docs" n={2} title={c.docsHead} titleId="records-docs-title" className={desk ? "x4 care-rail" : "care-rail"}>
+          <div className="rcard fit care-records-docs">
         {/* The other parent-record documents: one layer of chrome — hairline
             rows inside the one SectionCard, never cards inside a card. */}
-        <ul>
+        <ul className="care-records-list">
           {PARENT_RECORD_REPORTS.map((r) => (
             <li key={r.type} className="py-3 flex items-center gap-3" style={{ borderBlockEnd: "1px solid var(--arbor-rule)" }}>
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="description" size={18} /></span>
@@ -280,7 +286,7 @@ export default function Reports() {
                     t-sm bold) — an h3 picked up the display face, and in HE
                     Frank Ruhl's small x-height read smaller than its own desc. */}
                 <p data-testid="reports-row-title" className="t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t(r.titleKey)}</p>
-                <p className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t(r.descKey, { name: first })}{rowCount[r.type] ? <> · <span data-testid="reports-row-count">{rowCount[r.type]}</span></> : null}</p>
+                <p className="t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{/* V77 N-Records-M: on a phone a counted row reads its count alone. */}{(desk || !rowCount[r.type]) && <>{t(r.descKey, { name: first })}</>}{rowCount[r.type] ? <>{desk ? " · " : null}<span data-testid="reports-row-count">{rowCount[r.type]}</span></> : null}</p>
               </div>
               <button
                 type="button"
@@ -293,9 +299,40 @@ export default function Reports() {
               </button>
             </li>
           ))}
+            </ul>
+          </div>
+          <div className="rcard fit care-records-door">
+        {/* B-CAREPRO-23: ONE door for a professional summary — Consult, where
+            the parent redacts, adds the reason and ticks the reviewed gate.
+            W2-CAREPRO r1: a quiet text row directly under the lead (above the
+            fold at 375), outside the stamped move, no card chrome. */}
+        <button
+          type="button"
+          onClick={openConsult}
+          data-testid="reports-consult-door"
+          className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
+          
+        >
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="forum" size={18} /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{c.doorTitle}</span>
+            <span className="block t-xs mt-0.5 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{c.doorSub}</span>
+          </span>
+          <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
+        </button>
+          </div>
+        </SideRail>
+      </div>
+      </RouteSection>
+      <RouteSection id="records-kept" n={3} aria-labelledby="records-kept-title">
+        <RouteHead id="records-kept-title" title={c.stopKept} sub={c.stopKeptSub} />
+          {/* V77 N-Records §3: this device's past exports (the record you save lands here), beside your data. */}
+          <div className={desk ? "g12 care-records-kept" : "stack care-records-kept"}>
+          <div className={desk ? "x8" : ""}>{/* B-CAREPRO-28: the door from Records names no audience; "prepare again" opens Visits, where step 1 chooses. */}
+          <PastExports rows={pastRows} showRecordLink={false} onPrepareAgain={() => setActiveTab("consult")} /></div>
           {/* W2-CAREPRO r2: the complete record keeps its ONE home (Settings >
               Your data, B-CAREPRO-35); this page carries the door to it. */}
-          <li>
+          <div className={desk ? "x4 vt care-records-data" : "vt care-records-data"}>
             <button
               type="button"
               data-testid="reports-your-data"
@@ -303,15 +340,20 @@ export default function Reports() {
               className="w-full py-3 flex items-center gap-3 min-h-11 text-start transition hover:brightness-95"
             >
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}><Icon name="folder_open" size={18} /></span>
-              <span className="min-w-0 flex-1 t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.yourData", { name: first })}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block t-sm font-bold" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-sans)" }}>{t("elev.reports.yourData", { name: first })}</span>
+                <span className="block t-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.yourDataWhere}</span>
+                <span className="block t-xs mt-0.5" style={{ color: "var(--arbor-muted)" }}>{c.yourDataWhat}</span>
+              </span>
               <span className="t-xs font-bold flex-shrink-0" style={{ color: "var(--arbor-clay)" }}>{t("elev.reports.yourData.cta")}</span>
               <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100 flex-shrink-0" style={{ color: "var(--arbor-muted)" }} />
             </button>
-          </li>
-        </ul>
+          </div>
+          </div>
+        <p className="small care-records-hint">{t("elev.reports.printHint")}</p>
+      </RouteSection>
+      </Route>
       </div>
-
-      <p className="text-xs text-center" style={{ color: "var(--arbor-muted)" }}>{t("elev.reports.printHint")}</p>
-    </motion.div>
+    </DsRoot>
   );
 }

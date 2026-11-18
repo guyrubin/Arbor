@@ -110,37 +110,43 @@ describe("W2-CAREPRO r2 · the stamp is a real act", () => {
     expect(html.indexOf('data-testid="consult-build"')).toBeLessThan(html.indexOf('data-testid="consult-reason-section"'));
   });
 
-  it("the step-3 target is addressable and focusable; at lg it is the sticky end column", () => {
+  it("the step-3 target is addressable and focusable; design v10.1: its own card in the summary row", () => {
     const html = renderToStaticMarkup(<ConsultTab />);
-    const panes = html.slice(html.indexOf('data-testid="consult-panes"'), html.indexOf('data-testid="consult-panes"') + 200);
-    expect(panes).toContain("lg:grid-cols-[minmax(0,1fr)_22rem]");
-    const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
-    expect(step3).toContain("lg:sticky");
+    // v10.1 (Care › Visits): choose · preview · share are three cards of section 3.
+    for (const card of ["care-bring", "care-preview", "care-share"]) expect(html).toContain(`class="vt ${card}"`);
+    expect(html.indexOf('class="vt care-bring"')).toBeLessThan(html.indexOf('class="vt care-preview"'));
+    expect(html.indexOf('class="vt care-preview"')).toBeLessThan(html.indexOf('class="vt care-share"'));
     expect(html).toMatch(/id="consult-review-export"[^>]*>\s*<h2 tabindex="-1"/);
-    // the gradient Copy lives in that column
+    // Copy lives in that card
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(html.indexOf('id="consult-review-export"'));
   });
 });
 
 describe("W2-CAREPRO r2 · step 2 opens on the record", () => {
   for (const locale of ["en", "he"] as const) {
-    it(`${locale}: first visit → a numerator-only counts sentence heads step 2 (no %, no x-of-y)`, () => {
+    it(`${locale}: first visit → design V77: no counts sentence repeats the scene's figures; the parent's line is step 2's field`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      const line = /<p data-testid="consult-since-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
-      expect(line).toContain(translate(locale, "elev.reports.line.momentsLogged.other", { n: 2 }));
-      expect(line).not.toMatch(/%|\/\s*\d|\bof\b|מתוך/);
-      expect(html.indexOf('data-testid="consult-since-head"')).toBeLessThan(html.indexOf('id="consult-reason"'));
+      // V77 ("packing totals gone"): the Visits composition draws the record's
+      // counts once, in the scene; step 2 no longer repeats them as a sentence.
+      expect(html).not.toContain('data-testid="consult-since-counts"');
+      expect(html).not.toContain('data-testid="consult-since-head"');
+      expect(html).not.toContain(translate(locale, "elev.reports.line.momentsLogged.other", { n: 2 }));
+      expect(html).toContain('id="consult-reason"');
     });
 
     it(`${locale}: B-CAREPRO-NEW-2b — the parent's latest words, quoted, with a seed link; the preview does not carry them`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      const fig = html.slice(html.indexOf('data-testid="consult-since-moment"'), html.indexOf("</figure>"));
+      const at = html.indexOf('data-testid="consult-since-moment"');
+      const fig = html.slice(at, html.indexOf("</figure>", at));
+      // Design V77: offered once, as the seed act under the field; the quote is
+      // read with the button (sr-only caption), not printed as a second card.
       expect(decode(fig)).toContain("He said 'big truck go' all the way to gan.");
+      expect(fig).toContain('class="sr-only"');
       expect(fig).toContain(translate(locale, "elev.carehonesty.consult.sinceMoment.seed"));
-      expect(fig).toContain("var(--arbor-peach-wash)");
-      expect(fig).toContain("<bdi");
+      expect(fig).not.toContain("var(--arbor-peach-wash)");
+      expect(html.indexOf('id="consult-reason"')).toBeLessThan(at);
       const preview = /data-testid="consult-export-preview"[^>]*>([\s\S]*?)<\/div>/.exec(html)?.[1] ?? "";
       expect(decode(preview)).not.toContain("big truck go");
     });
@@ -174,7 +180,8 @@ describe("B-CAREPRO-NEW-2a · Consult anchors on the next visit", () => {
       harness.appts = [upcomingSlp];
       const html = renderToStaticMarkup(<ConsultTab />);
       const h1 = decode(h1Of(html));
-      expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      // Design V77: "Prepare for the speech therapist" (the profession, lower-cased in EN).
+      expect(h1.toLowerCase()).toContain(translate(locale, "elev.careNet.appt.profession.slp").toLowerCase());
       expect(h1).not.toBe(translate(locale, "elev.consult.h1"));
       expect(html).toMatch(/role="radio" aria-checked="true"[^>]*>(?:<[^>]+>)*[^<]*?(?:<\/[^>]+>)*/);
       // v4 re-pin: the template row (Visit summary checked) now leads step 1;
@@ -182,7 +189,10 @@ describe("B-CAREPRO-NEW-2a · Consult anchors on the next visit", () => {
       const row = html.slice(html.indexOf('data-testid="consult-audience-row"'));
       const checked = /aria-checked="true"[\s\S]*?<\/button>/.exec(row)![0];
       expect(decode(checked)).toContain(translate(locale, "elev.carehonesty.consult.audience.slp"));
-      expect(html).toMatch(/aria-checked="true"[^>]*data-template="visit"/);
+      // Design V77: no template row first; the Teacher chip in the audience
+      // row is the way to the Teacher brief, and it is not the chosen one.
+      expect(html).not.toContain('data-testid="consult-template-row"');
+      expect(html).toMatch(/aria-checked="false"[^>]*data-testid="consult-template" data-template="teacher"/);
       expect(html).not.toContain('data-testid="consult-visit-outcome"');
     });
 
@@ -219,12 +229,10 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
       harness.followUps = [note];
       localStorage.setItem("arbor.consultExportAudience", "pediatrician");
       const html = decodeHtml(renderToStaticMarkup(<ConsultTab />));
+      // Design V77: no counts sentence; the anchoring visit's note stays, under the parent's line.
       expect(html).toContain('data-anchor="visit"');
-      const line = /<p data-testid="consult-since-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
-      const prof = translate(locale, "elev.careNet.appt.profession.pediatrician");
-      expect(line).toContain(locale === "en" ? prof.toLowerCase() : prof);
-      expect(line).toContain(locale === "en" ? "visit on" : "מאז הביקור");
-      expect(line).not.toMatch(/%|\bof\b|מתוך/);
+      expect(html).not.toContain('data-testid="consult-since-counts"');
+      expect(html.indexOf('id="consult-reason"')).toBeLessThan(html.indexOf('data-testid="consult-visit-note"'));
       const fig = html.slice(html.indexOf('data-testid="consult-visit-note"'));
       expect(fig).toContain(note.note);
       expect(fig).toContain(translate(locale, "elev.carehonesty.consult.since.visitNote"));
@@ -233,9 +241,10 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
     it(`${locale}: no visit and no share → "since you started" on the record's first day; never a bare synthetic date`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      expect(html).toContain('data-anchor="start"');
-      const line = /<p data-testid="consult-since-counts"[^>]*>([^<]*)<\/p>/.exec(html)![1];
-      expect(line.startsWith(locale === "en" ? "Since you started on" : "מאז שהתחלתם")).toBe(true);
+      // Design V77: no anchor sentence and no note — nothing dated to invent.
+      expect(html).not.toContain('data-anchor=');
+      expect(html).not.toContain('data-testid="consult-visit-note"');
+      expect(html).not.toContain('data-testid="consult-since-counts"');
     });
 
     it(`${locale}: a capture-sheet moment (words in trigger, no notes) renders consult-since-moment`, async () => {
@@ -252,19 +261,19 @@ describe("W2-CAREPRO c2 r1 · a named anchor, the parent's words, step 3 reads f
       harness.locale = locale;
       localStorage.setItem("arbor.consultExportAudience", "pediatrician");
       const html = renderToStaticMarkup(<ConsultTab />);
+      // design v10.1: the preview is its own card just before the share card.
       const step3 = html.indexOf('id="consult-review-export"');
       const preview = html.indexOf('data-testid="consult-preview"');
       const reviewed = html.indexOf('data-testid="consult-reviewed"');
       const copy = html.indexOf('data-testid="consult-copy"');
-      expect(step3).toBeGreaterThan(0);
-      expect(preview).toBeGreaterThan(step3);
-      expect(reviewed).toBeGreaterThan(preview);
+      expect(preview).toBeGreaterThan(0);
+      expect(step3).toBeGreaterThan(preview);
+      expect(reviewed).toBeGreaterThan(step3);
       expect(copy).toBeGreaterThan(reviewed);
       expect(html).not.toMatch(/<input[^>]*type="checkbox"/);
       const toggle = html.slice(reviewed, html.indexOf("</button>", reviewed));
       expect(toggle).toContain('aria-pressed="false"');
       expect(toggle).toContain("w-11 h-11");
-      expect(html).toContain("lg:top-[var(--sticky-offset)]");
     });
 
     it(`${locale}: the preview is clean plain text, one block per line in the reader's direction`, () => {
@@ -371,15 +380,13 @@ describe("W2-CAREPRO c2 r2 · one egress set per audience", () => {
     expect(presetPacket("self", packet).sections).toHaveLength(4);
   });
 
-  it("design P1: the lg step-3 column is a fixed frame — no column-level scroll; only the preview scrolls", () => {
+  it("design P1: the step-3 card has no scroll of its own; only the preview scrolls", () => {
     localStorage.setItem("arbor.consultExportAudience", "pediatrician");
     const html = renderToStaticMarkup(<ConsultTab />);
     const step3 = /<div id="consult-review-export" data-testid="consult-review-export" class="([^"]*)"/.exec(html)![1];
     expect(step3).not.toContain("overflow-y-auto");
-    expect(step3).toContain("lg:max-h-[calc(100dvh-var(--shell-topbar-h)-var(--sticky-offset)-1rem)]");
     const preview = /<section data-testid="consult-preview"[^>]*class="([^"]*)"/.exec(html)![1];
     expect(preview).toContain("lg:overflow-y-auto");
-    expect(preview).toContain("lg:max-h-[min(26rem,50dvh)]");
     // the verbs follow the scrolling preview, outside it
     const previewEnd = html.indexOf("</section>", html.indexOf('data-testid="consult-preview"'));
     expect(html.indexOf('data-testid="consult-copy"')).toBeGreaterThan(previewEnd);

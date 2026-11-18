@@ -1,14 +1,14 @@
 import { STUDIO_ACTIVITY_LOADERS, preloadStudioActivity } from '../kidPrefetch';
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { ArrowRight, RotateCcw, Waves } from "lucide-react";
 import { useArbor } from "../../../context/ArborContext";
 import { useAuth } from "../../../context/AuthContext";
 import { useLanguage } from "../../../context/LanguageContext";
 import { useKidTheme } from "../../../hooks/useKidTheme";
-import { isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover } from "../../../lib/kidThemeManifest";
+import { BOP_SCENE_SIZES, isStudioCoverId, kidArt, kidArtSrcSet, studioNextCover, studioNextScene } from "../../../lib/kidThemeManifest";
 import { noteKidActivity } from "../../../lib/kidModeGate";
 import { localizedMimicPacks } from "../../../practice/mimicContent";
-import { ArborMascot } from "../../ui/ArborMascot";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
@@ -19,7 +19,10 @@ import { GameCompletionProvider } from "../game/GameSessionContext";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { isStudioMakerId, studioActivity, studioActivityFits, type StudioActivityId } from "./studioCatalog";
 import { StudioMakerCover } from "./StudioMakerArt";
+import { StudioCrewCheer, StudioWorldPlate } from "./StudioStage";
 import { studioCopy } from "./studioCopy";
+import { studioGameVoice } from "./studioGameVoice";
+import { StudioGameGuide } from "./StudioGameGuide";
 import "./studioGame.css";
 import { StudioAdventureScene, isStudioAdventure } from './StudioAdventureScene';
 import { StudioPlayHero } from './StudioPlayHero';
@@ -62,8 +65,8 @@ export const STUDIO_GAME_COMPONENTS: Partial<Record<StudioActivityId, React.Comp
   "tiny-builders": TinyBuilders, "fox-trail": FoxTrail, "maker-desk": MakerDesk,
 };
 const WORDS = {
-  en: { start: "Let's play", back: "Back to the world", done: "A little adventure, complete", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", guide: "Take your time. I’m right here.", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
-  he: { start: "בואו נשחק", back: "בחזרה לעולם", done: "הרפתקה קטנה שהושלמה", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", guide: "אפשר לקחת את הזמן. אני כאן.", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
+  en: { start: "Let's play", back: "Back to the world", again: "Play again", unavailable: "Let's choose something else together.", tried: "I tried it", skip: "Try another", mimicDone: "You made those faces your own", mimicPassed: "You can try a face whenever you’re ready" },
+  he: { start: "בואו נשחק", back: "בחזרה לעולם", again: "לשחק שוב", unavailable: "אפשר לבחור משהו אחר יחד.", tried: "ניסיתי", skip: "ננסה עוד אחת", mimicDone: "ניסית את ההבעות בדרך שלך", mimicPassed: "אפשר לנסות הבעה כשמתאים לך" },
 };
 /** Owner, child and activity changes retire the old play session immediately. */
 export function StudioGame({ activityId, onBack }: { activityId: StudioActivityId; onBack: () => void }) {
@@ -89,7 +92,44 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   // A device that opted in to the next games sees that game's own cover.
   const cover = studioNextCover(activityId);
   const words = WORDS[lang];
-  const [phase, setPhase] = useState<"intro" | "play" | "result">("intro");
+  const voice = studioGameVoice(activityId, lang, activity?.worldId);
+  // A maker opens on its own opening shot (title on the picture, the host, a tap to skip),
+  // so it goes straight into play: no second title card in front of it.
+  const [phase, setPhase] = useState<"intro" | "play" | "result">(() => isStudioMakerId(activityId) ? "play" : "intro");
+  const fullViewRef = useRef<HTMLDivElement | null>(null);
+  const [fullHeight, setFullHeight] = useState<number>();
+  // Sneak's absolutely positioned scene needs a definite box. The app gives
+  // it a flex viewport, but a review/embed host may have auto height, where
+  // a chain of 100% heights collapses. Measure the existing app slot, or the
+  // space below the host's actual header (as the maker PlayStage does).
+  useLayoutEffect(() => {
+    if (activityId !== "sneak" || phase !== "play") return;
+    const el = fullViewRef.current;
+    if (!el) return;
+    const slot = el.closest<HTMLElement>("[data-kid-view]");
+    const measure = () => {
+      const viewport = window.innerHeight || document.documentElement.clientHeight;
+      const top = el.getBoundingClientRect().top + (window.scrollY || 0);
+      const height = slot ? slot.getBoundingClientRect().height : viewport - top;
+      if (Number.isFinite(height) && height > 0) {
+        const next = Math.max(1, Math.round(height));
+        setFullHeight(previous => previous === next ? previous : next);
+      }
+    };
+    measure();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    observer?.observe(slot ?? el);
+    if (el.parentElement) observer?.observe(el.parentElement);
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    const settle = [120, 320, 900].map(ms => setTimeout(measure, ms));
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      settle.forEach(clearTimeout);
+    };
+  }, [activityId, phase]);
   const [round, setRound] = useState(0);
   const [creation, setCreation] = useState<StudioCreation | undefined>();
   const complete = useRef(false);
@@ -119,11 +159,15 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   useEffect(() => {
     if (!eligible || phase !== 'intro') return;
     void preloadStudioActivity(activityId).catch(() => { /* Play owns retry/fallback. */ });
+    // The game's room loads while its cover shows (B-KID-175).
+    const scene = studioNextScene(activityId);
+    if (scene) preload(scene.src480, { as: "image", imageSrcSet: scene.srcSet, imageSizes: BOP_SCENE_SIZES });
   }, [activityId, eligible, phase]);
 
   // A maker draws its own cover; an unavailable one keeps the plain world art.
   const maker = eligible && isStudioMakerId(activityId) ? activityId : null;
-  const environment = <div className="studio-game-view__environment" aria-hidden="true">
+  // Intro and finish stand in the world's own room of the film, sharp (B-KID-177); play keeps the soft cover behind the mechanic.
+  const environment = activity && phase !== "play" ? <div className="studio-game-view__environment studio-stage__game-room" aria-hidden="true"><StudioWorldPlate worldId={activity.worldId} priority /></div> : <div className="studio-game-view__environment" aria-hidden="true">
     {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="100vw" alt="" draggable={false} decoding="async" /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
   </div>;
   if (!eligible) return <section className="studio-game-view" data-studio-game-unavailable="" dir={lang === "he" ? "rtl" : "ltr"}>
@@ -135,11 +179,11 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
     </div>
   </section>;
 
-  if (phase === "play") return <div className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" ? { height: "100%", minHeight: 0 } : undefined}>
+  if (phase === "play") return <div ref={fullViewRef} className={`studio-game-view studio-game-view--play${activityId === "sneak" ? " studio-game-view--full" : ""}`} data-studio-game={activityId} data-studio-phase="play" aria-label={copy.title} dir={lang === "he" ? "rtl" : "ltr"} style={activityId === "sneak" && fullHeight !== undefined ? { blockSize: fullHeight } : undefined}>
     {environment}
     <div className="studio-game-view__mechanic">
-      <GameCompletionProvider onComplete={onComplete}>
-        <Suspense fallback={<KidStageFallback worldId={activityId} />}>
+      <GameCompletionProvider onComplete={onComplete} replay={round}>
+        <Suspense fallback={<KidStageFallback worldId={activityId} studio />}>
           <Component key={round} {...(activityId === "mimic" ? { onBack } : {})} />
         </Suspense>
       </GameCompletionProvider>
@@ -153,17 +197,21 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
         {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
         <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
+        {phase === "result" && <StudioCrewCheer className="studio-stage__card-cheer" />}
       </div>
       {phase === "intro" ? <div className="studio-game-card__body">
         <h1 className="studio-game-card__title">{copy.title}</h1>
-        <p className="studio-game-card__instruction">{copy.instruction}</p>
+        {voice.beats.length > 0 ? <ol className="studio-game-beats" aria-label={voice.beatsLabel}>{voice.beats.map((beat, index) => <li key={beat} style={{ "--beat": index } as React.CSSProperties}>{beat}</li>)}</ol>
+          : <p className="studio-game-card__instruction">{copy.instruction}</p>}
         <div className="studio-game-card__actions studio-game-card__intro-actions">
-          <div className="studio-game-card__guide"><ArborMascot size={64} mood="wave" animate={false} /><span>{words.guide}</span></div>
+          <StudioGameGuide guide={voice.guide} name={voice.name} line={voice.intro} />
           <button type="button" data-studio-start="" className="studio-game-button-v2 studio-game-button-v2--primary" onClick={() => setPhase("play")}>{words.start}<ArrowRight size={22} aria-hidden="true" /></button>
         </div>
       </div> : <div className="studio-game-card__body">
-        <h2 className="studio-game-card__title">{words.done}</h2>
-        <p className="studio-game-card__instruction">{copy.title}</p>
+        <p className="studio-game-card__kicker">{copy.title}</p>
+        <h2 className="studio-game-card__title">{voice.finish}</h2>
+        <StudioGameGuide guide={voice.guide} name={voice.name} line={voice.finishLine} celebrate />
+        {voice.transfer && <p className="studio-game-card__transfer">{voice.transfer}</p>}
         {creation && <StudioCreationResult childId={childProfile.id} creation={creation} />}
         {/* Remains mounted while the owner-scoped ledger hydrates/queues writes.
             The single canonical portrait is already in the environment window. */}

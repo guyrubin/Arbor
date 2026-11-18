@@ -32,6 +32,9 @@ export const SILENT_WAV = (() => {
 
 const elements = new Map<Channel, HTMLAudioElement>();
 const blessed = new Set<Channel>();
+// A pending play() is not proof of iOS gesture permission. Keep unlock
+// listeners active until both promises settle, and retry refused playback.
+const pendingBless = new Map<Channel, Promise<void>>();
 
 /** The channel's one element (created on first use), or null without Audio. */
 export function kidVoiceElement(channel: Channel): HTMLAudioElement | null {
@@ -60,7 +63,7 @@ export function kidVoiceBlessed(): boolean {
  *  (a real clip started by this same tap) counts as blessed and is left alone. */
 export function blessKidVoice(): void {
   for (const channel of CHANNELS) {
-    if (blessed.has(channel)) continue;
+    if (blessed.has(channel) || pendingBless.has(channel)) continue;
     const el = kidVoiceElement(channel);
     if (!el) return;
     if (!el.paused) {
@@ -69,22 +72,30 @@ export function blessKidVoice(): void {
     }
     try {
       el.src = SILENT_WAV;
-      // iOS lifts the element's gesture rule at this call; the promise only
-      // says whether the silence itself played.
-      blessed.add(channel);
       const p = el.play();
       if (p && typeof p.then === "function") {
-        p.then(
+        pendingBless.set(channel, p);
+        void p.then(
           () => {
+            if (pendingBless.get(channel) !== p) return;
+            pendingBless.delete(channel);
+            blessed.add(channel);
             if (el.src === SILENT_WAV) el.pause();
           },
           () => {
-            // refused (no gesture after all): try again on the next tap
-            if (el.src === SILENT_WAV) blessed.delete(channel);
+            // NotAllowedError/AbortError must not strand a later page in silence.
+            // A changed src is not proof that this gesture succeeded.
+            if (pendingBless.get(channel) !== p) return;
+            pendingBless.delete(channel);
+            blessed.delete(channel);
           },
         );
+      } else {
+        // Legacy engines may return void from play().
+        blessed.add(channel);
       }
     } catch {
+      pendingBless.delete(channel);
       blessed.delete(channel);
     }
   }
@@ -102,6 +113,12 @@ export function installKidVoiceUnlock(): () => void {
   const onGesture = () => {
     blessKidVoice();
     if (kidVoiceBlessed()) remove();
+    else if (pendingBless.size) {
+      // Do not uninstall retry listeners while a play() can still reject.
+      void Promise.allSettled([...pendingBless.values()]).then(() => {
+        if (kidVoiceBlessed()) remove();
+      });
+    }
   };
   const remove = () => {
     for (const type of UNLOCK_EVENTS) document.removeEventListener(type, onGesture, true);
@@ -113,6 +130,9 @@ export function installKidVoiceUnlock(): () => void {
 
 /** Stop both channels (Kid Mode closed, Sound turned off, a hidden tab). */
 export function stopKidVoice(): void {
+  // Closing Kid Mode or hiding the page can abort a pending silent play.
+  // Ignore that old settlement; the next gesture can try again.
+  pendingBless.clear();
   for (const el of elements.values()) {
     el.onended = null;
     el.onerror = null;

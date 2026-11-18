@@ -26,11 +26,16 @@
  *     fail-closed channel; it renders only once the channel exists or the
  *     parent already opted in.
  *
+ * v10.1 (N-Remind boards): the page is the home of its own controls, operated
+ * in place — today on the day arc (the clock now, the quiet hours you set, the
+ * next nudge if one is due, the max-2 contract as two slots), the two nudge
+ * switches and "When Arbor may reach you" (quiet hours, calmer stretches) in
+ * the rail, then Delivery. No snooze, no invented nudge history.
+ *
  * ENTRY POINTS: Settings modal → "Smart Reminders" row (always visible).
  * Also reachable from Ask Arbor section via setActiveTab("smart-reminders").
  */
 import React, { useState, useMemo, useCallback } from "react";
-import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -52,21 +57,16 @@ import { formatHour } from "../../lib/pulse";
 import PushPrimingCard from "../nextopen/PushPrimingCard";
 import WeeklyEmailRow from "../weekly/WeeklyEmailRow";
 import { usePushPriming } from "../../hooks/usePushPriming";
+import { requestOpenSettings } from "../layout/settingsBus";
 import { ageYearsOf } from "../../lib/age/forChild";
-
-// ── Token shorthands (all via var(--arbor-*), zero raw hex) ──────────────────
-const INK         = "var(--arbor-ink)";
-const MUTED       = "var(--arbor-muted)";
-const FAINT       = "var(--arbor-faint)";
-const RULE        = "var(--arbor-rule)";
-const RULE_STRONG = "var(--arbor-rule-strong)";
-const PAPER       = "var(--arbor-paper-elevated)";
-const PAPER_DEEP  = "var(--arbor-paper-deep)";
-const GREEN       = "var(--arbor-green-ink)";
-const GREEN_SOFT  = "var(--arbor-green-soft)";
-const CLAY        = "var(--arbor-clay)";
-const ON_ACCENT   = "var(--arbor-on-accent)";
-const LAV_SOFT    = "var(--arbor-lav-soft)";
+import { DsRoot, Fig, Guide, Route, RouteSection, Row12, Scene, StartHere, Tile, type GuideStop } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import NowDayArc from "../companion/now10/NowDayArc";
+import NowWorthKnowing from "../companion/now10/NowWorthKnowing";
+import { NOW_V10_COPY } from "../companion/now10/nowV10Copy";
+import { NOW_COPY } from "../companion/nowViewCopy";
+import "../companion/now10/nowV10.css";
+import "./smartRemindersV10.css";
 
 // ── Hours available in the quiet-hours picker ────────────────────────────────
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
@@ -80,31 +80,29 @@ const KIND_KEY: Record<string, string> = {
   bedtime:  "sr.nextNudge.kind.bedtime",
 };
 
-// ── Type definitions ──────────────────────────────────────────────────────────
 /* B-OCCL-01 (6 Oct): the route's ONE data-primary-move literal, spread on the
    control that performs the move — the first nudge-type switch — never on the
    prefs wrapper. A static const (or undefined), so whiteLabelContrast resolves
    it as a data attribute. */
 const PREFS_STAMP = { "data-primary-move": "set-reminder-prefs" } as const;
 
-const NUDGE_TYPES: Array<{
-  key: NudgeTypeKey;
-  labelKey: string;
-  descKey: string;
-  tone: string;
-  toneSoft: string;
-}> = [
-  // B-TODAY-02: one switch per NudgeTypeKey; lib/jitai NUDGE_KIND_PREF maps
-  // every engine kind onto exactly one of these.
-  { key: "guidance", labelKey: "sr.types.guidance.label", descKey: "sr.types.guidance.desc", tone: CLAY,  toneSoft: GREEN_SOFT },
-  { key: "moments",  labelKey: "sr.types.moments.label",  descKey: "sr.types.moments.desc",  tone: GREEN, toneSoft: GREEN_SOFT },
+// B-TODAY-02: one switch per NudgeTypeKey; lib/jitai NUDGE_KIND_PREF maps
+// every engine kind onto exactly one of these.
+const NUDGE_TYPES: Array<{ key: NudgeTypeKey; labelKey: string; descKey: string }> = [
+  { key: "guidance", labelKey: "sr.types.guidance.label", descKey: "sr.types.guidance.desc" },
+  { key: "moments",  labelKey: "sr.types.moments.label",  descKey: "sr.types.moments.desc" },
 ];
+
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function SmartRemindersPanel() {
   const push = usePushPriming();
   const { childProfile, behaviorLogs } = useArbor();
   const { t, uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
+  const v10 = NOW_V10_COPY[lang];
+  const composition = useComposition();
+  const desk = composition === "desk";
 
   // Load prefs from localStorage on first render — no Firestore, no child data.
   const [prefs, setPrefs] = useState<JitaiPrefs>(loadPrefs);
@@ -145,7 +143,7 @@ export default function SmartRemindersPanel() {
 
   // TJB-03: the preview runs the SAME gated engine RhythmCue runs — the
   // parent's saved prefs + today's shown count are passed in, so the "next
-  // nudge" card shows what will actually fire, not what the engine could.
+  // nudge" shows what will actually fire, not what the engine could.
   const shownToday = useMemo(() => shownNudgesToday(), []);
   const nudge = useMemo(
     () =>
@@ -162,6 +160,11 @@ export default function SmartRemindersPanel() {
       ),
     [rhythm, loggedTodayCount, recent7d, firstName, prefs, shownToday],
   );
+  const [now] = useState(() => new Date());
+  const shown = Math.min(shownToday.length, NUDGE_DAILY_CEILING);
+  // The window nudges are held for: only when the parent routes nudges to calmer stretches and the family's own rhythm names one.
+  const nudgeWindow = prefs.calmWindowOnly && rhythm.calmWindow ? { from: rhythm.calmWindow.startHour, to: rhythm.calmWindow.endHour + 1 } : null;
+  const free = NUDGE_DAILY_CEILING - shown;
 
   // ── Persist helper ──────────────────────────────────────────────────────────
   const persist = useCallback((next: JitaiPrefs) => {
@@ -174,429 +177,153 @@ export default function SmartRemindersPanel() {
   const toggleType = (key: NudgeTypeKey) => {
     persist({ ...prefs, types: { ...prefs.types, [key]: !prefs.types[key] } });
   };
+  const setQuietStart = (h: number) => persist({ ...prefs, quietStart: h });
+  const setQuietEnd = (h: number) => persist({ ...prefs, quietEnd: h });
+  const toggleCalmWindow = () => persist({ ...prefs, calmWindowOnly: !prefs.calmWindowOnly });
 
-  const setQuietStart = (h: number) => {
-    persist({ ...prefs, quietStart: h });
-  };
+  const switchWords = { on: v10.remOn, off: v10.remOff };
+  const stops: GuideStop[] = [
+    { id: "sr-today", title: v10.remToday, sub: v10.remTodaySub },
+    { id: "sr-kinds", title: t("sr.types.heading"), sub: v10.remKindsSub },
+    { id: "sr-delivery", title: t("elev.sr.delivery.heading"), sub: v10.remDeliveryStopSub },
+  ];
 
-  const setQuietEnd = (h: number) => {
-    persist({ ...prefs, quietEnd: h });
-  };
+  /* MAX-2 CONTRACT — always visible (AC-5): its own small card after the switches (N-Remind V77). Today's count is said once,
+     beside the bells under the arc. */
+  const contract = <div className="nx-ex sr-contract" data-testid="sr-max2-contract" role="note" aria-label={t("sr.max2")}>
+    <b>{t("sr.max2")}</b>
+  </div>;
 
-  const toggleCalmWindow = () => {
-    persist({ ...prefs, calmWindowOnly: !prefs.calmWindowOnly });
-  };
+  // ── Stop 1 · today on the arc: the next nudge (or none) in the bowl; the count and the two slots under it ──
+  const bells = <span className="line nx-bells" aria-hidden="true">
+    {Array.from({ length: NUDGE_DAILY_CEILING }, (_, i) => <span key={i} className={[i < shown ? "nx-bell" : "nx-bell free", desk && "lg"].filter(Boolean).join(" ")}><Icon name="notifications" size={desk ? 24 : 20} /></span>)}
+  </span>;
+  // ENG-02: the contract is a live count, not a promise — said once, here.
+  const slots = <div className="line sr-slots" data-testid="sr-max2-count" role="group" aria-label={t("sr.max2.count", { n: shown })}>
+    <Fig size={desk ? "md" : "sm"} n={shown} unit={v10.remShown(NUDGE_DAILY_CEILING)} sub={free === NUDGE_DAILY_CEILING ? v10.remBothFree : free > 0 ? v10.remOneFree : v10.remNoneFree} />
+    {bells}
+  </div>;
+  const today = <Scene field="now" className={desk ? "x8 sr-stage" : "sr-stage"}
+    orbs={desk ? [{ size: 420, left: -240, bottom: -280, opacity: 0.6 }, { size: 360, right: -170, top: -230, opacity: 0.7, b: true }] : [{ size: 240, left: -160, bottom: -150, opacity: 0.55 }, { size: 220, right: -120, top: -130, opacity: 0.65, b: true }]}>
+    <div className="line between sr-stage-head">
+      <span className="gsec"><h1 className="kicker">{v10.remKicker}</h1><StartHere>{v10.startHere}</StartHere></span>
+    </div>
+    <div data-module="reminders-contract" className="sr-today">
+      <NowDayArc composition={composition} now={now} quietStart={prefs.quietStart} quietEnd={prefs.quietEnd} evening={false} window={nudgeWindow} variant="reminders" copy={v10}>
+        {/* NEXT NUDGE (AC-1): what the gated engine would show next, or nothing — centred in the arc. */}
+        <div data-testid="sr-next-nudge" aria-label={t("sr.nextNudge.label")} className="sr-next">
+          {nudge ? <>
+            <p className="hero sr-hero">{t(KIND_KEY[nudge.kind] ?? "sr.nextNudge.kind.prep")}</p>
+            <p className="sr-sub" dir="auto">{t(nudge.headlineKey, nudge.vars)}</p>
+          </> : <p className="hero sr-hero">{t("sr.nextNudge.none")}</p>}
+        </div>
+        {/* Board N-Remind-D: the count and the two slots sit in the bowl, under the hero. */}
+        {desk && slots}
+      </NowDayArc>
+      {!desk && slots}
+    </div>
+    <p className="sr-subtitle">{t("sr.subtitle")}</p>
+  </Scene>;
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Stop 2 · nudge types and when Arbor may reach you (the prefs module, operated in place) ──
+  const kinds = <div className="sr-kinds" data-module="reminders-prefs">
+    {NUDGE_TYPES.map(({ key, labelKey, descKey }, i) => {
+      const on = prefs.types[key];
+      return <div key={key} className={on ? "nx-ctl" : "nx-ctl off"} data-testid={`sr-toggle-${key}`}>
+        <span><b>{t(labelKey)}</b><span className="d">{t(descKey)}</span></span>
+        <Toggle on={on} onToggle={() => toggleType(key)} label={t(labelKey)} words={switchWords} stamped={i === 0} />
+      </div>;
+    })}
+    {contract}
+    {/* QUIET HOURS (AC-3) and CALM-WINDOW SCHEDULING (AC-4), in place */}
+    <div className="nx-ex sr-when">
+      <div className="line" style={{ gap: 10 }}>
+        <span className="nx-ico sr-when-ico" aria-hidden="true"><Icon name="schedule" size={22} /></span>
+        <span><b className="sr-when-title">{t("elev.sr.more.title")}</b><span className="small">{t("elev.sr.more.sub")}</span></span>
+      </div>
+      <p className="small sr-quiet-desc">{t("sr.quiet.desc")}</p>
+      <div className="line sr-quiet" style={{ gap: 10 }}>
+        <HourSelect id="sr-quiet-start" label={t("sr.quiet.start")} value={prefs.quietStart} uiLang={uiLang} onChange={setQuietStart} />
+        <HourSelect id="sr-quiet-end" label={t("sr.quiet.end")} value={prefs.quietEnd} uiLang={uiLang} onChange={setQuietEnd} />
+      </div>
+      <p className="sr-summary" data-testid="sr-quiet-summary">
+        {t("sr.quiet.summary", { start: formatHour(prefs.quietStart, uiLang), end: formatHour(prefs.quietEnd, uiLang) })}
+      </p>
+      <div className={prefs.calmWindowOnly ? "nx-ctl sr-calm" : "nx-ctl sr-calm off"} data-testid="sr-calm-window-row">
+        <span><b>{t("sr.calm.label")}</b><span className="d">{t("sr.calm.desc")}</span></span>
+        <Toggle on={prefs.calmWindowOnly} onToggle={toggleCalmWindow} label={t("sr.calm.label")} words={switchWords} />
+      </div>
+    </div>
+    {savedFlash && <p className="sr-saved" role="status" aria-live="polite" data-testid="sr-saved-flash"><Icon name="check_circle" size={16} />{t("sr.saved")}</p>}
+  </div>;
+
+  // ── Stop 3 · delivery (B-TODAY-16): in the app, phone reminders, the weekly email ──
+  const delivery = <div data-module="reminders-delivery" className="sr-delivery">
+    <div className="nx-ch">
+      <div className="live"><Icon name="grid_view" size={26} /><b>{v10.remInApp}</b>{v10.remInAppSub}<span className="nx-on"><i aria-hidden="true" />{v10.remOn}</span></div>
+    </div>
+    {/* One mount app-wide (state from hooks/usePushPriming); honest states (lib/pushPriming: "Arbor sends nothing" while pushCapable() is false). */}
+    <PushPrimingCard capable={push.capable} permission={push.permission} registered={push.registered} pending={push.pending} onToggle={push.onToggle} />
+    {/* v3 F-NOW-3: the weekly-report email opt-in (its own store, recapEmail.ts; fail-closed channel). */}
+    <WeeklyEmailRow childFirst={firstName} />
+  </div>;
+  const know = <NowWorthKnowing lang={lang} kicker={v10.worthKnowing} readMinutes={NOW_COPY[lang].readMinutes} composition={composition} now={now} cardId="transitions-warnings" source="smart-reminders" />;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="space-y-6 max-w-[680px]"
-    >
-      {/* Header */}
-      <div>
-        <h1
-          className="text-2xl md:text-[2rem] font-extrabold leading-tight"
-          style={{ fontFamily: "var(--font-display)", color: INK }}
-        >
-          {t("sr.title")}
-        </h1>
-        <p className="text-sm mt-2 max-w-xl leading-relaxed" style={{ color: MUTED }}>
-          {t("sr.subtitle")}
-        </p>
-      </div>
-
-      {/* PER-TYPE TOGGLES (AC-2). The declared move is set-reminder-prefs: this
-          is the block where the parent decides what Arbor may send.
-          B-OCCL-01 (6 Oct): the stamp is on the FIRST switch (Toggle
-          stamped), not on this wrapper (276 px at 375, it ran under the
-          capture dock), and the block comes BEFORE the max-2 contract card
-          (≈ 237 px at 375) — the contract stays always visible, under it. */}
-      <div data-module="reminders-prefs" style={{ display: "contents" }}>
-      <Section title={t("sr.types.heading")} icon={<Icon name="notifications" size={16} />}>
-        <div className="space-y-3">
-          {NUDGE_TYPES.map(({ key, labelKey, descKey, tone, toneSoft }, i) => {
-            const on = prefs.types[key];
-            return (
-              <div
-                key={key}
-                className="rounded-2xl p-4 flex items-center justify-between gap-4"
-                style={{
-                  background: on ? toneSoft : PAPER_DEEP,
-                  border: `1px solid ${on ? tone : RULE}`,
-                  transition: "background 0.15s, border-color 0.15s",
-                }}
-                data-testid={`sr-toggle-${key}`}
-              >
-                <div className="min-w-0">
-                  <p className="text-[13px] font-bold" style={{ color: INK }}>
-                    {t(labelKey)}
-                  </p>
-                  <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
-                    {t(descKey)}
-                  </p>
-                </div>
-                <Toggle
-                  on={on}
-                  onToggle={() => toggleType(key)}
-                  label={t(labelKey)}
-                  activeColor={tone}
-                  stamped={i === 0}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </Section>
-      </div>
-
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route (B-OCCL-01: the first
-          nudge-type switch above). */}
-      {/* MAX-2 CONTRACT CARD — always visible (AC-5) */}
-      {/* B-TODAY-16: one card, two halves — the max-2 contract and, under a
-          rule, the next nudge (it lost its own module slot to Delivery). */}
-      <div
-        data-module="reminders-contract"
-        className="rounded-2xl overflow-hidden"
-        style={{ border: `1px solid ${RULE_STRONG}` }}
-      >
-      <div
-        data-testid="sr-max2-contract"
-        className="p-4 flex items-start gap-3"
-        style={{ background: LAV_SOFT }}
-        role="note"
-        aria-label={t("sr.max2")}
-      >
-        <span
-          className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
-          style={{ width: 36, height: 36, background: PAPER, color: CLAY }}
-          aria-hidden="true"
-        >
-          <Icon name="notifications" size={18} />
-        </span>
-        <div className="min-w-0">
-          <p className="text-[13px] leading-relaxed font-medium" style={{ color: INK }}>
-            {t("sr.max2")}
-          </p>
-          {/* ENG-02: the contract is a live count, not a promise. */}
-          <p className="mt-1 text-[12px] font-bold" style={{ color: MUTED }} data-testid="sr-max2-count">
-            {t("sr.max2.count", { n: Math.min(shownToday.length, NUDGE_DAILY_CEILING) })}
-          </p>
-        </div>
-      </div>
-
-      {/* NEXT NUDGE (AC-1) — B-TODAY-16: the contract card's second half (no
-          own data-module stamp), so the page keeps 3 top-level modules once
-          Delivery takes a slot: contract · prefs · delivery. */}
-      <div
-        className="p-4"
-        style={{ background: PAPER_DEEP, borderTop: `1px solid ${RULE}` }}
-        data-testid="sr-next-nudge"
-        aria-label={t("sr.nextNudge.label")}
-      >
-        <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wide" style={{ color: FAINT }}>{t("sr.nextNudge.label")}</p>
-        {nudge ? (
-          <div className="flex items-center gap-3">
-            <span
-              className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
-              style={{ width: 36, height: 36, background: GREEN_SOFT, color: GREEN }}
-              aria-hidden="true"
-            >
-              <Icon name="notifications" size={18} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[14px] font-bold" style={{ color: INK }}>
-                {t(KIND_KEY[nudge.kind] ?? "sr.nextNudge.kind.prep")}
-              </p>
-              <p className="text-[12px] mt-0.5" style={{ color: MUTED }}>
-                {t(nudge.headlineKey, nudge.vars)}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <span
-              className="inline-flex items-center justify-center rounded-xl flex-shrink-0"
-              style={{ width: 36, height: 36, background: PAPER, color: FAINT }}
-              aria-hidden="true"
-            >
-              <Icon name="notifications_off" size={18} />
-            </span>
-            <p className="text-[13px]" style={{ color: MUTED }}>
-              {t("sr.nextNudge.none")}
-            </p>
-          </div>
-        )}
-      </div>
-      </div>
-
-      {/* B-TODAY-16 — DELIVERY: phone reminders live where nudges are
-          configured, above the quiet-hours disclosure. One mount app-wide
-          (Growth no longer mounts it; state from hooks/usePushPriming). The
-          card keeps its honest states (lib/pushPriming: "Arbor sends nothing"
-          while pushCapable() is false). */}
-      <div data-module="reminders-delivery" style={{ display: "contents" }}>
-      <Section title={t("elev.sr.delivery.heading")} icon={<Icon name="send" size={16} />}>
-        <PushPrimingCard
-          capable={push.capable}
-          permission={push.permission}
-          registered={push.registered}
-          pending={push.pending}
-          onToggle={push.onToggle}
-        />
-        {/* v3 F-NOW-3: the weekly-report email opt-in left #/weekly for this
-            section (its own store, recapEmail.ts; fail-closed channel). */}
-        <WeeklyEmailRow childFirst={firstName} />
-      </Section>
-      </div>
-
-      {/* R25 (item 11) — #/smart-reminders rendered 5 top-level modules against a declared
-          moduleBudget of 3. The tail below is DEMOTED, never removed: one
-          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
-          `speech-more` already ships, so every capability keeps its door (law 6)
-          while the fold belongs to the primary move. Demoted modules keep their
-          own `data-module` stamp and add `data-module-demoted`, which is what
-          makes the budget rule countable: top-level = stamps minus demoted. */}
-      <details data-module-disclosure="smart-reminders-more" className="rounded-2xl overflow-hidden" style={{ background: PAPER, border: `1px solid ${RULE}` }}>
-        <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
-          <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
-            <Icon name="schedule" size={18} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.sr.more.title")}</span>
-            <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.sr.more.sub")}</span>
-          </span>
-          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
-        </summary>
-        <div className="px-4 pb-4 space-y-4">
-      {/* QUIET HOURS (AC-3) */}
-      <div data-module="reminders-quiet" data-module-demoted style={{ display: "contents" }}>
-      <Section title={t("sr.quiet.heading")} icon={<Icon name="schedule" size={16} />}>
-        <div
-          className="rounded-2xl p-4 space-y-4"
-          style={{ background: PAPER_DEEP, border: `1px solid ${RULE}` }}
-        >
-          <p className="text-[13px]" style={{ color: MUTED }}>
-            {t("sr.quiet.desc")}
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Quiet start */}
-            <div>
-              <label
-                htmlFor="sr-quiet-start"
-                className="text-[12px] font-bold block mb-1.5"
-                style={{ color: MUTED }}
-              >
-                {t("sr.quiet.start")}
-              </label>
-              <select
-                id="sr-quiet-start"
-                value={prefs.quietStart}
-                onChange={(e) => setQuietStart(Number(e.target.value))}
-                className="w-full rounded-xl px-3 font-bold text-[13px]"
-                style={{
-                  minHeight: 44,
-                  background: PAPER,
-                  color: INK,
-                  border: `1px solid ${RULE_STRONG}`,
-                  outline: "none",
-                }}
-                data-testid="sr-quiet-start"
-                aria-label={`${t("sr.quiet.start")}: ${formatHour(prefs.quietStart, uiLang)}`}
-              >
-                {HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{formatHour(h, uiLang)}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Quiet end */}
-            <div>
-              <label
-                htmlFor="sr-quiet-end"
-                className="text-[12px] font-bold block mb-1.5"
-                style={{ color: MUTED }}
-              >
-                {t("sr.quiet.end")}
-              </label>
-              <select
-                id="sr-quiet-end"
-                value={prefs.quietEnd}
-                onChange={(e) => setQuietEnd(Number(e.target.value))}
-                className="w-full rounded-xl px-3 font-bold text-[13px]"
-                style={{
-                  minHeight: 44,
-                  background: PAPER,
-                  color: INK,
-                  border: `1px solid ${RULE_STRONG}`,
-                  outline: "none",
-                }}
-                data-testid="sr-quiet-end"
-                aria-label={`${t("sr.quiet.end")}: ${formatHour(prefs.quietEnd, uiLang)}`}
-              >
-                {HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{formatHour(h, uiLang)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Summary line */}
-          <p
-            className="text-[12px] rounded-xl px-3 py-2 font-medium"
-            style={{ background: GREEN_SOFT, color: GREEN }}
-            data-testid="sr-quiet-summary"
-          >
-            {t("sr.quiet.summary", {
-              start: formatHour(prefs.quietStart, uiLang),
-              end: formatHour(prefs.quietEnd, uiLang),
-            })}
-          </p>
-        </div>
-      </Section>
-      </div>
-
-      {/* CALM-WINDOW SCHEDULING (AC-4) */}
-      <div data-module="reminders-calm" data-module-demoted style={{ display: "contents" }}>
-      <Section title={t("sr.calm.heading")} icon={<Icon name="bolt" size={16} />}>
-        <div
-          className="rounded-2xl p-4 flex items-center justify-between gap-4"
-          style={{
-            background: prefs.calmWindowOnly ? GREEN_SOFT : PAPER_DEEP,
-            border: `1px solid ${prefs.calmWindowOnly ? GREEN : RULE}`,
-            transition: "background 0.15s, border-color 0.15s",
-          }}
-          data-testid="sr-calm-window-row"
-        >
-          <div className="min-w-0">
-            <p className="text-[13px] font-bold" style={{ color: INK }}>
-              {t("sr.calm.label")}
-            </p>
-            <p className="text-[12px] mt-0.5 leading-relaxed" style={{ color: MUTED }}>
-              {t("sr.calm.desc")}
-            </p>
-          </div>
-          <Toggle
-            on={prefs.calmWindowOnly}
-            onToggle={toggleCalmWindow}
-            label={t("sr.calm.label")}
-            activeColor={GREEN}
-          />
-        </div>
-      </Section>
-      </div>
-
-        </div>
-      </details>
-
-      {/* Saved confirmation */}
-      {savedFlash && (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          className="flex items-center gap-2 text-[13px] font-bold"
-          style={{ color: GREEN }}
-          role="status"
-          aria-live="polite"
-          data-testid="sr-saved-flash"
-        >
-          <Icon name="check_circle" size={16} />
-          {t("sr.saved")}
-        </motion.div>
-      )}
-    </motion.div>
+    <DsRoot composition={composition} className="now-v10 sr-v10" dir={lang === "he" ? "rtl" : "ltr"}>
+      <Guide stops={stops} mini={!desk} label={v10.onThisPage} />
+      <Route composition={composition} tight={!desk}>
+        <RouteSection id="sr-today" n={1} on>
+          {desk ? <Row12>
+            {today}
+            <aside className="siderail cards x4 sr-rail" id="sr-kinds" aria-labelledby="sr-kinds-title">
+              <div className="rh"><span className="rstop inline" aria-hidden="true">2</span><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2><button type="button" className="ds-link sr-settings" onClick={() => requestOpenSettings()}>{t("nav.settings")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button></div>
+              {kinds}
+            </aside>
+          </Row12> : today}
+        </RouteSection>
+        {!desk && <RouteSection id="sr-kinds" n={2} aria-labelledby="sr-kinds-title">
+          <div className="rhead"><h2 className="h3" id="sr-kinds-title">{t("sr.types.heading")}</h2><button type="button" className="ds-link sr-settings" onClick={() => requestOpenSettings()}>{t("nav.settings")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></button></div>
+          {kinds}
+        </RouteSection>}
+        <RouteSection id="sr-delivery" n={3} aria-labelledby="sr-delivery-title" stopTop={desk ? 2 : 14}>
+          {/* Delivery is named once: the tile's head on desktop, the section head on the phone. */}
+          {!desk && <div className="rhead"><h2 className="h3" id="sr-delivery-title">{t("elev.sr.delivery.heading")}</h2><span className="small">{v10.remDeliverySub}</span></div>}
+          {desk ? <Row12><Tile icon="link" title={t("elev.sr.delivery.heading")} titleId="sr-delivery-title" sub={v10.remDeliverySub} className="x8 sr-delivery-tile">{delivery}</Tile>{know}</Row12>
+            : <><section className="vt sr-delivery-tile" aria-labelledby="sr-delivery-title">{delivery}</section>{know}</>}
+        </RouteSection>
+      </Route>
+    </DsRoot>
   );
 }
 
-// ── Section wrapper ───────────────────────────────────────────────────────────
-function Section({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <div className="flex items-center gap-2 mb-3">
-        <span
-          className="inline-flex items-center justify-center rounded-lg"
-          style={{ width: 28, height: 28, background: GREEN_SOFT, color: GREEN }}
-          aria-hidden="true"
-        >
-          {icon}
-        </span>
-        <h2
-          className="text-[13px] font-extrabold uppercase tracking-wide"
-          style={{ color: FAINT }}
-        >
-          {title}
-        </h2>
-      </div>
-      {children}
-    </section>
-  );
+// ── Hour picker (a real <select>, drawn as the board's "Start: 9pm") ─────────
+function HourSelect({ id, label, value, uiLang, onChange }: { id: string; label: string; value: number; uiLang: "en" | "he"; onChange: (h: number) => void }) {
+  // The select covers the whole 44 px field (transparent), so the drawn "Start: 9pm" is the touch target.
+  return <label className="nx-sel grow" htmlFor={id}>
+    <span><small>{label}</small><span className="nx-sel-v" aria-hidden="true">{formatHour(value, uiLang)}</span>
+      <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))} data-testid={id} aria-label={`${label}: ${formatHour(value, uiLang)}`}>
+        {HOUR_OPTIONS.map((h) => <option key={h} value={h}>{formatHour(h, uiLang)}</option>)}
+      </select>
+    </span>
+    <Icon name="expand_more" size={20} />
+  </label>;
 }
 
 // ── Toggle switch ─────────────────────────────────────────────────────────────
-function Toggle({
-  on,
-  onToggle,
-  label,
-  activeColor,
-  stamped = false,
-}: {
+function Toggle({ on, onToggle, label, words, stamped = false }: {
   on: boolean;
   onToggle: () => void;
   label: string;
-  activeColor: string;
+  /** The state in words beside the track (V77: a switch says On or Off). */
+  words: { on: string; off: string };
   /** B-OCCL-01: the route's primary-move stamp goes on the FIRST switch. */
   stamped?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onToggle}
-      {...(stamped ? PREFS_STAMP : undefined)}
-      className="relative rounded-full transition flex-shrink-0"
-      style={{
-        width: 44,
-        height: 26,
-        minWidth: 44,
-        minHeight: 44,    // touch target via padding compensation
-        background: on ? activeColor : RULE_STRONG,
-        border: "none",
-        cursor: "pointer",
-        padding: 0,
-        display: "flex",
-        alignItems: "center",
-      }}
-    >
-      <span
-        className="absolute rounded-full bg-white transition-all"
-        style={{
-          width: 20,
-          height: 20,
-          top: 3,
-          insetInlineStart: on ? 21 : 3,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
-          transition: "inset-inline-start 0.15s",
-        }}
-        aria-hidden="true"
-      />
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onToggle} {...(stamped ? PREFS_STAMP : undefined)} className="sr-switch">
+      <span className={on ? "nx-sw" : "nx-sw off"} aria-hidden="true" />
+      <span className="sr-switch-word" aria-hidden="true">{on ? words.on : words.off}</span>
     </button>
   );
 }

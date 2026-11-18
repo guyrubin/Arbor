@@ -289,7 +289,7 @@ export default function RecapStoryCards({
             <Icon name="chevron_right" size={20} className="rtl:-scale-x-100" />
           </button>
         )}
-        <div className={`flex items-center gap-2 ${last ? "" : "pe-14"} text-[11px] font-extrabold uppercase tracking-[0.12em]`} style={{ color: "var(--arbor-muted)" }}>
+        <div className={`flex items-center gap-2 ${last ? "" : "pe-14"} text-[12px] font-extrabold uppercase tracking-[0.12em]`} style={{ color: "var(--arbor-muted)" }}>
           <Icon name={CARD_ICON[card.kind]} size={15} />
           {card.kind === "new" && rc("elev.recap.new.eyebrow")}
           {card.kind === "helped" && rc("elev.recap.helped.eyebrow")}
@@ -313,14 +313,14 @@ export default function RecapStoryCards({
                       <span className="min-w-0 flex-1">
                         <span dir="auto" className="block text-[14px] font-bold leading-snug" style={{ color: "var(--arbor-ink)" }}>{title}</span>
                         {sub && line.kind !== "moments" && (
-                          <span dir="auto" className="mt-0.5 block text-[12.5px]" style={{ color: "var(--arbor-muted)" }}>{sub}</span>
+                          <span dir="auto" className="mt-0.5 block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{sub}</span>
                         )}
                       </span>
                     </li>
                   );
                 })}
                 {card.hiddenCount > 0 && (
-                  <li className="px-1 text-[12.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                  <li className="px-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                     {t("elev.sincevisit.more", { n: num(card.hiddenCount) })}
                   </li>
                 )}
@@ -339,7 +339,7 @@ export default function RecapStoryCards({
                 {card.steps.map((row) => (
                   <li key={row.step} className="rounded-2xl p-4" style={{ background: "var(--arbor-paper-deep)" }}>
                     <p dir="auto" className="text-[14px] font-extrabold leading-snug" style={{ color: "var(--arbor-ink)" }}>{row.step}</p>
-                    <p className="mt-1 text-[12.5px] font-bold" style={{ color: "var(--arbor-muted)" }}>
+                    <p className="mt-1 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
                       {[
                         row.helped > 0 ? rc("elev.recap.helped.helped", { n: num(row.helped) }) : null,
                         row.somewhat > 0 ? rc("elev.recap.helped.somewhat", { n: num(row.somewhat) }) : null,

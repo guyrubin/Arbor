@@ -102,11 +102,11 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
           <IconBadge tone={tone} size={34}><Icon name={ms} size={18} fill={1} /></IconBadge>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{tt(KIND_LABEL_KEY[signal.kind])}</span>
+              <span className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: PASTEL[tone].ink }}>{tt(KIND_LABEL_KEY[signal.kind])}</span>
               {/* Child-provenance chip — the CHILD did this (vs You/Arbor). */}
               {isChild && (
                 <span
-                  className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
+                  className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide rounded-md px-2 py-0.5"
                   style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}
                 >
                   <Icon name="child_care" size={12} fill={1} />
@@ -115,15 +115,15 @@ function SignalRow({ signal, childName }: { signal: TimelineSignal; childName?: 
               )}
               {/* B-DATA-10: resolved is a glyph + label, never a colour. */}
               {signal.resolved && (
-                <span data-testid="signal-resolved" className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-ink-soft)" }}>
+                <span data-testid="signal-resolved" className="inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-wide" style={{ color: "var(--arbor-ink-soft)" }}>
                   <Icon name="check" size={12} />
                   {t("beh.resolved")}
                 </span>
               )}
-              {signal.at && <span className="text-[10.5px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
+              {signal.at && <span className="text-[12px] font-semibold ms-auto" style={{ color: "var(--arbor-muted)" }}>{new Date(signal.at).toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}</span>}
             </div>
             <p className="text-sm font-extrabold mt-0.5" style={{ color: "var(--arbor-ink)" }} dir="auto">{signalTitle(signal, tt)}</p>
-            {detail && <p className="text-[12.5px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">{detail}</p>}
+            {detail && <p className="text-[12px] mt-0.5 leading-snug line-clamp-2" style={{ color: "var(--arbor-muted)" }} dir="auto">{detail}</p>}
             {meta && <div className="mt-2"><Chip tone={tone}>{meta}</Chip></div>}
           </div>
           {signal.photo && (
@@ -178,7 +178,7 @@ function MonthsSpine({ nodes, locale, tt }: { nodes: MonthNode[]; locale: string
                   </span>
                 </div>
               ))}
-              <p className="text-[11.5px] font-semibold mt-1.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              <p className="text-[12px] font-semibold mt-1.5" style={{ color: "var(--arbor-muted)" }} dir="auto">
                 {tt("elev.childsignals.months.by", { month: monthLabel(node.key), count: node.cumulativeMoments })}
               </p>
             </div>
@@ -307,14 +307,14 @@ export default function StoryTimelineTab() {
               <p
                 key={idx}
                 dir="auto"
-                className="text-[14.5px] leading-relaxed"
+                className="text-[14px] leading-relaxed"
                 style={{ color: "var(--arbor-ink-soft)", ...(idx === 0 ? { fontFamily: "var(--font-display), Georgia, serif" } : {}) }}
               >
                 {p}
               </p>
             ))}
             {!story.empty && (
-              <p className="text-[11px] font-semibold pt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              <p className="text-[12px] font-semibold pt-1" style={{ color: "var(--arbor-muted)" }} dir="auto">
                 {tt(`elev.childsignals.story.builtFrom.${story.factCount === 1 ? "one" : "many"}`, { count: story.factCount })}
               </p>
             )}
@@ -352,7 +352,7 @@ export default function StoryTimelineTab() {
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
-                className="touch-target inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap transition flex-shrink-0"
+                className="touch-target inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold whitespace-nowrap transition flex-shrink-0"
                 style={on ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
               >
                 {tt(f.labelKey)} <span>{n}</span>
@@ -387,7 +387,7 @@ export default function StoryTimelineTab() {
             <div key={group.key}>
               <div className="flex items-center gap-3 mb-3">
                 <h3 className="text-[12px] font-extrabold uppercase tracking-wider" style={{ color: "var(--arbor-muted)" }}>{group.label}</h3>
-                <span className="text-[11px] font-bold" style={{ color: "var(--arbor-rule-strong)" }}>{group.signals.length}</span>
+                <span className="text-[12px] font-bold" style={{ color: "var(--arbor-rule-strong)" }}>{group.signals.length}</span>
                 <span className="flex-1 h-px" style={{ background: "var(--arbor-rule)" }} />
               </div>
               <div className="relative space-y-2.5">

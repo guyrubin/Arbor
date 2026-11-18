@@ -49,6 +49,7 @@ import { searchnavText } from "../../lib/i18nElevation/searchnav";
 import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
 import { normalizeSearchText } from "../../lib/searchNormalize";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
+import { HOME_PILLS } from "../../lib/navigation";
 import { requestCompanionConversation } from "../../lib/companionConversation";
 import { goToRoute } from "../../hooks/useHashQuery";
 import { openFamilyTopicSheet } from "../companion/familyTopicEvents";
@@ -61,9 +62,14 @@ import type { SearchEntry, SearchKind } from "../../lib/searchIndex";
 export type SearchIndexModule = {
   getSearchIndex: () => readonly SearchEntry[];
   searchCatalog: (query: string, limit?: number, context?: HardMomentContext) => SearchEntry[];
+  /** v10: the route a query names exactly (optional for test seams). */
+  exactRouteFor?: (query: string) => ActiveTab | null;
 };
 
 export type RecordKind = "log" | "thread" | "milestone-record" | "plan" | "family-topic";
+/** v10 "Jump to or ask": a pill to jump to (empty field) and the Keep action
+ *  (your words, saved as written through the capture sheet). */
+export type ActionKind = "jump" | "keep";
 
 /** v3 IA-05 — the home (a place or a door) a row is listed under. */
 export interface SearchRowGroup {
@@ -75,7 +81,7 @@ export interface SearchRowGroup {
 /** One row either surface renders. Icon/colour are names/tokens, not nodes. */
 export interface SearchRow {
   id: string;
-  kind: SearchKind | RecordKind | "ask";
+  kind: SearchKind | RecordKind | ActionKind | "ask";
   label: string;
   sub: string;
   icon: string;
@@ -146,7 +152,7 @@ export const askFirst = (q: string): boolean => q.trim().endsWith("?");
 export function useSearchResults(q: string, opts: { enabled: boolean; catalogLimit?: number; recordLimit?: number; onNavigate?: () => void }) {
   const {
     behaviorLogs, milestones, actionPlans, conversations, childProfile,
-    setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach,
+    setActiveTab, openConversation, setSelectedLens, requestJournalFocus, seedCoach, openCaptureSheet,
     familyTopics = NO_TOPICS, selectFamilyTopic, updateFamilyTopic,
   } = useArbor();
   const { t, uiLang } = useLanguage();
@@ -165,12 +171,13 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
   }, [opts.enabled, indexMod]);
 
   const pick = (p: { en: string; he: string }) => (heLang ? p.he : p.en);
-  const RECORD_KIND_KEY: Record<RecordKind | "ask", string> = {
+  const RECORD_KIND_KEY: Record<RecordKind | ActionKind | "ask", string> = {
     log: "sm.kind.log", thread: "sm.kind.thread", "milestone-record": "sm.kind.milestone", plan: "sm.kind.plan", "family-topic": "sm.kind.topic", ask: "sm.kind.ask",
+    jump: "sm.kind.jump", keep: "sm.kind.keep",
   };
   /** The badge a row wears: record/ask kinds from sm.kind.*, catalogue kinds from searchnav. */
   const kindLabel = (k: SearchRow["kind"]) =>
-    k in RECORD_KIND_KEY ? t(RECORD_KIND_KEY[k as RecordKind | "ask"]) : searchnavText("elev.searchnav.kind." + k, heLang);
+    k in RECORD_KIND_KEY ? t(RECORD_KIND_KEY[k as RecordKind | ActionKind | "ask"]) : searchnavText("elev.searchnav.kind." + k, heLang);
 
   /** v3 IA-05 — where a destination lives: its home (place or door) as the
    *  row's group, and the breadcrumb "home › destination". A home's own route
@@ -216,7 +223,47 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
     };
   };
 
+  /** A kept moment as a row: read in place, the journal entry focused — never a Behaviors switch. */
+  const logRow = (l: (typeof behaviorLogs)[number]): SearchRow => {
+    const journal = placeOf("journal", t("nav.tab.journal"));
+    return {
+      id: "log-" + l.id, kind: "log",
+      label: behaviorTypeLabel(l.behaviorType, t, "full"), sub: l.trigger,
+      icon: "schedule", color: "var(--arbor-sky-ink)",
+      group: journal.group, ...crumbUnless(l.trigger, journal.crumb),
+      go: () => { requestJournalFocus("moment-" + l.id); setActiveTab("journal"); },
+    };
+  };
+
   const term = q.trim();
+
+  /**
+   * v10 "Jump to or ask" — the empty field is a map, not a blank: every pill of
+   * every home, under its home in the Sidebar's order (Talk opens its panel).
+   * Pill labels are the shell's own. It lists no record: private sources are
+   * read only for a real query (the matching guard), so the canvas's "Lately
+   * kept" list is not drawn.
+   */
+  const firstName = childProfile?.name?.trim().split(/\s+/)[0] ?? "";
+  const jump = useMemo<SearchRow[]>(() => {
+    const rows: SearchRow[] = [];
+    for (const named of [...COMPANION_PLACES, ...COMPANION_DOORS]) {
+      const group: SearchRowGroup = { id: named.id, label: pick(named), icon: named.icon };
+      const pills = HOME_PILLS[named.id];
+      if (!pills.length) {
+        rows.push({ id: "jump:" + named.tab, kind: "jump", label: pick(named), sub: "", icon: named.icon, color: "var(--arbor-clay-deep)", group,
+          go: () => (named.tab === "coach" ? requestCompanionConversation({ source: "search" }) : setActiveTab(named.tab)) });
+        continue;
+      }
+      for (const it of pills) {
+        // The shell's own pill labels (Shell.tsx): only Now's first pill is the place's name.
+        const label = it.tab === "overview" ? pick(named) : it.tab === "profile" && firstName ? t("nav.pill.profile.named", { name: firstName }) : t(it.labelKey ?? "nav.tab." + it.tab);
+        rows.push({ id: "jump:" + it.tab, kind: "jump", label, sub: "", icon: it.msIcon, color: "var(--arbor-clay-deep)", group, go: () => setActiveTab(it.tab) });
+      }
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heLang, firstName]);
 
   // Zero-query: the go-anywhere command list (route entries from the index),
   // home by home in the Sidebar's order (a stable sort keeps each home's own
@@ -271,17 +318,9 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
         },
       });
     }
-    const journal = placeOf("journal", t("nav.tab.journal"));
     for (const l of behaviorLogs) {
       if (!logSearchText(l).includes(needle)) continue;
-      out.push({
-        id: "log-" + l.id, kind: "log",
-        label: behaviorTypeLabel(l.behaviorType, t, "full"), sub: l.trigger,
-        icon: "schedule", color: "var(--arbor-sky-ink)",
-        group: journal.group, ...crumbUnless(l.trigger, journal.crumb),
-        // Read in place: the journal entry, focused — never a Behaviors switch.
-        go: () => { requestJournalFocus("moment-" + l.id); setActiveTab("journal"); },
-      });
+      out.push(logRow(l));
     }
     // v3 IA-05r: a thread wears the Talk door's glyph and opens in the Talk
     // panel, over the page the parent is on. It sits under the Talk with
@@ -321,10 +360,28 @@ export function useSearchResults(q: string, opts: { enabled: boolean; catalogLim
       }
     : null;
 
-  /** Every row in render order: catalog, record, then the ask row (first on "?"). */
-  const ordered: SearchRow[] = term
-    ? (ask && askFirst(term) ? [ask, ...catalog, ...record] : [...catalog, ...record, ...(ask ? [ask] : [])])
-    : routes;
+  // v10: "Keep a moment about …" — the parent's words, saved as written
+  // through the one capture sheet (opened with the text, parent-written; the
+  // parent still confirms there). Same eligibility as the ask row.
+  const keep: SearchRow | null = ask
+    ? {
+        id: "keep", kind: "keep",
+        label: t("sm.keepAbout", { q: term }), sub: t("sm.keepAbout.sub"),
+        icon: "edit_note", color: "var(--arbor-clay-deep)",
+        go: () => { openCaptureSheet({ initialText: term, initialTextParentWritten: true }); },
+      }
+    : null;
 
-  return { indexReady: !!indexMod, routes, catalog, record, ask, ordered, kindLabel };
+  /** Every row in render order. v10: a destination the words name exactly
+   *  ("visit", "routines") leads; then your records; then guides and
+   *  activities; then what you can do with the words (Keep, then Ask; Ask
+   *  first on "?"). The empty field is the jump map. */
+  const exact = indexMod?.exactRouteFor && term ? indexMod.exactRouteFor(term) : null;
+  const lead = exact ? catalog.filter((row) => row.id === "route:" + exact) : [];
+  const rest = lead.length ? catalog.filter((row) => !lead.includes(row)) : catalog;
+  const ordered: SearchRow[] = term
+    ? (ask && askFirst(term) ? [ask, ...lead, ...record, ...rest, ...(keep ? [keep] : [])] : [...lead, ...record, ...rest, ...(keep ? [keep] : []), ...(ask ? [ask] : [])])
+    : jump;
+
+  return { indexReady: !!indexMod, routes, jump, catalog, record, keep, ask, ordered, kindLabel };
 }

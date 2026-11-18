@@ -28,11 +28,14 @@ describe("B-ASKJB-40 — the parent's optional breath before the guides", () => 
   });
 
   it("sits above the situation picker and never replaces it (not a gate)", () => {
+    // O-HardMoment (V77): the picker is built once (pickerFold) and placed under the pacer.
     const pacer = sheet.indexOf("<ParentBreathPacer t={t} />");
-    const pick = sheet.indexOf('{t("hm.now.pick")}');
+    const pick = sheet.indexOf("{pastFirst && pickerFold}");
     expect(pacer).toBeGreaterThan(0);
     expect(pacer).toBeLessThan(pick);
-    expect(sheet.slice(pacer, pick + 400)).toContain("lead.length > 0");
+    const fold = sheet.slice(sheet.indexOf("const pickerFold = ("), sheet.indexOf("{pastFirst && pickerFold}"));
+    expect(fold).toContain('{t("hm.now.pick")}');
+    expect(fold).toContain("lead.length > 0");
   });
 
   it("reduced motion keeps the words and drops the movement", () => {
@@ -41,7 +44,7 @@ describe("B-ASKJB-40 — the parent's optional breath before the guides", () => 
 
   it("the copy makes no physiological or outcome claim, EN and HE", () => {
     const keys = Object.keys(en).filter((k) => k.startsWith("hm.now.breathe."));
-    expect(keys.length).toBe(7);
+    expect(keys.length).toBe(8); // O-HardMoment V77 adds "Start"
     for (const k of keys) {
       expect(he[k], k).toBeTruthy();
       expect(`${en[k]} ${he[k]}`).not.toMatch(/vagus|nervous|cortisol|heart rate|calms? (?:your|the) child|regulat|עצב|קורטיזול|דופק/i);

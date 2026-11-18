@@ -18,7 +18,7 @@
 .bop-piece:active:not(:disabled) { transform: scale(.94); }
 .bop-piece:disabled { cursor: default; }
 .adventure--bop .bop-piece:focus-visible { outline: 3px solid var(--bop-teal-ink); outline-offset: 3px; }
-.bop-piece[data-hint=true]::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3px solid var(--bop-teal-ink); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; pointer-events: none; }
+.bop-piece[data-hint=true]::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3px solid var(--bop-amber, var(--studio-signal)); box-shadow: 0 0 0 3px var(--arbor-on-accent); animation: bop-hint 1.1s ease-in-out infinite; pointer-events: none; }
 .bop-piece[data-wobble=true] { animation: bop-wobble .45s ease-in-out; }
 
 /* A number or count shown on a toy. Graphite on pearl, large enough to read. */
@@ -34,3 +34,22 @@
 @keyframes bop-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, .985); } }
 @keyframes bop-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 40% { transform: translateY(-13%) scale(.97, 1.04); } 80% { transform: translateY(0) scale(1.04, .96); } }
 @keyframes bop-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+
+/* B-GAME-44: the stage answers a success. A ring of light and twelve sparks
+   burst from its middle; a won game adds a shower of petals. Tokens only,
+   decoration only, and gone with motion off or forced colours. */
+.bop-cheer { position: absolute; inset: 0; z-index: 30; overflow: hidden; pointer-events: none; }
+.bop-cheer__ring { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 120px; block-size: 120px; margin: -60px; border-radius: 50%; border: 6px solid var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-ring .9s var(--studio-ease-soft); }
+.bop-cheer__spark { position: absolute; inset-block-start: 50%; inset-inline-start: 50%; inline-size: 12px; block-size: 12px; margin: -6px; border-radius: 50%; background: var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-spark .85s var(--studio-ease-soft); }
+.bop-cheer__spark:nth-child(3n) { background: var(--bop-teal, var(--studio-teal)); }
+.bop-cheer__spark:nth-child(3n + 1) { background: var(--arbor-on-accent); box-shadow: 0 0 0 2px var(--bop-teal-ink, var(--studio-teal-ink)); }
+.bop-cheer__petal { position: absolute; inset-block-start: -6%; inset-inline-start: calc(3% + var(--petal) * 6%); inline-size: 14px; block-size: 20px; border-radius: 80% 10% 80% 10%; background: var(--bop-teal-ink, var(--studio-teal-ink)); opacity: 0; animation: bop-cheer-petal 2.6s cubic-bezier(.3, .4, .5, 1) calc(var(--petal) * 60ms) forwards; }
+.bop-cheer__petal:nth-child(3n) { background: var(--bop-teal, var(--studio-teal)); }
+.bop-cheer__petal:nth-child(3n + 1) { background: color-mix(in srgb, var(--bop-teal, var(--studio-teal)) 45%, var(--arbor-on-accent)); }
+.bop-cheer[data-big] .bop-cheer__ring { inline-size: 180px; block-size: 180px; margin: -90px; }
+
+@keyframes bop-cheer-ring { 0% { opacity: .95; scale: .3; } 100% { opacity: 0; scale: 2.4; } }
+@keyframes bop-cheer-spark { 0% { opacity: 1; translate: 0 0; scale: 1; } 100% { opacity: 0; translate: calc(cos(var(--spark) * 30deg) * 150px) calc(sin(var(--spark) * 30deg) * 110px); scale: .4; } }
+@keyframes bop-cheer-petal { 0% { opacity: 0; translate: 0 0; rotate: 0deg; } 10% { opacity: 1; } 100% { opacity: .9; translate: calc(sin(var(--petal) * 47deg) * 46px) 640px; rotate: calc(240deg + var(--petal) * 41deg); } }
+
+@media (prefers-reduced-motion: reduce), (forced-colors: active) { .bop-cheer { display: none; } }

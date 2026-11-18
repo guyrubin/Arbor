@@ -19,6 +19,10 @@ service cloud.firestore {
     // A user owns everything under their own document, including children and
     // all per-child subcollections (behaviorLogs, milestones, actionPlans,
     // savedStories, contacts, weeklyReports, insights, settings, …).
+    // Family plan v1 (familyPlanDates) lives here too: owner-only from the
+    // client. A co-parent in the same family never reads this tree directly;
+    // they read a projection and write only their answer through the server
+    // (Admin SDK) on a live family_workspace share grant (server/familyPlanCoParent.ts).
     match /users/{userId} {
       allow read, write: if signedIn() && request.auth.uid == userId;
       match /{document=**} {

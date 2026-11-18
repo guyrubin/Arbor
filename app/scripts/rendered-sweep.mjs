@@ -433,11 +433,16 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
 
   // B-INF-11: the rendered stamp only — a hidden (display:none, 0×0) stamp is not the screen's
   // move (Speech HE read a 0×0 stamp when the route rendered none).
-  const pmEl = [...document.querySelectorAll("[data-primary-move]")].find((el) => {
+  const shown = (el) => {
     if (!visible(el)) return false;
     const r = rectOf(el);
     return r.width > 1 && r.height > 1;
-  }) ?? null;
+  };
+  // F-TALK-1: on a conversation route (coach/scholar) the place behind the open
+  // Talk panel stays rendered with its own stamps; the screen's move is the
+  // panel's own (the composer, "ask"), so it is read first when the panel is open.
+  const panelMove = [...document.querySelectorAll(".companion-workspace.is-open .companion-conversation [data-primary-move]")].find(shown);
+  const pmEl = panelMove ?? [...document.querySelectorAll("[data-primary-move]")].find(shown) ?? null;
   let primaryMove = null;
   if (pmEl) {
     const r = rectOf(pmEl);
@@ -453,7 +458,11 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       const cs = getComputedStyle(el);
       if (cs.position !== "fixed" || cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) === 0) return false;
       const d = rectOf(el);
-      return d.width > 0 && d.height > 0 && d.top >= vh * 0.4 && d.top < vh && d.left < r.right && d.right > r.left;
+      if (!(d.width > 0 && d.height > 0 && d.top >= vh * 0.4 && d.top < vh && d.left < r.right && d.right > r.left)) return false;
+      // A dock is one the eye can see: at its own centre it is on top (a bar
+      // under a full-screen dialog — the phone's Talk panel — covers nothing).
+      const hit = document.elementFromPoint(d.left + d.width / 2, Math.min(vh - 1, d.top + Math.min(d.height, vh - d.top) / 2));
+      return !!hit && el.contains(hit);
     });
     const foldY = Math.round(Math.min(vh, ...docks.map((el) => rectOf(el).top)));
     primaryMove.foldY = foldY;
@@ -465,7 +474,9 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       const d = rectOf(el);
       return d.top < r.bottom && d.bottom > r.top;
     });
-    const controls = [...pmEl.querySelectorAll("button, a[href], [role=button], input")];
+    // Only rendered controls are probed: a collapsed tray or a hidden file input
+    // has no box (0×0 at the origin), so its "centre" hits whatever is there.
+    const controls = [...pmEl.querySelectorAll("button, a[href], [role=button], input")].filter(shown);
     const probes = (controls.length ? controls : [pmEl]).map((el) => rectOf(el));
     const probeHidden = probes.some((p) => {
       const cx = p.left + p.width / 2;
@@ -584,7 +595,10 @@ function collect({ lang, allowLatin, verdict = [], region: regionKind = "main" }
       if (verdictPatterns.some((re) => re.test(own))) verdictTokens++;
     }
     for (const el of region.querySelectorAll('[role="progressbar"], progress')) if (visible(el) && hasBox(el)) verdictTokens++;
-    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-row"], [data-testid="dev-map-tile"]')]
+    // v10.1: a territory's colour names its AREA (production's domain palette),
+    // so only the territories with nothing recorded are compared: they must
+    // share one neutral paint (a second paint there would be a state colour).
+    const rowPaint = new Set([...region.querySelectorAll('[data-testid="dev-map-tile"][data-tone="quiet"]')]
       .filter((el) => visible(el)).map((el) => { const cs = getComputedStyle(el); return `${cs.backgroundColor}|${cs.backgroundImage}`; }));
     if (rowPaint.size > 1) verdictTokens++;
     const height = Math.max(region.scrollHeight || 0, region.getBoundingClientRect().height || 0);
@@ -733,7 +747,38 @@ function stateHelpers(page, vp, tr) {
     },
     /** Scroll an element to the top of its scroller, clear of the sticky top bar. */
     async top(el) {
-      await el.evaluate((e) => { e.style.scrollMarginTop = "96px"; e.scrollIntoView({ block: "start" }); });
+      // The target lands below the shell's sticky chrome (top bar, and the v10
+      // pill row that sticks under it): 96 px at least, more when the sticky
+      // band is taller, so neither the target nor what sits just above it is
+      // drawn under a sticky bar.
+      await el.evaluate((e) => {
+        let band = 0;
+        for (const s of document.querySelectorAll("header, nav, [class*=shellrow], [class*=topbar], [class*=sticky]")) {
+          const cs = getComputedStyle(s);
+          if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+          const r = s.getBoundingClientRect();
+          if (r.height > 0 && r.height < 240 && r.width > 200 && r.top < 120) band = Math.max(band, r.bottom);
+        }
+        // Where the target's top should land, in viewport pixels.
+        const want = Math.max(96, Math.ceil(band) + 16);
+        // Already wholly in view below the sticky band: leave the page where it is.
+        const r = e.getBoundingClientRect();
+        if (r.top >= want && r.bottom <= window.innerHeight) return;
+        // scrollIntoView lands the target at the scroller's top plus its own
+        // scroll-padding (v10: <main> pads by the sticky pill row) plus this
+        // margin, so only the remainder is set here; adding the whole band
+        // again would count the pill row twice and push the target down.
+        let scroller = e.parentElement;
+        while (scroller && scroller !== document.body) {
+          const oy = getComputedStyle(scroller).overflowY;
+          if ((oy === "auto" || oy === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+          scroller = scroller.parentElement;
+        }
+        const top = scroller && scroller !== document.body ? scroller.getBoundingClientRect().top : 0;
+        const pad = scroller && scroller !== document.body ? parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0 : 0;
+        e.style.scrollMarginTop = `${Math.max(0, Math.ceil(want - top - pad))}px`;
+        e.scrollIntoView({ block: "start" });
+      });
       await page.waitForTimeout(200);
     },
     skip,
@@ -1214,7 +1259,8 @@ const STATES = {
     {
       name: "search",
       run: async (h) => {
-        await h.click("[data-testid=ms-search-open]", [], "the search icon");
+        // V77 list: a desk shows the search field beside the area; a phone opens it from the icon leading the tiles.
+        if (!(await h.first("[data-testid=ms-search]", 1_500))) await h.click("[data-testid=ms-search-open]", [], "the search icon");
         await (await h.need("[data-testid=ms-search]", "the milestone search")).fill(h.lang === "he" ? "כדור" : "ball");
         await h.page.waitForTimeout(400);
         await h.need("[data-testid=ms-search-results]", "the search results across shelves");
@@ -1234,7 +1280,7 @@ const STATES = {
     {
       name: "active-plan",
       run: async (h) => {
-        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-active]", 5_000);
+        const card = await h.first("[data-testid=plan-track-card], [data-module=plans-yours]", 5_000);
         if (!card) skip("no active plan in the seeded record");
         await h.top(card);
       },
@@ -1392,7 +1438,8 @@ const STATES = {
       name: "step2",
       run: async (h) => {
         await consultPediatrician(h);
-        const step2 = await h.need("[data-module=consult-packet] h2:has-text('2')", "step 2 (What changed)");
+        // design v10.1: step 2 (What changed) is the reason section in Getting ready
+        const step2 = await h.need("[data-module=consult-packet] [data-testid=consult-reason-section] #consult-reason", "step 2 (What changed)");
         await h.top(step2);
       },
     },
@@ -1401,8 +1448,9 @@ const STATES = {
       run: async (h) => {
         await consultPediatrician(h);
         await h.click("[data-testid=consult-build]", [], "Build the one-page summary");
-        await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3 (What leaves)");
-        await h.top(await h.need("[data-module=consult-packet] h2:has-text('3')", "step 3"));
+        // design v10.1: step 3 (What leaves) is the Share card of the visit summary
+        await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3 (What leaves)");
+        await h.top(await h.need("[data-module=consult-packet] #consult-review-export h2", "step 3"));
       },
     },
     {
@@ -1445,7 +1493,10 @@ const STATES = {
         // Upcoming rows render inside [data-module=appt-upcoming]; an empty Upcoming shows the
         // profession chips instead. The demo family's one visit is in the past → past-visit.
         if (!(await h.has("[data-testid=appt-empty-professions]", 2_000))) {
-          await h.top(await h.need("[data-module=appt-upcoming] > *", "the Upcoming section with its visit row"));
+          // V77 shell: lead with the section's Add appointment (the stamp, in
+          // the head just above the rows) so the sticky pill row never hides it.
+          await h.need("[data-module=appt-upcoming] > *", "the Upcoming section with its visit row");
+          await h.top(await h.need("[data-primary-move=add-appointment]", "Add appointment"));
           return { name: "upcoming-row" };
         }
         await h.click("[data-module-disclosure=appointments-more] > summary", [h.tr("elev.learnCare.appt.more.title")], "Past visits and what to ask");
@@ -1500,14 +1551,15 @@ const STATES = {
       },
     },
     {
-      // r2: About asks the first proposals on the "What Arbor remembers" card
-      // (Remember · Not this); the demo seed's pending facts land there.
+      // r2 → v10.3: About asks the first proposals in Arbor's notebook: the
+      // stage card (Remember · Not this · Edit) leads the selected area's
+      // panel; the demo seed's pending facts land there.
       name: "pending-group",
       run: async (h) => {
         await h.need("[data-testid=about-memory-ledger]", "the ledger, open in place on About (#/memory retired)");
         const pending = await h.first("[data-testid=about-memory-pending]", 5_000);
         if (!pending) skip("no pending fact on the server memory ledger");
-        await h.top(await h.need("[data-testid=about-memory]", "the What Arbor remembers card"));
+        await h.top(await h.need("[data-testid=about-memory-pending][data-stage]", "the notebook's stage card (the next proposal)"));
       },
     },
     {
@@ -1521,15 +1573,22 @@ const STATES = {
       name: "preview",
       writes: "types a placeholder address into the week card (no request; the grant button is never tapped)",
       run: async (h) => {
-        await (await h.need("[data-testid=share-week-email]", "the week card's email field")).fill(SHARE_EMAIL);
-        await h.top(await h.need("[data-testid=share-week-preview]", "the recipient week preview"));
+        const email = await h.need("[data-testid=share-week-email]", "the week card's email field");
+        await email.fill(SHARE_EMAIL);
+        await h.need("[data-testid=share-week-preview]", "the recipient week preview");
+        // design v10.1: the shot opens on the field the parent just typed in —
+        // the one tap below it and the recipient preview under that.
+        await h.top(email);
       },
     },
   ],
   "school-brief": [
     {
       name: "draft",
-      run: async (h) => { await h.top(await h.need("[data-module=brief-draft]", "the brief draft")); },
+      // V77 shell: the sticky pill row would hide the brief's Save as PDF (the
+      // stamp, in the row just above the draft) if the draft itself were
+      // scrolled to the top; the stamp's row leads and the draft follows it.
+      run: async (h) => { await h.need("[data-module=brief-draft]", "the brief draft"); await h.top(await h.need("[data-testid=school-brief-actions]", "the brief's actions row")); },
     },
   ],
   [SHELL]: [

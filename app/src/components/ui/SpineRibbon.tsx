@@ -42,7 +42,7 @@ export function SpineRibbon({ text, tone = "lav", icon = "hub", onFollow, testId
       >
         <Icon name={icon} size={17} fill={1} />
       </span>
-      <span className="flex-1 text-[12.5px] font-bold leading-snug text-start" dir="auto" style={{ color: p.ink }}>
+      <span className="flex-1 text-[12px] font-bold leading-snug text-start" dir="auto" style={{ color: p.ink }}>
         {text}
       </span>
       {onFollow && <Icon name="arrow_forward" size={16} className="flex-shrink-0 rtl:rotate-180" style={{ color: p.ink }} />}

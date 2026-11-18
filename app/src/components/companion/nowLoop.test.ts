@@ -109,21 +109,17 @@ describe("every loop seam has a live caller", () => {
   });
 });
 
-describe("v4 · Notice today's head line matches its open count", () => {
-  it("names how many rows there are and how many are answered — never 'two' beside a 1", async () => {
-    const { noticeSummaryKey } = await import("./NowLoopBlocks");
-    const { translate } = await import("../../lib/i18n");
-    expect(noticeSummaryKey(2, 2)).toBe("elev.loop.today.notice.sub");
-    expect(noticeSummaryKey(2, 1)).toBe("elev.loop.today.notice.oneLeft");
-    expect(noticeSummaryKey(2, 0)).toBe("elev.loop.today.notice.doneTwo");
-    expect(noticeSummaryKey(1, 1)).toBe("elev.loop.today.notice.subOne");
-    expect(noticeSummaryKey(1, 0)).toBe("elev.loop.today.notice.doneOne");
-    for (const key of ["sub", "subOne", "oneLeft", "doneTwo", "doneOne"]) {
-      for (const lang of ["en", "he"] as const) expect(translate(lang, `elev.loop.today.notice.${key}`), `${lang} ${key}`).not.toBe(`elev.loop.today.notice.${key}`);
-      expect(translate("he", `elev.loop.today.notice.${key}`)).not.toMatch(/[A-Za-z]/);
-    }
-    // NEGATIVE CONTROL: the shipped head always said "Two things", even with one row open.
-    expect(translate("en", "elev.loop.today.notice.sub")).toMatch(/^Two /);
+describe("v10.1 · Notice today asks one row at a time and says where you are", () => {
+  it("asks the first unanswered row; its place is \"n of N\"; all answered asks nothing", async () => {
+    const { noticePosition } = await import("./NowLoopBlocks");
+    const { NOW_V10_COPY } = await import("./now10/nowV10Copy");
+    expect(noticePosition([false, false])).toEqual({ current: 0, position: 1 });
+    expect(noticePosition([true, false])).toEqual({ current: 1, position: 2 });
+    expect(noticePosition([true, true])).toEqual({ current: -1, position: 2 });
+    expect(noticePosition([false])).toEqual({ current: 0, position: 1 });
+    expect(NOW_V10_COPY.en.nOfTotal(1, 2)).toBe("1 of 2");
+    expect(NOW_V10_COPY.he.nOfTotal(1, 2)).toBe("1 מתוך 2");
+    // NEGATIVE CONTROL: an answered first row is never asked again.
+    expect(noticePosition([true, false]).current).not.toBe(0);
   });
 });
-

@@ -72,7 +72,9 @@ describe("word search across shelves (EN + HE)", () => {
 
 describe("MilestonesTab renders the shelf map (source pins)", () => {
   it("the shelf sections run in ACTION order (critic r1): Notice-card shelves, then door-only shelves; quiet shelves close the map", () => {
-    expect(MS).toContain("mapShelves.map((shelf, i) => {");
+    // V77 RE-PIN: the shelf sections (each shelf's door) follow the chosen area's grid, still in ACTION order.
+    expect(MS).toContain("mapShelves.filter(inArea).map((shelf, i) => {");
+    expect(MS).not.toContain("{mapShelves.map((shelf, i) => {");
     expect(MS).toContain("...SHELF_IDS.filter((id) => noticeFor(id)),");
     expect(MS).toContain("...SHELF_IDS.filter((id) => !noticeFor(id) && shelfItems[id].length > 0),");
     expect(MS).toContain('data-testid="ms-quiet-shelves"');
@@ -88,7 +90,11 @@ describe("MilestonesTab renders the shelf map (source pins)", () => {
   // (closed, titles only); milestoneBandLabel is never called inside it.
   it("the door opens the shelf's groups with no age label; Coming next renders titles only, never answers", () => {
     expect(MS).toContain("shelfBands(shelfItems[shelf], currentBand.months)");
-    const door = MS.slice(MS.indexOf("const renderShelfBands = (shelf: ShelfId) => {"), MS.indexOf("const searchText = "));
+    // V77 RE-PIN: in the area grid's door the rows the grid already shows are left out (inGrid).
+    expect(MS).toContain("const renderShelfBands = (shelf: ShelfId, inGrid = false) => {");
+    expect(MS).toContain("{renderShelfBands(shelf, true)}");
+    const door = MS.slice(MS.indexOf("const renderShelfBands = (shelf: ShelfId, inGrid = false) => {"), MS.indexOf("const renderPick = "));
+    expect(door.length).toBeGreaterThan(500);
     expect(door).not.toContain("milestoneBandLabel");
     for (const band of ['data-band="now"', 'data-band="earlier"', 'data-band="next"']) expect(door).toContain(band);
     const next = door.slice(door.indexOf('data-band="next"'), door.indexOf('data-band="own"'));
@@ -117,7 +123,10 @@ describe("MilestonesTab renders the shelf map (source pins)", () => {
     expect(MS.match(/data-primary-move/g)?.length).toBe(1);
     // critic r1 P2-3: the stamp sits on the ANSWERS of the first Notice card, never a wrapper
     // P5 critic r2 (P1-4): on the first UNANSWERED card (stampShelf).
-    expect(MS).toContain('answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}');
+    // V77 RE-PIN: on the area grid's first UNANSWERED card's answers (renderPick / renderRow carry it).
+    expect(MS).toContain('const stamp = m.id === gridStampId ? { "data-primary-move": "notice-milestone" } : undefined;');
+    expect(MS).toContain("{pick ? renderPick(m, shelf, stamp) : renderRow(m, shelf, stamp, true)}");
+    expect(MS).not.toContain('answersAttrs={shelf === stampShelf ? { "data-primary-move": "notice-milestone" } : undefined}');
     expect(MS).not.toContain('data-primary-move="mark-milestone"');
     const c = contractFor("milestones");
     expect(c?.primaryMove).toBe("notice-milestone");

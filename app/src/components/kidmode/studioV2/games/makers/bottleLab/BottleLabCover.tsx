@@ -23,6 +23,6 @@ export default function BottleLabCover({ size = 'tile' }: { size?: 'tile' | 'car
   // card window is wide and the Studio stands the guide at its reading end:
   // the bottle sits to the other side.
   return <svg ref={box} viewBox={size !== 'card' ? '-22 72 404 350' : rtl ? '-220 60 650 360' : '-70 60 650 360'} preserveAspectRatio="xMidYMid slice" style={{ ...TINT_STYLE.sea, width: '100%', height: '100%', display: 'block' }} data-size={size} aria-hidden="true" focusable="false">
-    <StillContent uid={`c${uid}`} shape="round" finish="gloss" stickers={STICKERS} rotation={-28} lamp={-38} map={map} showLamp={size === 'card'} friend small={size !== 'card'} />
+    <StillContent uid={`c${uid}`} shape="round" finish="gloss" stickers={STICKERS} rotation={-28} lamp={-38} map={map} showLamp={false} friend small={size !== 'card'} />
   </svg>;
 }

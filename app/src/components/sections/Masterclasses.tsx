@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { fmtDayV10 } from "../../lib/formatDate";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { celebrate } from "../../lib/celebrate";
 import { Icon } from "../ui/Icon";
-import { FreeText } from "../ui/FreeText";
 import { SpeakButton } from "../ui/SpeakButton";
 import { EvidenceChip } from "../ui/EvidenceChip";
-import { cardCls, IconBadge, PASTEL, type PastelKey } from "../ui/kit";
+import { IconBadge, type PastelKey } from "../ui/kit";
 import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { MASTERCLASSES, FRAME_LABELS, type FrameId, type Masterclass } from "../../lib/masterclasses";
@@ -20,23 +20,28 @@ import { useDevScore } from "../../hooks/useDevScore";
 import { ageYearsFromProfile } from "../../lib/childAge";
 import { concernsForBehaviors } from "../../content/selectCards";
 import { recentBehaviorTypes } from "../../content/hardMomentSurface";
-import { readLearnFeedback } from "../../learn/learnFeedback";
+import { readLearnFeedback, setLearnFeedback, type LearnFeedback } from "../../learn/learnFeedback";
 import { LEARN_CARDS } from "../../learn/learnCards";
-import { LEARN_CATEGORIES, rankLearnCards, type LearnRankSignals } from "../../learn/learnLibrary";
-import { pickShortReads } from "../../learn/shortReads";
-import { ageVisibleLearnCards, devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
+import type { LearnRankSignals } from "../../learn/learnLibrary";
+import { devMapHasSignal, pickDayKey, todaysLearnPick } from "../../learn/todaysPick";
 // v3 EXTRA-FORYOU: courses and reads by area (the ONE domain registry: names,
 // glyphs, order) and the family-ritual door's picture.
 import { courseArea, courseAreaCounts, readArea } from "../../learn/courseAreas";
 import { domainName, type DomainId } from "../../lib/domains/registry";
-import { DOMAIN_ICONS } from "../../lib/domains/icons";
-import { TOGETHER_ART } from "../../lib/parentArt";
+import { DOMAIN_ART, EMPTY_ART, TOGETHER_ART } from "../../lib/parentArt";
 import type { DevelopmentMetricId } from "../../types";
 // AP-055: Scholar Hub weekly concept feed
 import ScholarHubCard from "./ScholarHubCard";
 import { TrustLink } from "../trust/TrustLink";
 // AP-053: Academy "For You" — copilot focus + Learning Map join
 import AcademyForYou from "./AcademyForYou";
+// v10.1 — the design system's For you composition (N-ForYou-D / N-ForYou-M).
+import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, Row12, Scene, StartHere, Tile, type GuideStop } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { forYouCopy } from "../foryou/forYouCopy";
+import { AreaForm } from "../foryou/AreaForm";
+import { ForYouPrograms, openProgramPage, programWeekLine, useForYouProgram } from "../foryou/ForYouPrograms";
+import "../foryou/foryou.css";
 
 const FRAME_TONE: Record<FrameId, PastelKey> = {
   aim: "sky",
@@ -55,43 +60,15 @@ const MASTERCLASS_VIRTUES: Record<string, DevelopmentMetricId[]> = {
   "raising-courage-without-harshness": ["courage", "resilience"],
 };
 
-/** v3 EXTRA-FORYOU: a private-use mark the topic why-line is split on, so the
- *  parent's question renders through FreeText (bidi-isolated) between the
- *  translated lead and tail. It is never displayed. */
-const TOPIC_SLOT = "\uE000";
-
-/** v3 EXTRA-FORYOU: a "Courses by area" chip, in the Learn filter pill's shape and tokens. */
-const AREA_CHIP = "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold transition focus:outline-none focus-visible:ring-2";
-const areaChipStyle = (on: boolean): React.CSSProperties => on
-  ? { background: "var(--arbor-subtab-active)", color: "var(--arbor-subtab-on-ink)" }
-  : { background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" };
+/** How many course rows the rail shows before the parent asks for all of them. */
+const RAIL_COURSES = 3;
+/** V77 N-ForYou-M: the phone lists two courses before "All N courses". */
+const PHONE_COURSES = 2;
 
 const DONE_KEY = "arbor.masterclasses.done";
 export const loadDone = (): Record<string, boolean> => {
   try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}"); } catch { return {}; }
 };
-
-/**
- * R17 — true below Tailwind's `md` (768 px), i.e. on a phone.
- *
- * The same seam ui/Sheet.tsx uses for `useCompactSurface`: a media QUERY read
- * through `useSyncExternalStore`, not a device sniff, so rotating the phone
- * re-renders. SSR and any environment without matchMedia read false — the
- * desktop two-column layout that shipped — so a missing matchMedia degrades to
- * the old behaviour rather than to nothing.
- */
-const PHONE_QUERY = "(max-width: 767.98px)";
-const subscribePhone = (onChange: () => void) => {
-  if (typeof window === "undefined" || !window.matchMedia) return () => {};
-  const mq = window.matchMedia(PHONE_QUERY);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
-};
-const readPhone = () =>
-  typeof window !== "undefined" && !!window.matchMedia && window.matchMedia(PHONE_QUERY).matches;
-export function usePhoneLayout(): boolean {
-  return useSyncExternalStore(subscribePhone, readPhone, () => false);
-}
 
 // Wave-8: private parent reflection — client-only localStorage, never sent/stored server-side.
 const REFLECT_KEY = "arbor.masterclasses.reflection";
@@ -99,19 +76,39 @@ const loadReflection = (): Record<string, string> => {
   try { return JSON.parse(localStorage.getItem(REFLECT_KEY) || "{}"); } catch { return {}; }
 };
 
-/** Arbor Academy › Parent Masterclasses — short, frame-routed lessons that build
- *  the parent's own competence (the calm, competent adult). Text-first, bilingual. */
+/** The thread's connector between two knots (ink from the parent's note, pencil after Arbor's). */
+function Thr({ ai }: { ai?: boolean }) {
+  return (
+    <span className="thr" aria-hidden="true">
+      <svg viewBox="0 0 48 28" preserveAspectRatio="none">
+        <path className={ai ? "g-ai" : "g-ink"} d="M0 14 C16 0, 32 28, 48 14" style={ai ? { strokeWidth: 3.5 } : undefined} />
+      </svg>
+    </span>
+  );
+}
+
+/** For you, the parent › For you — today's pick tied to what the parent wrote,
+ *  courses by area, the family's program, and the doors to the Library and a
+ *  family ritual. Arbor Academy › Parent Masterclasses: short, frame-routed
+ *  lessons that build the parent's own competence. Text-first, bilingual. */
 export default function Masterclasses() {
   const { t, aiLang, uiLang } = useLanguage();
   const { childProfile, behaviorLogs, savedLearnIds, requestLearnRead, setActiveTab, activeFamilyTopic } = useArbor();
   const he = aiLang === "he";
+  const copy = forYouCopy(uiLang);
+  const composition = useComposition();
+  const desk = composition === "desk";
   const [openId, setOpenId] = useState<string | null>(null);
+  // V77 "Not this one": the Library's own per-card pulse (-1), which lowers that
+  // read in this device's ranking, so today's pick moves to the next read.
+  const [feedback, setFeedback] = useState<LearnFeedback>(() => readLearnFeedback());
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [reflection, setReflection] = useState<Record<string, string>>({});
+  const [allCourses, setAllCourses] = useState(false);
   // LC-04: the same shared dev-score derivation the Learn Library ranks on.
   const devScore = useDevScore();
-  // R17: where the Learning Map rail renders — left column, or the disclosure.
-  const phone = usePhoneLayout();
+  // B-PROG-05: the family's program, read through the program page's own model.
+  const program = useForYouProgram(uiLang === "he" ? "he" : "en");
 
   // W0.7 — default the catalog to the child's age band; "Show all ages"
   // (persisted per surface) keeps every course reachable (UC-1 rule).
@@ -151,7 +148,6 @@ export default function Masterclasses() {
   };
 
   const open = openId ? MASTERCLASSES.find((m) => m.id === openId) ?? null : null;
-  const frameLabel = (f: FrameId) => (he ? FRAME_LABELS[f].he : FRAME_LABELS[f].en);
 
   // D3: recommend the masterclasses that build the family's chosen virtues.
   // W0.7: the strip draws from the age-visible catalog, so a course written
@@ -164,32 +160,26 @@ export default function Masterclasses() {
   // ── Reader ───────────────────────────────────────────────────────────────
   if (open) return <MasterclassReader m={open} isDone={!!done[open.id]} onDone={() => markDone(open.id)} onBack={() => setOpenId(null)} reflection={reflection[open.id] || ""} onReflect={(val) => saveReflection(open.id, val)} />;
 
-  // ── Catalog ──────────────────────────────────────────────────────────────
-  const childName = (childProfile.name || "").split(" ")[0] || (he ? "ילדכם" : "your child");
+  // ── Hub ──────────────────────────────────────────────────────────────────
+  const firstName = (childProfile.name || "").split(" ")[0];
+  const childName = firstName || (he ? "ילדכם" : "your child");
 
-  // E2 hero — the next unfinished course drives the fallback CTA.
-  // B-PLAY-18: the header stat trio (courses / completed / minutes) and the
-  // catalogue completion bar are gone — scorekeeping on a reading hub. "Done"
-  // stays on each card; the reading time of today's pick rides its own line.
-  // W0.7: the ONE CTA points at the next unfinished course the parent can SEE
-  // (the age-visible catalog), never at an age-hidden one.
+  // B-PLAY-18: no stat trio, no catalogue completion bar — scorekeeping on a
+  // reading hub. "Done" stays on each course. W0.7: the fallback move points
+  // at the next unfinished course the parent can SEE (age-visible catalog).
   const nextCourse = catalog.find((m) => !done[m.id]);
 
-  // LC-04 — TODAY'S READ. The hub's ONE move used to be `catalog.find(!done)`:
-  // the first unfinished course in FILE ORDER, identical for every parent until
-  // they marked it done, and 10-13 minutes long against a three-minute job. The
-  // real, explainable ranking already existed one pill away in the Learn
-  // Library (age band, Development-Map focus domain, the concerns the parent
-  // actually logged, their own helpful/not-helpful pulse, saved topics). Same
-  // signals, same scorer — now mounted on the hub, with a per-day seed
-  // (childId + UTC day) so the pick is stable today and rotates tomorrow.
+  // LC-04 — TODAY'S READ: the Learn Library's explainable ranking (age band,
+  // focus domain, the concerns the parent logged, their helpful pulse, saved
+  // topics, the open family question) with a per-day seed (childId + UTC day),
+  // so the pick is stable today and rotates tomorrow.
   // FIREWALL: the signals are the parent's own inputs; no score about the child
   // is read or shown, and the why-line claims only signals that contributed.
   const learnSignals: LearnRankSignals = {
     ageYears: ageYearsFromProfile(childProfile),
     focusDomain: devScore.focusDomain,
     recentConcerns: concernsForBehaviors(recentBehaviorTypes(behaviorLogs, new Date())),
-    helpfulness: readLearnFeedback(),
+    helpfulness: feedback,
     savedIds: savedLearnIds,
     // v3 EXTRA-FORYOU: the open family question, in the parent's own words.
     topicText: activeFamilyTopic?.title ?? null,
@@ -199,35 +189,17 @@ export default function Masterclasses() {
     dayKey: pickDayKey(new Date()),
     logs: behaviorLogs,
   });
-  // Every branch names a signal that DEMONSTRABLY moved this card. The focus
-  // branch reads `todaysRead.fromFocus` — the pick's own re-derivation — and
-  // not `devScore.focusDomain`: a set focus domain says the parent has one, not
-  // that today's winner shares it, so "the area you have been exploring" was
-  // false whenever the winning card's domains did not include it. Do not
-  // reintroduce a raw signal here; if a new why-line is needed, add its
+  // Every branch names a signal that DEMONSTRABLY moved this card: the focus
+  // branch reads `todaysRead.fromFocus` (the pick's own re-derivation), gated
+  // by `devMapHasSignal` (R2: at least one milestone actually noticed), never
+  // the raw `devScore.focusDomain`. If a new why-line is needed, add its
   // re-derived flag to `todaysLearnPick` (learn/todaysPick.ts).
-  // R2 (ENG-07 applied to the hero): `fromFocus` proves the focus domain moved
-  // THIS card — it does not prove the parent has explored anything. focusDomain
-  // is the lowest-scoring domain with room to grow, and "room to grow" is
-  // measured against the catalogue, so a day-0 profile (0 noticed milestones,
-  // 0 logs in window) still has one, and the hero said "the area you have been
-  // exploring" to a parent who had explored nothing. `devMapHasSignal` is the
-  // same gate LearnLibrary's rail already carries: at least one milestone
-  // actually noticed, or the claim falls to the age-only variant.
-  // B-SHELL-NEW-2j: only on the logs branch (saved outranks it, as in pickWhy).
+  // B-SHELL-NEW-2j: the parent's own note only on the logs branch (saved outranks it).
   const pickMoment = todaysRead && !todaysRead.fromSaved && todaysRead.fromConcerns ? todaysRead.fromMoment : null;
-  const pickMomentLead = (() => {
-    if (!pickMoment) return "";
-    const day0 = new Date(); day0.setHours(0, 0, 0, 0);
-    const at0 = new Date(pickMoment.at); at0.setHours(0, 0, 0, 0);
-    const days = Math.round((day0.getTime() - at0.getTime()) / 86_400_000);
-    if (days <= 0) return t("elev.learnCare.pick.moment.today");
-    if (days === 1) return t("elev.learnCare.pick.moment.yesterday");
-    const locale = uiLang === "he" ? "he-IL" : "en-GB";
-    return days <= 6
-      ? t("elev.learnCare.pick.moment.weekday", { day: new Intl.DateTimeFormat(locale, { weekday: "long" }).format(pickMoment.at) })
-      : t("elev.learnCare.pick.moment.date", { day: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(pickMoment.at) });
-  })();
+  // V77: the parent's knot reads "You wrote · Fri 6 Nov" (the boards' day-first short date).
+  const pickMomentLead = pickMoment
+    ? copy.youWrote(fmtDayV10(pickMoment.at, uiLang === "he" ? "he" : "en"))
+    : "";
   const pickWhy = !todaysRead
     ? ""
     : todaysRead.fromSaved
@@ -241,456 +213,341 @@ export default function Masterclasses() {
   // A plain duration fact about the ONE move (never a completion count).
   const pickMinutes = todaysRead ? todaysRead.card.minutes : nextCourse ? nextCourse.durationMin : null;
 
-  // v3 EXTRA-FORYOU: "Picked for your question". The tag and the quoting
-  // why-line render only when the open family question DEMONSTRABLY moved
-  // today's read (todaysRead.fromTopic, the pick's own re-derivation), never
-  // because a question merely exists. The question is the parent's words,
-  // quoted through FreeText (bidi-isolated), never paraphrased.
+  // v3 EXTRA-FORYOU: "Picked for your question" renders only when the open
+  // family question DEMONSTRABLY moved today's read (todaysRead.fromTopic),
+  // never because a question merely exists. The question is the parent's own
+  // words, quoted (bidi-isolated), never paraphrased.
   const pickTopic = todaysRead?.fromTopic && activeFamilyTopic ? activeFamilyTopic.title : null;
-  const [topicLead, topicTail = ""] = t("elev.learnCare.pick.why.topic", { title: TOPIC_SLOT }).split(TOPIC_SLOT);
 
-  // v3 EXTRA-FORYOU: short reads - three whenever the age-fit catalogue holds
-  // three besides today's read. The same ranking (the same signals, the
-  // question included), today's read left out: the reads that meet the open
-  // question first, then the next reads in that same order (learn/shortReads).
-  // The title says "for your question" only when the first read meets it; in a
-  // mixed row each read that meets it carries its own mark. Minutes on each
-  // card, never a count of reads done.
-  const readShelf = rankLearnCards(ageVisibleLearnCards(LEARN_CARDS, learnSignals.ageYears), learnSignals)
-    .filter((c) => c.id !== todaysRead?.card.id);
-  const shortReadRow = pickShortReads(readShelf, activeFamilyTopic?.title);
+  // v10: the parent's own words (a note or the open question) in ink, then
+  // Arbor's match in pencil, then this week's program practice when one runs.
+  const practice = programWeekLine(program.model);
+  const youKnot = todaysRead && (pickTopic || pickMoment) ? (
+    <div className="knot you">
+      <span className="by">{pickTopic ? t("elev.learnCare.shortReads.matched") : pickMomentLead}</span>
+      <span className="q" dir="auto">“<bdi>{pickTopic ?? pickMoment!.text}</bdi>”</span>
+    </div>
+  ) : null;
+  const aiKnot = todaysRead ? (
+    <div className="knot ai">
+      <span className="by" style={{ color: "var(--sapphire-deep)" }}><Icon name="edit" size={14} />{copy.arborSuggests}</span>
+      {pickTopic ? (
+        <b data-testid="academy-pick-topic">{t("elev.learnCare.pick.topicTag")}</b>
+      ) : (
+        <b data-testid="academy-pick-why" data-why={pickMoment ? "moment" : undefined} dir="auto">{pickMoment ? t("elev.learnCare.pick.moment.tail") : pickWhy}</b>
+      )}
+    </div>
+  ) : null;
+  const practiceKnot = practice && program.model ? (
+    <div className="knot sets fy-practice">
+      <span className="by"><Icon name="calendar_month" size={15} />{copy.yourProgram}</span>
+      <b dir="auto">{copy.practiceLine(program.model.name, program.model.week)}</b>
+    </div>
+  ) : null;
+  const knots = [youKnot, aiKnot, practiceKnot].filter(Boolean) as React.ReactElement[];
+  const threadCols = knots.map((_, i) => (i === 0 && youKnot ? "minmax(0, 1.1fr)" : "minmax(0, 1fr)")).join(" 48px ");
 
-  // v3 EXTRA-FORYOU: courses by area. Catalogue counts of the courses the
+  // v3 EXTRA-FORYOU: courses by area — catalogue counts of the courses the
   // parent can see (plain integers, never progress). A filter left on an area
   // the age switch has since emptied falls back to every area.
   const areaCounts = courseAreaCounts(catalog);
+  // V77: the areas with the most courses lead (N-ForYou-D/M).
+  const areaTiles = [...areaCounts].sort((a, b) => b.count - a.count);
   const selectedArea = activeArea && areaCounts.some((a) => a.area === activeArea) ? activeArea : null;
+  const courseList = catalog.filter((c) => !selectedArea || courseArea(c.id) === selectedArea);
+  const firstCourses = desk ? RAIL_COURSES : PHONE_COURSES;
+  const shownCourses = allCourses ? courseList : courseList.slice(0, firstCourses);
 
-  // ── The Learning Map rail ───────────────────────────────────────
-  // Declared ONCE and placed in exactly one of two mutually exclusive slots:
-  // the left column of the desktop shell, or the collapsed disclosure a phone
-  // gets below the gallery (R17). One definition, so the two layouts cannot
-  // drift into two different rails.
-  const railStack = (
-    <>
-      {/* W2-SHELLPLAY critic r1: with no noticed milestone, For You and Scholar
-          Hub both rendered the same empty state ("Check off a few milestones"),
-          which also contradicted the pick's "from what you noted". One muted
-          line with a 44 px door to Growth stands in for both until the map has
-          a signal; then the two cards render as before. */}
-      {/* W2-SHELLPLAY critic r2 (G0): the rail heading claims a match only
-          where one exists — it renders inside the signal branch, and it says
-          "Picked for {name}" (the Map itself lives in Growth; no second map
-          name in Learn, no "matched to where {name} is growing" over nothing). */}
-      {devMapHasSignal(devScore) ? (
-        <>
-          <p data-testid="academy-rail-title" className="t-lg font-bold px-1" dir="auto" style={{ color: "var(--arbor-green-ink)" }}>
-            {t("academy.learnMap.title", { name: childName })}
-          </p>
-          {/* AP-053: Academy "For You" — the copilot pick. Pure frontend join;
-              no new AI call; no new Firestore read. */}
-          <AcademyForYou />
+  const goProgram = () => openProgramPage(setActiveTab as never);
+  const openLibrary = () => requestLearnRead({ source: "foryou-library" });
 
-          {/* AP-055: Scholar Hub — one developmental concept per week.
-              Non-diagnostic, editorial. */}
-          <ScholarHubCard />
-        </>
-      ) : (
-        <button
-          type="button"
-          data-testid="academy-rail-nosignal"
-          onClick={() => setActiveTab("milestones")}
-          className="inline-flex min-h-11 items-center gap-1.5 px-1 text-start text-[13px] font-semibold"
-          style={{ color: "var(--arbor-muted)" }}
-          dir="auto"
-        >
-          {t("elev.growthTruth.learn.rail.noSignal", { name: childName })}
-          <Icon name="arrow_forward" size={15} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />
-        </button>
+  const pickTitle = todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : nextCourse ? (he ? nextCourse.titleHe : nextCourse.title) : null;
+  const pickArt = todaysRead ? DOMAIN_ART[readArea(todaysRead.card.category)] : nextCourse ? DOMAIN_ART[courseArea(nextCourse.id) ?? "family"] : null;
+
+  // V77: the desk reads pick, courses (the rail), programs, more; the phone
+  // reads pick, programs, courses, more, with the boards' one-word stops.
+  const stopToday: GuideStop = { id: "fy-today", title: desk ? copy.guideToday : copy.stopPick, sub: pickMinutes != null ? copy.guideTodaySub : copy.guideTodayNone };
+  const stopCourses: GuideStop = { id: "fy-courses", title: desk ? copy.guideCourses : copy.stopCourses, sub: copy.guideCoursesSub };
+  const stopPrograms: GuideStop = { id: "fy-programs", title: desk ? copy.guidePrograms : copy.stopPrograms, sub: program.models.length ? copy.guideProgramsSub(program.models.map((m) => m.name).join(", ")) : copy.guideProgramsNone };
+  const stopMore: GuideStop = { id: "fy-more", title: desk ? copy.guideMore : copy.stopMore, sub: copy.guideMoreSub };
+  const stops: GuideStop[] = desk ? [stopToday, stopCourses, stopPrograms, stopMore] : [stopToday, stopPrograms, stopCourses, stopMore];
+
+  // ── 1 · For today: the pick, tied to what the parent wrote ──────────────
+  const pickScene = (
+    <Scene
+      as="section"
+      field="now"
+      className={`fy-scene${desk ? " x8" : ""}`}
+      data-module="academy-today"
+      data-testid="academy-hub-hero"
+      aria-labelledby="fy-pick-title"
+      orbs={desk ? [{ size: 400, left: -230, bottom: -250, opacity: 0.6 }, { size: 320, right: -150, top: -210, opacity: 0.65, b: true }] : [{ size: 260, left: -150, bottom: -170, opacity: 0.55 }, { size: 200, right: -100, top: -130, opacity: 0.6, b: true }]}
+    >
+      <div className="line between" style={{ flexWrap: "wrap", gap: 8 }}>
+        <span className="gsec">
+          {pickMinutes != null && (
+            <span className="kicker" data-testid="academy-pick-minutes">{todaysRead ? (desk ? copy.pickKicker(pickMinutes) : copy.pickKickerShort(pickMinutes)) : copy.pickKickerCourse(pickMinutes)}</span>
+          )}
+          <StartHere>{copy.startHere}</StartHere>
+        </span>
+        <span className="fy-meta">
+          <EvidenceChip />
+          {!desk && <TrustLink surface="foryou-pick" />}
+        </span>
+      </div>
+      <div className="fy-pick-head" style={pickArt && desk ? undefined : { gridTemplateColumns: "minmax(0, 1fr)" }}>
+        <div className="stack fy-col" style={{ gap: 8 }}>
+          <h1 className="hero" id="fy-pick-title" dir="auto">{pickTitle ?? t("elev.hero.academy.title")}</h1>
+          {desk && todaysRead && <p className="fy-pick-hook" dir="auto">{he ? todaysRead.card.hook.he : todaysRead.card.hook.en}</p>}
+          {!pickTitle && <p className="fy-pick-hook">{t("elev.hero.academy.sub")}</p>}
+        </div>
+        {pickArt && desk && <AreaForm art={pickArt} width={210} ratio={0.57} zoom={1.13} />}
+      </div>
+      {knots.length > 0 && (
+        <div className="thread fy-thread" style={{ gridTemplateColumns: threadCols }}>
+          {knots.map((k, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <Thr ai={knots[i - 1] === aiKnot} />}
+              {k}
+            </React.Fragment>
+          ))}
+        </div>
       )}
+      {desk && todaysRead && (
+        <div className="fy-try">
+          <span className="kicker">{t("learn.tryToday")}</span>
+          <p dir="auto">{he ? todaysRead.card.tryToday.he : todaysRead.card.tryToday.en}</p>
+        </div>
+      )}
+      {(todaysRead || nextCourse) && (
+        <div className="fy-cta">
+          <button
+            type="button"
+            data-primary-move="open-todays-pick"
+            data-testid="academy-hero-cta"
+            className="btn primary"
+            onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)}
+          >
+            <Icon name="menu_book" size={18} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}
+          </button>
+          {todaysRead && (
+            <button type="button" className="ghostb fy-notthis" data-testid="academy-pick-not-this" onClick={() => setFeedback(setLearnFeedback(todaysRead.card.id, -1))}>
+              {copy.notThisOne}
+            </button>
+          )}
+          {desk && <TrustLink surface="foryou-pick" className="fy-trust" />}
+        </div>
+      )}
+    </Scene>
+  );
 
-      {/* Recommended-by-Family-Charter strip — relocated into the rail. */}
-      {recommended.length > 0 && (
-        <div className="rounded-2xl p-4" style={{ background: "var(--arbor-green-soft)", border: "1px solid rgba(52,178,119,0.25)" }}>
-          <p className="text-xs uppercase tracking-widest font-bold mb-2.5" style={{ color: "var(--arbor-green-ink)" }}>
-            {t("master.rec")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {recommended.map((c) => (
+  // ── 2 · Courses by area ──────────────────────────────────────────────────
+  const ageSwitch = (ageHidden.length > 0 || showAllAges) ? (
+    <button type="button" role="switch" aria-checked={showAllAges} onClick={toggleShowAllAges} data-testid="agefilter-toggle-masterclasses" className="fy-switch">
+      {showAllAges && <Icon name="check" size={16} />}
+      {agefilterText("elev.agefilter.showAll", he)}
+      {!showAllAges && <Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />}
+    </button>
+  ) : null;
+  const coursesBody = (
+    <>
+      <div className="fy-areas">
+        <span className="small">
+          {showAllAges ? copy.coursesAll(catalog.length) : copy.coursesForAge(catalog.length, firstName)}
+          {!showAllAges && ageHidden.length > 0 && <> · {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}</>}
+        </span>
+        {areaCounts.length > 1 && (
+          <div className="fy-area-grid" role="group" aria-label={t("elev.learnCare.byArea")} data-testid="academy-by-area">
+            {areaTiles.map(({ area, count }) => (
               <button
-                key={c.id}
-                onClick={() => setOpenId(c.id)}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-bold transition motion-safe:hover:-translate-y-0.5"
-                dir="auto"
-                style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", color: "var(--arbor-ink)" }}
+                key={area}
+                type="button"
+                data-area={area}
+                aria-pressed={selectedArea === area}
+                onClick={() => setActiveArea(selectedArea === area ? null : area)}
+                className={`topic${selectedArea === area ? " on" : ""}`}
               >
+                <b>{count}</b><span>{domainName(area, t)}</span>
+              </button>
+            ))}
+            {selectedArea && (
+              <button type="button" aria-pressed={false} onClick={() => setActiveArea(null)} className="topic all">
+                {t("elev.learnCare.byArea.all")}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {shownCourses.map((c) => {
+        const art = DOMAIN_ART[courseArea(c.id) ?? "family"];
+        const isCardDone = !!done[c.id];
+        // W0.7: out-of-band courses (reachable via "Show all ages") carry a
+        // small age chip so the parent knows why they were tucked away.
+        const outOfBand = ageFits.get(c) === "out";
+        // Lesson count = number of authored sections (an honest catalog fact).
+        // A finished course fills its marks; nothing finer is recorded.
+        const lessons = c.sections.length;
+        return (
+          <button key={c.id} type="button" className="crs fy-crs" data-testid="academy-course" onClick={() => setOpenId(c.id)}>
+            <AreaForm art={art} width={60} ratio={0.66} zoom={1.22} />
+            <span className="nm" dir="auto">
+              {he ? c.titleHe : c.title}
+              <small>{he ? FRAME_LABELS[c.frame].he : FRAME_LABELS[c.frame].en} · {c.durationMin} {t("master.min")}</small>
+              {outOfBand && c.ageMinYears != null && (
+                <span className="agechip">
+                  {c.ageMaxYears != null
+                    ? agefilterText("elev.agefilter.chip", he, { min: c.ageMinYears, max: c.ageMaxYears })
+                    : agefilterText("elev.agefilter.chipPlus", he, { min: c.ageMinYears })}
+                </span>
+              )}
+              <span className="pips">
+                {Array.from({ length: Math.min(lessons, 6) }, (_, i) => <i key={i} className={`pip${isCardDone ? " on" : ""}`} aria-hidden="true" />)}
+                <span className="small">{t("academy.lessons", { n: lessons })}</span>
+              </span>
+            </span>
+            <span className="go">
+              {isCardDone ? <><Icon name="check" size={15} />{t("master.done")}</> : <><span className="fy-go-t">{t("master.read")}</span><Icon name="chevron_right" size={16} className="rtl:-scale-x-100" /></>}
+            </span>
+          </button>
+        );
+      })}
+      {!desk && <p className="small fy-legend">{copy.pipsLegend}</p>}
+      {courseList.length > firstCourses && (
+        <MoreLink onClick={() => setAllCourses((v) => !v)}>{allCourses ? copy.fewerCourses : copy.allCourses(courseList.length)}</MoreLink>
+      )}
+      {/* D3: courses that build the family's chosen virtues (Family Charter). */}
+      {recommended.length > 0 && (
+        <div className="stack fy-col" style={{ gap: 8 }}>
+          <span className="kicker">{t("master.rec")}</span>
+          <div className="fy-rec">
+            {recommended.map((c) => (
+              <button key={c.id} type="button" className="chip line" onClick={() => setOpenId(c.id)} dir="auto">
                 {he ? c.titleHe : c.title}
-                {done[c.id] && <Icon name="check" size={15} fill={1} style={{ color: "var(--arbor-green-ink)" }} />}
+                {done[c.id] && <Icon name="check" size={15} />}
               </button>
             ))}
           </div>
         </div>
       )}
-
-      {/* B-PLAY-18: the catalogue completion bar ("{done} of {total}") was
-          removed — a progress meter on parent reading is scorekeeping. */}
     </>
   );
 
-  // B-PLAY-18: the spine ribbon ("Courses follow what you notice on the
-  // Development Map") is removed — the claim is unverified (FU#23): the
-  // catalogue order does not read the map.
+  // One catalogue block for both compositions: the rail's own head carries the
+  // title on a desk; on a phone the block brings its numbered heading.
+  const coursesBlock = (
+    <div data-module="academy-catalogue" data-testid="academy-courses" className="stack fy-col" style={{ gap: 12 }}>
+      {!desk && <RouteHead id="fy-courses-title" title={t("elev.learnCare.byArea")} sub={copy.coursesForAgeShort(catalog.length, firstName)} />}
+      {!desk && ageSwitch && <div className="fy-switchrow">{ageSwitch}</div>}
+      {coursesBody}
+    </div>
+  );
+
+  // ── 4 · More to read, and the Learning Map rail behind one disclosure ────
+  // W2-SHELLPLAY critic r2 (G0): the rail heading claims a match only where
+  // one exists (inside the signal branch, "Picked for {name}"); with no
+  // noticed milestone one muted door to Milestones stands in for both cards.
+  const railStack = (
+    <>
+      {devMapHasSignal(devScore) ? (
+        <>
+          <p data-testid="academy-rail-title" className="h3" dir="auto">
+            {t("academy.learnMap.title", { name: childName })}
+          </p>
+          {/* AP-053: Academy "For You" — the copilot pick (pure frontend join). */}
+          <AcademyForYou />
+          {/* AP-055: Scholar Hub — one developmental concept per week. */}
+          <ScholarHubCard />
+        </>
+      ) : (
+        <MoreLink onClick={() => setActiveTab("milestones")} className="fy-nosignal">
+          <span data-testid="academy-rail-nosignal" dir="auto">{t("elev.growthTruth.learn.rail.noSignal", { name: childName })}</span>
+        </MoreLink>
+      )}
+    </>
+  );
+  const moreTiles = (
+    <>
+      <Tile className={desk ? "x6" : undefined} icon="local_library" title={copy.libraryTitle} titleId="fy-library-title">
+        <div className="fy-door">
+          <AreaForm art={EMPTY_ART.learn} width={desk ? 104 : 84} ratio={0.62} zoom={1.05} />
+          <p dir="auto">{copy.librarySub(firstName)}</p>
+        </div>
+        <MoreLink onClick={openLibrary} className="fy-library-open">
+          <span data-testid="academy-library-open">{t("elev.learnCare.library.open")}</span>
+        </MoreLink>
+      </Tile>
+      {/* v3 EXTRA-FORYOU: family formation as a door; #/family opens Together › Stories, where the parent chooses the ritual. */}
+      <Tile className={desk ? "x6" : undefined} icon="menu_book" title={t("elev.learnCare.family.title")} titleId="fy-family-title">
+        <div className="fy-door">
+          <AreaForm art={TOGETHER_ART} width={desk ? 104 : 84} ratio={0.66} zoom={1.05} />
+          <p dir="auto">{t("elev.learnCare.family.sub")}</p>
+        </div>
+        <MoreLink onClick={() => setActiveTab("family")}>
+          <span data-testid="academy-family-door">{t("elev.learnCare.family.cta")}</span>
+        </MoreLink>
+      </Tile>
+    </>
+  );
+
+  // Your programs: section 3 on a desk, section 2 on a phone (the boards' order).
+  const programsSection = (
+    <RouteSection id="fy-programs" n={desk ? 3 : 2} stopTop={desk ? 0 : 4} aria-labelledby="fy-programs-title">
+      <div data-module="academy-programs" className="stack fy-col" style={{ gap: 12 }}>
+        <RouteHead id="fy-programs-title" title={copy.guidePrograms} sub={program.model ? (desk ? copy.programsRunningSub : undefined) : t("elev.program.none.title")} />
+        <ForYouPrograms state={program} copy={copy} composition={composition} onOpen={goProgram} />
+      </div>
+    </RouteSection>
+  );
 
   return (
-    <>
-      {/* E2 — Academy hub hero: sits ABOVE the existing page (outside the
-          page's motion wrapper — HubHero runs its own reduced-motion-gated
-          entrance). E8: EvidenceChip on the hero's meta row. */}
-      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
-          marks a top-level sibling module (what moduleBudget counts);
-          `data-primary-move` marks the ONE control that performs the move
-          surfaceContract.ts declares for this route — here the hero's pick CTA,
-          passed to HubHero as a prop, so the stamp rides its wrapper. */}
-      <header data-primary-move="open-todays-pick" data-testid="academy-hub-hero" className="mx-auto mb-6 w-full min-w-0 max-w-[1180px]">
-        {/* v3 EXTRA-FORYOU: the parent's own hub says so: a quiet sentence-case
-            kicker, the title, one line on what is here. */}
-        <p data-testid="academy-hero-kicker" className="mb-1 text-sm font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.hero.academy.kicker")}</p>
-        <h1 className="text-2xl sm:text-3xl leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{t("elev.hero.academy.title")}</h1>
-        <p data-testid="academy-hero-sub" className="mt-1.5 max-w-[60ch] text-[15px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.hero.academy.sub")}</p>
-        {(todaysRead || nextCourse) && <section className="mt-4 border-y py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
-          <div className="min-w-0 max-w-[65ch] flex-1 basis-[240px]">
-            {pickTopic && (
-              <span data-testid="academy-pick-topic" className="mb-2 inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold" style={{ background: PASTEL.lav.soft, color: PASTEL.lav.ink }}>
-                <Icon name="auto_awesome" size={14} fill={1} />{t("elev.learnCare.pick.topicTag")}
-              </span>
-            )}
-            <h2 className="text-xl font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{todaysRead ? (he ? todaysRead.card.title.he : todaysRead.card.title.en) : (he ? nextCourse!.titleHe : nextCourse!.title)}</h2>
-            {/* W2-SHELLPLAY critic r2 (B-SHELL-NEW-2j): when the parent's own
-                note moved today's pick, the why-line QUOTES it (lead-in sans
-                muted, the note in the editorial face, a peach-ink inline-start
-                rule) — never a domain, a score or a count. Otherwise the
-                re-derived why-line as before. */}
-            {pickTopic ? (
-              <p data-testid="academy-pick-why" data-why="family-question" dir="auto" className="mt-2 leading-relaxed" style={{ borderInlineStart: "3px solid var(--arbor-lav-ink)", paddingInlineStart: 12 }}>
-                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{topicLead}</span>
-                <FreeText text={pickTopic} className="t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }} />
-                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{topicTail}</span>
-              </p>
-            ) : todaysRead && pickMoment ? (
-              <p data-testid="academy-pick-why" data-why="moment" dir="auto" className="mt-2 leading-relaxed" style={{ borderInlineStart: "3px solid var(--arbor-peach-ink)", paddingInlineStart: 12 }}>
-                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{pickMomentLead}</span>{" "}
-                <span className="t-base" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-editorial)" }}>“<bdi>{pickMoment.text}</bdi>”</span>{" "}
-                <span className="t-sm" style={{ color: "var(--arbor-muted)", fontFamily: "var(--font-sans)" }}>{t("elev.learnCare.pick.moment.tail")}</span>
-              </p>
-            ) : todaysRead && <p data-testid="academy-pick-why" dir="auto" className="mt-1 text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{pickWhy}</p>}
-            {pickMinutes != null && <p data-testid="academy-pick-minutes" className="mt-1 text-xs" style={{ color: "var(--arbor-muted)" }}>{pickMinutes} {t(todaysRead ? "elev.learnCare.pick.stat.minutes" : "elev.hero.academy.stat.minNext")}</p>}
-          </div>
-          <button data-testid="academy-hero-cta" onClick={() => todaysRead ? requestLearnRead({ cardId: todaysRead.card.id, source: "learn-hub-todays-pick" }) : setOpenId(nextCourse!.id)} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold" style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}><Icon name="menu_book" size={16} />{t(todaysRead ? "elev.learnCare.pick.cta" : "elev.hero.academy.cta")}</button>
-        </section>}
-        <div className="mt-3"><EvidenceChip /></div>
-      </header>
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-6">
-      {/* LC-05 / RUN-11 — the two kid-register doors that stood here ("Story
-          journeys" → #/journey, "Comic library" → #/comics) are DELETED. This
-          is the parent-learning hub: a comic shelf and a hero-story catalogue
-          are the child's register (law 2), and they pushed the first actual
-          course to 3,300 px behind three modules that were not courses. Both
-          destinations remain reachable from the Stories hub, which is their
-          home — no capability is lost (law 6). The surviving third tile said
-          only "continue to lessons", which is what the page already does. */}
-
-      {/* R17 — a phone meets a COURSE right after the hero and the pick line.
-          MEASURED at 390 (round 2b): the first course card sat at 1,675 px, because
-          the single-column collapse stacked the whole Learning Map rail — spine
-          ribbon, For You, Scholar Hub, the charter strip, the catalogue progress
-          bar — between the hero and the catalogue. Five modules that are not
-          courses, on the surface whose ONE job is courses. Nothing is removed
-          (law 6): below `md` the rail becomes one collapsed disclosure BELOW the
-          gallery, and from `md` up it is the left column exactly as designed. */}
-
-      {/* v3 EXTRA-FORYOU: short reads for the parent's question. Three-minute
-          Learn reads, one tap each into the Learn reader. A sibling module (the
-          route's budget is 3; this and the catalogue are two). Below sm the row
-          scrolls sideways (one card and a peek), so the courses stay near the
-          top on a phone; from sm up, three columns. Area and minutes only (plus
-          a "Your question" mark on a matched read in a mixed row). */}
-      {shortReadRow.show && (
-        <section data-module="academy-short-reads" data-testid="academy-short-reads" aria-labelledby="academy-short-reads-title" className="min-w-0 space-y-3">
-          <div className="px-1">
-            <h2 id="academy-short-reads-title" className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>
-              {t(shortReadRow.forTopic ? "elev.learnCare.shortReads.title" : "elev.learnCare.shortReads.titleAll")}
-            </h2>
-            <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.shortReads.sub")}</p>
-          </div>
-          <div className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:overflow-visible">
-            {shortReadRow.reads.map((c) => {
-              const area = readArea(c.category);
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  data-testid="academy-short-read"
-                  onClick={() => requestLearnRead({ cardId: c.id, source: "learn-hub-short-read" })}
-                  className={`${cardCls} flex min-h-11 w-[78%] shrink-0 snap-start flex-col gap-2 p-4 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 sm:w-auto`}
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span data-testid="academy-short-read-area" data-area={area} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink-soft)", border: "1px solid var(--arbor-rule)" }}>
-                      <Icon name={DOMAIN_ICONS[area]} size={14} /><span>{domainName(area, t)}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>
-                      <Icon name="schedule" size={13} />{t("learn.minutes", { n: c.minutes })}
-                    </span>
-                    {shortReadRow.markMatched && shortReadRow.matched.has(c.id) && (
-                      <span data-testid="academy-short-read-matched" className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: PASTEL.lav.ink }}>
-                        <Icon name="auto_awesome" size={13} />{t("elev.learnCare.shortReads.matched")}
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-base font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? c.title.he : c.title.en}</span>
-                  <span className="line-clamp-3 text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)", fontFamily: "var(--font-editorial)", borderInlineStart: "2px solid var(--arbor-rule)", paddingInlineStart: 10 }}>{he ? c.hook.he : c.hook.en}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Design's two-column shell: left = the Learning Map rail (the explicit
-          development-map spine — courses matched to where the child is growing),
-          right = the "All courses" gallery. Collapses to one column below xl, and
-          there the gallery comes FIRST — which is what the order-* pair encodes.
-          DOM order is gallery-then-rail so a screen reader and a keyboard meet the
-          courses first too, not only the eye. */}
-      <div data-module="academy-catalogue" className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
-        {/* ── All courses gallery — first in the document, right column at xl ─ */}
-        <div className="space-y-4 min-w-0 order-1 xl:order-2" data-testid="academy-courses">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-            <h2 className="text-lg font-bold" style={{ color: "var(--arbor-muted)" }}>
-              {t("academy.courses.title")}
-            </h2>
-            {/* W0.7 — "Show all ages" toggle: only rendered when the child's-age
-                view actually hides something (or the parent already opted in). */}
-            {(ageHidden.length > 0 || showAllAges) && (
-              <span className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:ms-auto sm:w-auto">
-                {!showAllAges && ageHidden.length > 0 && (
-                  <span className="text-xs font-bold" style={{ color: "var(--arbor-faint)" }} dir="auto">
-                    {agefilterText("elev.agefilter.hiddenCount", he, { n: ageHidden.length })}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={showAllAges}
-                  onClick={toggleShowAllAges}
-                  data-testid="agefilter-toggle-masterclasses"
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold transition"
-                  style={
-                    showAllAges
-                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.25)" }
-                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }
-                  }
-                >
-                  <Icon name={showAllAges ? "check" : "unfold_more"} size={14} />
-                  {agefilterText("elev.agefilter.showAll", he)}
-                </button>
-              </span>
-            )}
-          </div>
-          {/* v3 EXTRA-FORYOU: courses by area. One chip per registry domain
-              that holds a visible course (its DOMAIN_ICONS glyph and registry
-              name), with the plain number of courses in it (a catalogue count,
-              never progress). The chips filter the grid below; "All" clears the
-              filter. One scrolling row below sm. */}
-          {areaCounts.length > 1 && (
-            <div className="min-w-0 space-y-1.5">
-              <p id="academy-by-area-label" className="px-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.byArea")}</p>
-              <div role="group" aria-labelledby="academy-by-area-label" data-testid="academy-by-area" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap">
-                <button type="button" aria-pressed={selectedArea === null} onClick={() => setActiveArea(null)} className={AREA_CHIP} style={areaChipStyle(selectedArea === null)}>
-                  {t("elev.learnCare.byArea.all")}
-                </button>
-                {areaCounts.map(({ area, count }) => (
-                  <button
-                    key={area}
-                    type="button"
-                    data-area={area}
-                    aria-pressed={selectedArea === area}
-                    onClick={() => setActiveArea(selectedArea === area ? null : area)}
-                    className={AREA_CHIP}
-                    style={areaChipStyle(selectedArea === area)}
-                  >
-                    <Icon name={DOMAIN_ICONS[area]} size={15} />
-                    <span>{domainName(area, t)}</span>
-                    <span className="tabular-nums" style={{ opacity: 0.75 }}>{count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="grid sm:grid-cols-2 gap-4">
-            {catalog.map((c) => {
-              // v3 EXTRA-FORYOU: the area chips filter the grid (null = every area).
-              if (selectedArea && courseArea(c.id) !== selectedArea) return null;
-              const p = PASTEL[FRAME_TONE[c.frame]];
-              const isCardDone = !!done[c.id];
-              // W0.7: out-of-band courses (reachable via "Show all ages") carry a
-              // small age chip so the parent knows why they were tucked away.
-              const outOfBand = ageFits.get(c) === "out";
-              // Lesson count = number of authored sections (an honest catalog
-              // fact, never a fabricated granular %). Pairs with duration in the
-              // meta line ("N lessons · M min").
-              const lessons = c.sections.length;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setOpenId(c.id)}
-                  className={`${cardCls} flex flex-col text-start overflow-hidden transition motion-safe:hover:-translate-y-0.5`}
-                >
-                  {/* Body */}
-                  <div className="flex flex-col gap-2 p-5 flex-1">
-                    {/* domain/frame pill at the top of the body */}
-                    <span className="self-start inline-flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold" style={{ background: p.soft, color: p.ink }}>
-                        <Icon name="school" size={16} />{frameLabel(c.frame)}
-                      </span>
-                      {/* W0.7 age chip — a catalog fact ("Ages 4–8"), never a verdict. */}
-                      {outOfBand && c.ageMinYears != null && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full" dir="auto" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
-                          {c.ageMaxYears != null
-                            ? agefilterText("elev.agefilter.chip", he, { min: c.ageMinYears, max: c.ageMaxYears })
-                            : agefilterText("elev.agefilter.chipPlus", he, { min: c.ageMinYears })}
-                        </span>
-                      )}
-                    </span>
-                    <h3 className="text-[17px] font-bold leading-snug" dir="auto" style={{ color: "var(--arbor-ink)" }}>
-                      {he ? c.titleHe : c.title}
-                    </h3>
-                    {/* meta line — "N lessons · M min" (honest catalog facts) */}
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold flex-wrap" style={{ color: "var(--arbor-muted)" }}>
-                      <span className="inline-flex items-center gap-1"><Icon name="menu_book" size={13} /> {t("academy.lessons", { n: lessons })}</span>
-                      <span aria-hidden="true" style={{ opacity: 0.6 }}>·</span>
-                      <span className="inline-flex items-center gap-1"><Icon name="schedule" size={13} /> {c.durationMin} {t("master.min")}</span>
-                    </span>
-                    <p className="text-sm leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>
-                      {he ? c.hookHe : c.hook}
-                    </p>
-
-                    {/* Per-card progress — binary 0/100 from the existing done
-                        localStorage state. The app has NO granular course % model,
-                        so the bar is strictly empty or full (1-of-1 done count),
-                        never a fabricated continuous percentage. */}
-                    <div className="mt-auto pt-3 space-y-3">
-                      {/* Footer status chip CTA */}
-                      <span
-                        className="inline-flex items-center justify-center gap-1.5 w-full rounded-full px-3 py-1.5 text-[12px] font-extrabold"
-                        style={
-                          isCardDone
-                            ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }
-                            : { background: "var(--arbor-paper-deep)", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-rule)" }
-                        }
-                      >
-                        {isCardDone
-                          ? <><Icon name="check" size={15} fill={1} /> {t("master.done")}</>
-                          : <>{t("master.read")}<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" /></>}
-                      </span>
-                    </div>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px]">
+      <DsRoot composition={composition} className="stack fy-col fy-page" style={{ gap: desk ? 22 : 14 }} data-testid="foryou-page">
+        <Guide stops={stops} mini={!desk} label={copy.onThisPage} />
+        <Route composition={composition} className="fy-route">
+          {desk ? (
+            <RouteSection id="fy-today" n={1} on>
+              <Row12>
+                {pickScene}
+                {/* The rail (SideRail's markup): its head carries the age switch, which belongs to this list. */}
+                <aside className="siderail cards x4" id="fy-courses" aria-labelledby="fy-courses-title">
+                  <div className="rh fy-railhead">
+                    <span className="rstop inline" aria-hidden="true">2</span>
+                    <h2 className="h3" id="fy-courses-title">{t("elev.learnCare.byArea")}</h2>
+                    {ageSwitch}
                   </div>
-                </button>
-              );
-            })}
-          </div>
+                  {coursesBlock}
+                </aside>
+              </Row12>
+            </RouteSection>
+          ) : (
+            <>
+              <RouteSection id="fy-today" n={1} on>
+                {pickScene}
+              </RouteSection>
+              {programsSection}
+              <RouteSection id="fy-courses" n={3} stopTop={4} aria-labelledby="fy-courses-title">
+                {coursesBlock}
+              </RouteSection>
+            </>
+          )}
+          {desk && programsSection}
 
-          {/* v3 EXTRA-FORYOU: family formation as a door inside the catalogue
-              (not a module of its own: the route's budget is 3). One tap opens
-              #/family, where the parent chooses the ritual. */}
-          <button
-            type="button"
-            data-testid="academy-family-door"
-            onClick={() => setActiveTab("family")}
-            className={`${cardCls} flex w-full min-h-11 items-center gap-4 p-3 text-start transition motion-safe:hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2`}
-          >
-            <img src={TOGETHER_ART.src} srcSet={TOGETHER_ART.srcSet} width={TOGETHER_ART.width} height={TOGETHER_ART.height} alt="" loading="lazy" className="h-auto w-24 shrink-0 rounded-xl object-cover sm:w-[140px]" />
-            <span className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className="text-xs font-semibold" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.family.title")}</span>
-              <span className="text-[17px] font-bold leading-snug" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>{t("elev.learnCare.family.headline")}</span>
-              <span className="text-sm leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.family.sub")}</span>
-              <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }}>
-                {t("elev.learnCare.family.cta")}
-                <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-              </span>
-            </span>
-          </button>
-        </div>
-
-        {/* ── Learning Map rail — left column at xl; on a phone it moves into
-            the disclosure below the gallery, so it is never rendered twice. */}
-        {!phone && (
-          <div className="space-y-5 order-2 xl:order-1" data-testid="academy-rail">
-            {railStack}
-          </div>
-        )}
-        {/* v4 (For you, the parent is ONE screen, no tabs): the Learn
-            library's shelves as one row of doors inside the catalogue (not a
-            module of its own: the route's budget is 3). A shelf opens the
-            library on that shelf (requestLearnRead, the Scholar Hub's own
-            door), "Open the library" opens it whole, and The Science sits
-            at the card's foot, so every width keeps both doors the Library
-            pill and the rail used to carry. From xl it spans both columns
-            above them, right under the short reads (more reads, by area);
-            below xl it follows the courses, so a phone still meets a course
-            first (R17). */}
-        <section data-testid="academy-library" aria-labelledby="academy-library-title" className={`${cardCls} order-3 flex min-w-0 flex-col gap-3 p-4 xl:order-none xl:col-span-2`}>
-          <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-            <div className="min-w-0">
-              <h2 id="academy-library-title" className="text-lg font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.learnCare.library.title")}</h2>
-              <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.library.sub")}</p>
+          <RouteSection id="fy-more" n={4} stopTop={desk ? 0 : 4} aria-labelledby="fy-more-title">
+            <div data-module="academy-more" data-module-demoted className="stack fy-col" style={{ gap: 12 }}>
+              <RouteHead id="fy-more-title" title={copy.guideMore} />
+              {desk ? <Row12>{moreTiles}</Row12> : moreTiles}
+              <details data-module-disclosure="academy-rail" data-testid="academy-rail" className="fy-rail-more">
+                <summary style={{ minHeight: 44 }}>
+                  <Icon name="expand_more" size={18} />
+                  {t("academy.rail.more")}
+                </summary>
+                <div className="fy-rail-body">{railStack}</div>
+              </details>
             </div>
-            <button
-              type="button"
-              data-testid="academy-library-open"
-              onClick={() => requestLearnRead({ source: "foryou-library" })}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[13px] font-bold"
-              style={{ color: "var(--arbor-clay)" }}
-            >
-              <Icon name="local_library" size={16} />{t("elev.learnCare.library.open")}<Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-            </button>
-          </div>
-          <div role="group" aria-labelledby="academy-library-title" data-testid="academy-library-shelves" className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap">
-            {LEARN_CATEGORIES.map((shelf) => (
-              <button
-                key={shelf.id}
-                type="button"
-                data-shelf={shelf.id}
-                onClick={() => requestLearnRead({ category: shelf.id, source: "foryou-library" })}
-                className={AREA_CHIP}
-                style={areaChipStyle(false)}
-              >
-                <Icon name={shelf.msIcon} size={15} />
-                <span dir="auto">{he ? shelf.label.he : shelf.label.en}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
-            <TrustLink surface="foryou-library" />
-          </div>
-        </section>
-      </div>
-
-      {phone && (
-        <details data-testid="academy-rail-disclosure" className={`${cardCls} px-4 py-2`}>
-          <summary
-            className="flex items-center gap-2 text-[13px] font-extrabold cursor-pointer"
-            style={{ color: "var(--arbor-green-ink)", minHeight: 44 }}
-          >
-            <Icon name="unfold_more" size={18} />
-            {t("academy.rail.more")}
-          </summary>
-          <div className="space-y-5 pb-3 pt-4">
-            {railStack}
-          </div>
-        </details>
-      )}
+          </RouteSection>
+        </Route>
+      </DsRoot>
     </motion.div>
-    </>
   );
 }
 
@@ -785,7 +642,7 @@ export function MasterclassReader({ m, isDone: isDoneProp, onDone: onDoneProp, o
           <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{frameLabel}</span>
           <span className="inline-flex items-center gap-1 text-xs font-bold" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={13} /> {m.durationMin} {t("master.min")}</span>
         </div>
-        <h1 className="text-2xl md:text-[1.9rem] leading-tight tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <h1 className="text-2xl md:text-[34px] leading-tight tracking-tight" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {he ? m.titleHe : m.title}
         </h1>
         <p className="text-[15px] leading-relaxed mt-2" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>

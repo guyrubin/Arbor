@@ -354,11 +354,19 @@ describe("R25 — every leaf renders within its declared moduleBudget", () => {
     // exclusive branches, so the fix was one wrapper stamp and zero demotions.
     // B-GROWTH-22: copilot left this list — its leaf is deleted and its seat
     // renders the development leaf (asserted below, like find-pro).
-    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "smart-reminders", "language"]) {
+    // v10.1 (N-Remind): smart-reminders left this list — quiet hours and calmer
+    // stretches are operated in place inside its prefs module (the board's
+    // "When Arbor may reach you" box), so the page is three modules (prefs ·
+    // contract · delivery) with nothing folded away; asserted below.
+    for (const route of ["profile", "safety", "memory", "weekly", "sharing", "appointments", "language"]) {
       const c = countModules(leaves.get(route)!);
       expect(c.demoted, `${route} must demote, not delete, the modules it folded away`).toBeGreaterThan(0);
       expect(c.disclosures, `${route} must carry exactly one disclosure`).toBe(1);
     }
+    const reminders = countModules(leaves.get("smart-reminders")!);
+    expect(reminders.demoted, "smart-reminders folds nothing away: quiet hours live in its prefs module").toBe(0);
+    expect(reminders.disclosures).toBe(0);
+    expect(reminders.topLevel).toBe(3);
     // B-CAREPRO-19: #/find-pro is retired to Consult — its seat renders the
     // Consult leaf (like #/handoff), which stays inside the same budget of 2.
     const findPro = countModules(leaves.get("find-pro")!);
@@ -479,15 +487,19 @@ describe("B-ASKJB-19 — Story density to its budget", () => {
 describe("B-ASKJB-28 — Plans folds RoutinesCard into one quiet row", () => {
   const plans = stripJsComments(read("src/components/tabs/PlansTab.tsx"));
 
-  it("Plans stamps exactly plans-create and plans-active (2 blocks when a plan exists)", () => {
+  // v10.1: the home stamps the three numbered sections it renders (your plans,
+  // the whole plan, start another plan) — within the route's moduleBudget of 3.
+  it("Plans stamps exactly plans-yours, plans-whole and plans-start", () => {
     const stamps = [...plans.matchAll(/data-module="([a-z-]+)"/g)].map((m) => m[1]);
-    expect(stamps).toEqual(["plans-create", "plans-active"]);
+    expect(stamps).toEqual(["plans-yours", "plans-whole", "plans-start"]);
+    expect(stamps.length).toBeLessThanOrEqual(contractFor("plans" as ActiveTab)!.moduleBudget);
     expect(plans).not.toContain("plans-routines\"");
   });
 
-  it("the routines row sits below plans-active and opens the same RoutinesCard", () => {
+  it("the routines row lives in Start another plan and opens the same RoutinesCard", () => {
     const row = plans.indexOf('data-testid="plans-routines-row"');
-    expect(row).toBeGreaterThan(plans.indexOf('data-module="plans-active"'));
+    expect(row).toBeGreaterThan(-1);
+    expect(plans.indexOf("routines={routinesRow}")).toBeGreaterThan(plans.indexOf('data-module="plans-start"'));
     expect(plans.indexOf("<RoutinesCard />", row)).toBeGreaterThan(row);
     expect((plans.match(/<RoutinesCard \/>/g) || []).length).toBe(1);
     expect(plans).toContain('t("elev.plans.routines.row", { n: routineCount })');
@@ -655,7 +667,8 @@ describe("B-ASKJB-23 — capture, guides and patterns", () => {
   const behaviors = read("src/components/tabs/BehaviorsTab.tsx");
   it("keeps the action-first capture before guides and patterns, with no record grid", () => {
     const modules = [...behaviors.matchAll(/data-module="([^"]+)"/g)].map((m) => m[1]);
-    expect(modules).toEqual(["behaviors-capture", "behaviors-hard-moments", "behaviors-patterns"]);
+    // N-Hard V77: the stage and its rail (patterns), then stop 3, the closest guides.
+    expect(modules).toEqual(["behaviors-capture", "behaviors-patterns", "behaviors-hard-moments"]);
     expect(modules.length).toBeLessThanOrEqual(contractFor("behaviors")!.moduleBudget);
     expect((behaviors.match(/data-primary-move="log-behavior"/g) ?? []).length).toBe(1);
     expect(behaviors).not.toContain('data-module="behaviors-record"');

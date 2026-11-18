@@ -193,8 +193,14 @@ describe("JRNL-1 clinical firewall — weekly surfaces render no intensity score
     "components/tabs/WeeklyTab.tsx",
     // W2 2.1: the recap story-cards ritual is a weekly surface too.
     "components/weekly/RecapStoryCards.tsx",
-    // v3 EXTRA-WEEKLY: the Weekly glance and the counts it (and Now) render.
-    "components/weekly/WeekGlance.tsx",
+    // v10: the Weekly report's stops and the counts they (and Now) render.
+    "components/weekly/v10/WeekInstrument.tsx",
+    "components/weekly/v10/WhatHelped.tsx",
+    "components/weekly/v10/CarryNextWeek.tsx",
+    "components/weekly/v10/YourDay.tsx",
+    "components/weekly/v10/weeklyCopy.ts",
+    "lib/weekInstrument.ts",
+    "lib/dayField.ts",
     "lib/weekGlance.ts",
     // v3 F-NOW-3: the Weekly report's lines (tile sub-lines, What helped, words, By area).
     "lib/weekReport.ts",

@@ -180,13 +180,36 @@ describe("B-PLAY-14 · the shared bedtime body", () => {
 
   it("the Tonight cover carries the two-option switch and opens on the requested mode", () => {
     const cover = stories.slice(stories.indexOf('<section data-module="stories-tonight">'), stories.indexOf("RUN-08 — the counts"));
-    expect(cover).toContain('data-testid="stories-tonight-mode"');
-    expect(cover).toContain('aria-pressed={tonightMode === m}');
-    expect(cover).toContain('t("elev.stories.tonight.mode.today")');
-    expect(cover).toContain('t("elev.stories.tonight.mode.hero")');
-    expect(cover).toContain("<TonightFromToday />");
-    // the hero cover (and its primary move) is still the default
-    expect(cover).toContain('data-primary-move="read-tonights-story"');
+    // V77: the switch sits in the header band, where the board draws it (FrameHead's
+    // switcher slot, above the figure); the cover no longer carries it (negative control).
+    const sw = stories.slice(stories.indexOf("const tonightSwitch = ("), stories.indexOf("const storiesChain = ("));
+    expect(cover).not.toContain('data-testid="stories-tonight-mode"');
+    expect(stories).toContain('switcher={composition === "desk" ? tonightSwitch : undefined}');
+    // …and on a phone it opens the stage card, as N-Stories-M draws it (rendered once per composition).
+    expect(cover).toContain('{composition === "phone" && <div className={phoneShort ? "mb-1.5" : "mb-3"}>{tonightSwitch}</div>}');
+    expect(sw).toContain('data-testid="stories-tonight-mode"');
+    expect(sw).toContain('aria-pressed={tonightMode === m}');
+    expect(sw).toContain('t("elev.stories.tonight.mode.today")');
+    expect(sw).toContain('t("elev.stories.tonight.mode.hero")');
+    expect(sw).toContain('if (m === "today") scrollToSection("own")');
+    // V77: "From today" is its own section (A story of your own, drawn once); the
+    // switch takes you there, so the cover no longer swaps in the bedtime body.
+    expect(cover).not.toContain("<TonightFromToday />");
+    const own = stories.slice(stories.indexOf('<RouteSection id="own"'), stories.indexOf('<RouteSection id="family"'));
+    expect(own).toContain("<TonightFromToday />");
+    expect((stories.match(/<TonightFromToday \/>/g) ?? []).length).toBe(1);
+    // An evening entry asking for "today" lands on that section.
+    expect(stories).toContain('if (tonightMode !== "today") return;');
+    // the hero cover is still the default; V77: its primary move is the header
+    // band's action (FrameHead `action={readTonight}`), drawn before the cover.
+    const move = stories.slice(stories.indexOf("const readTonight = ("), stories.indexOf("const tonightTitle"));
+    expect(move).toContain('data-primary-move="read-tonights-story"');
+    expect((stories.match(/data-primary-move="read-tonights-story"/g) ?? []).length).toBe(1);
+    expect(stories).toContain("action={readTonight}");
+    expect(stories.indexOf("action={readTonight}")).toBeLessThan(stories.indexOf('<section data-module="stories-tonight">'));
+    // NEGATIVE CONTROL: the cover itself no longer carries the move
+    expect(cover).not.toContain('data-primary-move="read-tonights-story"');
+    expect(cover).not.toContain("readTonight");
     expect(stories).toContain('useState<TonightMode>(() => consumeTonightMode() ?? "hero")');
   });
 

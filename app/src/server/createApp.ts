@@ -250,6 +250,8 @@ export const createApp = (config: ArborConfig) => {
     // route for Milestones/Behaviors explanations — same hourly AI quota,
     // same exclusion from the coach meter as todays-focus.
     "/api/explain",
+    // Family plan v1: reading a school message for its dates is a model call.
+    "/api/family-plan/extract",
   ];
   // BD-53: once the 14-day trial is over and nothing is paid, every model
   // route answers 402 `trial_ended` (the paywall) BEFORE the hourly quota is

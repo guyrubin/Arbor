@@ -78,7 +78,10 @@ describe("#/stories — Tonight shows the book; More stories is the library grid
   it("the Tonight art band renders the manifest cover of tonight's book, the avatar only without one", () => {
     expect(HERO).toContain("const tonightCover = tonightStory ? storyCover(tonightStory.id) : null;");
     const band = HERO.slice(HERO.indexOf('data-testid="stories-cover"'), HERO.indexOf('data-testid="hero-first-gate"'));
-    expect(band).toMatch(/\{tonightCover \? \([\s\S]*src=\{tonightCover\.src480\}[\s\S]*data-testid="stories-tonight-book-cover"[\s\S]*\) : <HeroAvatar size=\{84\} ring animate=\{false\} \/>\}/);
+    expect(band).toMatch(/\{tonightCover \? \([\s\S]*src=\{tonightCover\.src480\}[\s\S]*data-testid="stories-tonight-book-cover"[\s\S]*\) : <HeroAvatar size=\{phoneShort \? 56 : 84\} ring animate=\{false\} \/>\}/);
+    // A phone under 900 px tall draws the art band smaller (56 px avatar, 48 px cover) so
+    // Read it together clears the Ask bar; elsewhere the 84 px avatar and 72 px cover stand.
+    expect(band).toContain('${phoneShort ? "w-[48px]" : "w-[72px]"} sm:w-[132px] lg:w-[200px] aspect-[3/4]');
     // the hero row stays in the band (B-PLAY-15), Play stays the one stamp
     expect(HERO).toContain('data-primary-move="read-tonights-story"');
   });
@@ -111,8 +114,15 @@ describe("#/comics — Our books leads, the meter is gone, nothing is gated", ()
   });
 
   it("the saved comics stay listed below it with the one open-comic stamp", () => {
-    expect(COMICS).toContain('data-module="comics-shelf" data-primary-move="open-comic"');
-    expect(COMICS.indexOf("{ourBooksSection}", COMICS.indexOf("── Bookshelf view"))).toBeLessThan(COMICS.indexOf('data-module="comics-shelf"'));
+    // v10.1: ComicsTab also renders embedded inside #/stories, where it drops
+    // its stamps (Stories owns the one move). Standalone #/comics keeps both.
+    const shelfStamp = 'data-module={embedded ? undefined : "comics-shelf"} data-primary-move={embedded ? undefined : "open-comic"}';
+    expect(COMICS).toContain(shelfStamp);
+    expect((COMICS.match(/"open-comic"/g) || []).length).toBe(1);
+    // Our books leads the standalone shelf (Stories' own More stories shelf is the books when embedded).
+    const ourBooksAt = COMICS.indexOf("{!embedded && ourBooksSection}", COMICS.indexOf("── Bookshelf view"));
+    expect(ourBooksAt).toBeGreaterThan(-1);
+    expect(ourBooksAt).toBeLessThan(COMICS.indexOf(shelfStamp));
   });
 
   it("no completion meter: the 'n of total books on the shelf' line is gone", () => {

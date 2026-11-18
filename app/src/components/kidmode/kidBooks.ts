@@ -11,7 +11,8 @@
  *      rest, where books illustrated in the child's theme lead (a stable
  *      partition, so the catalogue order holds inside each half).
  *
- * Pure: no clock, no storage, no model call. The caller passes the runs.
+ * No storage or model calls. A bounded clock check rejects corrupt/future-dated
+ * history without modifying the stored records; tests can pin nowMs.
  */
 import { KID_SHELF_STORIES, kidShelfHolds, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
@@ -35,6 +36,8 @@ export interface KidBooksInput {
   runs: readonly { storyId: string; startedAt?: string; completedAt?: string }[];
   /** Test seam: the catalogue (defaults to the kid shelf, B-BOOK-29). */
   stories?: readonly HeroStorySpec[];
+  /** Fixed reference instant for deterministic imported-history checks (defaults to now). */
+  nowMs?: number;
 }
 
 /**
@@ -49,24 +52,40 @@ export function kidShelfFor(libraryBooks: readonly { book: { kind?: string; repl
   return shelf.filter((s) => !replaced.has(s.id));
 }
 
+/**
+ * Untrusted imported/offline history must not change a child's shelf state or
+ * sort order unless it contains a valid, non-future ISO timestamp. Compare
+ * instants, not their textual timezone offsets.
+ */
+function validRunInstant(timestamp: string | undefined, nowMs: number): number | null {
+  if (typeof timestamp !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(timestamp)) return null;
+  const instant = Date.parse(timestamp);
+  return Number.isFinite(instant) && instant >= 0 && instant <= nowMs + 5 * 60_000 ? instant : null;
+}
+
 export function kidBooks(input: KidBooksInput): KidBook[] {
   // B-BOOK-29: the kid shelf (canonical-text books only) unless a list is injected.
   const told = storiesForLanguage(input.stories ?? KID_SHELF_STORIES, input.lang);
-  // Latest run per story → its state and recency.
-  const opened = new Map<string, { state: KidBookState; at: string }>();
+  // Latest valid run per story → truthful state and absolute-time recency.
+  // A corrupt completion cannot make a never-finished story appear finished.
+  const nowMs = input.nowMs ?? Date.now();
+  const opened = new Map<string, { state: KidBookState; at: number }>();
   for (const r of input.runs) {
-    const at = r.completedAt ?? r.startedAt ?? "";
-    const state: KidBookState = r.completedAt ? "finished" : "started";
+    const completed = validRunInstant(r.completedAt, nowMs);
+    const started = validRunInstant(r.startedAt, nowMs);
+    if (completed === null && started === null) continue;
+    const at = Math.max(completed ?? -1, started ?? -1);
+    const state: KidBookState = completed !== null ? "finished" : "started";
     const prev = opened.get(r.storyId);
     if (!prev) opened.set(r.storyId, { state, at });
-    else opened.set(r.storyId, { state: prev.state === "finished" || state === "finished" ? "finished" : "started", at: at > prev.at ? at : prev.at });
+    else opened.set(r.storyId, { state: prev.state === "finished" || state === "finished" ? "finished" : "started", at: Math.max(at, prev.at) });
   }
   const ageVisible = input.showAllAges ? told : filterByAge(told, (s) => windowFromRange(s.ageRange), input.ageMonths).visible;
   const visibleIds = new Set(ageVisible.map((s) => s.id));
   const illustratedFirst = (list: HeroStorySpec[]) => [...list.filter((s) => input.hasCover(s.id)), ...list.filter((s) => !input.hasCover(s.id))];
   const openedStories = told
     .filter((s) => visibleIds.has(s.id) && opened.has(s.id))
-    .sort((a, b) => (opened.get(b.id)!.at > opened.get(a.id)!.at ? 1 : opened.get(b.id)!.at < opened.get(a.id)!.at ? -1 : 0));
+    .sort((a, b) => opened.get(b.id)!.at - opened.get(a.id)!.at);
   const fresh = illustratedFirst(told.filter((s) => visibleIds.has(s.id) && !opened.has(s.id)));
   return [
     ...openedStories.map((story) => ({ story, state: opened.get(story.id)!.state })),

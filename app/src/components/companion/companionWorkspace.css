@@ -20,7 +20,7 @@
    area around a quiet tinted pill. Text only — never a count, dot or state.
    Shared with TogetherView, which imports this file for it. */
 .companion-topic-chip { display: inline-flex; align-items: center; flex: 0 1 auto; min-inline-size: 44px; max-inline-size: 100%; min-block-size: 44px; padding: 0; border: 0; border-radius: var(--r-lg); background: transparent; color: var(--arbor-clay-deep); font-size: 13px; font-weight: 600; line-height: 1.35; text-align: start; cursor: pointer; }
-.companion-topic-chip-pill { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; min-block-size: 30px; padding-block: 4px; padding-inline: 9px 12px; border-radius: 15px; background: var(--arbor-clay-dim); transition: background-color 160ms; }
+.companion-topic-chip-pill { display: inline-flex; align-items: center; gap: 6px; min-inline-size: 0; max-inline-size: 100%; min-block-size: 30px; padding-block: 4px; padding-inline: 9px 12px; border-radius: 14px; background: var(--arbor-clay-dim); transition: background-color 160ms; }
 .companion-topic-chip:hover .companion-topic-chip-pill { background: color-mix(in srgb, var(--arbor-clay) 20%, transparent); }
 .companion-topic-chip-icon { color: var(--arbor-clay-deep); }
 .companion-topic-chip-text { min-inline-size: 0; overflow-wrap: anywhere; }
@@ -47,7 +47,7 @@
    its two lines in Hebrew at 375 px. */
 .companion-launch-mark { display: flex; flex: none; }
 .companion-launch-voice { min-inline-size: 44px; padding-inline: 4px; }
-@media (max-width: 520px) { .companion-launcher.has-voice .companion-launch-mark { display: none; } }
+/* v10 (canvas V77): the bar reads "Ask Arbor", so the mark keeps its place beside the voice door on phones. */
 @media (max-width: 380px) { .companion-launcher.has-voice .companion-launch-main { padding-inline: 4px; gap: 6px; } }
 /* F-TALK-2 / MOB-03: the full-screen panel ends where the phone's keyboard
    begins (useVisualViewportInset publishes the covered height). */
@@ -100,3 +100,72 @@
 .companion-capture-heading { margin: 0; padding-block: 6px 4px; padding-inline: 12px; color: var(--arbor-muted); font-size: 12px; font-weight: 600; line-height: 1.35; }
 .companion-panel-menu-text { display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; }
 .companion-panel-menu-sub { color: var(--arbor-muted); font-size: 12px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+
+/* ── v10.3 Talk, expanded (N-Talk boards: one readable flow) ───────────────
+   Expanded, the conversation takes the board's width; your question reads as
+   the "You asked" card; the reading guide and key show once above the thread;
+   a wide answer lays out as the board's grid (coachReport.css). Beside a page
+   and on a phone nothing here applies. */
+.talk-read, .talk-you-asked { display: none; }
+@media (min-width: 1024px) {
+  .companion-workspace.is-expanded .companion-conversation { inset-inline: max(24px, calc((100vw - 1120px) / 2)); }
+  .companion-workspace.is-expanded .coach-thread-col { max-width: 1040px; }
+  /* V77: Talk carries the same header band as Now and My child (the one
+     sapphire scene field, coral orb at the far corner); the conversation sits under it. */
+  .companion-workspace.is-expanded .companion-conversation-heading { position: relative; isolation: isolate; overflow: hidden; margin: 16px 24px 4px; padding: 24px 28px; gap: 16px; border-radius: 22px; border-block-end: 0; background: var(--arbor-k-moment-w); box-shadow: 0 0 0 1px var(--arbor-rule); }
+  .companion-workspace.is-expanded .companion-conversation-heading::after { content: ""; position: absolute; z-index: -1; inset-inline-end: -70px; inset-block-start: -110px; inline-size: 280px; block-size: 280px; border-radius: 50%; background: var(--o-coral, var(--arbor-k-hard-w)); pointer-events: none; }
+  .companion-workspace.is-expanded #companion-conversation-title { font-family: var(--font-display); font-size: 34px; font-weight: 500; line-height: 1.1; }
+  .companion-workspace.is-expanded .companion-conversation-context { font-size: 15px; }
+  .companion-workspace.is-expanded .companion-conversation-heading .companion-chrome-button { background: var(--arbor-paper-elevated); box-shadow: 0 0 0 1px var(--arbor-rule); border-radius: 14px; }
+  .companion-workspace.is-expanded .talk-read { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 24px; padding: 10px 14px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
+  .companion-workspace.is-expanded [data-companion-message="user"] { max-width: 100%; margin-inline: 0; }
+  .companion-workspace.is-expanded .talk-you-asked { display: block; margin-block-end: 4px; font-family: var(--font-sans); font-style: normal; font-size: 12px; font-weight: 600; color: var(--arbor-ink-soft); }
+  .companion-workspace.is-expanded [data-companion-message="user"] > div { flex: 1; --talk-you-bg: var(--arbor-paper-elevated); --talk-you-fg: var(--arbor-ink); --talk-you-tail: 18px; box-shadow: inset 0 0 0 2px var(--arbor-ink); font-family: var(--font-editorial, var(--font-display)); font-style: italic; font-size: 17px; line-height: 1.3; font-weight: 400; }
+}
+html[lang="he"] .companion-workspace.is-expanded [data-companion-message="user"] > div { font-style: normal; }
+.talk-read-guide { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 0; padding: 0; list-style: none; }
+.talk-read-guide li { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.2; color: var(--arbor-ink); }
+.talk-read-guide li b { display: block; font-weight: 600; }
+.talk-read-guide li small { display: block; font-size: 12px; color: var(--arbor-muted); }
+.talk-read-num { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--arbor-rule-strong); font-family: var(--font-display); font-size: 13px; color: var(--arbor-ink); flex: none; }
+.talk-read-guide li.on .talk-read-num { background: var(--arbor-ink); color: var(--arbor-on-accent); box-shadow: none; }
+.talk-read-key { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 14px; font-size: 13px; color: var(--arbor-ink-soft); }
+.talk-read-key span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.talk-sw { inline-size: 22px; block-size: 12px; border-radius: 999px; flex: none; }
+.talk-sw.q { box-shadow: inset 0 0 0 2px var(--arbor-ink); }
+.talk-sw.src { background: var(--arbor-paper-deep); box-shadow: inset 0 0 0 1px var(--arbor-rule-strong); }
+.talk-sw.ai { background: var(--arbor-k-moment-w); border: 1.5px dashed var(--arbor-k-moment); }
+.talk-sw.kept { background: var(--arbor-k-step); }
+.talk-sw.sug { border: 1.5px dashed var(--arbor-k-moment); }
+.talk-sw.plan { background: var(--arbor-k-plan); }
+/* the answer's bubble is the container the report's wide layout queries */
+[data-companion-message][data-structured-report] > div { container-type: inline-size; }
+
+/* V77 (N-Talk, empty state): starters from the parent's own records — the kind
+   palette (wash behind, solid glyph tile), two across in the panel, four when
+   the conversation has the room. "Something else" is a dashed sapphire tile. */
+.talk-starters { display: grid; gap: 10px; }
+.talk-starters-lead { margin: 0; font-size: 13px; color: var(--arbor-muted); }
+.talk-starters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); gap: 10px; }
+.talk-starter { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 10px 12px; border: 0; border-radius: 14px; background: var(--arbor-k-moment-w); color: var(--arbor-ink); text-align: start; cursor: pointer; }
+.talk-starter:hover { background: var(--arbor-paper-deep); }
+.talk-starter:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.talk-starter:disabled { opacity: 0.55; cursor: default; }
+.talk-starter-glyph { display: inline-grid; place-items: center; flex: none; inline-size: 40px; block-size: 40px; border-radius: 999px; background: var(--arbor-k-moment); color: var(--arbor-on-accent); }
+.talk-starter.k-hard { background: var(--arbor-k-hard-w); }
+.talk-starter.k-hard .talk-starter-glyph { background: var(--arbor-k-hard); }
+.talk-starter.k-note .talk-starter-glyph { background: var(--arbor-k-moment-i); }
+.talk-starter.k-else .talk-starter-glyph { background: var(--arbor-paper-elevated); color: var(--arbor-k-moment); box-shadow: inset 0 0 0 1.5px var(--arbor-k-moment); }
+.talk-starter-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.talk-starter-words { font-size: 14px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.talk-starter-text small { font-size: 12px; color: var(--arbor-muted); }
+/* V77 audit (N-Talk-M): on the phone the conversation reads as the board too —
+   the reading guide and key on top (stacked), and the question as the "You asked" card. */
+@media (max-width: 1023px) {
+  .companion-workspace.is-open .talk-read { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
+  .companion-workspace.is-open .talk-read-key { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .companion-workspace.is-open [data-companion-message="user"] { max-width: 100%; margin-inline: 0; }
+  .companion-workspace.is-open .talk-you-asked { display: block; margin-block-end: 4px; font-family: var(--font-sans); font-style: normal; font-size: 12px; font-weight: 600; color: var(--arbor-ink-soft); }
+  .companion-workspace.is-open [data-companion-message="user"] > div { flex: 1; --talk-you-bg: var(--arbor-paper-elevated); --talk-you-fg: var(--arbor-ink); --talk-you-tail: 18px; box-shadow: inset 0 0 0 2px var(--arbor-ink); font-family: var(--font-editorial, var(--font-display)); font-style: italic; font-size: 17px; line-height: 1.3; font-weight: 400; }
+  html[lang="he"] .companion-workspace.is-open [data-companion-message="user"] > div { font-style: normal; }
+}

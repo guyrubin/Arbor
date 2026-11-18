@@ -71,7 +71,7 @@ describe("voice settings of record", () => {
 describe("sampling temperatures of record", () => {
   // In source order. A new model call adds its value here in the same diff.
   it("routes/api.ts", () => {
-    expect(temperatures("routes/api.ts")).toEqual([0.45, 0.4, 0.6, 0.2, 0.1, 0.1, 0.5, 0.5, 0, 0.3, 0.8, 0.7, 0.7, 0.5]);
+    expect(temperatures("routes/api.ts")).toEqual([0.45, 0.4, 0.6, 0.2, 0.1, 0.1, 0.1, 0.5, 0.5, 0, 0.3, 0.8, 0.7, 0.7, 0.5]);
   });
   it("the router defaults, per provider path", () => {
     expect(temperatures("ai/modelRouter.ts")).toEqual([0.4, 0.4, 0.5, 0.35, 0.35, 0.5]);

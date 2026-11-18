@@ -34,7 +34,7 @@ import { GameFinish, GameShell } from '../../../game/GameShell';
 import { AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { OOPS_BUTTON_COPY, oopsLine, type OopsButtonWords } from './oopsButtonCopy';
-import { BLOOM_MS, HOLD_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, orderLength, watchMs } from './oopsButtonRules';
+import { BLOOM_MS, HOLD_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, IDLE_NUDGE_MS, orderLength, watchMs } from './oopsButtonRules';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 type Node = ReactElement<Props>;
@@ -112,7 +112,7 @@ function player(w: OopsButtonWords, how: Play, known: readonly number[]) {
     } else if (now === 'jam') control(tree, 'oops-pause').props.onClick!();
     else if (now === 'undo') {
       const last = lastOpened(tree, order), early = openPetals(tree).find(id => id !== last);
-      if (how.dither && early !== undefined && status(tree) === w.undoFirst) petal(tree, early).props.onClick!();
+      if (how.dither && early !== undefined && status(tree) === oopsLine(w.undoFirst, openPetals(tree).length)) petal(tree, early).props.onClick!();
       else petal(tree, last).props.onClick!();
     } else if (now === 'reset') control(tree, 'oops-restart').props.onClick!();
     else vi.advanceTimersByTime(TICK_MS);
@@ -133,12 +133,15 @@ function playUntil(w: OopsButtonWords, wanted: string) {
 /** Presses the given petals one after another, each on a fresh render. */
 function pressAll(order: readonly number[]) { for (const id of order) petal(render(), id).props.onClick!(); return render(); }
 /** Every line the game can put on screen in one language. */
+/** A numbered undo line with any number in its blank. */
+const undoLike = (line: string) => expect.stringMatching(new RegExp(`^${line.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace('{0}', '\\d')}$`));
 function lines(lang: 'en' | 'he'): Set<string> {
   const w = OOPS_BUTTON_COPY[lang], shared = ADVENTURE_COPY[lang], all = new Set<string>(['', shared.again, shared.home]);
   for (const value of Object.values(w).flat()) if (!value.includes('{')) all.add(value);
   for (const name of w.petals) for (const state of [w.petalOpen, w.petalClosed, w.petalStuck]) all.add(oopsLine(state, name));
   for (let total = 1; total <= PETALS.length; total++) for (let at = 1; at <= total; at++) {
     all.add(String(at)); all.add(oopsLine(w.copyNext, at, total));
+    for (const line of [w.undoFirst, w.undoNext, w.undoWait]) all.add(oopsLine(line, at));
     for (const name of w.petals) all.add(oopsLine(w.watchStep, at, total, name));
   }
   return all;
@@ -207,7 +210,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
       else if (now === 'jam') expect(live(seen)).toEqual(['oops-pause']);
       else if (now === 'reset') expect(live(seen)).toEqual(['oops-restart']);
       else if (now === 'copy') { expect(live(seen)).toEqual(PETALS.filter(id => !open.includes(id)).map(id => `petal-${id}`)); expect(live(seen).length).toBeGreaterThan(0); }
-      else { expect(now).toBe('undo'); expect(live(seen)).toEqual(open.map(id => `petal-${id}`)); expect(open.length).toBeGreaterThan(0); }
+      else { expect(now).toBe('undo'); expect(live(seen)).toEqual([`petal-${open.at(-1)}`]); expect(open.length).toBeGreaterThan(0); }
     });
     const end = finish(tree)!; expect(end).toBeDefined();
     expect(end.props).toMatchObject({ title: w.finishTitle, subtitle: w.transfer, playAgainLabel: shared.again, homeLabel: shared.home });
@@ -216,7 +219,8 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     // One step for each bloom, never taken back. Every phase was met, the fix-it routine included.
     expect([...new Set(blooms)]).toEqual([0, 1, 2, 3]); expect(blooms).toEqual([...blooms].sort((a, b) => a - b));
     expect([...phases].sort()).toEqual(['bloom', 'copy', 'jam', 'ready', 'reset', 'undo', 'watch']);
-    expect(h.sound.mock.calls).toEqual([['correct'], ['correct'], ['correct']]);
+    // Three blooms, and the toy's own jam makes the same soft sound as any jam.
+    expect(h.sound.mock.calls).toEqual([['correct'], ['tryAgain'], ['correct'], ['correct']]);
     // Little adventure: 2 + 3 + 3 petals shown, round two shown twice; 9 right presses; one petal put back.
     expect(h.tones.play).toHaveBeenCalledTimes(2 + 3 + 3 + 3 + 9 + 1);
     for (const call of h.tones.play.mock.calls) expect(PETALS).toContain(call[0]);
@@ -238,7 +242,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
       expect(finish(tree), `${level} ${seed}`).toBeDefined();
       expect(lengths).toEqual([0, 1, 2].map(round => orderLength(level, round)));
       expect(jams).toEqual([`1:${w.jamToy}`]);
-      expect(h.sound.mock.calls).toEqual([['correct'], ['correct'], ['correct']]);
+      expect(h.sound.mock.calls).toEqual([['correct'], ['tryAgain'], ['correct'], ['correct']]);
     }
   });
 
@@ -279,7 +283,11 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     vi.advanceTimersByTime(1); tree = render();
     expect(phase(tree)).toBe('copy'); expect(heading(tree)).toBe(w.copy); expect(status(tree)).toBe(w.copyFirst); expect(shell(tree).hearIt).toBe(w.copy);
     expect(one(tree, 'the heading', n => 'focusKey' in n.props).props.muted).toBe(false);
-    expect(live(tree)).toEqual(PETALS.map(id => `petal-${id}`)); expect(vi.getTimerCount()).toBe(1);
+    // The voice and the idle nudge are the two timers on the child's turn.
+    expect(live(tree)).toEqual(PETALS.map(id => `petal-${id}`)); expect(vi.getTimerCount()).toBe(2); expect(hinted(tree)).toEqual([]);
+    // B-GAME-46: a child who sits still is shown the first petal of the order, in the amber ring.
+    vi.advanceTimersByTime(IDLE_NUDGE_MS - 1); tree = render(); expect(hinted(tree)).toEqual([]);
+    vi.advanceTimersByTime(1); tree = render(); expect(hinted(tree)).toEqual([first]); expect(h.sound).not.toHaveBeenCalled();
 
     // The child's turn: a right petal opens with its own tone.
     h.tones.play.mockClear();
@@ -287,6 +295,8 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(phase(tree)).toBe('copy'); expect(openPetals(tree)).toEqual([first]); expect(status(tree)).toBe(oopsLine(w.copyNext, 1, 2));
     expect(petal(tree, first).props).toMatchObject({ disabled: false, 'aria-disabled': true, 'aria-pressed': true, 'data-open': true, 'data-half': false, 'aria-label': oopsLine(w.petalOpen, w.petals[first]) });
     expect(mark(tree, first)).toBe(0); expect(h.tones.play.mock.calls).toEqual([[first]]);
+    // B-GAME-45: the opened petal pops a ring; a closed one does not, and no rays before the bloom.
+    expect(nodes(petal(tree, first)).some(classed('oops-pop'))).toBe(true); expect(nodes(petal(tree, second)).some(classed('oops-pop'))).toBe(false); expect(nodes(tree).some(classed('oops-rays'))).toBe(false);
     // An open petal pressed again does nothing at all.
     petal(tree, first).props.onClick!(); tree = render();
     expect(openPetals(tree)).toEqual([first]); expect(phase(tree)).toBe('copy'); expect(h.sound).not.toHaveBeenCalled(); expect(h.tones.play).toHaveBeenCalledTimes(1);
@@ -294,6 +304,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     // The whole order is open: the whole flower opens, the hub glows, Chock is glad.
     expect(phase(tree)).toBe('bloom'); expect(heading(tree)).toBe(w.bloom); expect(status(tree)).toBe(w.bloomNext); expect(steps(tree)).toBe(1);
     expect(openPetals(tree)).toEqual([...PETALS]); expect(one(tree, 'the toy', classed('oops-toy')).props['data-bloom']).toBe(true);
+    expect(nodes(tree).some(classed('oops-rays'))).toBe(false); expect(PETALS.every(id => nodes(petal(tree, id)).some(classed('oops-pop')))).toBe(true);
     expect(chock(tree)).toBe('happy'); expect(hero(tree).celebrate).toBe(true); expect(h.sound.mock.calls).toEqual([['correct']]); expect(live(tree)).toEqual([]);
     petal(tree, second).props.onClick!(); control(tree, 'oops-pause').props.onClick!(); control(tree, 'oops-restart').props.onClick!();
     vi.advanceTimersByTime(BLOOM_MS - 1); expect(phase(render())).toBe('bloom');
@@ -317,35 +328,38 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(phase(tree)).toBe('jam'); expect(finish(tree)).toBeUndefined(); expect(steps(tree)).toBe(0);
     expect(heading(tree)).toBe(w.jamCue); expect(status(tree)).toBe(w.jam); expect(shell(tree).hearIt).toBe(w.jam);
     expect(petal(tree, spare[0]).props).toMatchObject({ disabled: true, 'data-open': true, 'data-half': true, 'data-wobble': true, 'aria-label': oopsLine(w.petalStuck, w.petals[spare[0]]) });
-    expect(openPetals(tree)).toHaveLength(3); expect(hero(tree).pose).toBe('oops'); expect(h.sound.mock.calls).toEqual([['tryAgain']]); expect(h.tones.play).not.toHaveBeenCalled();
+    expect(openPetals(tree)).toHaveLength(3); expect(hero(tree).pose).toBe('oops');
+    // B-GAME-46: every open petal shows when it opened, so "biggest number first" is on the toy.
+    expect(nodes(tree).filter(n => n.props['data-undo-number'] !== undefined).map(n => n.props['data-undo-number']).sort()).toEqual([1, 2, 3]); expect(h.sound.mock.calls).toEqual([['tryAgain']]); expect(h.tones.play).not.toHaveBeenCalled();
     // Only pause is live, and it is ringed. There is no clock on this beat.
     expect(live(tree)).toEqual(['oops-pause']);
     expect(control(tree, 'oops-pause').props).toMatchObject({ disabled: false, 'data-ready': true }); expect(control(tree, 'oops-restart').props).toMatchObject({ disabled: true, 'data-ready': false });
     petal(tree, order[2]).props.onClick!(); petal(tree, spare[0]).props.onClick!(); control(tree, 'oops-restart').props.onClick!(); vi.advanceTimersByTime(120_000); tree = render();
     expect(phase(tree)).toBe('jam'); expect(openPetals(tree)).toHaveLength(3); expect(status(tree)).toBe(w.jam);
     control(tree, 'oops-pause').props.onClick!(); tree = render();
-    expect(phase(tree)).toBe('undo'); expect(heading(tree)).toBe(w.undo); expect(status(tree)).toBe(w.undoFirst); expect(shell(tree).hearIt).toBe(w.undo);
+    expect(phase(tree)).toBe('undo'); expect(heading(tree)).toBe(w.undo); expect(status(tree)).toBe(oopsLine(w.undoFirst, openPetals(tree).length)); expect(shell(tree).hearIt).toBe(w.undo);
     expect(hero(tree).pose).toBe('idle'); expect(hinted(tree)).toEqual([]);
     expect(control(tree, 'oops-pause').props.disabled).toBe(true); expect(control(tree, 'oops-restart').props.disabled).toBe(true);
-    expect(live(tree)).toEqual([order[0], order[1], spare[0]].sort().map(id => `petal-${id}`));
+    // Only the newest petal is invited back; the others still answer with a wobble.
+    expect(live(tree)).toEqual([`petal-${spare[0]}`]);
     expect(PETALS.every(id => petal(tree, id).props.disabled === false)).toBe(true);
     // An open petal that is not the last one must wait: a clear next step, and then the right petal is ringed.
     h.sound.mockClear();
     petal(tree, order[0]).props.onClick!(); tree = render();
-    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(w.undoWait); expect(shell(tree).hearIt).toBe(w.undoWait); expect(heading(tree)).toBe(w.undo);
+    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(oopsLine(w.undoWait, openPetals(tree).length)); expect(shell(tree).hearIt).toBe(oopsLine(w.undoWait, openPetals(tree).length)); expect(heading(tree)).toBe(w.undo);
     expect(openPetals(tree)).toHaveLength(3); expect(petal(tree, order[0]).props['data-wobble']).toBe(true); expect(hinted(tree)).toEqual([spare[0]]);
     expect(h.sound.mock.calls).toEqual([['tryAgain']]);
     vi.advanceTimersByTime(WOBBLE_MS); tree = render(); expect(petal(tree, order[0]).props['data-wobble']).toBe(false); expect(phase(tree)).toBe('undo');
     // A closed petal does nothing.
     petal(tree, spare[1]).props.onClick!(); petal(tree, order[2]).props.onClick!(); tree = render();
-    expect(openPetals(tree)).toHaveLength(3); expect(status(tree)).toBe(w.undoWait); expect(h.sound).toHaveBeenCalledTimes(1);
+    expect(openPetals(tree)).toHaveLength(3); expect(status(tree)).toBe(oopsLine(w.undoWait, openPetals(tree).length)); expect(h.sound).toHaveBeenCalledTimes(1);
     // The half-open petal was the last to open, so it goes back first.
     h.tones.play.mockClear();
     petal(tree, spare[0]).props.onClick!(); tree = render();
     expect(petal(tree, spare[0]).props).toMatchObject({ 'data-open': false, 'data-half': false, 'aria-pressed': false, 'aria-disabled': true, 'aria-label': oopsLine(w.petalClosed, w.petals[spare[0]]) });
-    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(w.undoNext); expect(shell(tree).hearIt).toBe(w.undoNext); expect(hinted(tree)).toEqual([order[1]]); expect(h.tones.play.mock.calls).toEqual([[spare[0]]]);
-    petal(tree, order[0]).props.onClick!(); tree = render(); expect(status(tree)).toBe(w.undoWait); expect(openPetals(tree)).toHaveLength(2);
-    petal(tree, order[1]).props.onClick!(); tree = render(); expect(status(tree)).toBe(w.undoNext); expect(hinted(tree)).toEqual([order[0]]); expect(openPetals(tree)).toEqual([order[0]]);
+    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(oopsLine(w.undoNext, openPetals(tree).length)); expect(shell(tree).hearIt).toBe(oopsLine(w.undoNext, openPetals(tree).length)); expect(hinted(tree)).toEqual([order[1]]); expect(h.tones.play.mock.calls).toEqual([[spare[0]]]);
+    petal(tree, order[0]).props.onClick!(); tree = render(); expect(status(tree)).toBe(oopsLine(w.undoWait, openPetals(tree).length)); expect(openPetals(tree)).toHaveLength(2);
+    petal(tree, order[1]).props.onClick!(); tree = render(); expect(status(tree)).toBe(oopsLine(w.undoNext, openPetals(tree).length)); expect(hinted(tree)).toEqual([order[0]]); expect(openPetals(tree)).toEqual([order[0]]);
     petal(tree, order[0]).props.onClick!(); tree = render();
     // All back: only restart is live.
     expect(phase(tree)).toBe('reset'); expect(heading(tree)).toBe(w.resetCue); expect(status(tree)).toBe(w.reset); expect(shell(tree).hearIt).toBe(w.reset);
@@ -373,13 +387,13 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     order = watchOrder(); expect(order).toHaveLength(3);
     h.sound.mockClear(); h.tones.play.mockClear();
     let tree = render(); petal(tree, order[0]).props.onClick!(); tree = render();
-    // Right petal, right tone, and then the toy sticks. No sound of a slip, and the words say whose doing it is.
+    // Right petal, right tone, and then the toy sticks: the same soft jam sound as any jam, and the words say whose doing it is.
     expect(phase(tree)).toBe('jam'); expect(heading(tree)).toBe(w.jamCue); expect(status(tree)).toBe(w.jamToy); expect(shell(tree).hearIt).toBe(w.jamToy);
     expect(petal(tree, order[0]).props).toMatchObject({ 'data-open': true, 'data-half': true, 'data-wobble': true, 'aria-label': oopsLine(w.petalStuck, w.petals[order[0]]) });
     expect(openPetals(tree)).toEqual([order[0]]); expect(hero(tree).pose).toBe('oops'); expect(steps(tree)).toBe(1);
-    expect(h.sound).not.toHaveBeenCalled(); expect(h.tones.play.mock.calls).toEqual([[order[0]]]); expect(live(tree)).toEqual(['oops-pause']);
+    expect(h.sound.mock.calls).toEqual([['tryAgain']]); expect(h.tones.play.mock.calls).toEqual([[order[0]]]); expect(live(tree)).toEqual(['oops-pause']);
     control(tree, 'oops-pause').props.onClick!(); tree = render();
-    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(w.undoFirst); expect(live(tree)).toEqual([`petal-${order[0]}`]);
+    expect(phase(tree)).toBe('undo'); expect(status(tree)).toBe(oopsLine(w.undoFirst, openPetals(tree).length)); expect(live(tree)).toEqual([`petal-${order[0]}`]);
     petal(tree, order[0]).props.onClick!(); tree = render();
     expect(phase(tree)).toBe('reset'); expect(status(tree)).toBe(w.reset);
     control(tree, 'oops-restart').props.onClick!(); expect(heading(render())).toBe(w.watchAgain);
@@ -500,7 +514,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     expect(quiet.length).toBeGreaterThan(20); expect(quiet.every(Boolean)).toBe(true);
     // The order was on the petals as numerals, and every step was written out.
     expect([...numerals].sort()).toEqual([1, 2, 3]); expect(said.has('')).toBe(false);
-    expect([...said]).toEqual(expect.arrayContaining([w.readyNext, w.watchNext, w.copyFirst, w.jam, w.jamToy, w.undoFirst, w.undoWait, w.undoNext, w.reset, w.bloomNext, w.bloomLast]));
+    expect([...said]).toEqual(expect.arrayContaining([w.readyNext, w.watchNext, w.copyFirst, w.jam, w.jamToy, undoLike(w.undoFirst), undoLike(w.undoWait), undoLike(w.undoNext), w.reset, w.bloomNext, w.bloomLast]));
   });
 
   it('speaks only lines from the copy when sound is on, and never while the toy shows its order', () => {
@@ -517,7 +531,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     }, { fumble: true, dither: true, listen: true });
     expect(finish(tree)).toBeDefined(); expect(beats).toBeGreaterThan(20);
     const spoken = h.say.mock.calls.map(call => call[1] as string);
-    expect(spoken).toEqual(expect.arrayContaining([w.ready, w.copy, w.jam, w.jamToy, w.undo, w.undoWait, w.undoNext, w.reset]));
+    expect(spoken).toEqual(expect.arrayContaining([w.ready, w.copy, w.jam, w.jamToy, w.undo, undoLike(w.undoWait), undoLike(w.undoNext), w.reset]));
     for (const call of h.say.mock.calls) { expect(call[0]).toBe('child-a'); expect(call[2]).toBe(lang); expect(allowed.has(call[1]), call[1]).toBe(true); }
     // A hush stops the voice; the game goes on.
     seededRolls(3); tree = mount(); h.hush.forEach(fn => fn());
@@ -540,7 +554,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     for (const text of unique) { expect(text, text).not.toMatch(lang === 'he' ? /[A-Za-z]/ : /[א-ת]/); expect(unseen(text), text).toBe(false); }
     // The lines a child meets on the way are all there.
     expect(unique).toEqual(expect.arrayContaining([w.title, w.instruction, w.ready, w.readyNext, w.start, w.watch, w.watchAgain, w.watchNext, w.copy, w.copyFirst, w.bloom, w.bloomNext, w.bloomLast,
-      w.jamCue, w.jam, w.jamToy, w.undo, w.undoFirst, w.undoNext, w.undoWait, w.resetCue, w.reset, w.pause, w.restart, w.toy, w.finishTitle, w.transfer, shared.again, shared.home, '1', '2', '3']));
+      w.jamCue, w.jam, w.jamToy, w.undo, undoLike(w.undoFirst), undoLike(w.undoNext), undoLike(w.undoWait), w.resetCue, w.reset, w.pause, w.restart, w.toy, w.finishTitle, w.transfer, shared.again, shared.home, '1', '2', '3']));
     expect(unique.some(text => w.petals.some(name => text === oopsLine(w.petalStuck, name)))).toBe(true);
     expect(unique.some(text => w.petals.some(name => text === oopsLine(w.watchStep, 1, 2, name)))).toBe(true);
     expect(unique).toContain(oopsLine(w.copyNext, 1, 3));
@@ -565,7 +579,7 @@ describe.each(['en', 'he'] as const)('Oops Button (%s)', lang => {
     const order = watchOrder();
     petal(render(), order[0]).props.onClick!(); petal(render(), PETALS.find(id => !order.includes(id))!).props.onClick!(); expect(phase(render())).toBe('jam');
     control(render(), 'oops-pause').props.onClick!(); petal(render(), order[0]).props.onClick!();
-    const tree = render(); expect(status(tree)).toBe(w.undoWait); expect(petal(tree, order[0]).props['data-wobble']).toBe(true); expect(vi.getTimerCount()).toBeGreaterThan(0);
+    const tree = render(); expect(status(tree)).toBe(oopsLine(w.undoWait, openPetals(tree).length)); expect(petal(tree, order[0]).props['data-wobble']).toBe(true); expect(vi.getTimerCount()).toBeGreaterThan(0);
     unmount(); expect(vi.getTimerCount()).toBe(0);
     h.sound.mockClear(); h.say.mockClear(); h.tones.play.mockClear();
     vi.advanceTimersByTime(60_000);
@@ -593,10 +607,10 @@ describe('Oops Button words', () => {
   });
   it('keeps the tile words, the jam words and the closing words of the brief', () => {
     expect(en.title).toBe('Oops Button'); expect(en.description).toBe('Pause. Put back. Try again.');
-    expect(en.instruction).toBe('Copy the flower. If it jams, pause, put the petals back and restart.');
-    expect(en.jam).toBe('Oops. It jammed. Press pause.'); expect(en.jamToy).toBe('Oops. The flower got stuck. That happens. Press pause.');
-    expect(en.undo).toBe('Put the petals back. Last one first.'); expect(en.undoWait).toBe('Not yet. Start with the last one.'); expect(en.reset).toBe('All back. Press restart.');
-    expect(en.finishTitle).toBe('It bloomed!'); expect(en.transfer).toBe('Try it for real: when something goes wrong, say oops, stop, and put one thing right.');
+    expect(en.instruction).toBe('Copy the flower. If it gets stuck, press Oops, put the petals back and start again.');
+    expect(en.jam).toBe('Oops. The flower got stuck. Press Oops.'); expect(en.jamToy).toBe('Oops. The flower got stuck by itself. That happens. Press Oops.'); expect(en.pause).toBe('Oops!');
+    expect(en.undo).toBe('Put the petals back. The last one goes first.'); expect(oopsLine(en.undoWait, 3)).toBe('Not yet. Press number 3.'); expect(en.reset).toBe('All back. Press Start again.');
+    expect(en.finishTitle).toBe('It bloomed!'); expect(en.transfer).toBe('Away from the screen: when a block tower wobbles, say oops, stop, take the top block off first, then build again.');
     expect(en.description.length).toBeLessThanOrEqual(32); expect(he.description.length).toBeLessThanOrEqual(32);
   });
   it('never keeps count of a slip: no word of tallies, prizes or blame', () => {
@@ -606,7 +620,7 @@ describe('Oops Button words', () => {
   });
   it('fills the blanks of a line', () => {
     expect(oopsLine(en.watchStep, 2, 3, en.petals[1])).toBe('2 of 3: Blue petal.'); expect(oopsLine(en.copyNext, 1, 3)).toBe('1 of 3 open. Press the next petal.');
-    expect(oopsLine(en.petalOpen, en.petals[0])).toBe('Amber petal, open'); expect(oopsLine(en.petalClosed, en.petals[4])).toBe('Violet petal, closed'); expect(oopsLine(en.petalStuck, en.petals[3])).toBe('Coral petal, stuck halfway');
+    expect(oopsLine(en.petalOpen, en.petals[0])).toBe('Orange petal, open'); expect(oopsLine(en.petalClosed, en.petals[4])).toBe('Purple petal, closed'); expect(oopsLine(en.petalStuck, en.petals[3])).toBe('Pink petal, stuck halfway');
     expect(oopsLine(he.watchStep, 2, 3, he.petals[1])).toBe('2 מתוך 3: עלה כותרת כחול.'); expect(oopsLine(he.copyNext, 1, 3)).toBe('1 מתוך 3 פתוחים. לוחצים על הבא בתור.');
     expect(oopsLine('{0}{1}{2}', 'a')).toBe('a'); expect(oopsLine(en.ready)).toBe(en.ready);
   });

@@ -39,6 +39,19 @@ describe("B-BOOK-47/51 · last finished book offered to the parent", () => {
     expect(lastReadSince([row("book", new Date(end).toISOString())], end + 1, end)).toBeNull();
   });
 
+  it("ignores corrupt child/edition IDs instead of treating them as a completed catalogue book", () => {
+    const valid = row("plan-reading", new Date(end - 1).toISOString());
+    const bad = [
+      row("child-family-one", new Date(end).toISOString()),
+      row("book.owned-child", new Date(end).toISOString()),
+      row("book-2026", new Date(end).toISOString()),
+      row("Book-With-Caps", new Date(end).toISOString()),
+      row("book id", new Date(end).toISOString()),
+    ];
+    expect(lastReadSince([...bad, valid], start, end)).toBe(valid);
+    expect(lastReadSince(bad, start, end)).toBeNull();
+  });
+
   it("uses the actual clock by default, not an unbounded future timestamp", () => {
     const farFuture = row("future-book", "2099-01-01T00:00:00.000Z");
     expect(lastReadSince([farFuture], 0)).toBeNull();

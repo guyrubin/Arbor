@@ -42,6 +42,7 @@ import { installKidVoiceUnlock } from "../../lib/kidVoicePlayer";
 import { hydrateHeroRenders } from "../../lib/heroRenderStore";
 import { setKidHome, useKidStage } from "./kidChrome";
 import { KidStage } from "./KidStage";
+import "./studioV2/studioBar.css";
 import { kidStageFor } from "./kidStageArt";
 import { SNEAK_FREEZE_WORLD, flaggedWorldNameKey, sneakFreezeFlagOn } from "./kidWorlds";
 

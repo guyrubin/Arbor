@@ -280,8 +280,10 @@ describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
     // summary is gone; Notice today's fold toggle is the collapsible control
     // now, a 44 x 44 button, and the week card's what-changed lines are 44 px.
     const css = read("components/companion/nowView.css");
-    expect(ov).toContain('className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer"');
-    expect(css).toMatch(/\.now-weekly-door \{[^}]*min-block-size: 72px/);
+    // v10.1 (N-Now): the pointer is a Coming up row (NowRow), 64 px tall, a real button.
+    expect(read("components/companion/NowLoopBlocks.tsx")).toContain('<NowRow icon="dark_mode" testId="today-tonight-pointer" className="now-tonight-pointer"');
+    expect(read("components/companion/now10/NowComingUp.tsx")).toContain('<button type="button" className={["nw-row", className]');
+    expect(read("components/companion/now10/nowV10.css")).toMatch(/\.ds \.nw-row\{[^}]*min-height:64px/);
     // v4 design re-pin: the whole head line is the fold control, 44 px tall.
     expect(css).toMatch(/\.now-notice-head \{[^}]*min-block-size: 44px/);
     expect(css).toMatch(/\.now-week-changed-line \{[^}]*min-block-size: 44px/);

@@ -14,6 +14,7 @@
  * are stubbed so only the title zone is under test.
  */
 import React from "react";
+import { setShellSlots, resetShellSlotsForTest } from "../../lib/shellSlots";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ROUTE_IDS, type ActiveTab } from "../../lib/routes";
@@ -67,8 +68,8 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     }
   });
 
-  it.each(["en", "he"] as const)("all 43 routes in %s: the title is the lit home's name (chromeLitHome), in the UI language", (lang) => {
-    expect(ROUTE_IDS).toHaveLength(43);
+  it.each(["en", "he"] as const)("all 44 routes in %s: the title is the lit home's name (chromeLitHome), in the UI language", (lang) => {
+    expect(ROUTE_IDS).toHaveLength(44);
     for (const tab of ROUTE_IDS) {
       const home = chromeLitHome(homeForTab(tab));
       const named = home.kind === "place" ? home.place : home.door;
@@ -78,12 +79,17 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     }
   });
 
-  it("one line: no hub sentence under the title, on any route", () => {
+  // v10 re-pin: the title is followed, on one line, by the breadcrumb (a
+  // labelled <nav>: place › pill › view); there is still no hub sentence.
+  it("one line: the title, then at most the breadcrumb, and no hub sentence, on any route", () => {
     for (const lang of ["en", "he"] as const) {
       for (const tab of ROUTE_IDS) {
         const { html } = titleOf(tab, lang);
-        // The title zone holds exactly one text node: the title span.
-        expect((html.match(/<span\b/g) ?? []).length, `${lang} ${tab}`).toBe(1);
+        const crumbAt = html.indexOf('data-testid="topbar-crumb"');
+        const outside = crumbAt < 0 ? html : html.slice(0, html.lastIndexOf("<nav", crumbAt)) + html.slice(html.indexOf("</nav>", crumbAt));
+        // Outside the crumb the title zone holds exactly one text node: the title span.
+        expect((outside.match(/<span\b/g) ?? []).length, `${lang} ${tab}`).toBe(1);
+        if (crumbAt >= 0) expect(html.slice(html.lastIndexOf("<nav", crumbAt), crumbAt)).toContain(`aria-label="${translate(lang, "nav.crumb.aria")}"`);
         expect(html, `${lang} ${tab}`).not.toContain(translate(lang, "nav.sub.today", { name: "Sam" }));
         expect(html, `${lang} ${tab}`).not.toMatch(/nav\.(?:sub|title)\./);
       }
@@ -114,5 +120,56 @@ describe("v3 F-SHELL-2 · the header names the route's home, nothing else", () =
     expect(html).toMatch(/<header[^>]*style="[^"]*height:64px/);
     expect(html).toMatch(/data-testid="topbar-home-title" class="[^"]*\btext-\[20px\] font-semibold\b/);
     expect(html).toContain("font-family:var(--font-display)");
+  });
+});
+
+describe("v10 · the breadcrumb continues the title: place › pill › view", () => {
+  const crumbText = (html: string) => {
+    const at = html.indexOf('data-testid="topbar-crumb"');
+    if (at < 0) return [];
+    const nav = html.slice(at, html.indexOf("</nav>", at));
+    const decode = (t: string) => t.replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"');
+    return [...nav.matchAll(/<(?:span|button)[^>]*class="[^"]*truncate[^"]*"[^>]*>([^<]*)</g)].map((m) => decode(m[1]));
+  };
+  it.each(["en", "he"] as const)("V77: Now's first pill shows the place alone; every other lit pill and folded view adds a level (%s)", (lang) => {
+    expect(crumbText(titleOf("overview", lang).html)).toEqual([]);
+    expect(crumbText(titleOf("development", lang).html)).toEqual([translate(lang, "nav.pill.development")]);
+    // Negative control: the pre-V77 rule left My child's first pill out.
+    expect(crumbText(titleOf("development", lang).html)).not.toEqual([]);
+    expect(crumbText(titleOf("weekly", lang).html)).toEqual([translate(lang, "nav.pill.weekly")]);
+    expect(crumbText(titleOf("day-windows", lang).html)).toEqual([translate(lang, "nav.pill.weekly"), translate(lang, "nav.view.day-windows")]);
+    expect(crumbText(titleOf("behaviors", lang).html)).toEqual([translate(lang, "nav.pill.portrait"), translate(lang, "nav.view.behaviors")]);
+    expect(crumbText(titleOf("profile", lang).html)).toEqual([translate(lang, "nav.pill.profile.named", { name: "Sam" })]);
+    // V77 N-Safety-D: the lit Safety ring says where you are; no crumb.
+    expect(crumbText(titleOf("safety", lang).html)).toEqual([]);
+    // Talk is a panel over Now: no crumb.
+    expect(crumbText(titleOf("coach", lang).html)).toEqual([]);
+  });
+
+  it("V77: a route's own last level follows the pill and view, and is the only current level", () => {
+    setShellSlots({ crumb: "Saying goodbye at drop-off" });
+    try {
+      const { html } = titleOf("plans", "en");
+      expect(crumbText(html)).toEqual([translate("en", "nav.pill.plans"), "Saying goodbye at drop-off"]);
+      const nav = html.slice(html.indexOf('data-testid="topbar-crumb"'), html.indexOf("</nav>", html.indexOf('data-testid="topbar-crumb"')));
+      expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
+      expect(nav).toMatch(/data-testid="topbar-crumb-own"[^]*aria-current="page"/);
+      // The pill is the route itself here: plain text, not a dead button.
+      expect(nav).not.toContain("<button");
+    } finally {
+      resetShellSlotsForTest();
+    }
+    // Negative control: without the route's level the crumb is the pill alone.
+    expect(crumbText(titleOf("plans", "en").html)).toEqual([translate("en", "nav.pill.plans")]);
+  });
+
+  it("the pill level is a button back to the pill only when a view follows it; the last level is the current page", () => {
+    const { html } = titleOf("day-windows", "en");
+    const nav = html.slice(html.indexOf('data-testid="topbar-crumb"'), html.indexOf("</nav>", html.indexOf('data-testid="topbar-crumb"')));
+    expect(nav).toContain("<button");
+    expect((nav.match(/aria-current="page"/g) ?? []).length).toBe(1);
+    const weekly = titleOf("weekly", "en").html;
+    const weeklyNav = weekly.slice(weekly.indexOf('data-testid="topbar-crumb"'));
+    expect(weeklyNav.slice(0, weeklyNav.indexOf("</nav>"))).not.toContain("<button");
   });
 });

@@ -100,7 +100,8 @@ describe("OverviewTab — three blocks and one door (source pins)", () => {
   // clinical watch signal in Notice today, the ONE proactive slot, the sibling
   // lines and the evening story in the agenda. Daily Play left for Together.
   it("Tonight is a pointer line in the morning, the flow in the evening; the door's lines live in their objects", () => {
-    expect(OV).toContain('data-testid="today-tonight-pointer"');
+    // v10.1: the pointer is a Coming up row (NowRow) carrying the same test id.
+    expect(OV).toContain('testId="today-tonight-pointer"');
     expect(OV).toContain("<TonightFlow");
     expect(OV).not.toContain('data-testid="today-door"');
     expect(OV).not.toMatch(/<details className="now-more"/);
@@ -271,22 +272,24 @@ describe("B-DESIGN-04 · Today takes the blend frame", () => {
   // whole line is the fold control (a button inside the h2); the rows are the
   // compact NowNoticeRow (chip · title over shelf · inline answers), and a foot
   // closes the card: not a score, and the way to every milestone.
-  it("Notice today = chip head (visibility glyph, the h2 id the section is labelled by, the count, the sub-line, a fold toggle) over one card", () => {
+  // v10.1 re-pin (N-Now V77, Waiting for you › Now): ONE card. Its head — "Did you notice this today?" and the
+  // place of the row being asked ("1 of 2") — is the 44 px fold control inside the h2 the section is labelled by;
+  // the row being asked is drawn large with the worded tray; answered rows stay compact with Undo/Change; the foot
+  // is the way to every milestone.
+  it("Notice today = one card: the question head (the h2 id the section is labelled by, n of N, the fold toggle) over the asked row", () => {
     const blocks = strip(todayFile("NowLoopBlocks.tsx"));
     const block = blocks.slice(blocks.indexOf('data-testid="today-notice"'), blocks.indexOf("export function NowTonightLead"));
-    expect(block).toContain('<BrandChip icon="visibility" tone="sky" shape="drop" />');
     expect(block).toContain('<h2 className="now-notice-heading">');
-    expect(block).toContain('<span id={`${id}-notice`} className="now-notice-title">{t("elev.loop.today.notice.title")}</span>');
-    // v4 polish: the sub-line says what is true now (rows and answers), never "Two" beside a 1.
-    expect(block).toContain('<span className="now-notice-sub">{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</span>');
-    expect(block).toContain('data-testid="today-notice-count"');
+    expect(block).toContain('<span id={`${id}-notice`}>{q}</span>');
+    expect(block).toContain('data-testid="today-notice-count">{NOW_V10_COPY[uiLang === "he" ? "he" : "en"].nOfTotal(position, rows.length)}');
     expect(block).toContain("aria-expanded={open}");
     expect(block).toContain("aria-labelledby={`${id}-notice`}");
-    expect(block).toContain('<div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>');
-    expect(block).toContain("<NowNoticeRow key={c.milestone.id} index={i}");
-    expect(block).toContain('{t("elev.loop.today.notice.foot")}');
+    expect(block).toContain('<div className="nw-ask-body" id={`${id}-notice-body`} hidden={!open}>');
+    expect(block).toContain("<NowNoticeRow key={c.milestone.id} index={i} ask={i === current}");
     expect(block).toContain('data-testid="today-notice-all" onClick={() => setActiveTab("development")}');
-    // negative control: the big Notice object no longer stands in the rows
+    // negative controls: the v4 chip head and its sub-line are gone, and the big Notice object never stands in the rows
+    expect(block).not.toContain('<BrandChip icon="visibility"');
+    expect(block).not.toContain("noticeSummaryKey(");
     expect(block).not.toContain("<NoticeCard");
     expect(block).not.toMatch(/rounded-\[|text-\[\d/);
   });

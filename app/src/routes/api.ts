@@ -22,7 +22,7 @@ import { isAbortError, newAbortError, type ModelCallBudget, type ModelProvider }
 import { abortableIterate, raceWithAbort, isTransientModelError } from "../ai/modelRetry.js";
 import type { MemoryStore } from "../memory/types.js";
 import { createCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, createSeededFollowUpCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, toFileTurnContract, renderFileDeclinedResponse, coachResponseZodSchema, coachSeededResponseZodSchema, toSeededFollowUpContract, renderCoachFollowUpResponse, NON_DIAGNOSTIC_CONTRACT, renderCoachResponse, buildSourceCards, scrubHypothesisConfidence, withEscalateIfFallback, type CoachResponse } from "../contracts/coach.js";
-import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
+import { PROMPT_VERSIONS, buildAnalyzeBehaviorPrompt, buildChatPrompt, buildCouncilSynthesisPrompt, buildDescribeChildPrompt, buildExtractLogPrompt, buildFamilyPlanExtractPrompt, buildGeneratePlanPrompt, buildTodaysFocusPrompt, jsonLanguageDirective, buildVoiceReplyPrompt, promptProfile, ROUTINE_ESCALATION_GUIDANCE, renderCouncilContinuity } from "../ai/prompts.js";
 // B-ASKJB-44: no invented finding reaches a handoff note or the School Brief
 // (the matching prompt rules are parked on claude/askjb44-prompt-bump-2026-10-28).
 import { scrubHandoffNotes } from "../contracts/coach.js";
@@ -37,7 +37,7 @@ import { renderActiveProgramLine } from "../ai/programContext.js";
 import { renderTodayPracticeLine } from "../ai/journalContext.js";
 import { assembleSpokenContext, liveContextWithoutNames, spokenChildId } from "../server/spokenContext.js";
 import { createDigestJobSource, createOidcJobVerifier, runWeeklyDigestJob, type DigestJobSource, type JobCallerVerifier } from "../server/digestJob.js";
-import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
+import { assembleCompanionContext, createCompanionLedgerSource, lastRatedAction, practiceMaterial, practiceSayLine, programEcho, programPromptLine, renderWhyLine, renderApprovedFactLines, todayPracticeLine, type CompanionLedgerSource, type CompanionPurpose } from "../server/companionContext.js";
 import { firstSentence, gradesTheChild, oneSayableSentence, sanitizeJournalRequest, sayRelatesTo, stepFitsPractice, whyReasonFor } from "../ai/journalContext.js";
 import { buildDevelopmentalFrameworkPrompt, type FrameworkDefinition } from "../services/framework.js";
 import { screenForImmediateEscalation, renderEscalationMarkdown, escalationMatchForCategory } from "../safety/escalation.js";
@@ -126,6 +126,8 @@ import { sanitizeTypeCounts } from "../lib/planRecord.js";
 import { buildMilestoneCandidates, validateMilestoneMatch } from "../server/milestoneMatch.js";
 import { describeScreenable, finalizeDescribeDraft, sanitizeAskedQuestions, sanitizeKeptItems } from "../server/describeChild.js";
 import { DESCRIBE_KINDS, DESCRIBE_TEXT_MAX } from "../lib/describeChild.js";
+import { DRAFT_KINDS, finalizeFamilyPlanDraft, messageLines, MESSAGE_MAX, todayLine } from "../server/familyPlanExtract.js";
+import { addDays as familyPlanAddDays, dayKey as familyPlanDayKey, isDay as familyPlanIsDay } from "../lib/familyPlan/model.js";
 import { DOMAIN_IDS } from "../lib/domains/registry.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
@@ -135,6 +137,7 @@ import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNo
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
 import { programWeekScript } from "../lib/programs/weekScript.js";
 import { createCoParentRouter } from "../server/coParent.js";
+import { createFamilyPlanCoParentRouter } from "../server/familyPlanCoParent.js";
 
 type ApiDeps = {
   config: ArborConfig;
@@ -508,6 +511,8 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     ? requireChildOwnership({ ownsChild: (uid: string, childId: string) => memoryStore.mayEraseChild!(uid, childId) })
     : requireOwnership;
   router.use(createCoParentRouter({ config, shareStore, requireOwnership }));
+  // Family plan v1: a co-parent answers a request on the same live grant.
+  router.use(createFamilyPlanCoParentRouter({ config, shareStore }));
   // B-BOOK release: a child's private book files (hero sheet, prints, narration)
   // — read only through this owner-checked proxy (server/bookAssets.ts).
   // K2: the sandbox (MEMORY_ADAPTER=local, no Firebase) keeps them in a
@@ -1110,6 +1115,9 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // whatever the model returns (contracts/coach toSeededFollowUpContract).
       const seededFollowUp = seededEscalation !== null && seededFollowUpLine(message, recentTurns) !== null;
 
+      // B-PROG-01: the active program's one context line — built ONCE, so the
+      // answer's provenance (V77 programEcho) is the object the prompt rendered.
+      const activeProgram = programPromptLine(companion.program);
       // EVAL-6: version-pinned named builder (ai/prompts.ts) — byte-identical
       // to the old inline template; promptVersion is stamped into telemetry.
       const prompt = buildChatPrompt({
@@ -1132,7 +1140,7 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
         familyTopic: companion.familyTopic,
         familyTopicStatus: companion.familyTopicStatus,
         // B-PROG-01 (coach_chat 1.6.0): the active program's one context line.
-        activeProgram: programPromptLine(companion.program),
+        activeProgram,
         // B-LOOP-13 (coach_chat 1.7.0): today's practice line (dose row > day pin).
         todayPractice: todayPracticeLine(companion.journal),
         // 1.5.0 (B-AI-14): only when the governed line resolved; else 1.4.1 bytes.
@@ -1247,6 +1255,10 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
       // ASK-6: integer count only (clinical firewall) — the model never emits
       // this; it is the number of approved facts injected into the prompt.
       structured.approvedMemoryFactsUsed = approvedMemoryFactsUsed;
+      // V77: the program this prompt carried (id + week), server-set like the
+      // count above; absent when no program line was rendered.
+      const programUsed = programEcho(companion.program, activeProgram);
+      if (programUsed) structured.activeProgramUsed = programUsed;
 
       // B-AI-01 eval fix: no graded hypothesis confidence (low/medium/high)
       // reaches the parent, and the rendered labels follow the session language.
@@ -2394,6 +2406,90 @@ export const createApiRouter = ({ config, modelProvider, memoryStore, shareStore
     }
   });
 
+  // Family plan v1: a pasted kindergarten/school message → the dated things it
+  // asks of the family, each pointing at the line it came from. This route
+  // owns no store and writes nothing: the client adds only what the parent
+  // keeps, after a duplicate check, and the message itself is never stored
+  // (only the line a kept date came from). Crisis screen FIRST (no model
+  // call), then name redaction; the reply passes the deterministic floor in
+  // server/familyPlanExtract.ts and the output screen. Metered like every
+  // model route (createApp modelRoutes).
+  router.post("/family-plan/extract", async (req, res) => {
+    const { text, language, today, childName } = req.body ?? {};
+    if (typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "A message (text) is required" });
+      return;
+    }
+    const message = text.slice(0, MESSAGE_MAX);
+    const escalationMatch = screenForImmediateEscalation({ message });
+    if (escalationMatch) {
+      res.status(409).json({ error: "Professional support recommended", escalationCategory: escalationMatch.category });
+      return;
+    }
+    const lines = messageLines(message);
+    if (!lines.length) {
+      res.status(400).json({ error: "A message (text) is required" });
+      return;
+    }
+    // The family's calendar day (the server runs in UTC): the client's day
+    // when it is within a day of the server's, else the server's.
+    const serverDay = familyPlanDayKey(new Date());
+    const day = familyPlanIsDay(today) && today >= familyPlanAddDays(serverDay, -1) && today <= familyPlanAddDays(serverDay, 1) ? today : serverDay;
+    const lang = captureLanguage(language, message);
+    const budget = createRouteBudget(res, "analysis");
+    try {
+      const prompt = buildFamilyPlanExtractPrompt({ today: todayLine(day), lines, language: lang });
+      const privacy = createRedaction(typeof childName === "string" ? childName : undefined);
+      const raw = await raceWithAbort(modelProvider.generateJson({
+        route: "analysis_structured",
+        prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
+        temperature: 0.1,
+        budget: budget.budget,
+        promptVersion: PROMPT_VERSIONS.family_plan_extract.version,
+        schema: {
+          type: Type.OBJECT,
+          required: ["familyPlanItems"],
+          properties: {
+            familyPlanItems: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ["line", "quote", "kind", "title", "date", "time"],
+                properties: {
+                  line: { type: Type.NUMBER },
+                  quote: { type: Type.STRING },
+                  kind: { type: Type.STRING, enum: [...DRAFT_KINDS] },
+                  title: { type: Type.STRING },
+                  date: { type: Type.STRING },
+                  time: { type: Type.STRING },
+                },
+              },
+            },
+          },
+        },
+      }), budget.signal);
+      budget.settle();
+      const items = finalizeFamilyPlanDraft(privacy.restoreDeep(raw), lines, day);
+      // Screen what the model wrote (titles); the lines and quotes are the parent's own message.
+      const verdict = await screenStructuredModelOutput(modelProvider, items.map((i) => i.title));
+      if (verdict.flagged) {
+        res.status(422).json({ error: "Arbor could not safely complete this draft. Please try a different request.", outputBlocked: true, blockedCategory: verdict.category });
+        return;
+      }
+      res.json({ items, lineCount: lines.length, today: day });
+    } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor family-plan extract deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
+      logger.error("Arbor family-plan extract error", error, { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Could not read the message" });
+    }
+  });
+
   // B-SHELL-39 — "Tell Arbor about {name}", one guided conversation. Called
   // once per answer (typed or dictated, ≤ 2,000 characters) with the question
   // it answers and every item so far; returns new or changed items and ONE
@@ -3191,14 +3287,18 @@ Return JSON: offTopic, observations[], possibleMeanings[], tryToday[] (1-3), avo
     soft3d: "a soft rounded 3D-rendered character, friendly and approachable, soft studio lighting",
     watercolor: "a soft watercolor children's-book character with loose painterly edges",
     flat: "a clean flat vector character illustration with simple rounded shapes and a cheerful palette",
-    comichero: "a bold, modern cel-shaded comic-book character: thick confident ink outlines, saturated playful colors, halftone shading and a dynamic pose; keep the selected character intent, clothing and accessories, with friendly age-appropriate energy"
+    comichero: "a bold, modern cel-shaded comic-book character: thick confident ink outlines, saturated playful colors, halftone shading and a dynamic pose; keep the selected character intent, clothing and accessories, with friendly age-appropriate energy",
+    // B-KID-177 (Guy, 16 Nov: one design language for every child): the house look every new hero is made in,
+    // the same 3D film finish as the Studio kit, so the hero matches every game, book and scene around it.
+    studio3d: "a character from a premium cinematic 3D-animated family feature film, in the Arbor Studio look: a stylised, warm, expressive face with a rounded sweet shape, natural eye size with one soft catch-light, natural brows and a relaxed gentle smile; physically believable hair, skin and fabrics (soft knit, denim, soft-shell); clear natural daylight, soft global illumination and rich natural colour; unless a character intent says otherwise, everyday adventure clothes in navy, graphite and cobalt with small orange and teal accents; never photographic, doll-like, plastic, glossy, chibi, big-headed or with staring eyes; a plain soft pearl-white and pale sky background"
   };
   const SCENE_STYLE_DIRECTIONS: Record<string, string> = {
     storybook: AVATAR_STYLES.storybook,
     soft3d: AVATAR_STYLES.soft3d,
     watercolor: AVATAR_STYLES.watercolor,
     flat: AVATAR_STYLES.flat,
-    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing clothing and accessories exactly"
+    comichero: "a bold modern cel-shaded comic-book rendering medium with confident ink outlines, halftone shading and saturated color; preserve the reference character's existing clothing and accessories exactly",
+    studio3d: "a premium cinematic 3D-animated family feature film rendering medium in the Arbor Studio look: clear natural daylight, soft global illumination, rich natural colour, believable fabrics and hair, warm expressive faces with natural eye size; preserve the reference character's existing clothing and accessories exactly"
   };
   router.post("/generate-avatar", requireOwnership, requireConsent(consentStore, "face_processing", (req) => !!req.body?.photo), async (req, res) => {
     const { descriptors, character, photo, style } = req.body ?? {};

@@ -107,6 +107,20 @@ describe("Sound Explorer real play", () => {
     clickText("Footsteps"); clickText("Next sound"); clickText("A bell"); clickText("Next sound");
     clickText("A soft landing"); clickText("Finish exploring"); expect(finished()).toBe(true); expect(h.audio.play).not.toHaveBeenCalled();
   });
+  it("retries missing audio after a failed tap without autoplaying on recovery", async () => {
+    component = SoundExplorer;
+    render();
+    expect(h.audio.load).toHaveBeenCalledTimes(1);
+    h.audio.play.mockReturnValueOnce(false).mockReturnValueOnce(true);
+    clickText("Hear the sound");
+    expect(h.audio.load).toHaveBeenCalledTimes(2);
+    expect(h.audio.play).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    expect(h.audio.play).toHaveBeenCalledTimes(1);
+    clickText("Hear the sound");
+    expect(h.audio.play).toHaveBeenCalledTimes(2);
+    expect(h.audio.load).toHaveBeenCalledTimes(2);
+  });
   it("plays only on request, offers a clue on failure, and disposes on exit", () => {
     component = SoundExplorer; render(); expect(h.audio.play).not.toHaveBeenCalled(); h.audio.play.mockReturnValue(false); clickText("Hear the sound");
     expect(h.audio.play).toHaveBeenCalledWith("steps"); expect(textOf(render().find(node => node.props.className === "studio-sound-clue"))).toContain("tiptoe");

@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
+import { HOUSE_AVATAR_STYLE } from "../../lib/avatarStyle";
 import { api, EscalationRequiredError, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
 import { fileToThumbnail, shrinkDataUrlToBudget } from "../../lib/image";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
@@ -37,13 +38,6 @@ import {
  * call and is never stored. Returns the generated image to the caller.
  */
 
-const STYLES: { id: AvatarStyle; labelKey: string }[] = [
-  { id: "comichero", labelKey: "elev.hero.style.comichero" },
-  { id: "storybook", labelKey: "elev.hero.style.storybook" },
-  { id: "soft3d", labelKey: "elev.hero.style.soft3d" },
-  { id: "watercolor", labelKey: "elev.hero.style.watercolor" },
-  { id: "flat", labelKey: "elev.hero.style.flat" }
-];
 
 /** The picker, in reading order. `none` is the visible clear (UX26-29). */
 const CHARACTERS: { id: CharacterChoice; labelKey: string; glyph: string; imageSrc?: string }[] = [
@@ -74,7 +68,8 @@ export default function AvatarCreator({
   parentDialogRef?: React.RefObject<HTMLElement | null>;
 }) {
   const [mode, setMode] = useState<"describe" | "photo">("describe");
-  const [style, setStyle] = useState<AvatarStyle>("comichero");
+  // One look for every hero (HOUSE_AVATAR_STYLE): the parent picks who the hero is, never the medium.
+  const style: AvatarStyle = HOUSE_AVATAR_STYLE;
   const [descriptors, setDescriptors] = useState<AvatarDescriptors>({});
   const [character, setCharacter] = useState<AvatarCharacterIntent | undefined>();
   const [consent, setConsent] = useState(false);
@@ -138,7 +133,7 @@ export default function AvatarCreator({
 
   const reset = () => {
     draftRequestRef.current += 1;
-    setMode("describe"); setStyle("comichero"); setDescriptors({}); setCharacter(undefined); setConsent(false);
+    setMode("describe"); setDescriptors({}); setCharacter(undefined); setConsent(false);
     setRefPhoto(undefined); setResult(undefined); setPhotoError(undefined); setCrisis(false); avatar.clearError();
   };
   const close = () => { reset(); onClose(); };
@@ -332,23 +327,11 @@ export default function AvatarCreator({
               ))}
             </div>
 
-            {/* Style picker */}
-            <div className="space-y-1.5 mb-4">
-              <label className="text-xs font-bold" style={{ color: "var(--arbor-muted)" }}>{t("elev.hero.style.legend")}</label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {STYLES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { draftRequestRef.current += 1; setStyle(s.id); setResult(undefined); }}
-                    className="py-2 min-h-11 rounded-xl text-[11px] font-bold transition"
-                    style={style === s.id
-                      ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)", border: "1px solid rgba(52,178,119,0.40)" }
-                      : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}
-                  >
-                    {t(s.labelKey)}
-                  </button>
-                ))}
-              </div>
+            {/* One house look (B-KID-177): every hero is made in the Studio's 3D film finish, so the
+                same figure fits every game, book and scene. No medium picker. */}
+            <div className="mb-4 flex items-center gap-3 rounded-2xl p-3" data-hero-house-style={style} style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
+              <Icon name="auto_awesome" size={18} style={{ color: "var(--arbor-clay)" }} />
+              <p className="text-xs" style={{ color: "var(--arbor-muted)" }}><span className="font-bold" style={{ color: "var(--arbor-ink)" }}>{t("elev.hero.style.legend")}: {t("elev.hero.style.studio3d")}</span> · {t("elev.hero.style.studio3d.hint")}</p>
             </div>
 
             {/* Mode body */}
@@ -373,7 +356,7 @@ export default function AvatarCreator({
                     className="mt-0.5"
                     style={{ accentColor: "var(--arbor-clay)" }}
                   />
-                  <span className="text-[11px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
+                  <span className="text-[12px] leading-snug" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="verified_user" size={14} className="inline me-1" />
                     {t("trust.avatar.consent.pre")} <strong>{t("trust.avatar.consent.claim")}</strong>
                   </span>

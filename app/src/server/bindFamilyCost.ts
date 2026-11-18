@@ -17,7 +17,7 @@ const CACHE_MAX = 5000;
 
 /** Paid routes whose calls must carry a family id. Paths are router-relative (`/chat`, not `/api/chat`). */
 export function isPaidCostPath(path: string): boolean {
-  return /^\/(?:voice|extract-log|vision|generate-plan|generate-bedtime-story|conversation\/proposals|describe-child|generate-adventure|generate-hero-journey|analyze-behavior|generate-handoff|digest|generate-avatar|generate-scene|generate-comic|live\/token|live\/turn|todays-focus|explain|chat|council|tts)(?:\/|$)/.test(path)
+  return /^\/(?:voice|extract-log|vision|generate-plan|generate-bedtime-story|conversation\/proposals|describe-child|generate-adventure|generate-hero-journey|analyze-behavior|generate-handoff|digest|generate-avatar|generate-scene|generate-comic|live\/token|live\/turn|todays-focus|explain|chat|council|tts|family-plan\/extract)(?:\/|$)/.test(path)
     || /\/(?:book-narration|plan-narration)(?:\/|$)/.test(path);
 }
 

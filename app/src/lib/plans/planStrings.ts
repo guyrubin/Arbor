@@ -123,7 +123,7 @@ export type PlanStringKey =
   | "paint.progress";
 
 const EN: Record<PlanStringKey, string> = {
-  "section.title": "Everyday plans",
+  "section.title": "Challenge Plans",
   "section.lede": "{name}'s own story for one hard everyday pattern, with the steps you choose. A developmentally informed parent practice, read with zero AI at bedtime.",
   "section.running": "Running now",
   "section.nights": "{count} nights confirmed",
@@ -140,7 +140,7 @@ const EN: Record<PlanStringKey, string> = {
   "owner.title": "Owner tools",
   "owner.sub": "Shown only to accounts on the owner list; a family never sees this section.",
   "paint.progress": "Painting the pictures… {done} of {total}",
-  "stage.door.kicker": "Everyday plan",
+  "stage.door.kicker": "Challenge plan",
   "stage.door.body": "In a few minutes you will have {name}'s own story for this: a short first-person book with three small steps you choose from a sourced menu, read with zero AI. First, a few questions that decide whether a plan is the right next step.",
   "stage.door.start": "Let's see",
   "stage.redLines.title": "First: is any of these true?",
@@ -239,7 +239,7 @@ const EN: Record<PlanStringKey, string> = {
 };
 
 const HE: Record<PlanStringKey, string> = {
-  "section.title": "תוכניות ליום-יום",
+  "section.title": "תוכניות אתגר",
   "section.lede": "הסיפור של {name} על דפוס יום-יומי קשה אחד, עם השלבים שאתם בוחרים. תרגול הורי מבוסס התפתחות, שנקרא בלי AI לפני השינה.",
   "section.running": "רץ עכשיו",
   "section.nights": "{count} לילות אושרו",
@@ -256,7 +256,7 @@ const HE: Record<PlanStringKey, string> = {
   "owner.title": "כלי בעלים",
   "owner.sub": "מוצג רק לחשבונות ברשימת הבעלים; משפחה אף פעם לא רואה את הקטע הזה.",
   "paint.progress": "מציירים את התמונות… {done} מתוך {total}",
-  "stage.door.kicker": "תוכנית ליום-יום",
+  "stage.door.kicker": "תוכנית אתגר",
   "stage.door.body": "בעוד כמה דקות יהיה ל{name} סיפור משלו על זה: ספר קצר בגוף ראשון עם שלושה שלבים קטנים שאתם בוחרים מתפריט מבוסס מקורות, שנקרא בלי AI. קודם, כמה שאלות שמחליטות אם תוכנית היא הצעד הנכון.",
   "stage.door.start": "בואו נראה",
   "stage.redLines.title": "קודם: האם משהו מאלה נכון?",

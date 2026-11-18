@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { studioBopArt } from '../../../../../lib/kidThemeManifest';
+import { BOP_SCENE_SIZES, studioBopArt } from '../../../../../lib/kidThemeManifest';
 import './bopStage.css';
 
 /** Toy-world art shared by the Bop games: one folder, one naming rule, kept
@@ -17,9 +17,22 @@ export function BopSprite({ name, size, className = '', flat = false, style }: {
   return <img className={`bop-sprite${flat ? ' bop-sprite--flat' : ''}${className ? ` ${className}` : ''}`} data-bop-sprite={name} src={bopArt(name)} alt="" draggable={false} decoding="async" style={{ inlineSize: size, ...style }} />;
 }
 
+/** B-GAME-44: the toy world answers a success. A ring of light and twelve
+ * sparks burst from the middle of the stage each time `beat` changes; `big`
+ * adds a shower of petals for the moment a game is won. Decoration only:
+ * nothing waits on it, and motion off hides it. */
+export function BopCheer({ beat, big = false }: { beat: string | number | null; big?: boolean }) {
+  if (beat === null) return null;
+  return <span className="bop-cheer" key={String(beat)} data-big={big || undefined} aria-hidden="true">
+    <span className="bop-cheer__ring" />
+    {Array.from({ length: 12 }, (_, spark) => <span key={spark} className="bop-cheer__spark" style={{ '--spark': spark } as CSSProperties} />)}
+    {big && Array.from({ length: 16 }, (_, petal) => <span key={`p${petal}`} className="bop-cheer__petal" style={{ '--petal': petal } as CSSProperties} />)}
+  </span>;
+}
+
 /** The room behind a game. Sits under everything else in a `.bop-stage`. */
 export function BopScene({ scene }: { scene: BopSceneId }) {
-  return <img className="bop-scene" data-bop-scene={scene} src={bopArt(`${scene}-480`)} srcSet={`${bopArt(`${scene}-480`)} 480w, ${bopArt(scene)} 1024w`} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" />;
+  return <img className="bop-scene" data-bop-scene={scene} src={bopArt(`${scene}-480`)} srcSet={`${bopArt(`${scene}-480`)} 480w, ${bopArt(scene)} 1024w`} sizes={BOP_SCENE_SIZES} alt="" draggable={false} decoding="async" />;
 }
 
 /** An animal friend. Animals show feeling with ears, tail and posture only. */

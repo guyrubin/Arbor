@@ -75,7 +75,7 @@ describe("IA-16 — nav labels are legible at 390", () => {
 });
 
 describe("IA-16 — the current tab announces itself", () => {
-  it("both the primary tabs and More carry aria-current=page when active", () => {
+  it("both the primary tabs and Menu carry aria-current=page when active", () => {
     const current = [...bar.matchAll(/aria-current=\{[^}]*\?\s*"page"\s*:\s*undefined\}/g)];
     expect(current.length).toBe(2);
     expect(bar).toContain('aria-current={on ? "page" : undefined}');
@@ -114,20 +114,26 @@ describe("IA-16 — the unread coach count reaches the tab that opens the coach"
   });
 });
 
-describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cannot", () => {
-  const header = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
+describe("v10 — the Menu sheet: four rows; the strip keeps Safety, search and Kid Mode", () => {
+  const sheet = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
 
-  it("Kid Mode is reachable from the sheet (reuses KidModeButton, not a new door)", () => {
-    expect(nav).toContain('import KidModeButton from "./KidModeButton";');
-    expect(header).toContain("<KidModeButton compact onBeforeOpen={() => setMoreOpen(false)} />");
+  // v10 re-pin (was IA-24 / IA-03: the More sheet header held Kid Mode and
+  // Settings because the strip scrolled away). The strip now sits outside
+  // <main> and never scrolls away (F-SHELL-3), so Kid Mode stays there and in
+  // the top bar; Settings is a Menu row.
+  it("Kid Mode is not repeated in the sheet: its doors are the strip and the top bar", () => {
+    expect(nav).not.toContain('import KidModeButton from "./KidModeButton";');
+    expect(sheet).not.toContain("<KidModeButton");
+    const shell = stripComments(read("Shell.tsx"));
+    expect(shell).toContain("<KidModeButton compact />");
   });
 
-  it("Settings is reachable from the sheet and asks the shell, which owns the state", () => {
+  it("Settings is a Menu row that asks the shell, which owns the state", () => {
     expect(nav).toContain('import { requestOpenSettings } from "./settingsBus";');
-    expect(header).toContain("requestOpenSettings()");
-    expect(header).toContain('aria-label={t("aria.settings")}');
+    expect(sheet).toContain('data-testid="menu-settings"');
+    expect(sheet).toContain('t("aria.settings")');
     // …and it closes the sheet on the way, like every other row here.
-    expect(header).toContain("setMoreOpen(false); requestOpenSettings()");
+    expect(sheet).toContain("setMoreOpen(false); requestOpenSettings()");
   });
 
   it("Shell no longer mounts a Settings button in the in-content strip", () => {
@@ -137,31 +143,26 @@ describe("IA-24 / IA-03 — the More sheet header holds the doors the strip cann
     expect(strip).not.toContain("setSettingsOpen(true)");
   });
 
-  it("every header control keeps the 44 px floor", () => {
-    const buttons = header.split("<button").slice(1);
-    expect(buttons.length, "sheet header buttons not found").toBeGreaterThanOrEqual(1);
-    for (const b of buttons) {
-      const open = b.slice(0, b.indexOf(">\n") + 1 || b.length);
-      expect(open, open.replace(/\s+/g, " ").slice(0, 90)).toMatch(/w-11 h-11|min-h-11|min-h-\[44px\]|touch-target/);
-    }
-    // SafetyRing and KidModeButton carry their own floors, asserted in their
-    // own guards (chromeLayout IA-01; KidModeButton compact is w-11 h-11).
-    expect(read("KidModeButton.tsx")).toContain("w-11 h-11");
+  it("every Menu row is a real button at the design system's 64 px row height", () => {
+    const rows = sheet.split("<button").slice(1);
+    expect(rows.length).toBe(3); // the mapped door row, Settings, Pause Arbor
+    for (const row of rows) expect(row.slice(0, row.indexOf(">\n") + 1 || row.length)).toMatch(/type="button"/);
+    expect(sheet).toMatch(/className=\{on \? "ds-menurow on" : "ds-menurow"\}/);
+    expect((sheet.match(/className="ds-menurow"/g) ?? []).length).toBe(2);
+    const css = readFileSync(path.join(here, "..", "..", "design", "ds.css"), "utf8");
+    expect(css).toMatch(/\.ds \.ds-menurow \{[^}]*min-height: 64px/);
   });
 });
 
-describe("IA-24 — More keeps every overflow destination readable", () => {
-  const header = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
-  it("uses quiet one-line rows with active-page semantics and wrapping labels", () => {
-    expect(header).toContain('className="space-y-1"');
-    expect(header).toContain('aria-current={on ? "page" : undefined}');
-    expect(header).toContain('block break-words leading-snug');
-    // v3 F-SHELL-3 (IA-03, critic ruling 14) re-pin — was toContain: the 12 px
-    // sub-line under each row (the pulse and the Profile / Memory details) is
-    // gone; a row is its glyph, its v3 pill name and a chevron.
-    expect(header).not.toContain('block break-words text-[12px] leading-snug');
-    expect(header).not.toContain("grid grid-cols-2");
-    expect(header).not.toContain("truncate");
+describe("v10 — Menu rows stay readable", () => {
+  const sheet = nav.slice(nav.indexOf("<Sheet"), nav.indexOf("</Sheet>"));
+  it("a row is its glyph, its title, one line naming what is inside, and active-page semantics", () => {
+    expect(sheet).toContain('aria-current={on ? "page" : undefined}');
+    expect(sheet).toContain('<span className="ds-menurow-text"><b>');
+    expect(sheet).toContain('<span className="small">');
+    expect(sheet).not.toContain("truncate");
+    const css = readFileSync(path.join(here, "..", "..", "design", "ds.css"), "utf8");
+    expect(css).toMatch(/\.ds \.ds-menurow-text \.small \{[^}]*font-size: 13px/);
   });
 });
 describe("the settings seam is a one-way event, not a second owner of the state", () => {

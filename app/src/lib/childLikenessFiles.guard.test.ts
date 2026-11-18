@@ -90,8 +90,8 @@ const LIKENESS_FAMILIES: readonly RegExp[] = [
   /^app\/public\/_proof\//i,
   /^app\/public\/visuals\/cards\/(.+\/)?(game|story)-[^/]+$/i,
   new RegExp(`^app/public/(.+/)?[^/]*avatar[^/]*\\.(${IMAGE})$`, "i"),
-  // The makers' kit art (B-GAME-40): a file that shows Bebe or GobGob says so in its name.
-  /^app\/public\/visuals\/studio-v2\/makers\/[^/]*(bebe|gobgob|crew)[^/]*$/i,
+  // The makers' kit art (B-GAME-40) and the film's tile covers (B-KID-171): a file that shows Bebe or GobGob says so in its name.
+  /^app\/public\/visuals\/studio-v2\/(makers|film)\/[^/]*(bebe|gobgob|crew)[^/]*$/i,
 ];
 export function unnamedLikeness(paths: readonly string[], named: ReadonlyMap<string, string> = NAMED): string[] {
   return [...new Set(paths.map(norm))].filter((p) => LIKENESS_FAMILIES.some((re) => re.test(p)) && !named.has(p)).sort();
@@ -261,6 +261,10 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/visuals/kid/AVATAR.PNG",
       "app/public/_Proof/hero/idle.webp",
       "app/public/visuals/cards/GAME-MIMIC.png",
+      // the kit characters (B-GAME-40, B-KID-171, B-KID-176): a named cover passes, a new one fails, a crew-free film frame is no family
+      "app/public/visuals/studio-v2/film/cover-memory-crew2.webp",
+      "app/public/visuals/studio-v2/film/cover-new-crew.webp",
+      "app/public/visuals/studio-v2/film/room-canal.webp",
     ])).toEqual([
       "app/public/_Proof/hero/idle.webp",
       "app/public/_proof/hero/new-pose.webp",
@@ -271,6 +275,7 @@ describe("T16 static clause — no sprite, print or audio of a real child in git
       "app/public/visuals/cards/web/story-new-1024.webp",
       "app/public/visuals/kid-avatar.webp",
       "app/public/visuals/kid/AVATAR.PNG",
+      "app/public/visuals/studio-v2/film/cover-new-crew.webp",
     ]);
     // a named file is excused from the shape check only while it is named
     expect(shapeOffenders(["app/public/_proof/hero/sheet.json"])).toEqual([]);

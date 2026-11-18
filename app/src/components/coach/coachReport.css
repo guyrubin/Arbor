@@ -122,3 +122,58 @@
 @media (prefers-reduced-motion: no-preference) {
   .coach-report button { transition: background-color 160ms ease, color 160ms ease; }
 }
+
+/* ── v10.3 (N-Talk boards: one readable flow) ────────────────────────────
+   The answer reads as the board draws it: Arbor's reading in a dashed draft
+   card under its one voice label, the steps as numbered rows ("Try this"),
+   the words to use as a quote card, the doors as outlined pills. Every
+   control, test id and the urgent-help panel stay as they were; this layer
+   only shapes them. */
+.coach-report__opening { padding: 18px 20px; border: 2px dashed color-mix(in srgb, var(--arbor-clay) 45%, transparent); border-radius: 18px; background: var(--arbor-clay-dim); }
+.coach-report__draft { display: inline-flex; align-items: center; gap: 6px; margin-block-end: 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--arbor-clay-deep); }
+.coach-report__opening .coach-report__lead > p:first-child { font-family: var(--font-display); font-size: 22px; line-height: 1.25; font-weight: 500; color: var(--arbor-ink); }
+.coach-report__next { border: 0; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: 0 1px 2px color-mix(in srgb, var(--arbor-ink) 8%, transparent), 0 8px 20px -14px color-mix(in srgb, var(--arbor-ink) 25%, transparent); }
+/* V77 one kind palette: a step Arbor suggests is dashed sapphire; once it is in
+   the plan (I'll try this) it takes the plan wash and ink. */
+.coach-report__next .coach-report__steps > li { padding: 12px 14px; border-radius: 14px; background: var(--arbor-paper-elevated); border: 1.5px dashed var(--arbor-k-moment); }
+.coach-report__next .coach-report__step-number { flex-basis: 32px; block-size: 32px; background: var(--arbor-paper-elevated); color: var(--arbor-k-moment-i); box-shadow: inset 0 0 0 1.5px var(--arbor-k-moment); font-family: var(--font-display); font-size: 17px; font-weight: 500; }
+.coach-report__next .coach-report__steps > li:has([data-state="accepted"]) { background: var(--arbor-k-plan-w); border: 1.5px solid var(--arbor-k-plan-w); }
+.coach-report__next .coach-report__steps > li:has([data-state="accepted"]) .coach-report__step-number { background: var(--arbor-k-plan); color: var(--arbor-on-accent); box-shadow: none; }
+.coach-report__script [data-testid="say-this"][data-presentation="quote"] { padding: 18px 20px; border-radius: 18px; background: var(--arbor-paper-deep); }
+.coach-report__tools button { border-radius: 999px; border-color: var(--arbor-rule-strong); color: var(--arbor-clay-deep); }
+.coach-report__disclosure > button { font-size: 15px; }
+/* v10.3: a wide answer (the expanded view) lays out as the board's grid —
+   the reading across, the steps beside the words to use, the rest across. */
+@container (min-width: 860px) {
+  .coach-report { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+  .coach-report > * { grid-column: 1 / -1; margin-block-start: 0 !important; }
+  .coach-report > .coach-report__next { grid-column: span 8; }
+  .coach-report > .coach-report__script { grid-column: span 4; }
+  .coach-report__opening .coach-report__lead > p:first-child { font-size: 34px; line-height: 1.12; }
+}
+
+/* V77 (N-Talk): "What Arbor used" — read-only tiles of what the answer carried. */
+.coach-used { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); }
+.coach-used-title { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 500; color: var(--arbor-ink); }
+.coach-used-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.coach-used-tile { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--arbor-paper-deep); }
+.coach-used-notes { grid-column: 1 / -1; }
+.coach-used-glyph { display: inline-grid; place-items: center; flex: none; inline-size: 32px; block-size: 32px; border-radius: 10px; background: var(--arbor-k-moment-w); color: var(--arbor-k-moment-i); }
+.coach-used-glyph.k-date { background: var(--arbor-k-date-w); color: var(--arbor-k-date-i); }
+.coach-used-text { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.coach-used-text b { font-size: 14px; font-weight: 600; color: var(--arbor-ink); }
+.coach-used-text small { font-size: 13px; color: var(--arbor-muted); overflow-wrap: anywhere; }
+.coach-used-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-block-start: 4px; }
+.coach-used-fact { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 14px; background: var(--arbor-paper-elevated); box-shadow: inset 0 0 0 1px var(--arbor-rule); font-size: 14px; font-style: italic; color: var(--arbor-ink); text-align: start; cursor: pointer; }
+.coach-used-fact:hover { background: var(--arbor-k-moment-w); }
+.coach-used-fact:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 2px; }
+.coach-used-glyph.k-plan { background: var(--arbor-k-plan-w); color: var(--arbor-k-plan-i); }
+/* V77 (N-Talk): the words card's heading; the draft's picture shows only in the wide layout. */
+.coach-report__script-title { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--arbor-ink); }
+.coach-report__art { display: none; }
+@container (min-width: 860px) {
+  .coach-report__opening:has(.coach-report__art) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 20px; align-items: center; }
+  .coach-report__opening .coach-report__art { display: block; grid-row: 1 / span 2; }
+  .coach-report__opening .coach-report__draft, .coach-report__opening .coach-report__lead { grid-column: 2; }
+}
+.coach-report__art img { display: block; inline-size: 112px; block-size: 84px; object-fit: cover; }

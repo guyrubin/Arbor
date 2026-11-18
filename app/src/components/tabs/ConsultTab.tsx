@@ -13,13 +13,20 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { fmtDay } from "../../lib/formatDate";
+import { fmtDayV10 } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
 import { guidedTierOn } from "../../lib/entitlementsGuided";
 import HomeProgramEntry, { HomeProgramDays, homeProfessionForAppointment, nextVisitDayFor, type EntryWrites } from "../program/HomeProgramEntry";
 import CareAside from "../care/CareAside";
 import CareShared from "../care/CareShared";
-import CareVisitHead from "../care/CareVisitHead";
+import VisitTimeline from "../care/v10/VisitTimeline";
+import { careCopy } from "../care/v10/careV10Copy";
+import VisitsComposition from "../care/v10/VisitsComposition";
+import type { PackedCounts } from "../care/v10/VisitScene";
+import { DsRoot } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { parentWords, reportsLeadCounts } from "../../lib/recordCounts";
+import type { LangObservation } from "../../growth/vocabAgg";
 import { activeHomeEnrolments, toggleExerciseDay, type HomeProgramEnrolment } from "../../content/programs/homeProgram";
 import type { FamilyGoal } from "../../lib/goals";
 import {
@@ -81,7 +88,8 @@ export default function ConsultTab() {
 
 function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isOwnerCurrent: () => boolean }) {
   const { user } = useAuth();
-  const { childProfile, activeTab, setActiveTab } = useArbor();
+  const { childProfile, activeTab, setActiveTab, behaviorLogs, milestones, actionPlans } = useArbor();
+  const composition = useComposition();
   const currentChild = useRef(childProfile.id);
   currentChild.current = childProfile.id;
   const { t, uiLang } = useLanguage();
@@ -94,6 +102,18 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   const apptsCol = useChildCollection<Appointment>(childProfile.id, "appointments", { trackConfirmation: true });
   const followUpsCol = useChildCollection<AppointmentFollowUp>(childProfile.id, "apptFollowUps");
   const nowMs = Date.now();
+  // Design v10.1 — "Packed so far" on the visit scene: the whole record's
+  // counts, read the way Reports and the summary's since line read them.
+  const langObsCol = useChildCollection<LangObservation>(childProfile.id, "langObs", { orderByField: "timestamp", orderDir: "desc", max: 200 });
+  const packed = useMemo<PackedCounts>(() => {
+    const whole = reportsLeadCounts({ logs: behaviorLogs ?? [], milestones: milestones ?? [], langObs: langObsCol.items, sinceIso: null, nowMs: Date.now(), wholeRecord: true });
+    // Design V77: "moments in your words" counts the moments that carry the
+    // parent's own words (never an incident's trigger); plan steps are the
+    // ones the family marked done in its action plans.
+    const ownWords = (behaviorLogs ?? []).filter((l) => parentWords(l) !== "").length;
+    const planSteps = (actionPlans ?? []).reduce((n, p) => n + p.phases.reduce((m, ph) => m + ph.steps.filter((st) => st.completed).length, 0), 0);
+    return { moments: ownWords, milestones: whole.milestones, words: langObsCol.items.filter((o) => (o.phrase ?? "").trim().length > 0).length, planSteps };
+  }, [behaviorLogs, milestones, actionPlans, langObsCol.items]);
   // B-PROG-09: the home program the professional gave (programs, home-* rows) and the goals the family accepted
   const programsCol = useChildCollection<HomeProgramEnrolment>(childProfile.id, "programs");
   const familyGoalsCol = useChildCollection<FamilyGoal>(childProfile.id, "familyGoals");
@@ -147,7 +167,7 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   // "Prepare for the speech therapist on 14 Oct" stayed on screen after
   // Pediatrician was picked, so the two loudest lines named two people.
   const [chosen, setChosen] = useState<ExportAudience | undefined>(presetAudience);
-  const heading = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
+  const headingKind = consultHeading({ visitAudience: anchorAudience, hasVisit: !!visit, chosen });
   // v4: Past exports' "Prepare an update" selects that audience in the builder.
   const [audienceRequest, setAudienceRequest] = useState<{ audience: ExportAudience; seq: number } | undefined>(undefined);
   const prepareAgain = (audience: ExportAudience) => setAudienceRequest({ audience, seq: (audienceRequest?.seq ?? 0) + 1 });
@@ -280,8 +300,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
      More sheet). */
   const landing = activeTab === "consult";
   const homeEntry = !summary && !awaiting && (
-    <section className="mb-5 rounded-[var(--r-lg)] border p-4" style={{ borderColor: "var(--arbor-rule)" }}>
-      {!homeOpen ? <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }} onClick={() => setHomeOpen(true)}>{t("elev.pilot.i.have.recommendations.for.home")}</button>
+    <section className="rcard care-home">
+      {!homeOpen ? <button type="button" className="xrow care-home-open" onClick={() => setHomeOpen(true)}><Icon name="home" size={18} /><span className="grow">{t("elev.pilot.i.have.recommendations.for.home")}</span><Icon name="chevron_right" size={18} className="rtl:-scale-x-100" /></button>
         : <HomeProgramEntry key={childProfile.id} childId={childProfile.id} profession={null} nextVisit={null} rows={programsCol.items} existingGoals={familyGoalsCol.items} onConfirm={saveHomeProgram} onCancel={() => setHomeOpen(false)} />}
     </section>
   );
@@ -291,6 +311,108 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
   /* v3 FEAT-09: on #/handoff the builder never opens in the teacher branch
      (a teacher stored on this device or a teacher visit would put the School
      Brief editor under the summary H1); School brief is its own pill. */
+  const heading = (
+    <h1 data-testid="consult-h1" id="consult-h1" tabIndex={-1} className="hero care-h1">
+      {summary
+        ? t("elev.consult.h1.summary")
+        : headingKind === "visit" && visit
+        // Design V77: on the landing the scene carries the day, so the H1 names who only.
+        ? landing
+          ? careCopy(uiLang).visits.heading(lowerFor(uiLang, appointmentRoleLabel(visit, t)))
+          : t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDayV10(visit.whenIso!, uiLang) })
+        : headingKind === "audience" && chosen
+        ? t("elev.consult.h1.audience", { audience: lowerFor(uiLang, t(`elev.carehonesty.consult.audience.${chosen}`)) })
+        : t("elev.consult.h1")}
+    </h1>
+  );
+  /* The lines production keeps under the H1: the summary's lede, the visit
+     line where the H1 does not name the visit, "for {name}" and the guided
+     pilot's coach line. */
+  const sublines = (
+    <>
+      {summary && <p data-testid="consult-summary-lede" className="care-sub">{t("elev.consult.summary.lede")}</p>}
+      {/* Design V77: with a visit booked the scene speaks for itself (no sub-line, no "for {name}"). */}
+      {landing && !visit && <p data-testid="consult-sub" className="care-sub">{t("elev.consult.sub")}</p>}
+      {/* Design V77 (N-Brief): the brief's description is the hero's line. */}
+      {!landing && chosen === "teacher" && <p data-testid="consult-teacher-lede" className="care-sub">{careCopy(uiLang).brief.lede}</p>}
+      {/* V77 N-Brief-M: the phone brief's hero carries no visit line (the dock keeps its Save as PDF in view). */}
+      {/* V77 N-Brief: the brief names its next visit in the stage's header row (desktop) and not at all on a phone. */}
+      {visit && (summary || (!landing && headingKind !== "visit")) && chosen !== "teacher" && (
+        <p data-testid="consult-visit-line" className="care-sub">{t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDayV10(visit.whenIso!, uiLang) })}</p>
+      )}
+      {/* The Teacher brief's own title names the child; "for {name}" would say it twice. */}
+      {firstName && chosen !== "teacher" && !(landing && visit) && <p className="care-sub muted">{t("elev.consult.forName", { name: firstName })}</p>}
+      {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
+          professionals and, in the guided pilot only, Arbor's light coach. */}
+      {!summary && guidedTierOn() && (
+        <p data-testid="consult-guided-tier" className="care-sub">{t("elev.program.care.guided", { name: firstName || t("learn.yourChild") })}</p>
+      )}
+    </>
+  );
+
+  /* The visit's open loop ("What did they suggest?") and the home program:
+     on the landing they sit with the appointments (section 4); on the other
+     routes, under the summary. #/handoff holds the summary alone. */
+  const followUp = !summary && (
+    <div className="care-followup">
+      <ReceiptNoteLine note={receipt.note} testId="consult-receipt" />
+      {awaiting && (
+        <section data-testid="consult-visit-outcome" className="rcard care-outcome">
+          <label htmlFor="consult-visit-outcome-input" className="rt">
+            {t("elev.consult.visitOutcome.q", { profession: appointmentRoleLabel(awaiting, t), date: fmtDayV10(awaiting.whenIso!, uiLang) })}
+          </label>
+          <div className="care-outcome-row">
+            <input
+              id="consult-visit-outcome-input"
+              value={outcome}
+              onChange={(e) => setOutcome(e.target.value)}
+              readOnly={savingOutcome}
+              dir="auto"
+              placeholder={t("elev.learnCare.appt.followUp.placeholder")}
+              className="care-input min-h-11"
+            />
+            <button
+              type="button"
+              data-testid="consult-visit-outcome-save"
+              onClick={() => { void saveOutcome(); }}
+              disabled={!outcome.trim() || savingOutcome}
+              aria-busy={savingOutcome}
+              className="mbtn care-btn"
+            >
+              <Icon name="check" size={16} /> {savingOutcome ? t("elev.consult.visitOutcome.saving") : t("elev.learnCare.appt.followUp.save")}
+            </button>
+          </div>
+          {/* v3 EXTRA-CARE: after the toast fades, the field still says why
+              the answer is here: kept on this device, not confirmed yet. */}
+          {heldOutcome?.state === "queued" && (
+            <p data-testid="consult-visit-outcome-held" className="small">{t("elev.consult.visitOutcome.held")}</p>
+          )}
+          {/* B-PROG-09: the second answer — the professional gave a home program */}
+          {!homeOpen ? (
+            <button type="button" data-testid="consult-home-program-choice" onClick={() => setHomeOpen(true)} className="ds-link">
+              <Icon name="add" size={16} aria-hidden /> {t("elev.homeProgram.entry.choice")}
+            </button>
+          ) : (
+            <HomeProgramEntry
+              key={childProfile.id}
+              childId={childProfile.id}
+              profession={homeProfessionForAppointment(awaiting.profession)}
+              nextVisit={nextVisitDayFor(apptsCol.items, awaiting, nowMs)}
+              rows={programsCol.items}
+              existingGoals={familyGoalsCol.items}
+              onConfirm={saveHomeProgram}
+              onCancel={() => setHomeOpen(false)}
+            />
+          )}
+        </section>
+      )}
+      {/* Design V77: on the landing the home door sits in the Share card (desktop) or the getting-ready card (phone). */}
+      {/* V77 N-Brief: the Teacher brief carries no home-program door (Visits holds it). */}
+      {!landing && chosen !== "teacher" && homeEntry}
+      {homeDays}
+    </div>
+  );
+
   const builder = (
     <AskSpecialist
       key={`${summary ? "summary:" : ""}${appointmentId ?? `${presetAudience ?? "no-visit"}${intake ? `:${intake}` : ""}`}`}
@@ -301,8 +423,24 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       egressGuard={egressGuard}
       excludeTeacher={summary}
       landing={landing}
-      head={landing ? <CareVisitHead visit={visit} /> : undefined}
       audienceRequest={audienceRequest}
+      layout={{
+        component: VisitsComposition,
+        props: {
+          composition,
+          visit,
+          heading,
+          sublines,
+          packed,
+          landing,
+          followUp,
+          homeDoor: landing ? homeEntry : null,
+          timeline: landing ? <VisitTimeline appointments={apptsCol.items} followUps={followUpsCol.items} nowMs={nowMs} /> : null,
+          aside: landing ? <CareAside /> : null,
+          shared: landing ? <CareShared onPrepareAgain={prepareAgain} /> : null,
+          nowMs,
+        },
+      }}
     />
   );
 
@@ -314,124 +452,8 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       <p role="status">{t(apptsCol.error || appointmentReady ? "elev.today.visit.unavailable" : "aria.loading")}</p>
       {apptsCol.loaded && <button type="button" className="min-h-11 rounded-full px-4 text-sm font-semibold" onClick={() => setActiveTab("appointments")}>{t("nav.tab.appointments")}</button>}
     </div>}
-    {targetOpened && <div hidden={targetBlocked} inert={targetBlocked}>
-      <header className="mb-5">
-        {landing && (
-          <p data-testid="consult-kicker" className="t-sm font-bold mb-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.kicker")}</p>
-        )}
-        <h1 data-testid="consult-h1" className="t-xl font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textWrap: "balance" } as React.CSSProperties}>
-          {summary
-            ? t("elev.consult.h1.summary")
-            : heading === "visit" && visit
-            ? t("elev.consult.h1.visit", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })
-            : heading === "audience" && chosen
-            ? t("elev.consult.h1.audience", { audience: lowerFor(uiLang, t(`elev.carehonesty.consult.audience.${chosen}`)) })
-            : t("elev.consult.h1")}
-        </h1>
-        {summary && (
-          <p data-testid="consult-summary-lede" className="t-sm mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.summary.lede")}</p>
-        )}
-        {landing && (
-          <p data-testid="consult-sub" className="t-sm mt-1 max-w-[65ch]" style={{ color: "var(--arbor-ink-soft)" }}>{t("elev.consult.sub")}</p>
-        )}
-        {visit && (summary || (!landing && heading !== "visit")) && (
-          <p data-testid="consult-visit-line" className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.consult.visitLine", { profession: appointmentRoleLabel(visit, t), date: fmtDay(visit.whenIso!, uiLang) })}
-          </p>
-        )}
-        {firstName && (
-          <p className="t-sm mt-1" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.forName", { name: firstName })}</p>
-        )}
-        {/* B-PROG-10 (E3 canon): Care is a warm handoff to the family's own
-            professionals and, in the guided pilot only, Arbor's light coach. */}
-        {!summary && guidedTierOn() && (
-          <p data-testid="consult-guided-tier" className="t-sm mt-2 leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
-            {t("elev.program.care.guided", { name: firstName || t("learn.yourChild") })}
-          </p>
-        )}
-      </header>
-      <div data-testid="consult-landing" className={landing ? "flex flex-col gap-6 lg:grid lg:grid-cols-3 lg:items-start min-[1600px]:grid-cols-[minmax(0,1fr)_20rem] min-[1600px]:gap-8" : undefined}>
-      <div data-module="consult-packet" className={landing ? "min-w-0 lg:col-span-3 min-[1600px]:col-span-1" : "min-w-0"}>
-        <ReceiptNoteLine note={receipt.note} testId="consult-receipt" className="mb-5" />
-        {!landing && homeEntry}
-        {!landing && homeDays}
-        {!summary && awaiting && (
-          <section data-testid="consult-visit-outcome" className="mb-5 border-y py-4 flex flex-col gap-2" style={{ borderColor: "var(--arbor-rule)" }}>
-            <label htmlFor="consult-visit-outcome-input" className="t-sm font-bold" style={{ color: "var(--arbor-ink)" }}>
-              {t("elev.consult.visitOutcome.q", { profession: appointmentRoleLabel(awaiting, t), date: fmtDay(awaiting.whenIso!, uiLang) })}
-            </label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                id="consult-visit-outcome-input"
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-                readOnly={savingOutcome}
-                dir="auto"
-                placeholder={t("elev.learnCare.appt.followUp.placeholder")}
-                className="flex-1 min-w-0 rounded-xl px-3 min-h-11 t-sm"
-                style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)" }}
-              />
-              <button
-                type="button"
-                data-testid="consult-visit-outcome-save"
-                onClick={() => { void saveOutcome(); }}
-                disabled={!outcome.trim() || savingOutcome}
-                aria-busy={savingOutcome}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl px-4 min-h-11 t-sm font-bold disabled:cursor-not-allowed"
-                style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)" }}
-              >
-                <Icon name="check" size={16} /> {savingOutcome ? t("elev.consult.visitOutcome.saving") : t("elev.learnCare.appt.followUp.save")}
-              </button>
-            </div>
-            {/* v3 EXTRA-CARE: after the toast fades, the field still says why
-                the answer is here: kept on this device, not confirmed yet. */}
-            {heldOutcome?.state === "queued" && (
-              <p data-testid="consult-visit-outcome-held" className="t-xs" style={{ color: "var(--arbor-muted)" }}>{t("elev.consult.visitOutcome.held")}</p>
-            )}
-            {/* B-PROG-09: the second answer — the professional gave a home program */}
-            {!homeOpen ? (
-              <button
-                type="button"
-                data-testid="consult-home-program-choice"
-                onClick={() => setHomeOpen(true)}
-                className="inline-flex items-center gap-1.5 self-start rounded-xl px-4 min-h-11 t-sm font-semibold"
-                style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
-              >
-                <Icon name="add" size={16} aria-hidden /> {t("elev.homeProgram.entry.choice")}
-              </button>
-            ) : (
-              <HomeProgramEntry
-                key={childProfile.id}
-                childId={childProfile.id}
-                profession={homeProfessionForAppointment(awaiting.profession)}
-                nextVisit={nextVisitDayFor(apptsCol.items, awaiting, nowMs)}
-                rows={programsCol.items}
-                existingGoals={familyGoalsCol.items}
-                onConfirm={saveHomeProgram}
-                onCancel={() => setHomeOpen(false)}
-              />
-            )}
-          </section>
-        )}
-        {/* v3 EXTRA-CARE: on the Care landing the builder IS the visit card —
-            one surface holding the visit's head (who, when, in how many days,
-            the since counts) directly followed by steps 1-3. The open loop
-            above is the last visit's; the home program follows the card. */}
-        {landing ? (
-          <section
-            data-testid="consult-visit-card"
-            className="mb-5 rounded-[22px] border p-4 sm:p-6"
-            style={{ borderColor: "var(--arbor-rule)", background: "var(--arbor-paper-elevated)", boxShadow: "var(--shadow-sm)" }}
-          >
-            {builder}
-          </section>
-        ) : builder}
-        {landing && homeEntry}
-        {landing && homeDays}
-      </div>
-      {landing && <CareAside />}
-      {landing && <CareShared onPrepareAgain={prepareAgain} />}
-      </div>
-    </div>}
+    {targetOpened && <DsRoot composition={composition} hidden={targetBlocked} inert={targetBlocked} data-module="consult-packet" data-testid="consult-landing" className="care-v10">
+      {builder}
+    </DsRoot>}
   </>;
 }

@@ -93,7 +93,10 @@ describe("(2) the clinical-term note is raised at edit time", () => {
   it("the row runs the SAME scanner the share egress fails closed on", () => {
     expect(SRC).toContain('from "../../lib/clinicalScan"');
     expect(SRC).toContain("findClinicalDiagnosisTerm");
-    expect(ROW).toContain("const clinicalTerm = editing ? findClinicalDiagnosisTerm(factDraft) : null;");
+    // v10: the edit form (MemoryEditForm, the ONE editor the ledger row and
+    // About's cards open) mounts only while editing, so it scans every draft.
+    expect(ROW).toContain("const clinicalTerm = findClinicalDiagnosisTerm(factDraft);");
+    expect(ROW).toMatch(/\{editing \? \(\s*<MemoryEditForm m=\{m\}/);
     expect(ROW).toContain('data-testid="memory-edit-clinical-note"');
     expect(ROW).toContain('t("elev.waveR.mem.clinicalNote", { term: clinicalTerm })');
   });

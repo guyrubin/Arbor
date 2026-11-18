@@ -13,9 +13,11 @@ export const companionEn = {
   "companion.input.files-to-send": "Files to send",
   "companion.input.remove": "Remove",
   "companion.input.files-are-analysed-when-you-send-the-conversation-keeps-the-expla": "Files are analysed when you send. The conversation keeps the explanation, not the original files.",
-  "companion.input.share-a-moment-a-question-a-thought": "Share a moment, a question, a thought…",
   "companion.input.what-would-you-like-to-share-with-arbor": "What would you like to share with Arbor?",
   "companion.input.send": "Send",
+  "companion.input.ask-placeholder": "Ask Arbor: a question, a moment, a thought",
+  "companion.input.ask-send": "Ask Arbor",
+  "companion.conversation.about": "about {name}",
   "companion.input.listening-your-words-will-appear-in-the-draft": "Listening… your words will appear in the draft.",
   "companion.input.preparing-your-files": "Preparing your files…",
   "companion.input.photo": "Photo",
@@ -283,11 +285,11 @@ export const companionEn = {
   "companion.offscreen.story.detail": "One person begins a story with one sentence. The other adds what happens next. Let it be silly, surprising or very short.",
   "companion.offscreen.story.say": "And then, something unexpected happened…",
   "companion.place.now": "Now",
-  "companion.place.now.detail": "Parenting Companion · clarity for today",
+  "companion.place.now.detail": "Clarity for today",
   "companion.place.child": "My child",
-  "companion.place.child.detail": "Growth · the whole picture, over time",
+  "companion.place.child.detail": "The whole picture, over time",
   "companion.place.together": "Together",
-  "companion.place.together.detail": "Kids Studio · stories, play and imagination",
+  "companion.place.together.detail": "Stories, play and imagination",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "Open our questions: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
@@ -456,7 +458,7 @@ export const companionEn = {
   "companion.about.moments": "Open the moments",
   "companion.about.details": "Details",
   "companion.about.detailsEdit": "Edit details",
-  "companion.about.birthDate": "Birth date {date}",
+  "companion.about.birthDate": "Born {date}",
   "companion.about.bornEarly": "Born at {weeks} weeks",
   // v3 F-CHILD-3 (review r1) — under the memory door when a proposal names no
   // area: no number, no badge.
@@ -593,7 +595,8 @@ export const companionEn = {
   // three items a quiet second line; the history list opens from the menu.
   // Words only: never a count, dot or badge.
   "companion.input.foot": "Arbor is an AI companion, not a doctor. Files are analysed only when sent.",
-  "companion.launcher.label": "Ask Arbor — text, photo or voice",
+  "companion.launcher.label": "Ask Arbor: text, photo or voice",
+  "companion.launcher.short": "Ask Arbor",
   // B-VOICE-08: Now's one-tap voice door (its visible words are companion.input.talk).
   "companion.launcher.voice-aria": "Talk it through by voice",
   "companion.panel.history": "History",
@@ -635,9 +638,11 @@ export const companionHe = {
   "companion.input.files-to-send": "קבצים לשליחה",
   "companion.input.remove": "הסרה",
   "companion.input.files-are-analysed-when-you-send-the-conversation-keeps-the-expla": "הקבצים נשלחים לניתוח רק עם השליחה. בשיחה נשמר ההסבר, לא הקובץ המקורי.",
-  "companion.input.share-a-moment-a-question-a-thought": "שתפו רגע, שאלה או מחשבה…",
   "companion.input.what-would-you-like-to-share-with-arbor": "מה תרצו לשתף עם ארבור?",
   "companion.input.send": "שליחה",
+  "companion.input.ask-placeholder": "לשאול את ארבור: שאלה, רגע, מחשבה",
+  "companion.input.ask-send": "לשאול את ארבור",
+  "companion.conversation.about": "על {name}",
   "companion.input.listening-your-words-will-appear-in-the-draft": "מקשיבים… המילים יופיעו בטיוטה.",
   "companion.input.preparing-your-files": "מכינים את הקבצים…",
   "companion.input.photo": "תמונה",
@@ -904,11 +909,11 @@ export const companionHe = {
   "companion.offscreen.story.detail": "אחד מתחיל סיפור במשפט. השני מוסיף מה קורה אחר כך. הסיפור יכול להיות מצחיק, מפתיע או ממש קצר.",
   "companion.offscreen.story.say": "ואז קרה משהו שאף אחד לא ציפה לו…",
   "companion.place.now": "עכשיו",
-  "companion.place.now.detail": "מלווה ההורות · בהירות להיום",
+  "companion.place.now.detail": "בהירות להיום",
   "companion.place.child": "הילד שלי",
-  "companion.place.child.detail": "צמיחה · התמונה השלמה, לאורך זמן",
+  "companion.place.child.detail": "התמונה השלמה, לאורך זמן",
   "companion.place.together": "ביחד",
-  "companion.place.together.detail": "סטודיו לילדים · סיפורים, משחק ודמיון",
+  "companion.place.together.detail": "סיפורים, משחק ודמיון",
   // FEAT-05: the question chip in the conversation header opens the question sheet.
   "companion.topic-chip.open": "לפתוח את השאלות שלנו: {value0}",
   // VIS-07: Together's first-time empty state (one sentence; the action reuses companion.portrait.capture).
@@ -1200,7 +1205,8 @@ export const companionHe = {
   "companion.together-view.set-a-pin": "להגדיר קוד",
   // F-TALK-1: Talk is a panel over the place (see the English block).
   "companion.input.foot": "ארבור הוא מלווה בינה מלאכותית, לא רופא. קבצים מנותחים רק בשליחה.",
-  "companion.launcher.label": "שואלים את ארבור — טקסט, תמונה או קול",
+  "companion.launcher.label": "שואלים את ארבור: טקסט, תמונה או קול",
+  "companion.launcher.short": "שואלים את ארבור",
   "companion.launcher.voice-aria": "לדבר על זה בקול",
   "companion.panel.history": "היסטוריה",
   "companion.panel.new.sub": "השאלה נשארת; שיחה חדשה מתחילה",

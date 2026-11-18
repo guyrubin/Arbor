@@ -7,9 +7,11 @@ import NoticeCard from "../loop/NoticeCard";
 import TonightFlow, { type TonightStep } from "../loop/TonightFlow";
 import { NowNoticeRow } from "./NowNoticeRow";
 import Icon from "../ui/Icon";
-import { BrandChip } from "../ui/BrandChip";
 import { PendingLine } from "../ui/Receipt";
 import { NOW_COPY } from "./nowViewCopy";
+import { NowRow } from "./now10/NowComingUp";
+import { NOW_V10_COPY } from "./now10/nowV10Copy";
+import { RIGHT_NOW_COPY } from "./nowV41Copy";
 import type { useNowLoop } from "./useNowLoop";
 
 type Loop = ReturnType<typeof useNowLoop>;
@@ -89,52 +91,49 @@ export function NowNoticeLead({ loop, name }: { loop: Loop; name: string }) {
   return <NoticeCard key={card.milestone.id} milestone={card.milestone} shelf={card.shelf} gender={childProfile.gender} childName={name} variant="card" answers="segmented" answersAttrs={stamp} {...loop.noticeHandlers(card.milestone, card.shelf)} />;
 }
 
-/** v4: the head's line says what is true right now — how many things there
- *  are to notice and how many are already answered — so it never contradicts
- *  the open count beside the title. Counts only, never a score. */
-export function noticeSummaryKey(rows: number, waiting: number): string {
-  if (waiting <= 0) return rows > 1 ? "elev.loop.today.notice.doneTwo" : "elev.loop.today.notice.doneOne";
-  if (rows <= 1) return "elev.loop.today.notice.subOne";
-  return waiting < rows ? "elev.loop.today.notice.oneLeft" : "elev.loop.today.notice.sub";
+/** v10.1: which Notice row is asked now — the first still unanswered — and its place among the rows ("1 of 2").
+ *  With every row answered, the place is the last one and nothing is asked. Counts only, never a score. */
+export function noticePosition(answered: readonly boolean[]): { current: number; position: number } {
+  const current = answered.findIndex(a => !a);
+  return { current, position: current === -1 ? answered.length : current + 1 };
 }
 
 /** Notice today — ≤ 2 rows, never the practice's shelf (B-LOOP-04).
- *  v4: one object with a head (gradient chip · title · how many are still
- *  open · the calm sub) that folds the rows away and back; the say-back
- *  question and "Arbor noticed" follow as its last rows (`extras`). */
+ *  v10.1 (N-Now V77, Waiting for you › Now): ONE card. Its head — "Did you
+ *  notice this today?" and where you are ("1 of 2") — is the fold control;
+ *  the row to answer now is drawn large (the milestone in the display face,
+ *  its area under it, the three worded answers in one segmented tray);
+ *  answered rows stay as compact lines with their pill and Undo/Change; the
+ *  next row waits until this one is answered. Then the say-back question and
+ *  "Arbor noticed" (`extras`), and the way to every milestone. Counts only. */
 export function NowNoticeBlock({ loop, name, practiceLeads, extras }: { loop: Loop; name: string; practiceLeads: boolean; extras?: React.ReactNode }) {
   const { childProfile, setActiveTab } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
   const id = useId();
   const [open, setOpen] = useState(true);
   if (!loop.blockNotices.length) return null;
-  // Counts only: how many of today's rows are still unanswered (never a score).
-  const waiting = loop.blockNotices.filter(c => !c.milestone.observationStatus).length;
-  // v4 (Arbor v4 · NOTICE TODAY): ONE line of head — the chip, the name, the
-  // open count, the sub-line, the chevron — the whole line is the fold control;
-  // then compact rows (area chip · title over shelf · three inline answers) and
-  // the foot: not a score, and the way to every milestone.
-  return <section className="now-notice" data-testid="today-notice" aria-labelledby={`${id}-notice`}>
+  const rows = loop.blockNotices;
+  // The row to answer now: the first still unanswered. Answered rows stay (Undo / Change); later ones wait their turn.
+  const { current, position } = noticePosition(rows.map(c => !!c.milestone.observationStatus));
+  const q = RIGHT_NOW_COPY[uiLang === "he" ? "he" : "en"].tonightNoticeQ;
+  return <section className="nw-ask now-notice" data-testid="today-notice" aria-labelledby={`${id}-notice`}>
     <h2 className="now-notice-heading">
-      <button type="button" className="now-notice-head" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle" onClick={() => setOpen(v => !v)}>
-        <BrandChip icon="visibility" tone="sky" shape="drop" />
-        <span id={`${id}-notice`} className="now-notice-title">{t("elev.loop.today.notice.title")}</span>
-        {waiting > 0 && <><span className="now-notice-count" data-testid="today-notice-count" aria-hidden="true">{waiting}</span><span className="sr-only">{t("elev.loop.today.notice.count", { n: waiting })}</span></>}
-        <span className="now-notice-sub">{t(noticeSummaryKey(loop.blockNotices.length, waiting))}</span>
-        <Icon name={open ? "expand_less" : "expand_more"} size={20} className="now-notice-chev" />
+      <button type="button" className="now-notice-head kk" aria-expanded={open} aria-controls={`${id}-notice-body`} data-testid="today-notice-toggle" onClick={() => setOpen(v => !v)}>
+        <span id={`${id}-notice`}>{q}</span>
+        <span className="small nowrap" data-testid="today-notice-count">{NOW_V10_COPY[uiLang === "he" ? "he" : "en"].nOfTotal(position, rows.length)}</span>
+        <Icon name={open ? "expand_less" : "expand_more"} size={18} className="now-notice-chev" />
       </button>
     </h2>
-    <div className="now-notice-card" id={`${id}-notice-body`} hidden={!open}>
-      {loop.blockNotices.map((c, i) => (
-        /* Practice answered: the move passes to the first Notice row's answers. */
-        <NowNoticeRow key={c.milestone.id} index={i} milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={name}
-          answersAttrs={i === 0 && practiceLeads && loop.doseAnswer ? stamp : undefined} {...loop.noticeHandlers(c.milestone, c.shelf)} />
+    <div className="nw-ask-body" id={`${id}-notice-body`} hidden={!open}>
+      {rows.map((c, i) => (current !== -1 && i > current) ? null : (
+        /* Practice answered: the move passes to the row being asked's answers. */
+        <NowNoticeRow key={c.milestone.id} index={i} ask={i === current} milestone={c.milestone} shelf={c.shelf} gender={childProfile.gender} childName={name}
+          answersAttrs={i === (current === -1 ? 0 : current) && practiceLeads && loop.doseAnswer ? stamp : undefined} {...loop.noticeHandlers(c.milestone, c.shelf)} />
       ))}
       {extras}
-      <div className="now-notice-foot">
-        <span>{t("elev.loop.today.notice.foot")}</span>
-        <button type="button" className="now-notice-all" data-testid="today-notice-all" onClick={() => setActiveTab("development")}>
-          {t("elev.loop.today.notice.all")}<Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
+      <div className="ft">
+        <button type="button" className="ds-link" data-testid="today-notice-all" onClick={() => setActiveTab("development")}>
+          {t("elev.loop.today.notice.all")}<Icon name="chevron_right" size={16} className="rtl:-scale-x-100" />
         </button>
       </div>
     </div>
@@ -150,12 +149,9 @@ export function NowTonightLead({ loop: base, initialStep }: { loop: Loop; initia
   return <TonightFlow {...loop.tonight} stampMove={MOVE} />;
 }
 
-/** Before the evening (or behind a chosen step): ONE pointer line, never a module. */
+/** Before the evening (or behind a chosen step): ONE pointer line, never a module.
+ *  v10.1: a Coming up row (N-Now › stop 4). */
 export function NowTonightPointer({ onOpen }: { onOpen: () => void }) {
   const { t } = useLanguage();
-  return <button type="button" className="now-weekly-door now-tonight-pointer" data-testid="today-tonight-pointer" onClick={onOpen}>
-    <BrandChip icon="dark_mode" tone="lav" shape="arch" />
-    <span><b>{t("elev.loop.today.tonight")}</b><small>{t("elev.loop.today.tonightSub")}</small></span>
-    <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
-  </button>;
+  return <NowRow icon="dark_mode" testId="today-tonight-pointer" className="now-tonight-pointer" title={t("elev.loop.today.tonight")} sub={t("elev.loop.today.tonightSub")} onOpen={onOpen} />;
 }

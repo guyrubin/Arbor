@@ -114,7 +114,8 @@ export default function TopbarSearch() {
     }
   };
 
-  const showOverlay = open && query.trim().length > 0;
+  // v10: the empty field opens too — it is the jump map and the last kept.
+  const showOverlay = open;
 
   return (
     <div
@@ -170,7 +171,7 @@ export default function TopbarSearch() {
           }
           autoComplete="off"
           value={query}
-          placeholder={t("top.search") + "…"}
+          placeholder={t("top.searchJump")}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -193,6 +194,13 @@ export default function TopbarSearch() {
             WebkitAppearance: "none",
           }}
         />
+        {/* v10: the one search door says its key. Hidden while typing (the
+            clear button takes the slot) and when the field is too narrow. */}
+        {!query && !open && (
+          <kbd aria-hidden="true" lang="en" dir="ltr" className="arbor-search-kbd" style={{ alignSelf: "center", flexShrink: 0, fontFamily: "var(--font-sans)", fontSize: "12px", fontWeight: 600, color: "var(--arbor-muted)", background: "var(--arbor-paper-sunk)", borderRadius: "6px", padding: "2px 6px", whiteSpace: "nowrap" }}>
+            {typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘ K" : "Ctrl K"}
+          </kbd>
+        )}
         {query && (
           <button
             type="button"
@@ -227,9 +235,12 @@ export default function TopbarSearch() {
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
-            insetInlineStart: 0,
-            width: "min(320px, calc(100vw - 32px))",
-            maxHeight: "320px",
+            // v10: the panel grows inward from the field's inline end, so a
+            // 500 px panel never leaves the band (the field sits near the end).
+            insetInlineEnd: 0,
+            // v10: the panel is wider than the field so titles fit (500 px).
+            width: "min(500px, calc(100vw - 32px))",
+            maxHeight: "min(600px, calc(100dvh - 96px))",
             overflowY: "auto",
             background: "var(--arbor-paper-elevated)",
             border: "1px solid var(--arbor-rule-strong)",
@@ -265,7 +276,40 @@ export default function TopbarSearch() {
                     <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{section.group.label}</span>
                   </div>
                 )}
-                {section.rows.map((entry) => {
+                {/* v10: the jump map reads as chips under each home, as the
+                    board draws it; each chip is still one option in the
+                    listbox, so the arrow keys walk them in order. */}
+                {section.rows.every((entry) => entry.kind === "jump") ? (
+                  <div className="flex flex-wrap gap-1.5" style={{ padding: "2px 8px 8px" }}>
+                    {section.rows.map((entry) => {
+                      const i = results.indexOf(entry);
+                      return (
+                        <div
+                          id={`search-result-${i}`}
+                          key={entry.id}
+                          role="option"
+                          aria-selected={i === activeIdx}
+                          onClick={() => navigate(entry)}
+                          onMouseEnter={() => setActiveIdx(i)}
+                          className="inline-flex items-center rounded-full"
+                          style={{
+                            minHeight: "44px",
+                            padding: "0 14px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            userSelect: "none",
+                            color: i === activeIdx ? "var(--arbor-subtab-on-ink)" : "var(--arbor-ink)",
+                            background: i === activeIdx ? "var(--arbor-subtab-active)" : "var(--arbor-paper-elevated)",
+                            boxShadow: "inset 0 0 0 1px var(--arbor-rule)",
+                          }}
+                        >
+                          {entry.label}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : section.rows.map((entry) => {
                   const i = results.indexOf(entry);
                   return (
                     <div
@@ -327,8 +371,8 @@ export default function TopbarSearch() {
                         </span>}
                       </span>
 
-                      {/* Kind badge */}
-                      <span
+                      {/* Kind badge (a jump row's group header already says what it is) */}
+                      {entry.kind !== "jump" && <span
                         style={{
                           fontSize: "12px",
                           fontWeight: 500,
@@ -337,7 +381,7 @@ export default function TopbarSearch() {
                         }}
                       >
                         {kindLabel(entry.kind)}
-                      </span>
+                      </span>}
                     </div>
                   );
                 })}

@@ -55,6 +55,20 @@
     0 14px 26px -18px var(--studio-shade);
 }
 .arbor-play .bk-frame { background: var(--studio-surface); border-radius: 18px; }
+/* A visible page block gives the spread weight without tilting its words or
+   changing any of the measured art/hero/text rectangles. */
+.arbor-play .bk-book::before,
+.arbor-play .bk-frame::before {
+  content: "";
+  position: absolute;
+  inset: 3px -2px -7px;
+  border: 1px solid var(--studio-line);
+  border-radius: inherit;
+  background: repeating-linear-gradient(to bottom, var(--studio-surface) 0 2px, var(--studio-line) 2px 3px);
+  box-shadow: 0 3px 0 var(--studio-mist), 0 5px 0 var(--studio-graphite-soft);
+  pointer-events: none;
+}
+.arbor-play .bk-frame::before { inset: 4px -1px -6px; }
 .arbor-play .bk-artpage {
   position: absolute;
   background: var(--studio-surface);
@@ -90,6 +104,64 @@
 .arbor-play .bk-fill { display: block; inline-size: 100%; block-size: 100%; object-fit: fill; animation: bk-fade 260ms var(--kid-ease-out, ease-out) both; }
 .arbor-play .bk-fill-cover { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; animation: bk-fade 260ms var(--kid-ease-out, ease-out) both; }
 .arbor-play .bk-fill-contain { display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; }
+
+/* The story stays readable when an illustration is unavailable. This is an
+   honest recovery control, not a substitute scene or a new child avatar. */
+.arbor-play .bk-picture-recovery {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 12px;
+  inset-block-end: 16px;
+  margin-inline: auto;
+  max-inline-size: 340px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--studio-line);
+  border-radius: 18px;
+  background: var(--studio-surface);
+  color: var(--studio-graphite);
+  box-shadow: var(--studio-lift);
+  font-family: var(--studio-font);
+  text-align: start;
+}
+.arbor-play .bk-picture-mark { color: var(--studio-graphite-soft); display: flex; }
+.arbor-play .bk-picture-recovery p { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 700; }
+.arbor-play .bk-picture-recovery button {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-block-size: 44px;
+  min-inline-size: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--studio-line);
+  border-radius: 12px;
+  background: var(--studio-pearl);
+  color: var(--studio-graphite);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.arbor-play .bk-picture-recovery button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; }
+.arbor-play .bk-picture-recovery[data-compact] { inset-block-end: 8px; padding: 5px; inline-size: max-content; max-inline-size: calc(100% - 8px); inset-inline: 4px; border-radius: 16px; }
+.arbor-play .bk-picture-recovery[data-compact] .bk-picture-mark,
+.arbor-play .bk-picture-recovery[data-compact] .bk-picture-retry-label { display: none; }
+.arbor-play .bk-picture-recovery[data-compact] p { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.arbor-play .bk-picture-recovery[data-compact] button { padding: 8px; }
+.arbor-play .bk-reader[data-page-type="cover"] .bk-picture-recovery { inset-block-end: max(120px, 20%); }
+.arbor-play .bk-reader[data-page-type="cover"] .bk-picture-recovery[data-compact] {
+  inset: 4px auto auto 4px;
+  margin: 0;
+  inline-size: 48px;
+  padding: 1px;
+}
+.arbor-play .bk-reader[data-page-type="cover"] .bk-picture-recovery[data-compact][data-cover-side="right"] { inset: 4px 4px auto auto; }
 
 /* contact shadow = compose.py: solid warm-dark ellipses, Gaussian-blurred
    (blur radius + opacity come inline from the layout). No halo, no float.

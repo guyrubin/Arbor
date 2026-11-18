@@ -95,7 +95,7 @@ export default function DailyPlayCard({
         {pick.continuation && (
           <p
             data-testid="play-continuation-line"
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-bold mb-2"
+            className="inline-flex items-center gap-1.5 text-[12px] font-bold mb-2"
             style={{ color: GREEN }}
           >
             <Icon name="arrow_forward" size={15} className="rtl:-scale-x-100" />
@@ -107,11 +107,11 @@ export default function DailyPlayCard({
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: GREEN }}>
               <Icon name="eco" size={16} /> {t("play.eyebrow")}
             </span>
-            <h2 className="text-[1.35rem] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
+            <h2 className="text-[22px] font-extrabold leading-tight mt-1" style={{ fontFamily: "var(--font-display)", color: INK, textWrap: "balance" } as React.CSSProperties}>
               {activity.title}
             </h2>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold flex-shrink-0"
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-bold flex-shrink-0"
             style={{ background: "var(--arbor-paper-deep)", color: MUTED, border: `1px solid ${RULE}` }}>
             <Icon name="schedule" size={14} /> {durationLabel}
           </span>
@@ -122,7 +122,7 @@ export default function DailyPlayCard({
             Speaks to the parent about the child (never kid-companion). */}
         {reason === "interest-match" && matchedInterest && (
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold mt-2"
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold mt-2"
             style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}
           >
             <Icon name="favorite" size={14} />

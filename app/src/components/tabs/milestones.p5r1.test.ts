@@ -56,7 +56,8 @@ describe("P0 (design) — the move first at 375", () => {
     expect(MS).toContain('data-testid="ms-footer"');
     expect(MS.indexOf("<BornEarlyFrame")).toBeGreaterThan(MS.indexOf('data-testid="ms-shelf-map"'));
     expect(MS).toContain('data-testid="ms-search-open"');
-    expect(MS).toMatch(/\{\(searchOpen \|\| !!query\) && \(/);
+    // V77 RE-PIN: the field shows on a desk (the board's search field) or once the phone's icon opens it.
+    expect(MS).toMatch(/\{\(desk \|\| searchOpen \|\| !!query\) && <div className="msl-tools">/);
     expect(MS).toContain('className="field-bare');
   });
   it("a shelf with no catalogue row never says 'No milestones on this shelf': its shelf-level practice, no door (framer ruling 2)", () => {

@@ -172,11 +172,19 @@ function settings(source = settingsSource) {
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
     // B-CAREPRO-35: Settings › Your data (export / delete child / delete account).
     "./YourDataSheet": { default: "YourDataSheet", __esModule: true },
+    // v10: the sheet's design-system root and its own copy/stylesheet.
+    "../../design/primitives": { DsRoot: "DsRoot" },
+    "./settingsViewCopy": { settingsCopy: () => ({ lead: "" }) },
+    "./settingsV10.css": {},
     // B-DATA-05: the analytics opt-out row under the child-data row.
     "../privacy/AnalyticsOptOutRow": { AnalyticsOptOutRow: "AnalyticsOptOutRow" },
     // B-PLAY-21: section 1 opens the ONE tone sheet (B-ASKJB-12's).
     "../coach/ToneSheet": { default: "ToneSheet", toneLabel: () => "", __esModule: true },
     "../trust/PauseArborControl": { default: () => null, __esModule: true },
+    // V77: the Gentle reminders row reads the reminders' state (Now's own line).
+    "../../growth/jitaiPrefs": { loadPrefs: () => ({ quietStart: 21 }), shownNudgesToday: () => [] },
+    "../companion/now10/nowV10Copy": { NOW_V10_COPY: { en: { remindersSub: () => "None shown today." }, he: { remindersSub: () => "" } } },
+    "../companion/now10/dayArcModel": { clock24: () => "21:00" },
     "../referral/InviteCard": { default: "InviteCard", __esModule: true },
     "../referral/OfferCodeField": { default: "OfferCodeField", __esModule: true }, // B-GROWTH-43
     "../billing/PlanPrices": { PlanPrices: "PlanPrices" }, "../billing/LegalLinks": { LegalLinks: "LegalLinks" },

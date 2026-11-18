@@ -38,7 +38,8 @@ const FLOOR = /min-h-11\b|min-h-\[4[4-9]px\]|min-h-\[5\d px\]|touch-target|var\(
 
 /** Each control the item names, matched by a snippet unique in its file. */
 const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
-  { id: "OBJ-LEARN-03 filter pills", file: "learn", near: "{msIcon && <Icon name={msIcon} size={15} />}" },
+  // v10.1: the filter pills became the Choose an area tiles (N-Library).
+  { id: "OBJ-LEARN-03 area tiles", file: "learn", near: "data-shelf={c.id}" },
   { id: "OBJ-LEARN-03 helpful pulse (yes)", file: "learn", near: "onPulse(1)" },
   { id: "OBJ-LEARN-03 helpful pulse (no)", file: "learn", near: "onPulse(-1)" },
   { id: "LC-22 charter remove", file: "charter", near: "remove(v)" },
@@ -102,7 +103,7 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     const preFixRemove = '<button onClick={() => remove(v)} aria-label={t("elev.charter.remove", { value: v })}><Icon name="close" size={14} /></button>';
     expect(preFixRemove).not.toMatch(FLOOR);
     // …and the post-fix markup passes it.
-    expect(shellAround(read(FILES.learn), "{msIcon && <Icon name={msIcon} size={15} />}")).toMatch(FLOOR);
+    expect(shellAround(read(FILES.learn), "data-shelf={c.id}")).toMatch(FLOOR);
     expect(shellAround(read(FILES.charter), "remove(v)")).toMatch(FLOOR);
   });
 
@@ -110,7 +111,7 @@ describe("touch floor · the sub-44 shapes stay out of these files", () => {
     // LC-23's checkbox is the one exception: a 13 px native checkbox IS the
     // control, so it grows to 20 px inside a 44 px row.
     expect(read(FILES.charter)).toContain('<Icon name="close" size={14} />');
-    expect(read(FILES.learn)).toContain('<Icon name={msIcon} size={15} />');
+    expect(read(FILES.learn)).toContain('<Icon name="bookmark" size={16} />');
     expect(read(FILES.safety)).toContain('className="mt-0.5 w-5 h-5 flex-shrink-0"');
   });
 });
@@ -142,7 +143,7 @@ describe("touch floor · R13 · the Care residues", () => {
 
   it("the floor sits on the shared input recipe, not on the call sites", () => {
     const safety = read(FILES.safety);
-    expect(safety).toContain('const inputCls = "rounded-lg px-3 py-2 min-h-11 text-sm focus:outline-none";');
+    expect(safety).toContain('const inputCls = "rounded-[10px] px-3 py-2 min-h-11 text-sm focus:outline-none";');
     expect(safety).not.toContain('const inputCls = "rounded-lg px-3 py-2 text-sm focus:outline-none";');
   });
 

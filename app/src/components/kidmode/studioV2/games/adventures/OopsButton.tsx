@@ -10,10 +10,10 @@ import { useAdventureVoice } from './AdventureGuide';
 import { AdventureHeading, AdventureSteps, ChallengePicker } from './AdventureShared';
 import { ADVENTURE_COPY } from './adventureCopy';
 import { defaultChallenge, type Challenge } from './adventureRules';
-import { BopFriend, BopScene, BopSprite } from './BopArt';
+import { BopCheer, BopFriend, BopScene, BopSprite } from './BopArt';
 import { createBopTones, type BopTones } from './bopTones';
 import { OOPS_BUTTON_COPY, oopsLine } from './oopsButtonCopy';
-import { BLOOM_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, copyPress, orderFor, toyJams, undoCheck, undoHint, watchMs, type PetalId } from './oopsButtonRules';
+import { BLOOM_MS, OOPS_ROUNDS, OPEN_MS, PETALS, PETAL_ART, SETTLE_MS, WATCH_LEAD_MS, WOBBLE_MS, copyPress, orderFor, toyJams, undoCheck, undoHint, watchMs, type PetalId, IDLE_NUDGE_MS } from './oopsButtonRules';
 import './oopsButton.css';
 
 /** `jam` → pause → `undo` (petals back, last one first) → `reset` → restart → `watch` again. */
@@ -96,7 +96,7 @@ export default function OopsButton() {
         later(BLOOM_MS, () => { if (round + 1 >= OOPS_ROUNDS) setPhase('done'); else startRound(round + 1, challenge, order); });
         return;
       }
-      if (toyJams(round, open.length, jamUsed.current)) { jamUsed.current = true; setStuck(petal); setJamByToy(true); setPhase('jam'); }
+      if (toyJams(round, open.length, jamUsed.current)) { jamUsed.current = true; setStuck(petal); setJamByToy(true); kidSfx('tryAgain'); setPhase('jam'); }
       return;
     }
     if (phaseRef.current !== 'undo') return;
@@ -135,7 +135,8 @@ export default function OopsButton() {
     copy: opened.length > 0 ? oopsLine(w.copyNext, opened.length, order.length) : w.copyFirst,
     bloom: round + 1 < OOPS_ROUNDS ? w.bloomNext : w.bloomLast,
     jam: jamByToy ? w.jamToy : w.jam,
-    undo: nudge ? w.undoWait : undone > 0 ? w.undoNext : w.undoFirst,
+    // The petal to press next is the newest open one; its number is on it.
+    undo: oopsLine(nudge ? w.undoWait : undone > 0 ? w.undoNext : w.undoFirst, opened.length),
     reset: w.reset, done: w.transfer,
   };
   const cue = cues[phase], status = lines[phase];
@@ -143,15 +144,24 @@ export default function OopsButton() {
   const quietBeat = phase === 'watch' || phase === 'bloom';
   const narration = phase === 'jam' || phase === 'reset' || (phase === 'undo' && (nudge || undone > 0)) ? status : cue;
   const guide = useAdventureVoice({ childId: child?.id ?? '', lang, text: narration, cueKey: `${round}:${phase}:${attempt}:${waits}`, enabled: phase !== 'done' && !quietBeat });
-  const hinted = phase === 'undo' ? undoHint(opened, waits) : null;
+  // B-GAME-46: a quiet stretch on the child's turn rings the next petal in the order, once.
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    setIdle(false);
+    if (phase !== 'copy') return;
+    const id = setTimeout(() => setIdle(true), IDLE_NUDGE_MS);
+    return () => clearTimeout(id);
+  }, [phase, opened.length, presses, round, attempt]);
+  const hinted = phase === 'undo' ? undoHint(opened, waits) : phase === 'copy' && idle ? order[opened.length] ?? null : null;
 
   return <GameShell fullBleed autoNarrate={false} worldId="puzzle" title={w.title} instruction={w.instruction} hearIt={narration}>
     {phase === 'done'
       ? <GameFinish title={w.finishTitle} subtitle={w.transfer} onPlayAgain={() => reset(challenge)} playAgainLabel={shared.again} homeLabel={shared.home} />
       : <section className="adventure adventure--bop adventure--oops" data-adventure="oops" data-phase={phase} dir={lang === 'he' ? 'rtl' : 'ltr'}>
         <div className="adventure-toolbar">{phase === 'ready' && <ChallengePicker value={challenge} onChange={reset} words={shared} />}<AdventureSteps done={blooms} total={OOPS_ROUNDS} /></div>
-        <AdventureHeading focusKey={`${round}:${phase}:${attempt}`} onHear={guide.replay} muted={guide.muted || quietBeat}>{cue}</AdventureHeading>
+        <AdventureHeading focusKey={`${round}:${phase}:${attempt}`} onHear={guide.replay} muted={guide.muted || quietBeat} hearLabel={w.hear}>{cue}</AdventureHeading>
         <div className="bop-stage oops-stage">
+          <BopCheer beat={phase === 'bloom' ? blooms : null} big={phase === 'bloom' && blooms >= OOPS_ROUNDS} />
           <BopScene scene="scene-table" />
           <div className="oops-board">
             <span className="oops-hero" aria-hidden="true"><StudioPlayHero size={96} kick={presses} pose={phase === 'jam' ? 'oops' : 'idle'} celebrate={phase === 'bloom'} /></span>
@@ -163,12 +173,17 @@ export default function OopsButton() {
                 const showing = phase === 'watch' && !folded && place > -1 && place < shown;
                 const open = showing || phase === 'bloom' || opened.includes(petal);
                 const half = stuck === petal;
-                const live = phase === 'copy' ? !open : phase === 'undo' && open;
+                // B-GAME-46: in undo only the newest petal is invited; the others still answer with a wobble.
+                const live = phase === 'copy' ? !open : phase === 'undo' && opened[opened.length - 1] === petal;
                 return <button type="button" key={petal} className="bop-piece oops-petal" style={{ '--petal': petal } as CSSProperties} data-petal={petal} data-open={open} data-half={half} data-wobble={wobble === petal || (phase === 'jam' && half)} data-hint={hinted === petal} disabled={phase !== 'copy' && phase !== 'undo'} aria-disabled={!live} aria-pressed={open} aria-label={oopsLine(half ? w.petalStuck : open ? w.petalOpen : w.petalClosed, w.petals[petal])} onClick={() => press(petal)}>
+                  {open && <i className="oops-pop" aria-hidden="true" />}
                   <BopSprite name={PETAL_ART[petal]} size={54} className="oops-petal__art" flat />
                   {showing && <span className="bop-chip oops-petal__chip">{String(place + 1)}</span>}
+                  {/* B-GAME-46: while the petals go back, each open one shows when it opened, so "biggest number first" can be seen. */}
+                  {(phase === 'jam' || phase === 'undo') && open && <span className="bop-chip oops-petal__chip" data-undo-number={opened.indexOf(petal) + 1}>{String(opened.indexOf(petal) + 1)}</span>}
                 </button>;
               })}
+              {/* B-GAME-46: the bloom has no rays (no glow in the kid register): the hub's teal ring and Chock's hop carry it. */}
               <span className="oops-hub" aria-hidden="true"><BopSprite name="oops-hub" size="100%" /></span>
             </div>
             <span className="oops-ahead" aria-hidden="true"><BopSprite name="chock-happy" size={1} flat /></span>

@@ -4,11 +4,22 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
-import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
+import { SectionCard, cardCls, Chip } from "../ui/kit";
+import KindSwitch from "../moments/v10/KindSwitch";
+import { Draw, FrameFigure, FrameHead, IndexRow, RailTile, ReadGuide, RowLink, StageCard, type IndexItem } from "../moments/v10/frame";
+import { STAGE_ORBS } from "../moments/v10/stageOrbs";
+import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
+import { DsRoot, Guide, Route, RouteSection, Scene } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import "../moments/mychild.css";
 import { ageLabel } from "../../lib/childAge";
 import { aggregateLangCounts, type LangObservation } from "../../growth/vocabAgg";
 import LanguageLabVocabView, { PhraseLogForm, WordsList } from "./LanguageLabVocabView";
 import { languageName } from "../../lib/languageName";
+import { fmtDayV10 } from "../../lib/formatDate";
+import { useShellCrumb, useShellRowEnd } from "../../lib/shellSlots";
+import { quotesFromDocs } from "../../lib/loop/tonight";
+import type { KeepsakeDoc } from "../../lib/firstsKeepsake";
 import { ageMonthsOf, isUnderThree } from "../../lib/age/forChild";
 import { genderedKey } from "../../lib/today/fromRecord";
 import { actNowKey, sayBackFor } from "../../lib/language/sayBack";
@@ -28,9 +39,15 @@ import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
  * behind them; that is the verdict class Law 2 bans. One neutral tone, no
  * status chip.
  */
+/** A Hebrew (or other right-to-left script) word or saying. */
+const RTL_SCRIPT = /[\u0590-\u05FF\u0600-\u06FF]/;
+
 export default function LanguageLabTab() {
   const { childProfile, setActiveTab, seedCoach } = useArbor();
-  const { t } = useLanguage();
+  const { t, uiLang } = useLanguage();
+  const composition = useComposition();
+  const desk = composition === "desk";
+  const v = MOMENTS_V10_COPY[uiLang === "he" ? "he" : "en"];
   const name = childProfile.name;
   const first = name.split(" ")[0];
   const langs = (childProfile.languages ?? []).map((l) => l.trim()).filter(Boolean);
@@ -54,7 +71,13 @@ export default function LanguageLabTab() {
   const sayBack = kept ? sayBackFor({ text: kept.text, language: kept.language, languages: langs, months }) : null;
   // B-GROWTH-37: #/language?view=said is the month page (a mode of this
   // route); #/language/said resolves to the same query (lib/routes.ts SUB_ROUTES).
-  const view = useHashQuery().get("view");
+  const hashQuery = useHashQuery();
+  const view = hashQuery.get("view");
+  // v10.3: the language index (`?lang=`) narrows the kept sayings to one language.
+  const langFilter = langs.find((l) => l.toLowerCase() === (hashQuery.get("lang") ?? "").toLowerCase()) ?? null;
+  // N-Said-D: the pill row ends with the day alone; N-SaidHe-D: the picked language is the crumb's last level.
+  useShellRowEnd({ dateOnly: true });
+  useShellCrumb(langFilter ? ln(langFilter) : null);
 
   // Read-only over the SAME parent-logged phrase observations the vocabulary
   // log below writes ("langObs") — a count per language, nothing derived.
@@ -64,6 +87,14 @@ export default function LanguageLabTab() {
     for (const c of aggregateLangCounts(obsCol.items)) map.set(c.language.toLowerCase(), c.count);
     return map;
   }, [obsCol.items]);
+  // v10.3 (N-SaidHe): under one language's sayings, the words logged in it.
+  const filteredWords = useMemo(
+    () => (langFilter ? obsCol.items.filter((o) => (o.language ?? "").toLowerCase() === langFilter.toLowerCase()) : obsCol.items).slice(0, 12),
+    [obsCol.items, langFilter],
+  );
+  // N-Said: the band's figure counts the sayings kept (the keepsake quotes) and the words beside them.
+  const keepsakes = useChildCollection<KeepsakeDoc>(childProfile.id, "keepsakes");
+  const sayingsKept = useMemo(() => quotesFromDocs(keepsakes.items).length, [keepsakes.items]);
   const countLine = (lang: string): string => {
     const n = countByLang.get(lang.toLowerCase()) ?? 0;
     if (n === 0) return t("elev.growthTruth.lang.count.none");
@@ -110,172 +141,218 @@ export default function LanguageLabTab() {
 
   if (view === "said") return <SaidPage />;
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[1180px] space-y-5 sm:space-y-6">
-      <PageHeader
-        eyebrow={t("lang.eyebrow")}
-        title={underThree ? t("lang.title") : t(gk("elev.words.said.title"), { name: first })}
-        subtitle={t("lang.subtitle", { first })}
-        action={
-          <button onClick={() => setActiveTab("speech")} className="touch-target gap-1.5 px-2 text-xs font-bold transition" style={{ color: "var(--arbor-green-ink)" }}>
-            <Icon name="mic" size={14} /> {t("lang.soundPractice")}
-          </button>
-        }
-      />
-
-      {langs.length === 0 ? (
-        <div className={`${cardCls} p-8 text-center space-y-3`}>
-          <p className="text-sm" style={{ color: "var(--arbor-muted)" }}>
-            {t("lang.noLangs", { first })}
-          </p>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className="inline-flex min-h-11 items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-            style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-          >
-            {t("lang.editProfile", { first })}
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* The primary move, under the header. Nothing above it but the page
-              title, so a parent who opened this hub to log a phrase can. */}
-          {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
+  // v10.3 (the My child frame): #/language is Moments with the kind Things
+  // <name> said selected — the band (kinds switch, the month's page, one
+  // figure), the language index, the stage (capture and what you kept) and
+  // the rail (how to read, the language profile, practice ideas).
+  const title = underThree ? t("lang.title") : t(gk("elev.words.said.title"), { name: first });
+  const totalLogged = [...countByLang.values()].reduce((sum, n) => sum + n, 0);
+  const langIndex: IndexItem[] = !underThree && langs.length > 1 ? [
+    { id: "all", icon: "grid_view", name: t("companion.moments.kind.all"), meta: v.said.allMeta, on: !langFilter, onOpen: () => goToRoute("language", {}) },
+    ...languageRows.map((row) => ({
+      id: row.value, icon: "translate", name: ln(row.value), meta: v.said.langMeta(row.role),
+      figure: countByLang.get(row.value.toLowerCase()) || undefined, on: langFilter?.toLowerCase() === row.value.toLowerCase(),
+      onOpen: () => goToRoute("language", { lang: row.value }),
+    })),
+  ] : [];
+  const monthPage = (
+    <button type="button" data-testid="said-page-door" onClick={() => goToRoute("language", { view: "said" })} className="btn sm ghost nowrap card-btn min-h-11">
+      <Icon name="ios_share" size={16} />{t(underThree ? "elev.words.page.posterDoor" : "elev.words.page.door")}
+    </button>
+  );
+  const band = (
+    <Scene field="now" className="mband" orbs={STAGE_ORBS[composition]}>
+      <div className="mstack mtools">
+        <FrameHead phone={!desk} kicker={v.said.kicker(first)} startHere={v.startHere} title={title} sub={t("lang.subtitle", { first })}
+          switcher={<KindSwitch kind="said" />} action={desk ? monthPage : undefined}
+          figure={!underThree && sayingsKept > 0
+            ? <FrameFigure n={sayingsKept} unit={v.said.sayingsUnit(sayingsKept)} sub={obsCol.items.length > 0 ? v.said.andWords(obsCol.items.length) : undefined} />
+            : totalLogged > 0 ? <FrameFigure n={totalLogged} unit={v.said.figureUnit(totalLogged)} /> : undefined} />
+        {/* Phone: the index follows the capture (inside the stage), so the
+            primary move stays above the dock; desk keeps it in the band. */}
+        {desk && langIndex.length > 0 && <IndexRow phone={false} label={v.said.guideLangs} items={langIndex} />}
+      </div>
+      {desk && langIndex.length > 0 && <div className="mcap"><span>{langFilter ? v.said.capOne(ln(langFilter)) : v.said.cap}</span></div>}
+    </Scene>
+  );
+  const stage = (
+    <StageCard icon="format_quote" title={v.said.stage} end={desk && langFilter ? <span className="small nowrap">{v.said.onlyIn(ln(langFilter))}</span> : undefined} className="said-stage">
+      {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (what moduleBudget counts);
           `data-primary-move` marks the ONE control that performs the move
           surfaceContract.ts declares for this route. */}
-          <div data-module="language-capture" data-primary-move="log-language-moment" className="space-y-4">
-            {underThree ? (
-              <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={(obs) => setKept(obs ? { text: obs.phrase, language: obs.language } : null)} t={t} />
-            ) : (
-              <SaidCapture childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} />
-            )}
-            {sayBack && <SayBackBlock back={sayBack} first={first} gender={gender} />}
-          </div>
-
-          {/* B-GROWTH-16 — the words written down are the second module (the
-              parent's own record, under the form that writes it); the practice
-              ideas moved into the disclosure below. */}
-          <div data-module="language-words">
-            {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} />}
-            <button
-              type="button"
-              data-testid="said-page-door"
-              onClick={() => goToRoute("language", { view: "said" })}
-              className="mt-2 inline-flex min-h-[44px] items-center text-[14px] underline underline-offset-4"
-              style={{ color: "var(--arbor-ink-soft)" }}
-            >
-              {t(underThree ? "elev.words.page.posterDoor" : "elev.words.page.door")}
-            </button>
-          </div>
-
-          {/* Language profile — roles in the home + moments logged. One tone,
-              no status chip, nothing graded (GP-02). */}
-          <div data-module="language-profile">
-          <SectionCard title={t("lang.profileTitle", { first, age })} icon={<Icon name="translate" size={20} />} tone="sky">
-            <ul className="divide-y" style={{ borderColor: "var(--arbor-rule)" }} data-testid="lang-role-rows">
-              {languageRows.map((row) => (
-                <li key={`${row.role}-${row.value}`} className="flex min-w-0 flex-wrap items-start justify-between gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] uppercase font-bold tracking-wide block" style={{ color: "var(--arbor-muted)" }}>{row.role}</span>
-                    <b className="block break-words text-sm" dir="auto" style={{ color: "var(--arbor-ink)" }}>{ln(row.value)}</b>
-                    <p className="text-xs leading-relaxed mt-0.5" style={{ color: "var(--arbor-muted)" }}>{row.note}</p>
-                  </div>
-                  <span className="text-xs font-bold whitespace-nowrap tabular-nums" style={{ color: "var(--arbor-muted)" }}>{countLine(row.value)}</span>
+      <div data-module="language-capture" data-primary-move="log-language-moment" className="space-y-4">
+        {underThree ? (
+          <PhraseLogForm childId={childProfile.id} languages={langs} onAdded={(obs) => setKept(obs ? { text: obs.phrase, language: obs.language } : null)} t={t} />
+        ) : (
+          <SaidCapture key={langFilter ?? "all"} childId={childProfile.id} languages={langs} first={first} gender={gender} onKept={setKept} defaultLanguage={langFilter} />
+        )}
+        {sayBack && <SayBackBlock back={sayBack} first={first} gender={gender} />}
+      </div>
+      {/* B-GROWTH-16 — the words written down, under the form that writes them. */}
+      <div data-module="language-words">
+        {!desk && langIndex.length > 0 && <IndexRow phone label={v.said.guideLangs} items={langIndex} />}
+        {underThree ? <WordsList /> : <SaidList childId={childProfile.id} first={first} gender={gender} language={langFilter} languages={langs} emptyText={langFilter ? v.said.noneIn(ln(langFilter)) : undefined} rows />}
+        {!underThree && filteredWords.length > 0 && (
+          <div className="said-words" data-testid="said-words">
+            <span className="lab">{langFilter ? v.said.wordsIn(ln(langFilter)) : v.said.wordsAll}</span>
+            {/* N-SaidHe: a word in a right-to-left script carries its own script's mark and reads right to left. */}
+            <ul dir={langFilter && filteredWords.every((w) => RTL_SCRIPT.test(w.phrase)) ? "rtl" : undefined}>
+              {filteredWords.map((w) => {
+                const rtl = !!langFilter && RTL_SCRIPT.test(w.phrase);
+                return (
+                <li key={w.id} className={rtl ? "wchip rtl" : "wchip"}>
+                  <i className="tg-said" aria-hidden="true">{rtl ? "אב" : "Aa"}</i>
+                  <span className="w" dir="auto">{w.phrase}</span>
+                  <small>{[ln(w.language), fmtDayV10(w.timestamp, uiLang)].join(" · ")}</small>
                 </li>
-              ))}
+                );
+              })}
             </ul>
-            {!second && (
-              <p className="text-[11px] italic mt-4" style={{ color: "var(--arbor-muted)" }}>
-                {t("lang.onlyOne", { first })}
-              </p>
-            )}
-          </SectionCard>
           </div>
-
-          {/* R25 (item 11) — #/language rendered 4 top-level modules against a declared
-          moduleBudget of 3. The tail below is DEMOTED, never removed: one
-          collapsed disclosure on the pattern components/practice/SpeechCoachTab.tsx
-          `speech-more` already ships, so every capability keeps its door (law 6)
-          while the fold belongs to the primary move. Demoted modules keep their
-          own `data-module` stamp and add `data-module-demoted`, which is what
-          makes the budget rule countable: top-level = stamps minus demoted. */}
-          <details data-module-disclosure="language-more" className={`${cardCls} p-0 overflow-hidden`}>
-            <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
-              <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-sky-soft)", color: "var(--arbor-sky-ink)" }}>
-                <Icon name="translate" size={18} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[15px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>{t("elev.words.more.title")}</span>
-                <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.more.sub")}</span>
-              </span>
-              <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
-            </summary>
-            <div className="px-4 pb-4 space-y-4">
+        )}
+      </div>
+    </StageCard>
+  );
+  const readGuide = (
+    <RailTile icon="grid_view" title={v.howToRead} className="mguide">
+      <ReadGuide phone={!desk}
+        steps={[
+          { drawing: Draw.pick(3), label: v.said.steps.pick },
+          { drawing: Draw.list(), label: v.said.steps.read },
+          { drawing: Draw.cards(), label: v.said.steps.practise },
+        ]}
+        keyItems={[
+          { mark: <i className="tg-said" aria-hidden="true"><Icon name="format_quote" size={12} /></i>, label: v.said.keySaying },
+          { mark: <i className="tg-said" aria-hidden="true">Aa</i>, label: v.said.keyWord },
+        ]} />
+    </RailTile>
+  );
+  const profile = (
+    /* Language profile — roles in the home + moments logged. One tone, no
+       status chip, nothing graded (GP-02). */
+    <div data-module="language-profile">
+      {/* N-Said: the title, then the child and age as the tile's quiet meta. */}
+      <RailTile icon="translate" title={v.said.profile} link={<span className="small nowrap said-profile-meta">{first} · {age}</span>} className="said-profile">
+        <ul className="lang-roles" data-testid="lang-role-rows">
+          {languageRows.map((row) => (
+            <li key={`${row.role}-${row.value}`}>
+              <span className="lr-role">{row.role}</span>
+              <b className="lr-name" dir="auto">{ln(row.value)}</b>
+              <p className="lr-note">{row.note}</p>
+              <span className="lr-count">{countLine(row.value)}</span>
+            </li>
+          ))}
+        </ul>
+        {!second && <p className="line1">{t("lang.onlyOne", { first })}</p>}
+      </RailTile>
+    </div>
+  );
+  const more = (
+    /* R25 (item 11): the tail is DEMOTED, never removed — one collapsed
+       disclosure; demoted modules keep their stamp and add data-module-demoted. */
+    <section className="vt said-more">
+      <details data-module-disclosure="language-more">
+        <summary className="said-more-sum">
+          <span className="gi" aria-hidden="true"><Icon name="translate" size={16} /></span>
+          <span className="min-w-0">
+            <b>{t("elev.words.more.title")}</b>
+            <small>{t("elev.words.more.sub")}</small>
+          </span>
+          <Icon name="expand_more" size={20} className="ms-auto" />
+        </summary>
+        <div className="space-y-4 pt-2">
           {/* B-GROWTH-36: the "Act now if…" line for the child's age — a DRAFT
               pending the clinical review line (REVIEW-SHEET.md, P2 WORDS). */}
           <p data-testid="lang-act-now" data-review="draft" className="text-[13px] leading-relaxed" style={{ color: "var(--arbor-ink-soft)" }}>
             <span className="block text-[12px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.actNow.label")}</span>
             {t(gk(actNowKey(months)), { name: first })}
           </p>
-          {/* B-GROWTH-16: daily practice ideas — demoted into the disclosure. */}
           <div data-module="language-practice" data-module-demoted style={{ display: "contents" }}>
-          <SectionCard
-            title={t("lang.routinesTitle", { target })}
-            icon={<Icon name="auto_awesome" size={20} />}
-            tone="mint"
-            action={
-              <button
-                onClick={() =>
-                  // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
-                  askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
-                }
-                className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
-                style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
-              >
-                <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
-              </button>
-            }
-          >
-            <p className="text-[11px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-green-ink)" }}>{t("lang.dailyPractice")}</p>
-            <div className="grid min-w-0 grid-cols-1 gap-3 text-xs xl:grid-cols-2 xl:gap-4">
-              {activities.map((item) => (
-                <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <b className="min-w-0 break-words leading-snug" style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
-                    <Chip tone="yellow">{item.time}</Chip>
+            <SectionCard
+              title={t("lang.routinesTitle", { target })}
+              icon={<Icon name="auto_awesome" size={20} />}
+              tone="mint"
+              action={
+                <button
+                  onClick={() =>
+                    // AIX-S4: seed via i18n — HE parents see a Hebrew prompt in the chat box.
+                    askCoach(t("seed.langWeekPlan", { name, age, target, home: home || t("lang.theHomeLang") }))
+                  }
+                  className="inline-flex min-h-11 items-center justify-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+                  style={{ background: "var(--arbor-k-plan-w)", color: "var(--arbor-k-plan-i)" }}
+                >
+                  <Icon name="auto_awesome" size={14} /> {t("lang.weekPlanCta")}
+                </button>
+              }
+            >
+              <p className="text-[12px] font-bold uppercase tracking-wider mb-4" style={{ color: "var(--arbor-k-plan-i)" }}>{t("lang.dailyPractice")}</p>
+              <div className="grid min-w-0 grid-cols-1 gap-3 text-xs">
+                {activities.map((item) => (
+                  <div key={item.title} className={`${cardCls} min-w-0 space-y-2 p-4`}>
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <b className="min-w-0 break-words leading-snug" style={{ color: "var(--arbor-ink)" }}>{item.title}</b>
+                      <Chip tone="yellow">{item.time}</Chip>
+                    </div>
+                    <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
+                    <p className="italic rounded-xl p-2 text-[12px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
+                      {item.example}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => askCoach(t("seed.langActivity", { title: item.title, target, name, age }))}
+                        // Item 9: the hit box grows to --touch-min.
+                        className="touch-target gap-1 px-2 text-[12px] font-bold transition"
+                        style={{ color: "var(--arbor-muted)" }}
+                      >
+                        <Icon name="chat" size={12} /> {t("lang.coachMe")}
+                      </button>
+                    </div>
                   </div>
-                  <p className="leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{item.desc}</p>
-                  <p className="italic rounded-xl p-2 text-[11px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-                    {item.example}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-                    <button
-                      onClick={() =>
-                        askCoach(t("seed.langActivity", { title: item.title, target, name, age }))
-                      }
-                      // Item 9: "Coach me" rendered 58×13 px × 4 cards. Type and
-                      // glyph unchanged; the hit box grows to --touch-min.
-                      className="touch-target gap-1 px-2 text-[10px] font-bold transition"
-                      style={{ color: "var(--arbor-muted)" }}
-                    >
-                      <Icon name="chat" size={12} /> {t("lang.coachMe")}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
+                ))}
+              </div>
+            </SectionCard>
           </div>
-
-          {/* AP-054 — Vocabulary log, now SECONDARY & optional. It sits below the
-              daily practice and profile so an empty counter is never the hero;
-              logging still works exactly as before. */}
+          {/* AP-054 — Vocabulary log, SECONDARY & optional. */}
           <div data-module="language-vocab" data-module-demoted style={{ display: "contents" }}><LanguageLabVocabView /></div>
-            </div>
-          </details>
-        </>
-      )}
+        </div>
+      </details>
+      <RowLink icon="mic" label={t("lang.soundPractice")} onOpen={() => setActiveTab("speech")} />
+    </section>
+  );
+
+  // No exit of its own: the shell's tab wrapper fades the page out. An inner
+  // exit mounted mid-exit (leaving `?view=said` swaps SaidPage for this
+  // element while the shell's wait-mode exit runs) never completes, and the
+  // next tab never mounts.
+  return (
+    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="w-full min-w-0">
+      <DsRoot composition={composition} className="ds-mychild said-v10" dir={uiLang === "he" ? "rtl" : "ltr"} data-testid="said-v10">
+        <Guide mini={!desk} label={v.onThisPage} stops={[
+          { id: "s-langs", title: desk ? v.said.guideLangs : v.said.guideLangsShort, sub: v.said.guideLangsSub },
+          { id: "s-kept", title: desk ? v.said.guideKept : v.said.guideKeptShort, sub: v.said.guideKeptSub },
+        ]} />
+        <Route composition={composition}>
+          <RouteSection id="s-langs" n={1} on>{band}</RouteSection>
+          <RouteSection id="s-kept" n={2}>
+            {langs.length === 0 ? (
+              <section className="vt said-nolangs">
+                <p className="line1">{t("lang.noLangs", { first })}</p>
+                <button type="button" onClick={() => setActiveTab("profile")} className="btn sm tint-btn nowrap min-h-11">{t("lang.editProfile", { first })}</button>
+                <RowLink icon="mic" label={t("lang.soundPractice")} onOpen={() => setActiveTab("speech")} />
+              </section>
+            ) : desk ? (
+              <div className="rowa">
+                <div className="stg">{stage}</div>
+                <aside className="rlc">{readGuide}{profile}{more}</aside>
+              </div>
+            ) : (
+              /* N-Said-M: the month's page closes the phone page, under the rail. */
+              <div className="mstack" style={{ gap: 14 }}>{stage}{readGuide}{profile}{more}<div className="said-page-m">{monthPage}</div></div>
+            )}
+          </RouteSection>
+        </Route>
+      </DsRoot>
     </motion.div>
   );
 }

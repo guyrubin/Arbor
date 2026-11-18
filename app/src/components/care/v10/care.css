@@ -1,0 +1,496 @@
+/* Care, together (Visits, Teacher brief, People, Records): the Care group's
+   board stylesheet (canvas V77), ported under .ds (the boards share one block). */
+
+.ds .guide.mini .gstop { padding: 4px 9px 4px 4px; gap: 6px; font-size: 12px; }
+.ds .guide.mini .gline { min-width: 4px; }
+.ds .guide.mini .gstop { min-height: 44px; }
+.ds .next1 { font-size: 12px; }
+.ds .kicker { font-size: 12px; }
+/* local to the Care group, Safety and Settings (v10.1). Candidates for the kit are listed in the report. */
+.ds .backrow { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 14px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds .rcard { flex: 1; display: flex; flex-direction: column; gap: 10px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-tile); padding: 14px 18px 16px; min-width: 0; color: var(--ink); }
+.ds .rcard.tint { background: var(--tint); box-shadow: inset 0 0 0 1px #dbe6f7; }
+.ds .rcard.fit { flex: none; }
+.ds .rt { display: flex; align-items: center; gap: 10px; font-weight: 600 !important; font-size: 15px; line-height: 1.25; min-height: 28px; }
+.ds .rt .small { margin-inline-start: auto; white-space: nowrap; }
+.ds .wchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ds .wchip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 13px; border: 0; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font: 600 13px/1 var(--font-sans) !important; color: var(--ink); white-space: nowrap; }
+.ds .wchip.on { background: var(--ink); color: #fff; box-shadow: none; }
+.ds .wchip .ic { width: 14px; height: 14px; stroke-width: 2.500; }
+.ds .fld { display: flex; align-items: center; min-height: 48px; padding: 0 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); color: var(--muted); font-size: 14px; min-width: 0; }
+.ds .brow { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 46px; padding: 4px 0; border-top: 1px solid var(--rule); font-size: 13px; line-height: 1.3; }
+.ds .brow:first-child { border-top: 0; }
+.ds .brow b { display: block; font-weight: 600 !important; }
+.ds .brow small { display: block; font-size: 12px; color: var(--ink-soft); }
+.ds .bnum { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: #fff; font: 700 12px/22px var(--font-sans) !important; text-align: center; font-variant-numeric: lining-nums; flex: none; }
+.ds .paper { position: relative; width: 112px; height: 144px; flex: none; margin: 6px 14px 10px 10px; }
+.ds .paper::before, .ds .paper::after { content: ""; position: absolute; inset: 0; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--rule-strong); transform: rotate(-5deg) translate(-5px, 3px); }
+.ds .paper::after { transform: rotate(3deg) translate(6px, 2px); }
+.ds .paper > div { position: absolute; inset: 0; z-index: 1; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--rule-strong), 0 12px 18px -12px #14225a66; padding: 12px 10px; display: flex; flex-direction: column; gap: 7px; }
+.ds .paper i { display: block; height: 7px; border-radius: 4px; background: #dfe5ef; }
+.ds .paper i.t { width: 62%; background: var(--ink); height: 8px; }
+.ds .paper i.h { background: #ffe9a8; height: 13px; position: relative; }
+.ds .paper i.h b { position: absolute; inset-inline-end: -8px; top: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fff; font: 700 12px/20px var(--font-sans) !important; text-align: center; font-style: normal; }
+.ds .kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; font-size: 13px; line-height: 1.3; }
+.ds .kv b { display: block; font-size: 12px; font-weight: 700 !important; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.ds .vlink { align-self: flex-start; margin-inline-start: 26px; width: 0; height: 14px; border-inline-start: 3px solid var(--ink); }
+.ds .vlink.ai { border-inline-start: 3px dotted var(--pencil); }
+.ds .knot.sm { padding: 10px 14px; border-radius: 14px; font-size: 13px; gap: 3px; }
+.ds .chk { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.35; }
+.ds .chk i { width: 22px; height: 22px; flex: none; border-radius: 7px; background: var(--card); box-shadow: inset 0 0 0 2px var(--rule-strong); }
+.ds .tagc { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; background: var(--well); color: var(--ink-soft); font-size: 12px; font-weight: 600 !important; white-space: nowrap; }
+.ds .tagc.ink { background: var(--ink); color: #fff; }
+.ds .vcard { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 14px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--rule); min-width: 0; }
+.ds .vcard.next { background: var(--tint-2); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .mbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font: 600 13px/1 var(--font-sans) !important; color: var(--sapphire-deep); white-space: nowrap; }
+.ds .mbtn.pri { background: var(--sapphire); color: #fff; box-shadow: none; }
+.ds .mbtn.ink { background: var(--ink); color: #fff; box-shadow: none; }
+.ds .mbtn .ic { width: 16px; height: 16px; stroke-width: 2; }
+.ds .xrow { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 0; border-top: 1px solid var(--rule); font-size: 13px; font-weight: 600 !important; }
+.ds .xrow .ic:last-child { margin-inline-start: auto; color: var(--ink-soft); }
+/* "sees" tokens for the people lanes: an eye. Solid = sees now; outline = invited, not accepted; dashed = would see once you invite. */
+.ds .tok.see { --c: var(--ink); border-radius: 30%; }
+.ds .tok.see::before { display: none; }
+.ds .tok.see svg { width: 66%; height: 66%; fill: none; stroke: currentColor; stroke-width: 2.400; stroke-linecap: round; stroke-linejoin: round; }
+.ds .tok.told { --c: var(--ink); --g: var(--g-check); }
+.ds .plan7 { display: grid; gap: 0; font-size: 12px; }
+.ds .pl { display: grid; gap: 0; }
+.ds .pl .ph { text-align: center; font-size: 12px; font-weight: 700 !important; line-height: 1.2; color: var(--ink-soft); padding: 0 4px 10px; display: flex; align-items: flex-end; justify-content: center; }
+.ds .pl .pn { display: flex; align-items: center; gap: 10px; min-height: 66px; border-top: 1px solid #14225a1f; padding-inline-end: 10px; font-size: 14px; font-weight: 600 !important; line-height: 1.25; }
+.ds .pl .pn small { display: block; font-size: 12px; font-weight: 400 !important; color: var(--ink-soft); }
+.ds .pl .pc { display: flex; align-items: center; justify-content: center; min-height: 66px; border-top: 1px solid #14225a1f; }
+.ds .pl .pc.me { background: #ffffff99; }
+.ds .avq { width: 36px; height: 36px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 2px dashed var(--ink-soft); color: var(--ink-soft); }
+.ds .avq .ic { width: 18px; height: 18px; }
+.ds .strk { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600 !important; }
+.ds .strk > span.ln { flex: 1; height: 3px; border-radius: 2px; background: #d5dce8; }
+.ds .strk > span.st1 { display: inline-flex; align-items: center; gap: 6px; }
+.ds .led { display: flex; flex-direction: column; }
+.ds .led .lr { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; gap: 12px; align-items: center; min-height: 44px; border-top: 1px dashed var(--rule-strong); }
+.ds .led .lr:first-child { border-top: 0; }
+.ds .led .lr i { display: block; height: 10px; border-radius: 5px; background: #eef1f6; }
+.ds .drow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 68px; padding: 8px 0; border-top: 1px solid var(--rule); }
+.ds .drow:first-of-type { border-top: 0; }
+.ds .drow .di { width: 40px; height: 40px; border-radius: 14px; background: var(--tint-2); color: var(--sapphire-deep); display: inline-flex; align-items: center; justify-content: center; }
+.ds .drow b { display: block; font-size: 14px; font-weight: 600 !important; line-height: 1.25; }
+.ds .drow small { display: block; font-size: 12px; line-height: 1.3; color: var(--ink-soft); }
+.ds .rcpt2 { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 14px; border-radius: 28px; background: var(--card); box-shadow: 0 0 0 1.500px var(--sapphire-deep), var(--shadow-card); font-size: 13px; line-height: 1.3; }
+.ds .rcpt2 .ic { color: var(--sapphire-deep); }
+.ds .rcpt2 b { display: block; font-weight: 600 !important; }
+/* phone */
+.ds .app .vt { border-radius: 18px; }
+.ds .app .scene { border-radius: 22px; }
+.ds .app .rcard { border-radius: 18px; }
+.ds .grp { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border-radius: 999px; background: var(--well); font-size: 12px; font-weight: 600 !important; color: var(--ink); white-space: nowrap; }
+.ds .grp b { font-variant-numeric: lining-nums; color: var(--sapphire-deep); }
+.ds .grp.on { background: var(--ink); color: #fff; } .ds .grp.on b { color: #fff; }
+.ds .inc { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; padding: 7px 0; border-top: 1px solid var(--rule); font-size: 13px; line-height: 1.35; }
+.ds .inc:first-child { border-top: 0; }
+.ds .inc i { width: 22px; height: 22px; border-radius: 7px; background: var(--sapphire); display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.ds .inc i .ic { width: 15px; height: 15px; stroke-width: 3; }
+.ds .inc i.off { background: var(--card); box-shadow: inset 0 0 0 2px var(--rule-strong); }
+.ds .pchip { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 13px 0 10px; border: 0; border-radius: 14px; background: var(--tint-2); box-shadow: inset 0 0 0 1.5px var(--sapphire); font: 600 13px/1.2 var(--font-sans) !important; color: var(--ink); white-space: nowrap; }
+.ds .pchip .ic { width: 16px; height: 16px; color: var(--sapphire-deep); stroke-width: 2.500; }
+.ds .seg2 { display: inline-flex; gap: 3px; padding: 3px; border-radius: 14px; background: var(--well); }
+.ds .seg2 span { min-height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 6px; border-radius: 10px; font-size: 13px; font-weight: 600 !important; color: var(--ink-soft); white-space: nowrap; }
+.ds .seg2 span.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow-card); }
+.ds .hscroll { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; margin-inline-end: -14px; -webkit-mask: linear-gradient(90deg, #000 84%, transparent); mask: linear-gradient(90deg, #000 84%, transparent); }
+/* ---- v11 one language: the My child frame is the reference (stage card, chip, hero field, tile, glyph) ---- */
+.ds .vt { border-radius: 18px; padding: 18px 20px 16px; }
+.ds .vt .vh { gap: 12px; min-height: 40px; }
+.ds .vt .vh .gi { width: 36px; height: 36px; border-radius: 10px; background: var(--sapphire-deep); color: #fff; }
+.ds .vt .vh .gi .ic { width: 20px; height: 20px; stroke-width: 2; }
+.ds .vt .vh .h3 { font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 19px; line-height: 1.15; }
+.ds .vt .vh a { font-size: 13px; }
+.ds .rcard { padding: 16px 18px 16px; }
+.ds .rt .gi { width: 28px; height: 28px; border-radius: 10px; }
+.ds .wchip, .ds .pchip, .ds .grp { min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); font: 600 13px/1 var(--font-sans) !important; color: var(--ink); gap: 6px; }
+.ds .wchip.on, .ds .pchip, .ds .grp.on { background: var(--tint-2); color: var(--sapphire-deep); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .pchip { background: var(--tint-2); }
+.ds .wchip .ic, .ds .pchip .ic { width: 15px; height: 15px; stroke-width: 2.25; color: var(--sapphire-deep); }
+.ds .grp.on b, .ds .grp b { color: var(--sapphire-deep); }
+.ds .mbtn .ic { width: 18px; height: 18px; }
+.ds .app .wchip, .ds .app .pchip, .ds .app .grp { min-height: 44px; }
+.ds .rcard.tint, .ds .vcard.next { box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds .vcard.next { box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds .strk > span.ln { background: var(--rule-strong); }
+.ds .paper i { background: var(--rule); }
+.ds .paper i.h { background: var(--mark-hi); }
+.ds .led .lr i { background: var(--well); }
+
+/* ── production additions (Care v10 composition) ─────────────────────────── */
+.ds .wchip { min-height: 44px; }
+.ds.care-v10 .care-visits { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.ds.care-v10 .care-guide { flex-wrap: nowrap; }
+.ds-desk.care-v10 .care-guide .gline { flex: 1; }
+.ds-desk.care-v10 .route { display: flex; flex-direction: column; gap: 20px; }
+.ds-phone.care-v10 .route { display: flex; flex-direction: column; gap: 18px; }
+.ds.care-v10 .care-h1 { font-size: 34px; line-height: 1.08; outline: none; }
+.ds-phone.care-v10 .care-h1 { font-size: 26px; line-height: 1.1; }
+.ds.care-v10 .care-heading { gap: 6px; min-width: 0; }
+.ds.care-v10 .care-sub { font-size: 14px; line-height: 1.45; color: var(--ink-soft); max-width: 62ch; }
+.ds.care-v10 .care-sub.muted { color: var(--muted); font-size: 13px; }
+
+/* section 1: the scene */
+.ds.care-v10 .care-scene { padding: 20px 26px 22px; gap: 14px; justify-content: space-between; }
+.ds-phone.care-v10 .care-scene { padding: 16px; gap: 11px; }
+.ds.care-v10 .care-scene-main { gap: 24px; align-items: center; }
+.ds-phone.care-v10 .care-scene-main { gap: 14px; }
+.ds.care-v10 .care-scene-head { gap: 10px; min-width: 0; flex: 1; }
+.ds.care-v10 .care-scene-over { font-size: 13px; font-weight: 600 !important; color: var(--ink-soft); }
+.ds.care-v10 .care-scene-when, .ds.care-v10 .care-scene-none { font-size: 14px; font-weight: 600 !important; color: var(--ink); }
+.ds.care-v10 .care-scene-today { color: var(--sapphire-deep); }
+.ds.care-v10 .care-runway { gap: 6px; }
+.ds.care-v10 .care-runway .runway { gap: 6px; }
+.ds.care-v10 .care-runway .rd { height: 14px; border-radius: 7px; }
+.ds-phone.care-v10 .care-runway .rd { height: 12px; border-radius: 6px; }
+.ds.care-v10 .care-packed { gap: 8px; }
+.ds.care-v10 .care-packed .pk { padding: 10px 12px; gap: 10px; }
+.ds.care-v10 .care-packed .pk b { display: block; line-height: 1; }
+.ds.care-v10 .care-packed .pk small { display: block; font-weight: 400 !important; color: var(--ink-soft); font-size: 12px; }
+.ds.care-v10 .care-packed-line { font-size: 13px; line-height: 1.4; }
+.ds.care-v10 .care-scene-foot { gap: 16px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.ds-phone.care-v10 .care-scene-foot { align-items: stretch; gap: 6px; }
+.ds.care-v10 .care-scene-foot [data-testid="consult-build"] { margin: 0; min-height: 48px; border-radius: 14px; padding: 0 22px; font-size: 15px; font-weight: 600 !important; background: var(--sapphire) !important; color: #fff !important; width: auto; }
+.ds-phone.care-v10 .care-scene-foot [data-testid="consult-build"] { width: 100%; }
+
+/* section 2: the rail */
+.ds.care-v10 .care-rail { gap: 12px; }
+.ds.care-v10 .care-who, .ds.care-v10 .care-reason { gap: 10px; }
+.ds.care-v10 .care-who [role="radiogroup"] button { border-radius: 999px !important; }
+.ds.care-v10 .care-who [role="radiogroup"] button[aria-checked="true"] { background: var(--tint-2) !important; color: var(--sapphire-deep) !important; box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds.care-v10 .care-who [role="radiogroup"] button[aria-checked="false"] { background: var(--card) !important; border: 0 !important; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds.care-v10 .care-who h2, .ds.care-v10 .care-reason h2, .ds.care-v10 .care-share h2 { font-family: var(--font-sans) !important; font-size: 15px !important; font-weight: 600 !important; }
+.ds.care-v10 .care-reason section { border-top: 0 !important; padding-top: 0 !important; }
+.ds.care-v10 .care-home { padding: 6px 12px; }
+.ds.care-v10 .care-home-open { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; border: 0; background: transparent; font-size: 14px; font-weight: 600 !important; color: var(--ink); text-align: start; }
+
+/* section 3: the visit summary */
+.ds-desk.care-v10 .care-row-b { align-items: start; }
+.ds-desk.care-v10 .care-row-b > .vt { grid-column: span 4; }
+.ds.care-v10 .care-bring, .ds.care-v10 .care-preview, .ds.care-v10 .care-share { gap: 14px; }
+.ds.care-v10 .care-bring > section, .ds.care-v10 .care-bring [data-testid="consult-contract"] details { box-shadow: none !important; }
+.ds.care-v10 .care-bring > section.rounded-\[22px\] { padding: 0 !important; border: 0 !important; }
+.ds.care-v10 .care-preview [data-testid="consult-preview"] { border: 1.5px dashed var(--sapphire) !important; background: var(--tint) !important; border-radius: 14px !important; max-height: none; }
+.ds-desk.care-v10 .care-preview [data-testid="consult-preview"] { max-height: 34rem; overflow-y: auto; }
+.ds.care-v10 .care-share [data-testid="consult-send-trusted"] { order: -1; flex-basis: 100%; justify-content: center; background: var(--ink) !important; color: #fff !important; border: 0 !important; }
+.ds.care-v10 .care-share [data-testid="consult-copy"], .ds.care-v10 .care-share [data-testid="consult-pdf"] { flex: 1; justify-content: center; background: var(--card) !important; color: var(--sapphire-deep) !important; border: 0 !important; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds-desk.care-v10 .care-row-c > .vt { width: 100%; }
+
+/* section 4: appointments */
+.ds-desk.care-v10 .care-row-d { align-items: start; }
+.ds.care-v10 .care-appts-col, .ds.care-v10 .care-aside-col { gap: 14px; min-width: 0; }
+.ds.care-v10 .care-appts { gap: 16px; }
+.ds.care-v10 .care-appts-empty { font-size: 14px; color: var(--ink-soft); }
+.ds.care-v10 .care-line { display: flex; align-items: flex-start; gap: 0; list-style: none; margin: 0; padding: 4px 0 0; position: relative; }
+.ds.care-v10 .care-line::before { content: ""; position: absolute; inset-inline: 18px; top: 20px; height: 3px; border-radius: 2px; background: var(--sapphire); opacity: .9; }
+.ds.care-v10 .care-line > li { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.ds.care-v10 .care-line > li.care-line-today { flex: 0 0 44px; padding-top: 6px; }
+.ds.care-v10 .care-line-date { font-size: 12px; font-weight: 600 !important; color: var(--ink); }
+.ds.care-v10 .care-line-who { font-size: 12px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.ds.care-v10 .care-vcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ds.care-v10 .care-vcard { padding: 14px 16px; gap: 6px; display: flex; flex-direction: column; }
+.ds.care-v10 .care-vcard-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.ds.care-v10 .care-vcard-title { font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 17px; line-height: 1.2; }
+.ds.care-v10 .care-lastnote { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--tint-2); display: flex; flex-direction: column; gap: 4px; }
+.ds.care-v10 .care-lastnote blockquote { margin: 0; font-size: 17px; line-height: 1.35; border-inline-start: 2px solid var(--ink); padding-inline-start: 12px; }
+.ds.care-v10 .care-appts-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds.care-v10 .care-followup { display: flex; flex-direction: column; gap: 12px; }
+.ds.care-v10 .care-followup:empty { display: none; }
+.ds.care-v10 .care-outcome-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ds.care-v10 .care-input { flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border-radius: 14px; background: var(--card); border: 0; box-shadow: inset 0 0 0 1px var(--rule-strong); font-size: 14px; color: var(--ink); }
+.ds.care-v10 .care-btn { min-height: 48px; display: inline-flex; align-items: center; gap: 6px; }
+.ds.care-v10 .care-btn:disabled { opacity: .55; cursor: not-allowed; }
+.ds.care-v10 .care-shared-row { margin-top: 6px; }
+.ds.care-v10 .care-add { margin-inline-start: auto; }
+.ds.care-v10 .care-packet-sections { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ds.care-v10 .care-packet-sections .grp { min-height: 44px; border: 0; padding: 0 12px; white-space: normal; text-align: start; }
+.ds.care-v10 .care-bring [data-testid="consult-packet-item"] { background: transparent !important; border: 0 !important; border-top: 1px solid var(--rule) !important; border-radius: 0 !important; padding: 8px 2px !important; }
+.ds.care-v10 .care-bring [data-testid="consult-packet-item"] > div > div:first-child { display: none; }
+.ds.care-v10 .care-bring [data-testid="consult-packet-item"] > div > div { font-weight: 400 !important; font-size: 13px !important; line-height: 1.4 !important; }
+.ds.care-v10 .care-bring section h3 { font-family: var(--font-sans) !important; font-size: 15px !important; font-weight: 600 !important; }
+.ds.care-v10 .care-scene { justify-content: flex-start; }
+.ds.care-v10 .care-scene-foot { margin-top: auto; }
+.ds-desk.care-v10 .care-row-a { align-items: stretch; }
+.ds.care-v10 [data-testid="consult-bring-row"] { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.ds.care-v10 [data-testid="consult-bring-chip"], .ds.care-v10 [data-testid="consult-include-topic"] { width: auto; flex: none; border-radius: 999px !important; border: 0 !important; }
+.ds.care-v10 [data-testid="consult-bring-chip"][aria-pressed="true"] { background: var(--tint-2) !important; color: var(--sapphire-deep) !important; box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds.care-v10 [data-testid="consult-bring-chip"][aria-pressed="false"] { background: var(--card) !important; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+.ds-phone.care-v10 .route { padding-inline-start: 22px; }
+/* the shell's global `.arbor-app aside` paint belongs to the sidebar */
+.ds.care-v10 aside.siderail { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.ds.care-v10 [data-packet-section][hidden] { display: none !important; }
+
+/* Care › People */
+.ds-desk.care-people #people-who { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.ds-desk.care-people #people-who > * { grid-column: 1 / -1; }
+.ds-desk.care-people #people-who > .care-people-scene { grid-column: span 8; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > * { grid-column: 1 / -1; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="coparent-invite"] { grid-column: span 4; background: var(--tint) !important; box-shadow: inset 0 0 0 1px #dbe6f7 !important; border-radius: 18px !important; }
+.ds-desk.care-people #people-who > .rstop { grid-column: auto; }
+.ds.care-people .care-people-scene .fig { margin-top: auto; }
+.ds.care-people #people-roster, .ds.care-people #people-more { gap: 14px; }
+
+/* Care › Records */
+.ds-desk.care-records .care-records-row { align-items: stretch; }
+.ds.care-records .care-records-scene { gap: 16px; }
+.ds.care-records .care-records-fig { margin-inline-start: auto; align-self: center; }
+.ds.care-records .care-records-lead { padding-top: 6px; border-top: 1px solid var(--rule); }
+.ds.care-records .care-records-lead [data-primary-move] { background: var(--sapphire) !important; color: #fff !important; min-height: 48px; border-radius: 14px; padding: 0 22px; }
+.ds.care-records .care-records-docs { padding: 4px 18px; gap: 0; }
+.ds.care-records .care-records-list > li:last-child { border-block-end: 0 !important; }
+.ds.care-records .care-records-door { padding: 4px 18px; }
+.ds.care-records .care-records-data { padding: 6px 18px; }
+.ds.care-records .care-records-hint { color: var(--ink-soft); }
+.ds.care-v10 .guide.mini .gstop { min-height: 44px; }
+/* the stage sizes to its content: no empty band beside a taller rail */
+.ds-desk.care-v10 .care-row-a > .care-scene,
+.ds-desk.care-records .care-records-row > .care-records-scene { align-self: start; }
+.ds.care-v10 .care-scene-foot { margin-top: 4px; }
+
+/* ── size pass (canvas 16 Nov, 14:01): 12 px kickers, tighter guide stops on
+   phone, smaller packed tiles, chips a step smaller, tighter phone cards ── */
+.ds.care-v10 .kicker, .ds.care-v10 .next1 { font-size: 12px; }
+.ds.care-v10 .guide.mini .gstop { padding: 4px 9px 4px 4px; gap: 6px; font-size: 12px; min-height: 44px; }
+.ds.care-v10 .guide.mini .gline { min-width: 4px; }
+.ds.care-v10 .care-packed .pk { padding: 10px; gap: 8px; }
+.ds.care-v10 .care-packed .pk > span { white-space: nowrap; font-size: 12px; }
+.ds.care-v10 .care-packed .pk small { font-size: 12px; }
+.ds-desk.care-v10 .care-who [role="radiogroup"] button { padding-inline: 11px !important; font-size: 12px !important; }
+.ds-phone.care-v10 .care-who [role="radiogroup"] { gap: 4px; }
+.ds-phone.care-v10 .care-who [role="radiogroup"] button { padding-inline: 9px !important; }
+.ds-phone.care-v10 .care-scene { padding: 14px 16px; gap: 9px; }
+.ds-phone.care-v10 .rcard.care-who { padding: 12px 16px 8px; gap: 8px; }
+.ds-phone.care-v10 .vt.care-bring, .ds-phone.care-v10 .vt.care-preview, .ds-phone.care-v10 .vt.care-share { padding: 14px 16px; gap: 8px; }
+/* the Teacher brief: who it is for and the template sit in the scene */
+.ds-desk.care-v10 .care-scene-aside { margin-inline-start: auto; width: 300px; flex: none; align-self: start; }
+.ds.care-v10 .care-brief-who { padding: 12px 18px; }
+/* phone: chip groups are one sideways row each (every chip stays in the row) */
+.ds-phone.care-v10 #consult-audience-row,
+.ds-phone.care-v10 [data-testid="consult-bring-row"],
+.ds-phone.care-v10 [data-testid="consult-packet-sections"] {
+  flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px;
+}
+.ds-phone.care-v10 #consult-audience-row::-webkit-scrollbar,
+.ds-phone.care-v10 [data-testid="consult-bring-row"]::-webkit-scrollbar,
+.ds-phone.care-v10 [data-testid="consult-packet-sections"]::-webkit-scrollbar { display: none; }
+.ds-phone.care-v10 #consult-audience-row > *,
+.ds-phone.care-v10 [data-testid="consult-bring-row"] > *,
+.ds-phone.care-v10 [data-testid="consult-packet-sections"] > * { flex: none; white-space: nowrap; }
+/* phone: paired cards at the foot (help and the pause; who sees what and past exports) snap sideways */
+.ds-phone.care-v10 .care-aside-col > [role="complementary"],
+.ds-phone.care-v10 .care-shared-row > section > .grid {
+  display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px;
+}
+.ds-phone.care-v10 .care-aside-col > [role="complementary"] > section,
+.ds-phone.care-v10 .care-shared-row > section > .grid > section { flex: 0 0 286px; scroll-snap-align: start; margin-top: 0 !important; }
+/* the primary move (Share the week) sits right under the scene, above the
+   1280x800 fold; the co-parent card runs beside both */
+.ds-desk.care-people #people-who { align-items: start; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="coparent-invite"] { grid-column: 9 / span 4; grid-row: 1 / span 2; }
+.ds-desk.care-people #people-who > .care-people-scene { grid-column: 1 / span 8; grid-row: 1; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="share-week-card"] { grid-column: 1 / span 8; grid-row: 2; }
+/* 1024-1439 px: the scene keeps its one move above an 800 px fold */
+@media (max-width: 1439px) {
+  .ds-desk.care-v10 .care-h1 { font-size: 26px; }
+  .ds-desk.care-v10 .care-scene .fig.xl > b { font-size: 76px; }
+  .ds-desk.care-v10 .care-scene { gap: 12px; }
+}
+@media (max-width: 1439px) {
+  /* the one move before the packed tiles, clear of the capture dock at 1280x800 */
+  .ds-desk.care-v10 .care-scene-foot { order: 1; margin-top: 4px; }
+  .ds-desk.care-v10 .care-packed { order: 2; }
+}
+/* phone: the week share's one tap above the fold — the trust line (text, not
+   a control) reads after the buttons */
+.ds-phone.care-people [data-testid="share-week-card"] > div:first-child { display: contents; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="sharing-trust-line"] { order: 99; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="share-week-preview"] { order: 98; }
+.ds-phone.care-people [data-testid="share-week-card"] [data-testid="share-week-atrest"] { order: 97; }
+
+/* ── V77 one language (canvas V77): chips, card heads, states ──────────── */
+/* chips: a 999 pill on the card, chosen = tint-2 with a sapphire ring; every
+   tappable chip keeps the 44 px production touch floor */
+.ds.care-v10 .care-who [role="radiogroup"] button,
+.ds.care-v10 [data-testid="consult-bring-chip"],
+.ds.care-v10 [data-testid="consult-include-topic"],
+.ds.care-v10 .care-packet-sections .grp { min-height: 44px; border-radius: 999px !important; font-size: 13px !important; font-weight: 600 !important; }
+.ds.care-v10 .care-packet-sections .grp { background: var(--card); box-shadow: inset 0 0 0 1px var(--rule-strong); color: var(--ink); }
+.ds.care-v10 .care-packet-sections .grp.on { background: var(--tint-2); color: var(--sapphire-deep); box-shadow: inset 0 0 0 1.5px var(--sapphire); }
+.ds.care-v10 .care-packet-sections .grp b { color: var(--sapphire-deep); }
+/* card heads: a 36 px sapphire-deep glyph tile and a 19 px display title */
+.ds.care-v10 .care-cardhead { display: flex; align-items: center; gap: 12px; min-height: 40px; margin: 0; font-family: var(--font-display) !important; font-weight: 600 !important; font-size: 19px !important; line-height: 1.15; color: var(--ink); }
+.ds.care-v10 .care-cardhead .care-gi { flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--sapphire-deep); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.ds.care-v10 .care-share #consult-review-export > h2 { font-size: 19px !important; font-family: var(--font-display) !important; }
+/* states: hover one step deeper, focus a 2 px sapphire ring at 2 px, disabled sunk at 55% */
+.ds.care-v10 .ds-link:hover { color: var(--sapphire-deep); }
+.ds.care-v10 .care-who [role="radiogroup"] button[aria-checked="false"]:hover,
+.ds.care-v10 .care-packet-sections .grp:not(.on):hover { background: var(--tint-2) !important; }
+.ds.care-v10 :is(button, a, input, textarea, summary, [tabindex="0"]):focus-visible { outline: 2px solid var(--sapphire); outline-offset: 2px; }
+.ds.care-v10 button:disabled { opacity: .55; cursor: not-allowed; }
+/* V77: no warm-paper tints — the parent's own words sit on the sapphire wash
+   with an ink rule (the moment kind), in Visits and in Records */
+.ds.care-v10 [data-testid="reports-kept"] { background: var(--tint-2) !important; border: 0 !important; border-inline-start: 2px solid var(--ink) !important; border-radius: 14px !important; }
+.ds.care-v10 [data-testid="reports-kept"] figcaption,
+.ds.care-v10 [data-testid="reports-kept"] blockquote { color: var(--ink) !important; }
+.ds.care-v10 [data-testid="reports-kept"] figcaption { color: var(--ink-soft) !important; }
+
+/* V77 board, Visits: the stepper under the runway (Booked, Choose, Review, Share) */
+.ds.care-v10 .care-steps { display: flex; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: 12px; font-weight: 600 !important; color: var(--ink); }
+.ds.care-v10 .care-steps-st { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ds.care-v10 .care-steps-ln { flex: 1; min-width: 8px; height: 3px; border-radius: 2px; background: var(--rule-strong); }
+.ds.care-v10 .care-steps-ln.on { background: var(--k-plan); }
+.ds.care-v10 .care-scene-over { font-size: 13px; font-weight: 600 !important; color: var(--ink-soft); }
+/* the Teacher brief's way back to Visits' chooser */
+.ds.care-v10 .care-brief-back { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 12px 18px; border: 0; border-radius: 18px; background: var(--tint); box-shadow: inset 0 0 0 1px var(--rule-strong); text-align: start; color: var(--ink); }
+.ds.care-v10 .care-brief-back:hover { background: var(--tint-2); }
+.ds.care-v10 .care-brief-back .care-gi { flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--sapphire-deep); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.ds.care-v10 .care-brief-back-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ds.care-v10 .care-brief-back-text b { font-size: 15px; font-weight: 600 !important; }
+.ds.care-v10 .care-brief-back-text .small { color: var(--ink-soft); }
+.ds.care-v10 .rcard.care-who.care-brief-who { padding: 0; background: transparent; box-shadow: none; }
+.ds.care-v10 .care-seed { min-height: 44px; }
+/* V77 N-Care-M: one tint card for who and your one line; the stepper fits 390 */
+.ds-phone.care-v10 .care-who-phone .care-reason { border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 4px; }
+.ds-phone.care-v10 .care-who-phone .care-reason > section { padding-top: 0 !important; border: 0 !important; }
+.ds-phone.care-v10 .care-who-phone #consult-audience-step > p:last-child,
+.ds-phone.care-v10 .care-who-phone #consult-reason ~ p,
+.ds-phone.care-v10 .care-who-phone label[for="consult-reason"] + p { display: none; }
+.ds-phone.care-v10 .care-steps { gap: 4px; }
+.ds-phone.care-v10 .care-steps-st { gap: 4px; }
+.ds-phone.care-v10 .care-steps-ln { min-width: 4px; }
+/* "What to bring" is the card's own title: the row keeps it as its name only */
+.ds.care-v10 #consult-bring-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ds.care-v10 [data-testid="consult-audience-more"] { border-radius: 999px !important; border: 0 !important; background: var(--card) !important; box-shadow: inset 0 0 0 1px var(--rule-strong); }
+/* the one-line field is a white card, as drawn */
+.ds.care-v10 #consult-reason { background: var(--card) !important; border: 0 !important; box-shadow: inset 0 0 0 1px var(--rule-strong); border-radius: 14px !important; }
+.ds.care-v10 .care-seed { color: var(--sapphire-deep); }
+.ds-desk.care-v10 .care-scene-foot .care-steps { flex: 1; min-width: 0; }
+.ds-desk.care-v10 .care-scene-foot { flex-wrap: nowrap; gap: 20px; }
+
+/* Design V77 (N-Brief-D): the brief reads as one wide page, its sections in
+   three columns under the card's caption row (desktop only). */
+.ds-desk.care-v10 .care-teacher .max-w-\[760px\] { max-width: none; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] { columns: 3; column-gap: 32px; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > * { break-inside: avoid; }
+.ds-desk.care-v10 .care-teacher [data-module="brief-draft"] > [data-testid="school-brief-card-header"] { column-span: all; }
+
+/* Design V77 (N-Records-D/M): the record by kind. Desktop: five ledges on one
+   shelf, each a way to where its records live. Phone: one row per kind, the
+   count at the start. Counts only; the marks are the parent's own records. */
+.ds.care-records .care-records-title { font-family: var(--font-display) !important; font-size: 28px; line-height: 1.1; font-weight: 600 !important; color: var(--ink); }
+.ds-phone.care-records .care-records-title { font-size: 22px; }
+.ds.care-records .care-records-since { color: var(--ink-soft); }
+.ds.care-records .care-ledger ul { list-style: none; margin: 0; padding: 0; }
+.ds.care-records .care-ledger-open { all: unset; box-sizing: border-box; display: flex; width: 100%; min-height: 44px; cursor: pointer; color: var(--ink); text-align: start; }
+.ds.care-records .care-ledger-open:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 3px; border-radius: 14px; }
+.ds-desk.care-records .care-ledger-shelf { grid-template-columns: 1.25fr 1.4fr 1.3fr 1.05fr .95fr; gap: 10px; align-items: end; }
+.ds-desk.care-records .care-ledge { padding: 0; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); }
+.ds-desk.care-records .care-ledge:hover { box-shadow: inset 0 0 0 1px var(--sapphire); }
+.ds-desk.care-records .care-ledge .care-ledger-open { flex-direction: column; padding: 12px 12px 10px; border-radius: 18px; }
+.ds-desk.care-records .care-ledge .care-ledger-body { display: flex; flex-direction: column; min-width: 0; }
+.ds-desk.care-records .care-ledge .nm { white-space: nowrap; }
+.ds-desk.care-records .care-ledge .nm b { font-size: 22px; font-family: var(--font-display); font-weight: 600 !important; font-variant-numeric: lining-nums; }
+.ds.care-records .care-ledger-sub { font-size: 12px; line-height: 1.25; color: var(--ink-soft); font-weight: 400 !important; }
+.ds.care-records .care-ledger-when { display: block; font-size: 12px; line-height: 1.25; color: var(--k-date); font-weight: 600 !important; }
+.ds-phone.care-records .care-ledger-row { border-top: 1px solid var(--rule); }
+.ds-phone.care-records .care-ledger-row .care-ledger-open { display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; gap: 10px; align-items: center; padding: 8px 0; }
+.ds-phone.care-records .care-ledger-n { font-family: var(--font-display); font-weight: 600 !important; font-size: 26px; line-height: 1; text-align: center; font-variant-numeric: lining-nums; }
+.ds-phone.care-records .care-ledger-marks { display: flex; flex-wrap: wrap; gap: 3px; }
+.ds-phone.care-records .care-ledger-name { display: block; font-size: 13px; font-weight: 600 !important; padding-top: 4px; }
+.ds-phone.care-records .care-ledger-chev { color: var(--ink-soft); }
+.ds.care-records .care-records-save { gap: 14px; align-items: center; }
+.ds-phone.care-records .care-records-save { align-items: stretch; gap: 8px; }
+.ds.care-records .care-ledger-note { color: var(--ink-soft); }
+
+/* Design V77 (N-People-D/M): who sees what. A see-mark is the eye on the
+   ink kind; solid sees it now, outline is invited, dashed would see it once
+   invited. Desktop: one lane per adult, one column per thing; phone: one row
+   per adult with a chip per thing. */
+.ds .tok.see { --c: var(--ink); border-radius: 30%; }
+.ds .tok.see::before { display: none; }
+.ds .avq { width: 36px; height: 36px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--card); border: 2px dashed var(--ink-soft); color: var(--ink-soft); }
+.ds.care-people .care-lanes { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds.care-people .care-lanes-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ds.care-people .care-lanes-table thead th { text-align: center; vertical-align: bottom; font-size: 12px; font-weight: 700 !important; line-height: 1.2; color: var(--ink-soft); padding: 0 4px 10px; }
+.ds.care-people .care-lanes-table thead th small { display: block; font-weight: 400 !important; }
+.ds.care-people .care-lanes-table thead td { width: 34%; }
+.ds.care-people .care-lanes-table tbody th { text-align: start; font-weight: 600 !important; }
+.ds.care-people .care-lanes-table tbody th,
+.ds.care-people .care-lanes-table tbody td { border-top: 1px solid var(--rule); height: 66px; }
+.ds.care-people .care-lanes-table tbody td { text-align: center; vertical-align: middle; }
+.ds.care-people .care-lanes-table tbody tr.me td { background: var(--card); }
+.ds.care-people .care-lane-who { display: flex; align-items: center; gap: 10px; min-width: 0; padding-inline-end: 10px; font-size: 14px; line-height: 1.25; }
+.ds.care-people .care-lane-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600 !important; }
+.ds.care-people .care-lane-name small { display: block; font-size: 12px; font-weight: 400 !important; color: var(--ink-soft); }
+.ds.care-people .care-lanes-list { list-style: none; margin: 0; padding: 0; }
+.ds.care-people .care-lane-row { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.ds.care-people .care-lane-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-inline-start: 46px; }
+.ds.care-people .care-lane-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--rule); font-size: 12px; font-weight: 600 !important; color: var(--ink); }
+[dir="rtl"] .ds.care-people .care-lane-chip { padding: 4px 4px 4px 10px; }
+.ds.care-people .care-lanes-legend { font-size: 12px; color: var(--ink-soft); }
+
+/* Design V77 (N-Care-D/M) audit: the appointment cards with their acts, the
+   share card's stays/goes, and the rows the board moved. */
+.ds.care-v10 .care-appts { display: flex; flex-direction: column; gap: 12px; }
+.ds.care-v10 .care-vcards { display: grid; gap: 12px; }
+.ds-desk.care-v10 .care-vcards { grid-template-columns: 1fr 1fr; align-items: start; }
+.ds.care-v10 .care-vcard { display: flex; flex-direction: column; gap: 8px; }
+.ds.care-v10 .care-vcard-head { display: flex; align-items: center; gap: 10px; }
+.ds.care-v10 .care-vcard-what { flex: 1; min-width: 0; }
+.ds.care-v10 .care-vcard-remove { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--ink-soft); border-radius: 12px; cursor: pointer; }
+.ds.care-v10 .care-vcard-remove:hover { color: var(--ink); background: var(--tint); }
+.ds.care-v10 .care-vcard-remove:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 2px; }
+.ds.care-v10 .care-vcard-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ds.care-v10 .care-vcard-acts [data-testid="appt-rehearse"] { display: contents; }
+.ds.care-v10 .care-vcard-acts [data-testid="appt-rehearse"] > p,
+.ds.care-v10 .care-vcard-acts [data-testid="appt-rehearse"] > div { flex-basis: 100%; margin: 0; }
+.ds.care-v10 .care-vcard-acts [data-testid="appt-rehearse-start"] { background: var(--card) !important; color: var(--sapphire-deep) !important; box-shadow: inset 0 0 0 1px var(--rule-strong); min-height: 44px; }
+.ds.care-v10 .care-vcard-acts .care-vcard-summary { order: 9; }
+.ds.care-v10 .care-vcard-note { margin: 0; }
+.ds.care-v10 .care-appts-more { min-height: 44px; }
+.ds.care-v10 .care-stays { display: flex; flex-direction: column; gap: 6px; }
+.ds.care-v10 .care-stays-in,
+.ds.care-v10 .care-stays-out { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 14px; }
+.ds.care-v10 .care-stays-in { background: var(--card); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.ds.care-v10 .care-stays-out { background: var(--green-wash); color: var(--green-ink); }
+.ds.care-v10 .care-stays-in > span,
+.ds.care-v10 .care-stays-out > span { display: flex; flex-direction: column; }
+.ds.care-v10 .care-stays .small { color: inherit; }
+.ds.care-v10 .care-stays-line { margin: 0; }
+.ds.care-v10 .care-share .care-home { margin-top: 4px; box-shadow: none; padding: 0; background: transparent; border-top: 1px solid var(--rule); border-radius: 0; }
+.ds.care-v10 .care-who-phone .care-home { box-shadow: none; padding: 0; background: transparent; border-top: 1px solid var(--rule); border-radius: 0; }
+.ds.care-v10 .care-home-practice [data-testid="consult-home-practice"] { margin: 0; border: 0; }
+/* V77 N-Care-D: the section row reads as a compact list — only the chosen
+   section is a pill; the others are quiet text, still 44 px to tap. */
+.ds.care-v10 .care-packet-sections { gap: 0 4px; align-items: center; }
+.ds.care-v10 .care-packet-sections .grp:not(.on) { background: transparent !important; box-shadow: none !important; padding: 0 8px; font-weight: 500 !important; }
+.ds.care-v10 .care-packet-sections .care-packet-uncheck { color: var(--ink-soft); padding-inline-start: 8px; }
+.ds.care-v10 .care-appts-more { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; border-top: 1px solid var(--rule); background: transparent; color: var(--ink); font-size: 13px; font-weight: 600 !important; text-align: start; cursor: pointer; }
+.ds.care-v10 .care-appts-more .grow { flex: 1; }
+.ds.care-v10 .care-appts-more:focus-visible { outline: 3px solid var(--sapphire); outline-offset: 2px; }
+.ds.care-v10 #consult-reason { min-height: 48px !important; }
+
+/* Design V77 (N-People-D/M) audit: the Invites rail head, What a share carries, section 4's head. */
+.ds.care-people .care-people-invite-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ds.care-people .care-people-invite-head .h3 { font-family: var(--font-display) !important; font-size: 21px; font-weight: 600 !important; color: var(--ink); }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > .care-people-invite-head { grid-column: 9 / span 4; grid-row: 1; align-self: start; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="coparent-invite"] { grid-column: 9 / span 4; grid-row: 2 / span 2; align-self: start; }
+.ds-desk.care-people #people-who > .care-people-scene { grid-row: 1 / span 2; }
+.ds-desk.care-people #people-who > [data-module="sharing-grant"] > [data-testid="share-week-card"] { grid-row: 3; }
+.ds.care-people .care-carries { display: grid; gap: 16px; }
+.ds-desk.care-people .care-carries { grid-template-columns: 1fr 1fr; }
+.ds.care-people .care-carry { display: flex; flex-direction: column; gap: 10px; }
+.ds.care-people .care-carry .h3 { font-family: var(--font-display) !important; font-size: 19px; font-weight: 600 !important; color: var(--ink); margin: 0; }
+.ds.care-people .care-carry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--ink); }
+.ds.care-people .care-carry-list li { display: flex; align-items: center; gap: 8px; }
+.ds.care-people .care-carry-list .ic, .ds.care-people .care-carry-list .material-symbols-rounded { color: var(--sapphire); }
+.ds.care-people .care-carry-tags { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.ds.care-people .care-people-rh { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ds.care-people .care-people-rh .h3 { font-family: var(--font-display) !important; font-size: 21px; font-weight: 600 !important; color: var(--ink); margin: 0; }
+/* N-People-M: the two kinds of share side by side, one swipe apart. */
+.ds-phone.care-people .care-carries { grid-auto-flow: column; grid-auto-columns: 86%; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: -16px; padding-inline: 16px; scroll-padding-inline: 16px; }
+.ds-phone.care-people .care-carry { scroll-snap-align: start; }
+.ds-phone.care-records .care-ledger-sub .care-ledger-when { display: inline; font-size: inherit; }

@@ -9,8 +9,7 @@ vi.mock('../../../../audio/kidAudio', () => ({
   kidAudioContext: () => h.ctx,
   onKidHush: (fn: () => void) => { h.hush.push(fn); return () => { h.hush = h.hush.filter(f => f !== fn); }; },
 }));
-import { LAP_TUNES, LAYER_PEAK, ONE_SHOT_PEAK, SCALE_HZ, SEASON_DEGREE, createSeasonAudio, scaleNote } from './seasonDialAudio';
-import { TOYS } from './seasonDialToys';
+import { LAP_TUNES, LAYER_PEAK, ONE_SHOT_PEAK, SCALE_HZ, SEASON_DEGREE, createSeasonAudio, scaleNote, TOYS } from './seasonDialAudio';
 import { gains } from './seasonDialRules';
 
 type Param = { value: number; target: number | null; peak: number; setValueAtTime: (v: number) => void; setTargetAtTime: (v: number) => void; exponentialRampToValueAtTime: (v: number) => void };
@@ -63,6 +62,23 @@ describe('Weather Maker sound', () => {
       const level = gains(year);
       buses().forEach((bus, i) => expect(bus.gain!.target).toBeCloseTo(level[LAYERS[i]] * LAYER_PEAK[LAYERS[i]]));
     }
+    audio.dispose();
+  });
+  it('lets the weather the child makes be heard over the year’s own, and gives the year back when it clears', () => {
+    const audio = createSeasonAudio(() => 0.5); audio.wake();
+    const sources = fake.made.filter(n => n.kind === 'osc' || n.kind === 'noise').length;
+    audio.setYear(0.33); // high summer: no rain of its own
+    const rainBus = () => buses()[LAYERS.indexOf('rain')].gain!.target!;
+    expect(rainBus()).toBeCloseTo(0);
+    audio.setMix({ rain: 0.8, wind: 0.5 });
+    expect(rainBus()).toBeCloseTo(0.8 * LAYER_PEAK.rain);
+    expect(buses()[LAYERS.indexOf('wind')].gain!.target).toBeCloseTo(Math.max(0.5, gains(0.33).wind) * LAYER_PEAK.wind);
+    // The made weather never quiets a layer the year already sounds, and adds no sources.
+    audio.setYear(0.16); audio.setMix({ rain: 0.1 });
+    expect(rainBus()).toBeCloseTo(gains(0.16).rain * LAYER_PEAK.rain);
+    expect(fake.made.filter(n => n.kind === 'osc' || n.kind === 'noise')).toHaveLength(sources);
+    audio.setYear(0.33); audio.setMix({});
+    buses().forEach((bus, i) => expect(bus.gain!.target).toBeCloseTo(gains(0.33)[LAYERS[i]] * LAYER_PEAK[LAYERS[i]]));
     audio.dispose();
   });
   it('a fast spin back and forth leaves exactly the levels of where it stopped, with no extra sources', () => {

@@ -14,11 +14,8 @@ import { programSharedObjectOn } from "../../lib/programs/sharedObject";
 import ProgramBookHandback from "../program/ProgramBookHandback";
 import { readLearnReadIds } from "../../learn/learnReadState";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
-import NowPlanLead from "../plans/NowPlanLead";
-import PlansSection from "../plans/PlansSection";
-import { closePlan, keepPlan, leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
-import { usePlanVisibility } from "../../lib/plans/usePlanVisibility";
-import { openPrintablePlan } from "../../lib/plans/planPrint";
+import { planString } from "../../lib/plans/planStrings";
+import { leadPlan, nightMomentText, recordNight, unrecordNight } from "../../lib/plans/planWeek";
 import type { PlanBookDoc } from "../../lib/library/plans/planBookDoc";
 import { dayKey } from "../../practice/signals";
 import { isObservationAction, type ActionLoopEntry } from "../../actionLoop/model";
@@ -27,7 +24,6 @@ import { scrollQuestionIntoMain } from "./nowDeepLinkScroll";
 import { NOW_COPY } from "./nowViewCopy";
 import NowRecommendation from "./NowRecommendation";
 import { NowAgendaExtras, NowNoticeExtras, NowWhatChangedLines } from "./NowTodayLines";
-import { BrandChip } from "../ui/BrandChip";
 import { NowNoticeBlock, NowNoticeLead, NowPracticeLead, NowTonightLead, NowTonightPointer } from "./NowLoopBlocks";
 import { focusSignalsForNow, stepLines } from "./nowRecommendationModel";
 import { useNowClock } from "./useNowClock";
@@ -37,11 +33,13 @@ import { markPracticeShown } from "../../lib/practice/todayPin";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { isKidModeActive } from "../../lib/kidModeGate";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
+import { challengePlanHref } from "../../lib/plans/challengeLinks";
+import { isPatternId } from "../../lib/library/plans/planVisibility";
 import { basedOnLines, FOCUS_MAX_FACTS } from "../../lib/basedOn";
 import { useArborPause } from "../../lib/pauseArborStore";
 import { fmtDay } from "../../lib/formatDate";
 import BasedOnReceipt from "../trust/BasedOnReceipt";
-import FromRecordCard, { FromRecordReceipt } from "../overview/FromRecordCard";
+import FromRecordCard, { FromRecordReceipt, recordQuestion } from "../overview/FromRecordCard";
 import { useNowLoop } from "./useNowLoop";
 import { useLifecycleMoment } from "../overview/useLifecycleMoment";
 import { useCompanionOffer } from "../overview/useCompanionOffer";
@@ -63,13 +61,24 @@ import type { TonightStep } from "../loop/TonightFlow";
 import { useVisitDraft } from "./visitDraft";
 import { VISIT_DRAFT_COPY } from "./nowV41Copy";
 import { daysUntil, inDaysLabel } from "../care/CareVisitHead";
-import NowLearned from "./NowLearned";
 import { dayPart } from "./rightNowModel";
 import NowPlanFrame, { type NowPlanKind } from "./NowPlanFrame";
 import NowPlanBody from "./NowPlanBody";
 import NowGuideReader from "./NowGuideReader";
-import { NowKidWorld, NowWeekSoFar } from "./NowDayPanels";
-
+import { NowKidWorld } from "./NowDayPanels";
+import { DsRoot, Guide, LivingForm, MoreLink, Route, RouteSection, Row12, Scene, StartHere, Tile, type GuideStop } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import { NOW_V10_COPY } from "./now10/nowV10Copy";
+import NowDayArc from "./now10/NowDayArc";
+import { eveningMoments, clock24 } from "./now10/dayArcModel";
+import { NowStageContext, type NowStage } from "./now10/nowStage";
+import NowWaiting, { NowChallengePlan, NowNotebookBadge, type WaitingStep } from "./now10/NowWaiting";
+import NowThisWeek from "./now10/NowThisWeek";
+import NowWorthKnowing from "./now10/NowWorthKnowing";
+import { NowActionPlan, NowRow } from "./now10/NowComingUp";
+import { useFamilyPlanDatesForNow } from "./now10/familyPlanSlot";
+import { loadPrefs, shownNudgesToday } from "../../growth/jitaiPrefs";
+import "./now10/nowV10.css";
 export interface NowViewProps {
   topic?: { id: string; title: string; intent?: string } | null;
   onTopicCreate?: (title: string) => void;
@@ -123,12 +132,14 @@ const LIFECYCLE_NOTE: Partial<Record<string, string>> = {
 
 function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewProps) {
   const { childProfile, actionLoop, approvedMemoryItems, seedCoach, setActiveTab, openCaptureSheet,
-    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead } = useArbor();
+    saveTodayOutcome, saveTodayObservation, requestJournalFocus, pendingCaptureMode, consumeCaptureRequest, addMoment, requestLearnRead, pendingMemoryItems } = useArbor();
   const { t, uiLang } = useLanguage();
   const arborPause = useArborPause();
   const he = uiLang === "he";
   const lang = he ? "he" : "en";
   const copy = NOW_COPY[lang];
+  const v10 = NOW_V10_COPY[lang];
+  const composition = useComposition();
   const now = useNowClock();
   const record = useNowRecord(now);
   const name = childProfile.name?.split(" ")[0] || t("companion.now-view.your-child");
@@ -142,11 +153,11 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // and the answer is a COUNT (the `books` row), never a verdict.
   const planRows = useChildCollection<PlanBookDoc>(childProfile.id, "books");
   const plan = useMemo(() => leadPlan(planRows.items, now), [planRows.items, now]);
-  // S1 (surfacing): the plan's front door on Today — the ONE "Everyday plans"
-  // card under the lead (the running plan(s), then "Something hard right
-  // now?" → the pattern chooser → the existing composer on #/journal?plan=).
-  const planVisibility = usePlanVisibility();
-  const openPattern = (pattern: string) => { setActiveTab("journal"); window.location.hash = `#/journal?plan=${pattern}`; };
+  // S1 (surfacing): the plan's front door on Now — the ONE Challenge Plans
+  // card (the running plan(s), then "Something hard right now?"). v10.1: it
+  // opens the plan's one home, Now › Plans (lib/plans/challengeLinks), not a
+  // copy of the composer.
+  const openPattern = (pattern: string) => { setActiveTab("plans"); window.location.hash = challengePlanHref(isPatternId(pattern) ? pattern : null); };
   const openPlan = () => openPattern(plan?.def.id ?? "");
   // v4: the agenda row says where the family is in it ("Week 2 of 4"), counts only.
   const programWeeks = Array.isArray(program?.program.weeks) ? program.program.weeks.length : 0;
@@ -298,14 +309,17 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     tonight: loop.plan.order[0] === "tonight",
     record: !!record.opener || !!record.receipt || record.saving,
     recordPending: record.saving || record.error,
-    fallback: plan ? "plan" : loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
+    // v10.1: a running Challenge plan is drawn in "Waiting for you" (Tonight), never as the stage's lead.
+    fallback: loop.pick ? "practice" : loop.slotNotice ? "notice" : program ? "program" : "recommendation",
   });
   const pausedLead = arborPause.paused && lead === "recommendation";
   const pauseUntil = arborPause.record?.until
     ? t("companion.pause.until", { when: fmtDay(arborPause.record.until, uiLang) })
     : t("companion.pause.untilYou");
   const showNotice = lead !== "notice" && loop.plan.order.includes("notice") && loop.blockNotices.length > 0;
-  const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || (lead === "step" && loop.evening));
+  // v10.1: Tonight's row stands in Coming up whenever tonight has questions and another lead holds the stage
+  // (morning: the pointer; evening: behind a step, a record question or a visit), so the full flow is one tap away.
+  const showPointer = lead !== "tonight" && loop.tonightHasQuestions && (loop.plan.tonightPointer || loop.evening);
   const pickId = loop.pick?.practice.id;
   useEffect(() => { if (lead === "practice" && pickId) trackActionOffered("now-practice"); }, [lead, pickId]);
   // Only an actually rendered daytime practice earns a Tonight premise.
@@ -320,7 +334,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // the recommendation (which frames itself, to show its own words) sits in the v3 plan card.
   const shownLead: NowPlanKind = lead === "urgent" ? "urgent" : lead === "record" ? "record" : lead === "visit" && visit ? "visit" : lead === "tonight" ? "tonight"
     : lead === "step" && chosen ? "step" : lead === "practice" && loop.pick ? "practice" : lead === "notice" ? "notice"
-      : lead === "program" && program ? "program" : lead === "plan" && plan ? "plan" : "recommendation";
+      : lead === "program" && program ? "program" : "recommendation";
   const lifecycleKey = lifecycle.moment && todayOffer.offer?.kind === "what-changed" ? LIFECYCLE_NOTE[lifecycle.moment.kind] : undefined;
   const lifecycleNote = lifecycleKey ? t(lifecycleKey, { name }) : null;
   // v3 F-NOW-1: the plan card's face — the lead's own words when it has them
@@ -330,23 +344,28 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
   // The urgent lead's face carries only the reviewed safety header; no say line,
   // no plan meta, no "picked because" — nothing is invented beside the help lines.
   const planTag = pausedLead ? t("companion.pause.on") : shownLead === "urgent" ? t("elev.safety.header.title") : copy.planTag[shownLead];
-  const planSay = pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
-  const planMeta = pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
-  const planWeekTitle = shownLead === "plan" && plan ? <h2 id={`${id}-plan`} className="now-plan-title" dir="auto">{plan.def.title[lang]}</h2> : undefined;
+  // v10.1 (N-Now): the record question rides the arc as the stage's title, the parent's words quoted under it.
+  const recordFace = shownLead === "record" && !pausedLead && record.opener && !record.receipt ? record.opener : null;
+  const recordQuote = recordFace?.quote?.trim() ? t("elev.loop.ms.quoted", { text: recordFace.quote.trim() }) : null;
+  const recordNoteDay = recordFace?.quoteAt && Number.isFinite(Date.parse(recordFace.quoteAt))
+    ? new Date(recordFace.quoteAt).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "short", day: "numeric", month: "short" }) : null;
+  const planSay = recordFace ? recordQuote : pausedLead ? t("companion.pause.now") : shownLead === "urgent" ? null : practiceSay ? t("elev.loop.ms.quoted", { text: practiceSay }) : copy.planSay[shownLead];
+  const planMeta = recordFace ? null : pausedLead ? null : shownLead === "urgent" ? null : shownLead === "step" ? (receipt ? (receiptQueued ? t(savedOnPhoneKey(online)) : copy.saved) : copy.today) : shownLead === "program" && program ? copy.programWeek(program.week) : copy.planMeta[shownLead];
   // v3 F-NOW-1 r2: the guide's title on the face is the lead's own h2, moved up
   // from its section (which keeps it as its label). The loop leads' cards carry
   // their own heading, so their face has the say line and meta only.
-  const planTitle = pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
+  const planTitle = recordFace ? <h2 id={`${id}-record`} data-testid="today-record-question" className="now-plan-title" dir="auto">{recordQuestion(recordFace, name, t)}</h2>
+    : pausedLead ? <h2 id={`${id}-pause`} className="now-plan-title" dir="auto">{pauseUntil}</h2>
     : shownLead === "step" && chosen ? <h2 ref={stepTitle} id={`${id}-step`} className="now-plan-title" dir="auto" style={observation ? { whiteSpace: "pre-wrap", scrollMarginBlockStart: "calc(var(--sticky-offset) + 12px)" } : undefined}>{receipt && !observation ? copy.finishedTitle : chosen.recommendation}</h2>
     : shownLead === "visit" && visit ? <h2 id={`${id}-visit`} className="now-plan-title" dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</h2>
-      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{programSkill}</h2> : planWeekTitle;
+      : shownLead === "program" && program ? <h2 id={`${id}-program`} className="now-plan-title" dir="auto">{programSkill}</h2> : undefined;
   // The one plan body under every lead: why it was picked, always visible. The
   // practice says its own reason (the AI's sentence beside its own pick); the
   // question is quoted only for a step chosen under it.
   const practiceWhy = shownLead === "practice" && loop.pick
     ? (loop.pick.via === "ai" && focus?.why?.trim()) || t(loop.whyReason && (loop.whyReason !== "since" || loop.whyDate) ? WHY_KEY[loop.whyReason] : "elev.loop.practice.whyShelf", { shelf: shelfLabel(loop.pick.shelf, t), name, date: loop.whyDate ?? "" })
     : "";
-  const planWhy = pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
+  const planWhy = recordFace && recordNoteDay ? v10.pickedRecord(recordNoteDay) : pausedLead ? t("companion.pause.kept") : shownLead === "practice" ? practiceWhy || copy.pickedWhy.practice : shownLead === "tonight" && tonightOpen ? copy.pickedTonightOpen : copy.pickedWhy[shownLead];
   // The question is named only where it drove the pick: a step chosen under
   // it, or a practice/notice drawn from its shelves.
   // v4.1 Right now: the one line that follows the day. Not beside the urgent
@@ -377,29 +396,40 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
     onOpenAll: () => openTonight(),
   } : null;
   const visitInRightNow = !!rightNowVisit && part === "midday";
-  const tonightInRightNow = !!rightNowTonight && part === "evening";
   const planQuestion = shownLead === "step" && chosen && topic && chosen.topicId === topic.id ? topic.title
     : (shownLead === "practice" || shownLead === "notice") && questionGuided ? topic.title : null;
 
-  return <div className="companion-page now-page" dir={he ? "rtl" : "ltr"}>
-    <header className="now-heading">
-      <div>
-        <p className="companion-eyebrow" data-testid="now-kicker">{copy.kicker}</p>
-        <h1 className="arbor-type-title">{copy.title(name)}</h1>
-        <p className="now-heading-sub">{copy.subtitle}</p>
+  // ── v10.1 composition (N-Now-D / N-Now-M): one tree per composition. ──
+  const desk = composition === "desk";
+  const nudgePrefs = useMemo(() => loadPrefs(), []);
+  const hourStamp = Math.floor(now.getTime() / 3_600_000);
+  const evening = useMemo(() => eveningMoments(observations, now),
+    // Re-read when the records change or the hour turns, not on every clock tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [observations, hourStamp]);
+  const shownNudges = useMemo(() => shownNudgesToday(now.getTime()).length, [hourStamp]); // eslint-disable-line react-hooks/exhaustive-deps
+  const quietFrom = clock24(nudgePrefs.quietStart * 60);
+  const familyDates = useFamilyPlanDatesForNow();
+  const notesWaiting = (pendingMemoryItems ?? []).filter(item => item.status === "pending").length;
+  const stage: NowStage = {
+    // The face (the lead's tag, title, quote) is set inside the arc's bowl, as N-Now draws it on both compositions.
+    renderArc: (face, art) => <NowDayArc composition={composition} now={now} quietStart={nudgePrefs.quietStart} quietEnd={nudgePrefs.quietEnd} evening={evening.inBand > 0} copy={v10}>
+      <div className={desk ? "nw-face-row" : "nw-face-col"}>
+        {!desk && <LivingForm src={art?.src ?? "/visuals/parent/v2/guidance-480.webp"} srcSet={art?.srcSet} width={desk ? 150 : 88} height={desk ? 115 : 68}
+          crop={art ? undefined : desk ? { w: 270.8, h: 152.3, x: -122, y: -24 } : { w: 158.9, h: 89.4, x: -71.6, y: -14 }} className="nw-face-art" />}
+        {face}
       </div>
-    </header>
-    {(topic || onTopicOpen) && <NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} />}
-    {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
+    </NowDayArc>,
+  };
 
-    <div className="now-main-column">
+  const leadChain = <div className="now-main-column">
         {lead === "practice" && <PracticeFocus now={now} journal={loop.journal} onFocus={setFocus} onPending={setFocusPending} />}
-        {/* The recommendation frames itself (its screened words face the art panel), so its frame here is bare. */}
-        <NowPlanFrame kind={shownLead} lang={lang} tag={planTag} say={planSay} quoted={!!practiceSay && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
+        {/* The recommendation frames itself (its screened words ride the arc), so its frame here is bare. */}
+        <NowPlanFrame kind={shownLead} lang={lang} tag={recordFace ? v10.arborSuggests : planTag} say={planSay} quoted={(!!practiceSay || !!recordQuote) && !pausedLead} title={planTitle} meta={planMeta} question={topic?.title} bare={shownLead === "recommendation" && !pausedLead}>
         {lead === "urgent" ? <section className="now-loop-lead" data-module="now-urgent" aria-label={t("elev.safety.header.title")}>
           <UrgentSupport testId="now-urgent-setup-support" className="now-urgent-lead" />
         </section> : lead === "record" ? <section className="now-loop-lead" data-module="now-record" aria-label={t("today.record.aria")}>
-          {record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
+          {record.receipt ? <FromRecordReceipt queued={record.queued} /> : record.opener && <FromRecordCard stage opener={record.opener} childName={name} stampMove="choose-next-step" disabled={record.saving} onAnswer={answer => void record.answer(answer)} />}
           {record.saving && <p role="status" className="now-inline-status">{record.confirming ? t("elev.today.record.confirming") : copy.saving}</p>}
           {record.error && <p role="alert" className="now-inline-status">{copy.saveError}</p>}
         </section> : lead === "visit" && visit ? <section className="now-lead arbor-depth-primary" data-module="now-visit" aria-labelledby={`${id}-visit`}>
@@ -449,12 +479,7 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
             onAdapt={() => talk(copy.adaptPrompt(practiceText(loop.pick!.practice, "do", lang, childProfile.gender)))} />
         </section> : lead === "notice" ? <section className="now-loop-lead" data-module="today-practice" aria-label={t("elev.loop.today.notice.title")}>
           <NowNoticeLead loop={loop} name={name} />
-        </section> : lead === "plan" && plan ? <NowPlanLead plan={plan} lang={lang} childName={name} now={now} evening={loop.evening}
-          onNight={(happened) => { if (happened) void planRows.upsert(recordNight(plan.doc, now)); }}
-          onUndoNight={() => void planRows.upsert(unrecordNight(plan.doc, now))}
-          onJournal={() => void addMoment(nightMomentText(plan.def, lang, name))}
-          onOpen={openPlan} />
-        : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
+        </section> : lead === "program" && program ? <section className="now-lead arbor-depth-primary" data-module="now-program" aria-labelledby={`${id}-program`}>
           <p className="now-plan-kicker">{copy.programLabel}</p>
           <p className="now-lead-body">{copy.programWhy(program.week)}</p>
           <div className="now-lead-actions"><PrimaryMove type="button" className="companion-primary" onClick={openProgram}>{copy.continueProgram}<Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></PrimaryMove></div>
@@ -474,64 +499,133 @@ function NowContent({ topic, onTopicCreate, onTopicOpen, onTalkOpen }: NowViewPr
           onOpenFact={(factId) => goToRoute("memory", { fact: factId })}
         />}
         {lifecycleNote && lead !== "practice" && <p className="now-lifecycle-note" role="note">{lifecycleNote}</p>}
-        {/* S1: the Everyday plans card sits under the lead, where the lifecycle note does; a plan already leading is not
-            repeated, and on the urgent day (B-TODAY-38) the help lines stand alone in the column. */}
-        {lead !== "urgent" && <PlansSection surface="today" childName={name} planRows={planRows.items} visibility={planVisibility} now={now} excludePlanId={shownLead === "plan" && plan ? plan.doc.id : undefined}
-          onOpenDoor={openPattern} onOpenPlan={(p) => openPattern(p.def.id)} onChange={(p) => openPattern(p.def.id)}
-          onKeep={(p) => void planRows.upsert(keepPlan(p.doc, now))} onClose={(p) => void planRows.upsert(closePlan(p.doc, now))}
-          onPrint={(p) => void openPrintablePlan({ doc: p.doc, child: childProfile, lang, now })} />}
-        {/* v4.1: the proposals of this week, asked where the parent already is; About keeps the rest. */}
-        {lead !== "urgent" && <NowLearned now={now} />}
-
-        {/* v4: the say-back question and "Arbor noticed" are Notice today's last rows; with no notice rows today they stand
-            alone — except beside the urgent help lines, which stand alone in the column (B-TODAY-38). */}
-        {showNotice ? <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"}
-          extras={<NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />} /></div>
-          : lead !== "urgent" && <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />}
-    </div>
-
-    <details className="now-tonight-more" data-testid="now-more-tonight">
-      <summary>
-        <b>{copy.moreTonight}</b>
-        <small>{copy.moreTonightSub}</small>
-      </summary>
-      <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
-      <div className="now-day-grid">
-      <NowWeekSoFar observations={observations} now={now} onReport={() => setActiveTab("weekly")}>
-        <NowWhatChangedLines previousVisitAt={previousVisitAt} isReturning={isReturning} rhythmDaysNeeded={loop.rhythm.daysNeeded} />
-      </NowWeekSoFar>
-      <section className="now-glance" aria-labelledby={`${id}-glance`}>
-        <h2 id={`${id}-glance`} className="now-kicker">{copy.glanceTitle}</h2>
-        {visit && lead !== "visit" && !visitInRightNow && <button type="button" className="now-weekly-door now-glance-visit" onClick={openVisit}>
-          <BrandChip icon="event" tone="sky" shape="leaf" /><span><b dir="auto">{copy.visitTitle(appointmentRoleLabel(visit, t), new Date(visit.whenIso!).toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "long", day: "numeric", month: "short" }))}</b><small data-testid="now-glance-visit-line">{visitGlanceLine}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
-        </button>}
-        {showPointer && !tonightInRightNow && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
-        {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
-        {program && lead !== "program" && <button type="button" className="now-weekly-door now-program-line" data-testid="now-program-line" onClick={openProgram}>
-          <BrandChip icon="menu_book" tone="green" shape="drop" /><span><b>{copy.programLabel}</b><small dir="auto">{programSkill}</small></span>
-          {programWeeks > 0 && <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span>}
-          <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
-        </button>}
-        {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
-        {programSharedObjectOn() && <ProgramBookHandback />}
-        {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
-        {showLessonFace && lessonFace ? (
-          <WeekLessonCard
-            face={lessonFace}
-            lang={lang}
-            gender={childProfile.gender}
-            readTitle={weekLesson ? weekLesson.title[lang] : undefined}
-            onOpen={weekLesson ? () => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" }) : undefined}
-          />
-        ) : weekLesson && <button type="button" className="now-weekly-door now-week-lesson" data-testid="now-week-lesson" onClick={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })}>
-          <BrandChip icon="lightbulb" tone="green" shape="leaf" /><span><b>{copy.weekIdea}</b><small dir="auto">{weekLesson.title[lang]}</small></span>
-          <Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" />
-        </button>}
-        <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />
-        <button type="button" className="now-weekly-door now-glance-reminders" onClick={() => setActiveTab("smart-reminders")}><BrandChip icon="notifications" tone="sapphire" shape="arch" /><span><b>{copy.remindersTitle}</b><small>{copy.remindersBody}</small></span><Icon name="arrow_forward" size={19} className="rtl:-scale-x-100" /></button>
-      </section>
-      </div>
-    </details>
-
   </div>;
+
+  // ── stop 2: what waits. Now (did you notice), Tonight (the Challenge plan), Later (the notebook). ──
+  // v4: the say-back question and "Arbor noticed" are Notice today's last rows; with no notice rows today they stand
+  // alone — except beside the urgent help lines, which stand alone (B-TODAY-38).
+  const noticeStep = showNotice ? <div data-module="today-notice"><NowNoticeBlock loop={loop} name={name} practiceLeads={lead === "practice"}
+    extras={<NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} />} /></div>
+    : lead !== "urgent" ? <NowNoticeExtras keepsakeDocs={loop.keepsakeDocs} now={loop.now} isReturning={isReturning} suppressSayBack={lead === "record"} /> : null;
+  // With no plan running, Tonight is one door line to Challenge Plans (the chooser and the composer live on Now › Plans).
+  const plansDoor = lead !== "urgent" && !plan ? <NowRow icon="auto_stories" testId="now-challenge-door" className="now-challenge-door"
+    title={planString("section.hard", lang)} sub={planString("section.title", lang)} onOpen={() => openPattern("")} /> : null;
+  const waiting: WaitingStep[] = [];
+  if (noticeStep) waiting.push({ key: "now", when: v10.whenNow, sub: showNotice ? v10.oneQuestion(loop.blockNotices.filter(c => !c.milestone.observationStatus).length || loop.blockNotices.length) : null, current: true, grow: 1, body: noticeStep });
+  if (lead !== "urgent" && plan) waiting.push({ key: "tonight", when: v10.whenTonight, sub: v10.whenTonightSub, current: !showNotice, grow: 2, body:
+    <NowChallengePlan plan={plan} lang={lang} childName={name} now={now} evening={loop.evening} copy={v10}
+      onNight={(happened) => { if (happened) void planRows.upsert(recordNight(plan.doc, now)); }}
+      onUndoNight={() => void planRows.upsert(unrecordNight(plan.doc, now))}
+      onJournal={() => void addMoment(nightMomentText(plan.def, lang, name))}
+      onOpen={openPlan} /> });
+  else if (plansDoor) waiting.push({ key: "tonight", when: v10.whenTonight, body: plansDoor });
+  if (lead !== "urgent" && notesWaiting > 0) waiting.push({ key: "later", when: v10.whenLater, sub: v10.whenLaterSub, body:
+    <NowNotebookBadge waiting={notesWaiting} remembered={(approvedMemoryItems ?? []).length} copy={v10} notebook={t("companion.about.notebook")} label={t(notesWaiting === 1 ? "elev.childmem.pending.notes.one" : "elev.childmem.pending.notes", { count: notesWaiting })} onOpen={() => goToRoute("memory")} /> });
+  // "Waiting for you · n things": the blocks the rail shows (a Now step with only its say-back extras is not counted).
+  const thingsWaiting = waiting.filter(w => w.key !== "now" || showNotice).length;
+  const waitingTitleId = `${id}-waiting`;
+
+  // ── stop 3: this week, compact, with what changed since the last visit. ──
+  const weekTitleId = `${id}-week`;
+  const thisWeek = <NowThisWeek composition={composition} observations={observations} actionLoop={actionLoop ?? []} now={now} lang={lang} copy={v10}
+    labels={{ moments: copy.weekMoments, helped: copy.weekHelped, milestones: copy.weekMilestones, words: copy.weekWords, kid: copy.weekKid }}
+    title={copy.weeklyTitle} emptyLine={copy.weekEmpty} reportLabel={t("nav.pill.weekly")} onReport={() => setActiveTab("weekly")} titleId={weekTitleId}>
+    <NowWhatChangedLines previousVisitAt={previousVisitAt} isReturning={isReturning} rhythmDaysNeeded={loop.rhythm.daysNeeded} />
+    <NowKidWorld observations={observations} now={now} name={name} onAll={() => setActiveTab("development")} />
+  </NowThisWeek>;
+
+  // ── stop 4: coming up, each a line and a link to its home. ──
+  const visitDay = visit?.whenIso ? new Date(visit.whenIso) : null;
+  const comingRows = <>
+    {visit && visitDay && lead !== "visit" && !visitInRightNow && <NowRow className="now-glance-visit" date={{ weekday: visitDay.toLocaleDateString(he ? "he-IL" : "en-GB", { weekday: "short" }), day: visitDay.getDate() }}
+      title={copy.visitTitle(appointmentRoleLabel(visit, t), visitDate)} sub={<span data-testid="now-glance-visit-line">{visitDraft && visitWhen ? draftCopy.glance(visitWhen) : visitWhen ?? copy.visitPrep}</span>}
+      action={visitDraft ? draftCopy.cta : copy.visitPrep} onOpen={openVisit} />}
+    {familyDates.map(date => <NowRow key={date.id} date={{ weekday: date.weekday, day: date.day, none: date.nobody }} title={date.title} sub={date.sub} onOpen={date.onOpen} />)}
+    {showPointer && <NowTonightPointer onOpen={() => { loop.setTonightEarly(true); setTonightOpen(true); }} />}
+    {/* B-PROG-03: the program is Today's frame: one line beside the practice, never a second lead. */}
+    {program && lead !== "program" && <NowRow icon="menu_book" testId="now-program-line" className="now-program-line" title={copy.programLabel} sub={programSkill} onOpen={openProgram}
+      badge={programWeeks > 0 ? <span className="now-agenda-badge" data-testid="now-program-week">{copy.programWeekOf(program.week, Math.max(program.week, programWeeks))}</span> : undefined} />}
+    {/* B-PROG-14: "This week's idea". Flag off: the title door. Flag on: example, words, reason, fallback, and the longer read when this week has one. */}
+    {!(showLessonFace && lessonFace) && weekLesson && <NowRow icon="lightbulb" testId="now-week-lesson" className="now-week-lesson" title={copy.weekIdea} sub={weekLesson.title[lang]} onOpen={() => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" })} />}
+    <NowRow icon="notifications" className="now-glance-reminders" title={copy.remindersTitle} sub={v10.remindersShown(shownNudges)} onOpen={() => setActiveTab("smart-reminders")} />
+  </>;
+  const comingExtras = <>
+    {/* B-PROG-16: next-day handback of the week's one shared book. Dark until the pilot flag. */}
+    {programSharedObjectOn() && <ProgramBookHandback />}
+    {showLessonFace && lessonFace && <WeekLessonCard face={lessonFace} lang={lang} gender={childProfile.gender}
+      readTitle={weekLesson ? weekLesson.title[lang] : undefined}
+      onOpen={weekLesson ? () => requestLearnRead({ cardId: weekLesson.id, source: "now-week-lesson" }) : undefined} />}
+    <NowAgendaExtras evening={loop.evening} storyFits={loop.storyFits} todayOffer={todayOffer} suppressVisit={lead === "visit" || !!visit} storyRow={!showPointer} />
+  </>;
+  const aheadTitleId = `${id}-ahead`;
+  const actionPlan = <NowActionPlan composition={composition} copy={v10} plansLabel={t("nav.tab.plans")} nextLine={copy.nextStep} onOpen={() => setActiveTab("plans")} titleId={`${id}-actionplan`} />;
+  const worth = lead !== "urgent" ? <NowWorthKnowing lang={lang} kicker={v10.worthKnowing} readMinutes={copy.readMinutes} topicText={topic?.title} composition={composition} now={now} /> : null;
+
+  const stops: GuideStop[] = [
+    // The phone guide uses the board's short names for the same four stops.
+    { id: "now-tonight", title: desk ? v10.stops.tonight : v10.stopsShort.tonight, sub: recordFace ? v10.stopSubs.tonight : planTag },
+    ...(waiting.length ? [{ id: "now-waiting", title: desk ? v10.stops.waiting : v10.stopsShort.waiting, sub: v10.stopSubs.waiting }] : []),
+    { id: "now-week", title: desk ? v10.stops.week : v10.stopsShort.week, sub: v10.stopSubs.week },
+    { id: "now-ahead", title: desk ? v10.stops.ahead : v10.stopsShort.ahead, sub: v10.stopSubs.ahead },
+  ];
+  const n = (stopId: string) => stops.findIndex(s => s.id === stopId) + 1;
+
+  // The stage: the kicker is the screen's one h1, then the arc with the lead's face, the lead, its why, the question.
+  // One door to Your day at a glance: beside the head on desktop, at the stage's foot on the phone.
+  const dayGlance = <MoreLink onClick={() => setActiveTab("day-windows")} className="nw-lnk">{t("nav.view.day-windows")}</MoreLink>;
+  const stageInner = <>
+    <div className="line between nw-stage-head">
+      <span className="gsec"><h1 className="kicker" data-testid="now-kicker">{copy.title(name)}</h1><StartHere>{v10.startHere}</StartHere></span>
+      {desk && dayGlance}
+      {/* Production's subtitle: stop 1's line in the desktop guide, under the h1 on the phone. */}
+      {!desk && <p className="nw-stage-sub">{copy.subtitle}</p>}
+    </div>
+    <NowStageContext.Provider value={stage}>{leadChain}</NowStageContext.Provider>
+    {showRightNow && <NowRightNow now={now} lang={lang} visit={rightNowVisit} tonight={rightNowTonight} />}
+    {(topic || onTopicOpen) && <div className="nw-stage-q"><NowQuestionRow data-module="now-focus" lang={lang} topic={topic} onOpen={onTopicOpen} onCreate={onTopicCreate ? () => onTopicCreate("") : undefined} phone={!desk} /></div>}
+    <div className="nw-meta nw-arc-legend">
+      {/* V77: the phone legend names the band; the desktop says its window and its count. */}
+      {evening.inBand > 0 && <span data-testid="now-evening-band"><i className="nw-sw" aria-hidden="true" /><span>{v10.eveningShort}<span className="sr-only">: {v10.eveningCount(evening.inBand, evening.total)}</span></span></span>}
+      <span><i className="nw-qh" aria-hidden="true" />{v10.quietFrom(quietFrom)}</span>
+      {!desk && dayGlance}
+    </div>
+  </>;
+  const stageScene = <Scene field="now" className={desk ? "x8 nw-stage" : "nw-stage"}
+    orbs={desk ? [{ size: 380, left: -210, bottom: -250, opacity: 0.6 }, { size: 340, right: -180, top: -230, opacity: 0.7, b: true }] : [{ size: 260, left: -170, bottom: -170, opacity: 0.55 }, { size: 230, right: -140, top: -150, opacity: 0.65, b: true }]}>
+    {stageInner}
+  </Scene>;
+  const waitingHead = (inline: boolean) => <div className={inline ? "rh" : "rhead"}>
+    {inline && <span className="rstop inline" aria-hidden="true">{n("now-waiting")}</span>}
+    <h2 className="h3" id={waitingTitleId}>{v10.stops.waiting}</h2>
+    {thingsWaiting > 0 && <span className="small">{v10.things(thingsWaiting)}</span>}
+  </div>;
+
+  return <DsRoot composition={composition} className="companion-page now-page now-v10" dir={he ? "rtl" : "ltr"}>
+    <Guide stops={stops} mini={!desk} label={v10.onThisPage} />
+    <Route composition={composition} tight={!desk}>
+      <RouteSection id="now-tonight" n={1} on stop={desk || !waiting.length ? true : true}>
+        {desk ? <Row12>
+          {waiting.length ? <>{stageScene}<aside className="siderail cards x4 nw-rail" id="now-waiting" aria-labelledby={waitingTitleId}>{waitingHead(true)}<NowWaiting composition={composition} steps={waiting} /></aside></> : <div className="x12 nw-stage-solo">{stageScene}</div>}
+        </Row12> : stageScene}
+      </RouteSection>
+      {!desk && waiting.length > 0 && <RouteSection id="now-waiting" n={n("now-waiting")} aria-labelledby={waitingTitleId}>
+        {waitingHead(false)}
+        <NowWaiting composition={composition} steps={waiting} />
+      </RouteSection>}
+      <RouteSection id="now-week" n={n("now-week")} aria-labelledby={weekTitleId}>
+        {desk ? <Row12>{thisWeek}{worth}</Row12> : thisWeek}
+      </RouteSection>
+      <RouteSection id="now-ahead" n={n("now-ahead")} aria-labelledby={aheadTitleId}>
+        {desk ? <Row12>
+          {actionPlan}
+          <Tile icon="calendar_month" kind="date" title={v10.stops.ahead} titleId={aheadTitleId} className="nw-ahead"><div className="nw-rows">{comingRows}</div>{comingExtras}</Tile>
+        </Row12> : <>
+          <div className="rhead"><h2 className="h3" id={aheadTitleId}>{v10.stops.ahead}</h2></div>
+          {actionPlan}
+          <section className="vt nw-ahead"><div className="nw-rows">{comingRows}</div>{comingExtras}</section>
+          {worth}
+        </>}
+      </RouteSection>
+    </Route>
+  </DsRoot>;
 }

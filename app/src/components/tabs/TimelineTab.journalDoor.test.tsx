@@ -42,6 +42,9 @@ vi.mock("../../hooks/useHashQuery", () => ({ useHashQuery: () => new URLSearchPa
 vi.mock("../../hooks/useSheetHistory", () => ({ useSheetHistory: () => (after?: () => void) => after?.() }));
 vi.mock("../ui/Sheet", () => ({ Sheet: () => null, useCompactSurface: () => state.phone }));
 vi.mock("../ui/Modal", () => ({ Modal: () => null }));
+// v10: the composition follows the width seam; Shelf by shelf reads no records here.
+vi.mock("../../design/useComposition", () => ({ useComposition: () => (state.phone ? "phone" : "desk") }));
+vi.mock("../../hooks/useObservations", () => ({ useObservations: () => [] }));
 vi.mock("../layout/Breadcrumb", () => ({ SheetBreadcrumb: () => null }));
 vi.mock("./JournalTab", () => ({ default: () => null }));
 // The real doors; only the width seam is set by the test.
@@ -130,14 +133,16 @@ describe("F-INT-1 — Moments on a phone shows the journal door exactly once", (
     expect(state.setActiveTab).toHaveBeenCalledWith("journal");
     // The door closes the view, inside its module.
     expect(html.indexOf(DOOR)).toBeGreaterThan(html.indexOf('data-module="moments-view"'));
-    // Navigation adds no block and no move: two modules, one primary move.
-    expect(count(html, "data-module=")).toBe(2);
+    // Navigation adds no block and no move: v10's five modules (toolbar · view ·
+    // By kind · The newest moment · Shelf by shelf), one primary move.
+    expect(count(html, "data-module=")).toBe(5);
     expect(count(html, "data-primary-move=")).toBe(1);
   });
 
   it.each(CASES)("wide screen, view %s, %s record: the same one door and no doors grid", (view, record) => {
     state.phone = false;
     const html = render(view, record);
+    expect(html).toContain('data-composition="desk"');
     expect(count(html, DOOR)).toBe(1);
     expect(html).not.toContain('data-testid="child-doors"');
     expect(journalPresses()).toBe(1);
@@ -156,7 +161,7 @@ describe("F-INT-1 — Moments on a phone shows the journal door exactly once", (
       const html = render(view, "empty");
       const door = doorHtml(html);
       expect(words(door.slice(door.indexOf(">") + 1)), view).toBe(translate(lang, "companion.moments.journal"));
-      expect(door.match(/class="msr rtl:-scale-x-100"[^>]*>arrow_forward</g), view).toHaveLength(1);
+      expect(door.match(/class="msr rtl:-scale-x-100"[^>]*>chevron_right</g), view).toHaveLength(1);
       expect(html).toContain(`dir="${lang === "he" ? "rtl" : "ltr"}"`);
     }
     if (lang === "he") expect(translate("he", "companion.moments.journal")).not.toMatch(/[A-Za-z]/);

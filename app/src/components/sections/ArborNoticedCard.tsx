@@ -132,7 +132,7 @@ export default function ArborNoticedCard() {
       {/* Eyebrow + unobtrusive per-detection dismiss */}
       <div className="col-span-full flex items-center gap-1.5">
         <Icon name="visibility" size={14} className="flex-shrink-0" style={{ color: MUTED }} />
-        <span className="text-[11.5px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>
+        <span className="text-[12px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>
           {t("noticed.eyebrow")}
         </span>
         <button
@@ -147,16 +147,16 @@ export default function ArborNoticedCard() {
 
       {/* Title */}
       <div className="min-w-0">
-        <p className="text-[14.5px] font-extrabold leading-snug" style={{ color: INK }}>{t("noticed.monitor.title")}</p>
-        <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>{buildMonitorBody()}</p>
-        <p className="mt-1 text-[11.5px] font-medium" style={{ color: INK }} data-testid="noticed-escalation">{t("noticed.monitor.cta")}</p>
+        <p className="text-[14px] font-extrabold leading-snug" style={{ color: INK }}>{t("noticed.monitor.title")}</p>
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: MUTED, textWrap: "pretty" } as React.CSSProperties}>{buildMonitorBody()}</p>
+        <p className="mt-1 text-[12px] font-medium" style={{ color: INK }} data-testid="noticed-escalation">{t("noticed.monitor.cta")}</p>
       </div>
 
       {/* C5 link: expert-cited activity for the flagged domain */}
       {citedActivity && (
         <button
           onClick={() => setActiveTab("daily-play")}
-          className="inline-flex items-center gap-1.5 text-[12.5px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 text-[12px] font-bold rounded-xl px-3 py-2 touch-target transition active:scale-[0.98]"
           style={{
             background: "var(--arbor-paper-elevated)",
             color: INK,

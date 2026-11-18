@@ -66,7 +66,7 @@ import { declaredAudio, DEV_NARRATION_ROOT, NARRATION_ROOT, narrationKey, narrat
 import type { AnyBook, BookLang, BookReaderChild, Page } from "../../lib/library/types";
 import "./bookReader.css";
 import { useBookProgress } from "./useBookProgress";
-import { usePlanPlateSrcs } from "../../lib/plans/planPlateSource";
+import { usePlanPlatePicture, usePlanPlateSrcs } from "../../lib/plans/planPlateSource";
 import { BEDTIME_PLAYBACK_RATE, BEDTIME_SFX_GAIN, TOGETHER_TYPE_SCALE, togetherPrompt, type ReadMode } from "../../lib/library/readMode";
 import type { BookProgressPosition } from "../../lib/library/bookBookmarks";
 
@@ -478,7 +478,8 @@ export function BookReader({
   // ── art inputs ─────────────────────────────────────────────────────────────
   // B-BOOK-75 plates: a plan plate in shared storage is read with the app's
   // auth and shown as a blob: URL (lib/plans/planPlateSource); static plates pass through.
-  const plateSrcs = usePlanPlateSrcs(print ? [print.url] : plate ? plateSources(plate, { dev }) : []);
+  const picture = usePlanPlatePicture(print ? [print.url] : plate ? plateSources(plate, { dev }) : []);
+  const plateSrcs = picture.sources;
   const statePlateId = staged ? statePlateAt(artStates, stage) : null;
   const statePlate = statePlateId ? plateTable[statePlateId] : undefined;
   const statePlateSrcsRaw = usePlanPlateSrcs(statePlate ? plateSources(statePlate, { dev }) : []);
@@ -623,6 +624,7 @@ export function BookReader({
             <BookPage
               layout={layout}
               plateSrcs={plateSrcs}
+              pictureRecovery={print || plate ? { pending: picture.pending, attempt: picture.attempt, unavailableLabel: bookString("picture.unavailable", lang), retryLabel: bookString("picture.retry", lang), onRetry: picture.retry } : undefined}
               printed={!!print}
               statePlateSrcs={statePlateSrcs}
               statePlateKey={statePlateId ?? undefined}

@@ -116,7 +116,8 @@ describe("#/smart-reminders — the move is the first switch, above the capture 
     expect(SRC).toContain('const PREFS_STAMP = { "data-primary-move": "set-reminder-prefs" } as const;');
     expect(SRC).toContain("{...(stamped ? PREFS_STAMP : undefined)}");
     expect(SRC).toContain("stamped={i === 0}");
-    expect(SRC).toMatch(/<div data-module="reminders-prefs" style=\{\{ display: "contents" \}\}>/);
+    // v10.1 (N-Remind): the prefs module is the rail's real block (no display:contents wrapper).
+    expect(SRC).toMatch(/<div className="sr-kinds" data-module="reminders-prefs">/);
   });
 
   for (const lang of ["en", "he"] as const) {
@@ -142,6 +143,10 @@ describe("#/smart-reminders — the move is the first switch, above the capture 
     });
   }
 
+  /* v10.1 (N-Remind) rendered check, Playwright at 375 × 812 on the seeded demo:
+     the first switch's bottom measured 599 px EN / 589 px HE, the capture dock's
+     top 686 px. On the phone the production subtitle follows the switches and
+     the day arc's face rides its bowl, so the move clears the dock. */
   it("negative control: with the contract card still above (the pre-fix order) the switch sat under the dock", () => {
     expect(firstSwitchBottom("en") + contractHeight("en")).toBeGreaterThan(FOLD_LIMIT);
   });

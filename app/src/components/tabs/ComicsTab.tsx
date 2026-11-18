@@ -94,7 +94,24 @@ import { comicShelfReadIsCurrent } from "../../lib/comicShelfScope";
 const savedMetaFingerprint = (meta: SavedComicMeta): string =>
   JSON.stringify([meta.id, meta.adventureId, meta.lang, meta.createdAt, meta.pageCount, meta.identityVersion, meta.pageKeys]);
 
-export default function ComicsTab() {
+/** Every Hero Comics state in one frame: the page shell on #/comics; inside
+ *  Together › Stories a section heading (h2), so the screen keeps one h1. */
+function ComicsFrame({ embedded, title, subtitle, children }: { embedded: boolean; title: string; subtitle?: string; children: React.ReactNode }) {
+  if (!embedded) return <RegisterShell kidMode={false} title={title} subtitle={subtitle}>{children}</RegisterShell>;
+  return (
+    <div className="space-y-4" data-testid="comics-embedded">
+      <div>
+        <h2 className="h3" style={{ margin: 0 }} dir="auto">{title}</h2>
+        {subtitle && <p className="small" dir="auto">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** `embedded`: Hero Comics inside Together › Stories (v10.1) — a section
+ *  heading instead of the page header, and no route stamps (Stories owns them). */
+export default function ComicsTab({ embedded = false }: { embedded?: boolean } = {}) {
   const { childProfile, openPaywall, milestones, behaviorLogs, playLogs } = useArbor();
   const { user } = useAuth();
   const { aiLang, t, uiLang } = useLanguage();
@@ -355,11 +372,11 @@ export default function ComicsTab() {
             <span className="min-w-0 font-black text-[15px] leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
               {title}
             </span>
-            <span className="ms-auto inline-block text-[10px] font-black px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+            <span className="ms-auto inline-block text-[12px] font-black px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
               {t("elev.comics.storyBook.chip")}
             </span>
           </div>
-          <p className="text-[11px] mt-2" style={{ color: "var(--arbor-muted)" }}>
+          <p className="text-[12px] mt-2" style={{ color: "var(--arbor-muted)" }}>
             {run.completedAt ? fmtDay(run.completedAt, uiLang) : t("elev.comics.storyBook.inProgress")}
           </p>
         </div>
@@ -367,9 +384,9 @@ export default function ComicsTab() {
     );
   };
   const ourBooksSection = (
-    <section data-module="comics-our-books" data-testid="comics-our-books" className="space-y-3">
+    <section data-module={embedded ? undefined : "comics-our-books"} data-testid="comics-our-books" className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <h2 className="m-0 text-[1.15rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+        <h2 className="m-0 text-[19px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
           {t("elev.comics.ourBooks.title")}
         </h2>
         {/* W0.7 — "Show all ages": only when the child's-age view hides
@@ -377,7 +394,7 @@ export default function ComicsTab() {
         {(ourBooksHidden > 0 || showAllAges) && (
           <span className="ms-auto inline-flex items-center gap-2">
             {!showAllAges && ourBooksHidden > 0 && (
-              <span className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }} dir="auto">
+              <span className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }} dir="auto">
                 {agefilterText("elev.agefilter.hiddenCount", he, { n: ourBooksHidden })}
               </span>
             )}
@@ -387,7 +404,7 @@ export default function ComicsTab() {
               aria-checked={showAllAges}
               onClick={toggleShowAllAges}
               data-testid="agefilter-toggle-comics"
-              className="inline-flex items-center gap-1 rounded-full px-3 min-h-[44px] text-[11.5px] font-bold"
+              className="inline-flex items-center gap-1 rounded-full px-3 min-h-[44px] text-[12px] font-bold"
               style={{
                 background: showAllAges ? "var(--arbor-yellow-soft)" : "var(--arbor-paper-elevated)",
                 border: "1px solid var(--arbor-rule-strong)",
@@ -411,14 +428,14 @@ export default function ComicsTab() {
   // B-PLAY-12: a text book reread in place — hero or not.
   if (openRun) {
     return (
-      <RegisterShell kidMode={false} title={t("nav.tab.comics")}>
+      <ComicsFrame embedded={embedded} title={t("nav.tab.comics")}>
         <StoryTextReader
           key={`${partitionKey}|${openRun.id}`}
           run={openRun}
           hero={{ name: childProfile.name, nameLatin: childProfile.nameLatin, gender: childProfile.gender }}
           onBack={() => setOpenRunId(null)}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -427,13 +444,13 @@ export default function ComicsTab() {
   // families must not hit English exactly where register matters most.
   if (!hasHero) {
     return (
-      <RegisterShell
-        kidMode={false}
+      <ComicsFrame
+        embedded={embedded}
         title={t("nav.tab.comics")}
         subtitle={he ? `הפכו את ${name} לכוכב של ספר קומיקס משלו.` : `Turn ${name} into the star of their own comic book.`}
       >
         <PlayPanel tone="lav" className="text-center">
-          <p className="text-[1.3rem] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+          <p className="text-[22px] font-extrabold mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
             {he ? `קודם כול, צרו את הגיבור של ${isolate(name)}` : `First, create ${isolate(name)}'s hero`}
           </p>
           <p className="text-sm mb-5 max-w-md mx-auto" style={{ color: "var(--arbor-muted)" }} dir="auto">
@@ -457,18 +474,19 @@ export default function ComicsTab() {
             run the Stories library listed is a text book here (law 6). */}
         {storyBooks.length > 0 && (
           <section data-testid="comics-story-books" aria-labelledby="comics-story-books-title" className="mt-6 space-y-3">
-            <h2 id="comics-story-books-title" className="m-0 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+            <h2 id="comics-story-books-title" className="m-0 text-[17px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
               {t("elev.comics.storyBooks.title")}
             </h2>
-            <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+            <div className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
               {storyBooks.map(storyBookTile)}
             </div>
           </section>
         )}
         {/* B-KID-87 (KB-29): the hero invitation is ONE card; the library
             below is readable without a hero (nothing is gated). */}
-        <div className="mt-6">{ourBooksSection}</div>
-      </RegisterShell>
+        {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+        {!embedded && <div className="mt-6">{ourBooksSection}</div>}
+      </ComicsFrame>
     );
   }
 
@@ -486,7 +504,7 @@ export default function ComicsTab() {
       title: index === 0 ? journeyTitle : `${adventureTitle(openAdventure, journeyMeta.lang)} · ${index}`,
     }));
     return (
-      <RegisterShell kidMode={false} title={journeyTitle}>
+      <ComicsFrame embedded={embedded} title={journeyTitle}>
         <SavedComicReader
           key={`${partitionKey}|${visibleOpenBook.id}|${journeyMeta.createdAt}`}
           title={journeyTitle}
@@ -500,7 +518,7 @@ export default function ComicsTab() {
               : state);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
   if (visibleOpenBook && openAdventure) {
@@ -523,7 +541,7 @@ export default function ComicsTab() {
         }
       : undefined;
     return (
-      <RegisterShell kidMode={false} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
+      <ComicsFrame embedded={embedded} title={adventureTitle(openAdventure, visibleOpenBook.lang)}>
         <ComicReader
           key={`${partitionKey}|${openAdventure.id}|${visibleOpenBook.lang}|${meta?.createdAt ?? "new"}`}
           adventure={openAdventure}
@@ -542,7 +560,7 @@ export default function ComicsTab() {
             openPaywall(err.feature || "heroComic", err.plan);
           }}
         />
-      </RegisterShell>
+      </ComicsFrame>
     );
   }
 
@@ -567,12 +585,9 @@ export default function ComicsTab() {
   // ComicsTab (KidModeOverlay maps only `arcade` and `journeys`, and the
   // in-hub Hero Comics tile is behind `kidNav`, which is null while kid-locked).
   // So the register is fixed at parent: kit chrome, no `.arbor-play` wash.
-  return (
-    <RegisterShell
-      kidMode={false}
-      title={t("nav.tab.comics")}
-      subtitle={he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`}
-    >
+  const subtitle = he ? `כל הרפתקה היא ספר קומיקס שלם — בכיכוב ${name}!` : `Every adventure is a whole comic book — starring ${name}!`;
+  const mainBody = (
+    <>
 
       {/* item 11 (IA-02): the surface contract reaches the DOM. `data-module`
           marks a top-level sibling module (counted against the route's
@@ -582,11 +597,12 @@ export default function ComicsTab() {
       {/* B-KID-87 (KB-29): Our books leads; the "{n} of {total} books on the
           shelf" summary is gone (a completion meter on a library). The age
           switch moved into the Our books header. */}
-      {ourBooksSection}
+      {/* Embedded in Stories, the books are Stories' own "More stories" shelf (each capability once). */}
+      {!embedded && ourBooksSection}
 
       {/* The comic books: the ones made before, and the authored adventures a
           parent can still build as a comic. */}
-      <h2 className="m-0 mt-2 text-[1.05rem] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
+      <h2 className="m-0 mt-2 text-[17px] font-extrabold leading-tight" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }} dir="auto">
         {he ? `מדף הקומיקס של ${isolate(name)}` : `${isolate(name)}'s comic bookshelf`}
       </h2>
 
@@ -642,7 +658,7 @@ export default function ComicsTab() {
       {/* Book grid — every canon adventure as a multi-page comic book. The
           declared primaryMove for #/comics is "open-comic": opening a book off
           the shelf. Stamped once, on the shelf itself. */}
-      <div data-module="comics-shelf" data-primary-move="open-comic" className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+      <div data-module={embedded ? undefined : "comics-shelf"} data-primary-move={embedded ? undefined : "open-comic"} className="grid gap-4" style={{ gridTemplateColumns: embedded ? "repeat(auto-fill,minmax(220px,1fr))" : "repeat(auto-fit,minmax(240px,1fr))" }}>
         {shelfAdventures.map((a) => {
           const w = { bg: STORY_PACK_SOFT[a.pack], ink: STORY_PACK_LABEL[a.pack].ink, label: STORY_PACK_LABEL[a.pack].en, labelHe: STORY_PACK_LABEL[a.pack].he };
           const bookCover = storyCoverArt(kidTheme, a.adventureId);
@@ -736,30 +752,30 @@ export default function ComicsTab() {
                         a parent-built book and a read-along comic reads as two
                         books rather than a duplicate. */}
                     {a.kind === "journey" && (
-                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                      <span className="inline-block text-[12px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
                         {he ? "מהסיפור" : "From the story"}
                       </span>
                     )}
                     {adventureFit(a.adventureId) === "out" && getStorySpec(a.adventureId) && (
-                      <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
+                      <span className="inline-block text-[12px] font-black px-2 py-0.5 rounded-full" dir="auto" style={{ background: "#fff", border: "2px solid var(--comic-ink)", color: "var(--arbor-ink)" }}>
                         {agefilterText("elev.agefilter.chip", he, {
                           min: getStorySpec(a.adventureId)!.ageRange[0],
                           max: getStorySpec(a.adventureId)!.ageRange[1],
                         })}
                       </span>
                     )}
-                    <span className="inline-block text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
+                    <span className="inline-block text-[12px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ border: "2px solid var(--comic-ink)", color: w.ink }}>
                       {he ? w.labelHe : w.label}
                     </span>
                   </span>
                 </div>
                 {saved && !offDevice && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-black mt-2" style={{ color: "var(--arbor-green-ink)" }}>
+                  <span className="inline-flex items-center gap-1 text-[12px] font-black mt-2" style={{ color: "var(--arbor-green-ink)" }}>
                     <Icon name="check" size={14} /> {he ? "על המדף" : "On the shelf"}
                   </span>
                 )}
                 {offDevice && (
-                  <p className="text-[11px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
+                  <p className="text-[12px] mt-2" dir="auto" style={{ color: "var(--arbor-muted)" }}>
                     {he
                       ? "הדפים של הקומיקס הזה שמורים במכשיר שבו נקרא הסיפור. כדי ליצור קומיקס חדש כאן, קראו את הסיפור שוב במכשיר הזה (סיפורי גיבורים)."
                       : "This comic's pages live on the device the story was read on. To make a new one here, read the story again on this device (Hero Stories)."}
@@ -787,6 +803,7 @@ export default function ComicsTab() {
             : `Comics use ${isolate(name)}'s saved cartoon hero — never a real photo. Images are AI-made and provenance-watermarked.`}
         </span>
       </div>
-    </RegisterShell>
+    </>
   );
+  return <ComicsFrame embedded={embedded} title={t("nav.tab.comics")} subtitle={subtitle}>{mainBody}</ComicsFrame>;
 }

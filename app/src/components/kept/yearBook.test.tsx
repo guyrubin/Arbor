@@ -48,10 +48,12 @@ describe("the year book", () => {
     expect(html).toContain('lang="en">Moon &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;');
     expect(html).not.toContain("שלושה צעדים");
     expect(html).not.toMatch(/class="brand"|class="meta"|class="footer"|<img|<script>alert|\bcount\b|\bscore\b|\bprogress\b|https?:/);
-    const shown = renderToStaticMarkup(<KeptYearBook beforeExport={() => true} book={book} childName="Noa" disabled={false} asPage />);
+    // v10.1: the year book opens inside Moments, whose header holds the h1.
+    const shown = renderToStaticMarkup(<KeptYearBook beforeExport={() => true} book={book} childName="Noa" disabled={false} />);
     expect(shown).toContain('data-testid="kept-year-print"');
     expect(shown).toContain('data-testid="kept-year-send"');
-    expect(shown).toContain("<h1");
+    expect(shown).toContain('<h2 data-testid="kept-year-title">');
+    expect(shown).not.toContain("<h1");
     expect(shown).not.toContain("<img");
   });
 
@@ -72,21 +74,26 @@ describe("the year book", () => {
     expect(list).toContain("Morning light");
     expect(list).toContain("שלושה צעדים");
     h.query = "year=2026";
-    const open = renderToStaticMarkup(<KeptThingsPage asPage />);
+    const open = renderToStaticMarkup(<KeptThingsPage />);
     expect(open).toContain('data-testid="kept-year-book"');
     expect(open).toContain("Morning light");
     expect(open).toContain('Moon &lt;script&gt;');
     expect(open).not.toContain("שלושה צעדים");
     expect(open).not.toContain('data-testid="kept-month"');
-    expect(open.match(/<h1\b/g)).toHaveLength(1);
+    // v10.1: inside Moments the year book's title is an h2 (Moments holds the h1).
+    expect(open.match(/<h1\b/g)).toBeNull();
+    expect(open).toContain('<h2 data-testid="kept-year-title">');
     const source = readFileSync(new URL("./KeptYearBook.tsx", import.meta.url), "utf8");
     expect(source).not.toMatch(/<img|photoUrl|releaseChildLikeness\(/);
   });
 
   it("is a parent door on Moments, and search can name it", () => {
     const moments = readFileSync(new URL("../moments/MomentsBody.tsx", import.meta.url), "utf8");
-    expect(moments).toContain('data-testid="moments-year-book"');
-    expect(moments).toContain('goToRoute("development", { view: "kept" })');
+    // v10: the doors row is built from one list ([testid, label, open]).
+    // v10.1: the reader is Moments, kind Kept (#/timeline?kind=kept&reader=book).
+    // v10.3: the rail's link list ([testid, glyph, label, open]): "Kept things and the Year book".
+    expect(moments).toContain('["moments-year-book", "menu_book", v.keptTitle, () => openReader()]');
+    expect(moments).toContain('goToRoute("timeline", { kind: "kept", reader: "book", year })');
     expect(searchCatalog("year book").some(row => row.id === "page:development:year-book" && row.view === "kept")).toBe(true);
     expect(searchCatalog("ספר השנה").some(row => row.id === "page:development:year-book")).toBe(true);
     for (const lang of ["en", "he"] as const) expect(translate(lang, "kept.yearBook")).not.toBe("kept.yearBook");

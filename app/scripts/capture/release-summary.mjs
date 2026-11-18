@@ -1,6 +1,6 @@
 /** Pure aggregate verdict. Filesystem adapter lives in summarize-release.mjs. */
 import { expectedReleaseInteractionStates, missingReleaseInteractionEvidence } from './release-interactions.mjs';
-import { releaseMatrix, RELEASE_VIEWPORTS, releaseIdentity, releaseInventory, missingBaseEvidence, shardRoutes } from './release-config.mjs';
+import { RELEASE_ROUTE_COUNT, releaseMatrix, RELEASE_VIEWPORTS, releaseIdentity, releaseInventory, missingBaseEvidence, shardRoutes } from './release-config.mjs';
 import { SINGLE_GOAL_STATES } from './single-goal-contract.mjs';
 import { validSingleGoalNetwork } from './single-goal-network.mjs';
 import { validRecordPrintReceipt } from './record-print.mjs';
@@ -90,7 +90,7 @@ export function summarizeRelease(records, identity, scope = 'all') {
     if (unique.length) failures.push({ id: id ?? 'unknown', reasons: unique });
   }
   for (const id of expected) if (!seen.has(id)) failures.push({ id, reasons: ['SHARD_NOT_RETURNED'] });
-  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kept-search-release', 'kid-entry-release', 'parent-kid-release'].includes(scope) ? 172 : 0;
+  const expectedBaseCells = ['all', 'record-release', 'confirmed-actions-release', 'kept-search-release', 'kid-entry-release', 'parent-kid-release'].includes(scope) ? RELEASE_ROUTE_COUNT * 4 : 0;
   if (baseCells !== expectedBaseCells) failures.push({ id: 'base-matrix', reasons: ['BASE_MATRIX_INCOMPLETE'] });
   const expectedFirstRunPrimaryShots = matrix.filter(cell => cell.group === 'first-run-preview').length * FIRST_RUN_PREVIEW_STATES.length;
   if (expectedFirstRunPrimaryShots > 0 && firstRunPrimaryShots.size !== expectedFirstRunPrimaryShots) failures.push({ id: 'first-run-primary-matrix', reasons: ['FIRST_RUN_PRIMARY_MATRIX_INCOMPLETE'] });

@@ -198,7 +198,7 @@ export default function RoutinesCard() {
               <div className="flex items-center justify-between">
                 <strong className="text-sm" style={{ color: "var(--arbor-ink)" }}>{r.name}</strong>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: shown.steps.length })}</span>
+                  <span className="text-[12px]" style={{ color: "var(--arbor-muted)" }} dir="auto">{t("elev.closeloop.routines.stepsDone", { done, total: shown.steps.length })}</span>
                   <button type="button" className="touch-target rounded-lg" data-testid={`routine-reset-${r.id}`} disabled={unavailable} onClick={() => writeChecklist(r, row, { ...shown, steps: shown.steps.map(s => ({ ...s, done: false })) })} aria-label={t("aria.resetRoutine")} style={{ color: "var(--arbor-muted)" }}><Icon name="restart_alt" size={16} /></button>
                   <button type="button" className="touch-target rounded-lg" data-testid={`routine-delete-${r.id}`} disabled={unavailable} onClick={() => { if (!actionable(r, row)) return; retire(r); void col.remove(r.id); }} aria-label={t("aria.deleteRoutine")} style={{ color: "var(--arbor-muted)" }}><Icon name="delete" size={16} /></button>
                 </div>

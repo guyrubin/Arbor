@@ -21,6 +21,7 @@
  * - The art is NOT mirrored in Hebrew (v1).
  */
 import { useEffect, useState, type CSSProperties } from "react";
+import { Icon } from "../ui/Icon";
 import { overlayRect, type BookPageLayout, type Rect, type ShadowEllipse } from "../../lib/library/bookPageLayout";
 import type { PageOverlay, PlateOccluder } from "../../lib/library/types";
 
@@ -57,6 +58,15 @@ export interface BookPageProps {
   onItem?: (id: string) => void;
   onArtTap?: () => void;
   pictureLabel: string;
+  /** A missing shared picture can be retried without restarting the story.
+   * No substitute scene or new child identity is fabricated. */
+  pictureRecovery?: {
+    pending: boolean;
+    attempt: number;
+    unavailableLabel: string;
+    retryLabel: string;
+    onRetry: () => void;
+  };
 }
 
 const px = (n: number) => `${Math.round(n * 10) / 10}px`;
@@ -109,8 +119,15 @@ function featherMask(f: number, ft: number): CSSProperties {
   return { maskImage: `${v}, ${h}`, WebkitMaskImage: `${v}, ${h}`, maskComposite: "intersect", WebkitMaskComposite: "source-in" };
 }
 
-export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = null, statePlateKey, fgSrc, heroSrc, heroKey, tint, overlays = [], occluders = [], items = [], onItem, onArtTap, pictureLabel }: BookPageProps) {
+export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = null, statePlateKey, fgSrc, heroSrc, heroKey, tint, overlays = [], occluders = [], items = [], onItem, onArtTap, pictureLabel, pictureRecovery }: BookPageProps) {
   const { art, plate, hero, shadow } = layout;
+  const plateKey = JSON.stringify([plateSrcs, pictureRecovery?.attempt ?? 0]);
+  const [failedPlate, setFailedPlate] = useState<string | null>(null);
+  const pictureUnavailable = !!pictureRecovery && !pictureRecovery.pending && (plateSrcs.length === 0 || failedPlate === plateKey);
+  const compactRecovery = art.w < 220 || art.h < 170 || (layout.pageType === "cover" && art.h < 360);
+  // Cover art is not mirrored in Hebrew. Keep a short-cover control in the
+  // physical margin opposite the title, above the separate Open control.
+  const recoverySide = layout.pageType === "cover" && layout.textPage.x - art.x < 52 ? "right" : "left";
   const [heroMissing, setHeroMissing] = useState(false);
   useEffect(() => setHeroMissing(false), [heroSrc]);
   const showHero = !printed && !!hero && !!heroSrc && !heroMissing;
@@ -153,11 +170,11 @@ export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = 
       : undefined;
 
   return (
-    <div className="bk-art" data-book-art="" data-printed={printed ? "" : undefined} onClick={onArtTap} style={{ left: px(art.x), top: px(art.y), width: px(art.w), height: px(art.h) }}>
+    <div className="bk-art" data-book-art="" data-printed={printed ? "" : undefined} data-picture-unavailable={pictureUnavailable ? "" : undefined} onClick={onArtTap} style={{ left: px(art.x), top: px(art.y), width: px(art.w), height: px(art.h) }}>
       <div className="bk-plate" data-book-plate="" role="img" aria-label={pictureLabel} style={rel(plate, art)}>
         {/* a print is drawn "cover" into the PLATE's rect (its 3:2 vs the plate's
             1.49 differs by < 1 %): the frame never jumps between print and composite */}
-        <FallbackImg srcs={plateSrcs} className={printed ? "bk-fill-cover" : "bk-fill"} />
+        <FallbackImg key={plateKey} srcs={plateSrcs} className={printed ? "bk-fill-cover" : "bk-fill"} onAllFailed={() => setFailedPlate(plateKey)} />
         {statePlateSrcs && statePlateSrcs.length > 0 && (
           <div key={statePlateKey} className="bk-state-plate" data-book-state-plate={statePlateKey ?? ""}>
             <FallbackImg srcs={statePlateSrcs} className="bk-fill" />
@@ -244,6 +261,16 @@ export function BookPage({ layout, plateSrcs, printed = false, statePlateSrcs = 
           </button>
         );
       })}
+      {pictureUnavailable && pictureRecovery && (
+        <div className="bk-picture-recovery" data-book-picture-recovery="" data-compact={compactRecovery ? "" : undefined} data-cover-side={recoverySide}>
+          <span className="bk-picture-mark" aria-hidden="true"><Icon name="auto_stories" size={30} /></span>
+          <p role="status">{pictureRecovery.unavailableLabel}</p>
+          <button type="button" data-book-picture-retry="" aria-label={pictureRecovery.retryLabel} onClick={(e) => {
+            e.stopPropagation();
+            pictureRecovery.onRetry();
+          }}><Icon name="replay" size={22} /><span className="bk-picture-retry-label">{pictureRecovery.retryLabel}</span></button>
+        </div>
+      )}
     </div>
   );
 }

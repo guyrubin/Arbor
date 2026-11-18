@@ -31,12 +31,12 @@ const body = el("p", { key: "b" }, "body");
 const CARD =
   '<div class="rounded-xl p-3.5 bg-white" style="border:1px solid var(--arbor-rule)">' +
   '<div class="flex items-center justify-between gap-2 mb-2">' +
-  '<span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider" style="color:var(--arbor-green-ink)">' +
+  '<span class="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider" style="color:var(--arbor-green-ink)">' +
   "<i></i> Try today</span></div><p>body</p></div>";
 
 const INSET =
   '<div class="rounded-xl p-3" style="background:var(--arbor-paper-deep);border:1px solid var(--arbor-rule)">' +
-  '<span class="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider mb-1.5" style="color:var(--arbor-green-ink)">' +
+  '<span class="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-wider mb-1.5" style="color:var(--arbor-green-ink)">' +
   "<i></i> Try today</span><p>body</p></div>";
 
 const GUIDE =
@@ -155,7 +155,7 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
   const SURFACES: Array<[string, RegExp]> = [
     ["components/coach/CoachAnswerCards.tsx", /<SayThis[\s\S]{0,200}?contract\.parentScript/],
     ["components/behaviors/HardMomentsSection.tsx", /hm\.section\.sayThis"\s*\?\s*\([\s\S]{0,200}?<SayThis/],
-    ["components/tabs/PlansTab.tsx", /<SayThis text=\{sc\.say\}/],
+    ["components/plans/v10/PlanScripts.tsx", /<SayThis text=\{say\}/],
     ["components/journal/JournalMomentDetails.tsx", /<SayThis text=\{inlineCoRegulationScripts\[log\.id\]\.explanation\}/],
   ];
   for (const [rel, re] of SURFACES) {
@@ -164,8 +164,9 @@ describe("B-ASKJB-24 — every say-this surface renders the shared SayThis", () 
     });
   }
 
-  it("PlansTab no longer hand-rolls the quoted script", () => {
+  it("Plans no longer hand-rolls the quoted script", () => {
     expect(strip(read("components/tabs/PlansTab.tsx"))).not.toMatch(/“\{sc\.say\}”/);
+    expect(strip(read("components/plans/v10/PlanScripts.tsx"))).not.toMatch(/“\{say\}”/);
   });
 
   // Scoped on purpose: LanguageLabTab / MilestonesTab still carry Growth-lane
@@ -229,9 +230,9 @@ describe("AI-17 — Checklist is one tickable step per item", () => {
 /* ── KeepBar ──────────────────────────────────────────────────────────────── */
 
 const ACCENT_BTN =
-  '<button class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition" style="background:var(--arbor-green-soft);color:var(--arbor-green-ink)">';
+  '<button class="inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1.5 rounded-lg transition" style="background:var(--arbor-green-soft);color:var(--arbor-green-ink)">';
 const OUTLINE_BTN =
-  '<button class="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style="color:var(--arbor-muted);border:1px solid var(--arbor-rule)">';
+  '<button class="inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1.5 rounded-lg transition bg-white" style="color:var(--arbor-muted);border:1px solid var(--arbor-rule)">';
 
 const keepBar = renderToStaticMarkup(
   el(KeepBar, {

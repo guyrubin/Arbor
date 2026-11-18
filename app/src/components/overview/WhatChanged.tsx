@@ -200,7 +200,7 @@ export default function WhatChanged({
           <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full" style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-green-ink)" }}>
             <Icon name="auto_stories" size={17} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-extrabold" style={{ color: "var(--arbor-ink)" }}>
             {t("elev.recap.ready", { name: firstName })}
           </span>
           <Icon name="chevron_right" size={17} className="flex-none rtl:-scale-x-100" style={{ color: "var(--arbor-faint)" }} />
@@ -233,7 +233,7 @@ export default function WhatChanged({
                     <Icon name={LINE_ICON[line.kind]} size={17} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span dir="auto" className="block truncate text-[13.5px] font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</span>
+                    <span dir="auto" className="block truncate text-[13px] font-bold" style={{ color: "var(--arbor-ink)" }}>{title}</span>
                     {sub && <span dir="auto" className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--arbor-muted)" }}>{sub}</span>}
                   </span>
                   <Icon name="chevron_right" size={17} className="flex-none rtl:-scale-x-100" style={{ color: "var(--arbor-faint)" }} />
@@ -248,7 +248,7 @@ export default function WhatChanged({
         <button
           type="button"
           onClick={onMore}
-          className="mt-2 inline-flex min-h-11 items-center gap-1.5 px-1 text-[12.5px] font-extrabold"
+          className="mt-2 inline-flex min-h-11 items-center gap-1.5 px-1 text-[12px] font-extrabold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
           {t("elev.sincevisit.more", { n: num(hiddenCount) })}
@@ -259,12 +259,12 @@ export default function WhatChanged({
       {(coldKey || totalDays > 0) && (
         <div className="mt-3 space-y-1 border-t pt-3" style={{ borderColor: "var(--arbor-rule)" }}>
           {coldKey && (
-            <p data-testid="today-coldstart-line" className="text-[11.5px]" style={{ color: "var(--arbor-muted)" }}>
+            <p data-testid="today-coldstart-line" className="text-[12px]" style={{ color: "var(--arbor-muted)" }}>
               {t(coldKey, { n: num(rhythmDaysNeeded ?? 0), name: firstName })}
             </p>
           )}
           {totalDays > 0 && (
-            <p className="text-[11.5px] font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="what-changed-days-together">
+            <p className="text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }} data-testid="what-changed-days-together">
               {t("elev.recap.days", { n: num(totalDays) })}
             </p>
           )}

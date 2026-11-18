@@ -124,7 +124,7 @@ export function SectionSkeleton({
             (onRetry ?? retrySync)();
             restart();
           }}
-          className="flex-shrink-0 rounded-xl px-3 py-2 min-h-[44px] text-[11px] font-bold transition"
+          className="flex-shrink-0 rounded-xl px-3 py-2 min-h-[44px] text-[12px] font-bold transition"
           dir="auto"
           style={{ background: "var(--arbor-paper)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}
         >

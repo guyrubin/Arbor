@@ -20,6 +20,12 @@ vi.mock("react", async (importOriginal) => {
     if (equal(old?.deps, deps)) return old!.value;
     const value = factory(); h.slots[index] = { value, deps }; return value;
   };
+  const effect = (run: Effect, deps?: readonly unknown[]) => {
+    const index = h.cursor++, old = h.slots[index];
+    if (equal(old?.deps, deps)) return;
+    const slot: Slot = h.slots[index] = { deps, cleanup: old?.cleanup };
+    h.effects.push(() => { slot.cleanup?.(); slot.cleanup = run() || undefined; });
+  };
   return { ...actual,
     useState(initial: unknown) {
       const index = h.cursor++, slot = h.slots[index] ??= { value: typeof initial === "function" ? (initial as () => unknown)() : initial };
@@ -30,12 +36,8 @@ vi.mock("react", async (importOriginal) => {
     useCallback: (callback: unknown, deps: readonly unknown[]) => memo(() => callback, deps),
     useContext: () => null,
     useSyncExternalStore: (_subscribe: unknown, get: () => unknown) => get(),
-    useEffect(effect: Effect, deps?: readonly unknown[]) {
-      const index = h.cursor++, old = h.slots[index];
-      if (equal(old?.deps, deps)) return;
-      const slot: Slot = h.slots[index] = { deps, cleanup: old?.cleanup };
-      h.effects.push(() => { slot.cleanup?.(); slot.cleanup = effect() || undefined; });
-    },
+    useEffect: effect,
+    useLayoutEffect: effect,
   };
 });
 vi.mock("../../../context/ArborContext", () => ({ useArbor: () => ({ childProfile: h.child }), useArborOptional: () => ({ childProfile: h.child }) }));
@@ -65,7 +67,8 @@ import { StudioGame, StudioGameSession, CameraFreeMimic, STUDIO_GAME_COMPONENTS 
 import { studioCopy } from "./studioCopy";
 import * as artManifest from "../../../lib/kidThemeManifest";
 import { StudioPlayHero } from "./StudioPlayHero";
-import { studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
+import { studioActivity, studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
+import { StudioWorldPlate } from "./StudioStage";
 import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
 import { GameFinish } from "../game/GameShell";
@@ -86,9 +89,10 @@ function nodes(node: unknown): ReactElement<Props>[] {
   if (!isValidElement<Props>(node)) return [];
   return [node, ...nodes(node.props.children)];
 }
-function render(key: string, component: () => unknown): ReactElement<Props>[] {
+function render(key: string, component: () => unknown, attach?: (tree: ReactElement<Props>[]) => void): ReactElement<Props>[] {
   h.slots = h.stores.get(key) ?? []; h.stores.set(key, h.slots); h.cursor = 0;
   const tree = nodes(component());
+  attach?.(tree);
   for (const effect of h.effects.splice(0)) effect();
   return tree;
 }
@@ -122,14 +126,41 @@ describe("V2 entry, identity and persistent result", () => {
       expect(tree[0].props["aria-label"]).toBe(studioCopy(lang).activities[id].title);
     }
   });
+  it.each([false, true])("Sneak measures its real host and retires its viewport observers; app slot=%s", inApp => {
+    const listeners = new Map<string, () => void>();
+    const browser = { innerHeight: 812, scrollY: 140,
+      addEventListener: (type: string, fn: () => void) => listeners.set(type, fn),
+      removeEventListener: (type: string) => listeners.delete(type),
+    };
+    vi.stubGlobal("window", browser);
+    const disconnect = vi.fn(), observe = vi.fn();
+    vi.stubGlobal("ResizeObserver", class { observe = observe; disconnect = disconnect; });
+    let slotHeight = 640;
+    const slot = { getBoundingClientRect: () => ({ height: slotHeight }) };
+    const element = { closest: () => inApp ? slot : null, parentElement: {}, getBoundingClientRect: () => ({ top: 76 - browser.scrollY }) };
+    const draw = () => render("sneak-size", () => StudioGameSession({ activityId: "sneak", onBack: vi.fn() }), tree => {
+      if (tree[0].props["data-studio-phase"] === "play") (tree[0].props.ref as { current: unknown }).current = element;
+    });
+    click(draw().find(node => node.props["data-studio-start"] === ""));
+    draw();
+    expect(draw()[0].props.style).toEqual({ blockSize: inApp ? 640 : 736 });
+    browser.innerHeight = 980; slotHeight = 808;
+    listeners.get("resize")!();
+    expect(draw()[0].props.style).toEqual({ blockSize: inApp ? 808 : 904 });
+    expect(observe).toHaveBeenCalledWith(inApp ? slot : element);
+    cleanup("sneak-size");
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(listeners.size).toBe(0);
+  });
   it("intro uses neutral world imagery with one profile hero and refuses a stock-child replacement", () => {
     const draw = () => render("visual", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
     let tree = draw();
     expect(tree.filter(node => node.type === StudioPlayHero)).toHaveLength(1);
+    // The window shows the game's cover; the room behind it is the world's own film plate (B-KID-177).
     expect(tree.filter(node => node.type === "img").map(node => node.props.src)).toEqual([
       artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
-      artManifest.kidArt("film3d", "studio.cover.memory")!.src480,
     ]);
+    expect(tree.filter(node => node.type === StudioWorldPlate).map(node => node.props.worldId)).toEqual([studioActivity("memory")!.worldId]);
     // The overlay already owns Back; the intro only adds its primary action.
     expect(tree.filter(isButton)).toHaveLength(1);
     const art = artManifest.kidArt("film3d", "studio.cover.memory")!;
@@ -152,6 +183,7 @@ describe("V2 entry, identity and persistent result", () => {
     const draw = () => render("session", () => StudioGameSession({ activityId: "memory", onBack: vi.fn() }));
     click(draw().find(node => node.props["data-studio-start"] === ""));
     const playing = draw(), firstGame = playing.find(node => node.type === STUDIO_GAME_COMPONENTS.memory)!;
+    expect(playing.find(node => node.type === GameCompletionProvider)!.props.replay).toBe(0);
     const complete = playing.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void;
     h.session = { playOnly: true, onComplete: complete };
     expect(render("finish", () => GameFinish({ title: "Done", onPlayAgain: vi.fn(), playAgainLabel: "Again", homeLabel: "Home" }))).toEqual([]);
@@ -161,6 +193,7 @@ describe("V2 entry, identity and persistent result", () => {
     expect(draw().find(node => node.type === KidFinishMoment)).toBeDefined();
     expect(h.sound).toHaveBeenCalledWith("finish");
     click(tree.find(node => node.props["data-studio-replay"] === "")); tree = draw();
+    expect(tree.find(node => node.type === GameCompletionProvider)!.props.replay).toBe(1);
     expect(tree.find(node => node.type === STUDIO_GAME_COMPONENTS.memory)?.key).not.toBe(firstGame.key);
     complete(); expect(draw()[0].props["data-studio-phase"]).toBe("play");
     const nextComplete = tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void;
@@ -171,20 +204,19 @@ describe("V2 entry, identity and persistent result", () => {
     const keys = [draw()]; h.uid = "owner-b"; keys.push(draw()); h.child.id = "child-b"; keys.push(draw()); keys.push(draw("beat"));
     expect(new Set(keys).size).toBe(4);
   });
-  it("a maker is the unavailable card while the switch is off, and a full intro, play, result and replay loop when on", () => {
+  it("a maker opens for every child, switch on or off: play, result and replay", () => {
     for (const id of ["mend-bowl", "stitch-garden", "paper-boat", "season-dial", "crank-works", "windup-race", "clay-theatre", "bottle-lab", "ice-age-friend", "tiny-builders", "fox-trail", "maker-desk"] as const) {
       resetStudioNextFlagForTests();
       const off = render(`${id}:off`, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
-      expect(off[0].props["data-studio-game-unavailable"]).toBe(""); expect(off.some(node => node.type === StudioMakerCover)).toBe(false);
+      expect(off[0].props["data-studio-phase"]).toBe("play"); expect(off.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
       vi.stubGlobal("localStorage", { getItem: (k: string) => k === "arbor.flags.studioNext" ? "1" : null, setItem: () => {}, removeItem: () => {} });
       resetStudioNextFlagForTests();
       try {
         const draw = () => render(id, () => StudioGameSession({ activityId: id, onBack: vi.fn() }));
         let tree = draw();
-        expect(tree[0].props["data-studio-phase"]).toBe("intro");
-        expect(tree.filter(node => node.type === StudioMakerCover).map(node => node.props.id)).toEqual([id, id]);
-        expect(tree.filter(node => node.type === "img")).toHaveLength(0);
-        click(tree.find(node => node.props["data-studio-start"] === "")); tree = draw();
+        // A maker opens straight into play: its own opening shot is the title, so no intro card stands in front of it.
+        expect(tree[0].props["data-studio-phase"]).toBe("play");
+        expect(tree.some(node => node.props["data-studio-start"] === "")).toBe(false);
         expect(tree.some(node => node.type === STUDIO_GAME_COMPONENTS[id])).toBe(true);
         const made = id === "mend-bowl" ? { kind: "bowl", glaze: "rose", pattern: 0, seams: [3, 2, 1, 0] } : id === "stitch-garden" ? { kind: "textile", cloth: "sage", motifs: [{ flower: "poppy", cell: 5, thread: 2 }] } : id === "bottle-lab" ? { kind: "bottle", shape: "flask", tint: "amber", finish: "frost", stickers: [] } : undefined;
         (tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as (c?: unknown) => void)(made);

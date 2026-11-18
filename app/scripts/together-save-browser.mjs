@@ -1,4 +1,5 @@
-/** Real Together view and dialog surfaces; synthetic auth, records and writes.
+/** Real Together › Play view (v10.1: the away ideas and their keep moved here
+ * from #/practice) and dialog surfaces; synthetic auth, records and writes.
  * Network is blocked. This is not authenticated or physical-device acceptance. */
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -11,32 +12,30 @@ const output = path.resolve('output/together-save');
 await mkdir(output, { recursive: true });
 const fixture = `
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';import {flushSync} from 'react-dom';
-import {MotionConfig} from 'motion/react';import TogetherView from './src/components/companion/TogetherView';
+import {MotionConfig} from 'motion/react';import DailyPlayTab from './src/components/tabs/DailyPlayTab';
 window.writes=[];window.keptEvents=[];
 window.save=(text,options)=>new Promise((resolve,reject)=>window.writes.push({text,options,resolve,reject,owner:window.fixture.owner,child:window.fixture.child}));
 function App(){const [,render]=useState(0);window.family=(owner,child,loading=false)=>{Object.assign(window.fixture,{owner,child,loading});flushSync(()=>render(n=>n+1));};
-return <MotionConfig reducedMotion="always"><TogetherView/></MotionConfig>;}
+return <MotionConfig reducedMotion="always"><DailyPlayTab/></MotionConfig>;}
 createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);`;
 
 async function bundle(negative) {
   const modules = {
     AuthContext: `export const useAuth=()=>({firebaseEnabled:true,loading:window.fixture.loading,user:window.fixture.owner?{uid:window.fixture.owner}:null});`,
-    ArborContext: `export const useArbor=()=>({childProfile:{id:window.fixture.child,name:'Synthetic',age:4,interests:[],activeGoals:[]},saveMoment:window.save,setActiveTab:()=>{},openCaptureSheet:()=>{},behaviorLogs:[],logsLoaded:true});`,
+    ArborContext: `const arbor=()=>({childProfile:{id:window.fixture.child,name:'Synthetic',age:4,interests:[],activeGoals:[]},saveMoment:window.save,setActiveTab:()=>{},openCaptureSheet:()=>{},behaviorLogs:[],logsLoaded:true,actionLoop:[],playLogs:[],logPlayCompletion:()=>({id:'x',created:false}),undoPlayCompletion:()=>{},seedCoach:()=>{}});export const useArbor=arbor;export const useArborOptional=arbor;`,
     LanguageContext: `import {translate} from './src/lib/i18n';export const useLanguage=()=>({uiLang:window.fixture.lang,t:(k,v)=>translate(window.fixture.lang,k,v)});`,
     useChildCollection: `export const useChildCollection=()=>({items:[],loaded:true,error:null});`,
     usePracticeData: `const c={items:[],loaded:true,error:null};export const usePracticeData=()=>({speech:c,mimic:c,adventures:c,events:c,missions:c});`,
     useKidModeEntry: `export const useKidModeEntry=()=>({request:()=>{},step:null});`,
     parentGate: `export const readParentPin=()=>null;`,
-    kpiEvents: `export const trackCompanionPlaceOpen=()=>{};export const trackPracticeStudioOpen=()=>{};export const trackPracticeTogetherDid=id=>window.keptEvents.push(id);export const trackKidSessionEnd=()=>{};`,
-    TogetherRoutines: `export default function TogetherRoutines(){return null;}`,
-    togetherNavigation: `import {useRef,useState} from 'react';export const useTogetherNavigation=()=>{const [category,setCategory]=useState('games');return {category,setCategory,pageRef:useRef(null),rememberDoor:()=>{}};};`,
+    kpiEvents: `export * from './src/lib/kpiEvents.ts';export const trackCompanionPlaceOpen=()=>{};export const trackPracticeStudioOpen=()=>{};export const trackPracticeTogetherDid=id=>window.keptEvents.push(id);export const trackKidSessionEnd=()=>{};`,
     settingsBus: `export const requestOpenSettings=()=>{};`,
     familyTopicEvents: `export const openFamilyTopicSheet=()=>{};`,
   };
   const result = await build({stdin:{contents:fixture,resolveDir:process.cwd(),loader:'tsx'},outfile:'together-fixture.js',bundle:true,write:false,platform:'browser',format:'iife',define:{'process.env.NODE_ENV':'"development"','import.meta.env':'{}'},plugins:[{name:'isolated-together',setup(p){
-    p.onResolve({filter:/\/(AuthContext|ArborContext|LanguageContext|useChildCollection|usePracticeData|useKidModeEntry|parentGate|kpiEvents|TogetherRoutines|togetherNavigation|settingsBus|familyTopicEvents)$/},a=>({path:a.path.split('/').pop(),namespace:'isolated-together'}));
+    p.onResolve({filter:/\/(AuthContext|ArborContext|LanguageContext|useChildCollection|usePracticeData|useKidModeEntry|parentGate|kpiEvents|settingsBus|familyTopicEvents)$/},a=>({path:a.path.split('/').pop(),namespace:'isolated-together'}));
     p.onLoad({filter:/.*/,namespace:'isolated-together'},a=>({contents:modules[a.path],loader:'tsx',resolveDir:process.cwd()}));
-    if(negative)p.onLoad({filter:/TogetherView\.tsx$/},async a=>({contents:(await readFile(a.path,'utf8')).replace('key={JSON.stringify([ownerId, childProfile.id])}','key={childProfile.id}'),loader:'tsx'}));
+    if(negative)p.onLoad({filter:/DailyPlayTab\.tsx$/},async a=>({contents:(await readFile(a.path,'utf8')).replace('key={JSON.stringify([ownerId, childProfile.id])}','key={childProfile.id}'),loader:'tsx'}));
   }}]});
   return {js:result.outputFiles.find(f=>f.path.endsWith('.js')).text,css:result.outputFiles.find(f=>f.path.endsWith('.css'))?.text??''};
 }
@@ -54,11 +53,11 @@ try {
       await page.evaluate(lang=>{window.fixture={lang,owner:'owner-a',child:'child-a',loading:false};document.documentElement.dir=lang==='he'?'rtl':'ltr';},cell.lang);
       const content=negative?before:fixed;
       await page.addStyleTag({content:content.css+':root{--arbor-paper:#fff;--arbor-paper-elevated:#fff;--arbor-ink:#14225a;--arbor-rule:#ccc;--arbor-muted:#475569;--touch-min:44px}button{min-height:44px} [data-arbor-dialog-layer]{position:fixed;inset:0;z-index:50;background:#fff;overflow:auto}'});
-      await page.addScriptTag({content:content.js});await page.locator('.companion-offscreen-card').first().waitFor();
+      await page.addScriptTag({content:content.js});await page.locator('[data-testid="together-idea"]').first().waitFor();
     };
     const dialog=()=>page.getByRole('dialog');
     const keep=()=>dialog().locator('.companion-text-button');
-    const open=async (index=0)=>{await page.locator('.companion-offscreen-card').nth(index).click();await dialog().waitFor();};
+    const open=async (index=0)=>{await page.locator('[data-testid="together-idea"]').nth(index).click();await dialog().waitFor();};
     const close=async()=>{await dialog().locator('button[aria-label]').click();await dialog().waitFor({state:'hidden'});};
     const alert=()=>dialog().getByRole('alert');
     const settle=async(index,ok)=>{await page.evaluate(({index,ok})=>window.writes[index].resolve(ok),{index,ok});};
@@ -88,11 +87,11 @@ try {
     await open();assert.equal(await keep().isEnabled(),true,'owner return starts a fresh visible visit');
     await keep().click();await page.evaluate(()=>window.family('owner-a','child-b'));assert.equal(await dialog().count(),0);
     await open();await page.evaluate(()=>window.writes[5].reject(new Error('late sibling failure')));assert.equal(await alert().count(),0);assert.equal(await keep().isEnabled(),true);
-    await page.evaluate(()=>window.family(null,'child-b'));assert.equal(await dialog().count(),0);assert.equal(await page.locator('.companion-together').count(),0,'unknown hosted auth fails closed');
-    await page.evaluate(()=>window.family('owner-a','child-a',true));assert.equal(await page.locator('.companion-together').count(),0,'restoring auth does not retain a family surface');
+    await page.evaluate(()=>window.family(null,'child-b'));assert.equal(await dialog().count(),0);assert.equal(await page.locator('[data-testid="play-screen"]').count(),0,'unknown hosted auth fails closed');
+    await page.evaluate(()=>window.family('owner-a','child-a',true));assert.equal(await page.locator('[data-testid="play-screen"]').count(),0,'restoring auth does not retain a family surface');
     await page.evaluate(()=>window.family('owner-a','child-a'));await open();assert.equal(await keep().isEnabled(),true);
     assert.deepEqual(errors,[]);results.push({viewport:cell.id,passed:true});await context.close();
   }
-  await writeFile(path.join(output,'results.json'),JSON.stringify({passed:true,scope:'real Together and Sheet/Modal; synthetic auth/records/writes; network blocked; not authenticated or device acceptance',results},null,2));
+  await writeFile(path.join(output,'results.json'),JSON.stringify({passed:true,scope:'real Together › Play and Sheet/Modal; synthetic auth/records/writes; network blocked; not authenticated or device acceptance',results},null,2));
   console.log('Together saves: '+results.length+' EN/HE release cells passed account/child retirement, acknowledged retry, duplicate-save and late-preview checks.');
 } finally { await browser.close(); }

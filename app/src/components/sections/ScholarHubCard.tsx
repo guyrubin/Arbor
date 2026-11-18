@@ -67,7 +67,7 @@ export default function ScholarHubCard() {
             <Icon name="menu_book" size={20} />
           </span>
           <span
-            className="text-[11px] uppercase tracking-widest font-bold"
+            className="text-[12px] uppercase tracking-widest font-bold"
             style={{ color: "var(--arbor-green-ink)" }}
           >
             {t("hub.scholar.eyebrow")}
@@ -108,20 +108,20 @@ export default function ScholarHubCard() {
           {/* Eyebrow + topic chip */}
           <div className="flex items-center gap-2 flex-wrap">
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold"
               style={{ background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" }}
             >
               <Icon name="menu_book" size={15} />
               {t("hub.scholar.eyebrow")}
             </span>
             <span
-              className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide"
+              className="rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide"
               style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
             >
               {t("hub.scholar.topic", { topic })}
             </span>
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-bold"
+              className="inline-flex items-center gap-1 text-[12px] font-bold"
               style={{ color: "var(--arbor-muted)" }}
             >
               <Icon name="schedule" size={13} />
@@ -131,7 +131,7 @@ export default function ScholarHubCard() {
 
           {/* Title */}
           <h2
-            className="text-xl md:text-[1.5rem] leading-tight tracking-tight"
+            className="text-xl md:text-[26px] leading-tight tracking-tight"
             dir="auto"
             style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}
           >
@@ -139,14 +139,14 @@ export default function ScholarHubCard() {
           </h2>
 
           {/* Body — editorial content, no developmental claim */}
-          <p className="text-[14.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
+          <p className="text-[14px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
             {body}
           </p>
 
           {/* Provenance hedge — editorial, not diagnostic. Masterplan 3.1:
               the TrustLink chip closes the why → Trust Center chain, after the
               provenance text on the same wrapping row. */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]" style={{ color: "var(--arbor-faint)" }}>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>
             <span dir="auto">{t("hub.scholar.provenance")}</span>
             <TrustLink surface="scholar-hub-reader" />
           </div>
@@ -173,7 +173,7 @@ export default function ScholarHubCard() {
           <Icon name="menu_book" size={20} />
         </span>
         <span
-          className="text-[11px] uppercase tracking-widest font-bold"
+          className="text-[12px] uppercase tracking-widest font-bold"
           style={{ color: "var(--arbor-green-ink)" }}
         >
           {t("hub.scholar.eyebrow")}
@@ -198,13 +198,13 @@ export default function ScholarHubCard() {
       <div className="space-y-2 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
           <span
-            className="rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide"
+            className="rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide"
             style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
           >
             {t("hub.scholar.topic", { topic })}
           </span>
           <span
-            className="inline-flex items-center gap-1 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 text-[12px] font-bold"
             style={{ color: "var(--arbor-muted)" }}
           >
             <Icon name="schedule" size={13} />
@@ -220,7 +220,7 @@ export default function ScholarHubCard() {
         </h3>
         {/* Body preview — first 160 chars */}
         <p
-          className="text-[12.5px] leading-relaxed line-clamp-2"
+          className="text-[12px] leading-relaxed line-clamp-2"
           dir="auto"
           style={{ color: "var(--arbor-muted)" }}
         >
@@ -257,7 +257,7 @@ export default function ScholarHubCard() {
       {/* Provenance (compact) + its Trust-Center chain (masterplan 3.1). The
           chip sits AFTER the provenance text, below the two door buttons, so
           "Read this week's piece" stays the card's primary affordance. */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" style={{ color: "var(--arbor-faint)" }}>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]" style={{ color: "var(--arbor-faint)" }}>
         <span dir="auto">{t("hub.scholar.provenance")}</span>
         <TrustLink surface="scholar-hub" />
       </div>

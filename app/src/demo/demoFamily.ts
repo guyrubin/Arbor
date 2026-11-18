@@ -59,8 +59,9 @@ import { practiceDoseEntry, type PracticeAnswer } from "../lib/practice/choosePr
 import { quoteKeepsakeDoc, tonightLineEntry, tonightOutcomeEntry } from "../lib/loop/tonight";
 import type { KeepsakeDoc } from "../lib/firstsKeepsake";
 import { resolveHebrewSlash } from "../lib/hebrewSlashGender";
+import type { FamilyPlanAdult, FamilyPlanDate } from "../lib/familyPlan/model";
 
-export const DEMO_FAMILY_VERSION = "2026-10-08.1";
+export const DEMO_FAMILY_VERSION = "2026-11-16.1";
 export const DEMO_FAMILY_LABEL = { en: "Demo family", he: "משפחת הדגמה" } as const;
 /** The demo child IS the sandbox's synthetic child, so `npm run seed:demo` populates it. */
 export const DEMO_CHILD_ID = defaultChildProfile.id;
@@ -102,6 +103,8 @@ export type DemoFamily = {
     apptFollowUps: AppointmentFollowUp[];
     /** B-LOOP-17: Tonight's `quote` keepsakes (the registered keepsakes collection). */
     keepsakes: KeepsakeDoc[];
+    /** Family plan v1: the week's kindergarten dates (N-Plan-D/M), invented. */
+    familyPlanDates: FamilyPlanDate[];
   };
   memory: DemoMemorySeed;
   /** P2A AGES: the other children of the family, each with her own small record. */
@@ -508,16 +511,58 @@ export function buildDemoFamily({
     },
   ];
 
+  const familyPlanDates = buildFamilyPlan(now, lang);
+
   return {
     version: DEMO_FAMILY_VERSION,
     seededAt: new Date(now).toISOString(),
     lang,
     parent: { demo: true, displayName: DEMO_FAMILY_LABEL[lang] },
     child,
-    collections: { behaviorLogs, milestones, langObs, actionLoops, practiceEvents, heroRuns, appointments, apptFollowUps, keepsakes },
+    collections: { behaviorLogs, milestones, langObs, actionLoops, practiceEvents, heroRuns, appointments, apptFollowUps, keepsakes, familyPlanDates },
     memory: MEMORY[lang],
     siblings: [buildLeni(now, lang)],
   };
+}
+
+/* ── Family plan v1 (N-Plan-D/M), invented ───────────────────────────────
+   The sandbox parent ("local-sandbox", shown as You) has the visit form and
+   the speech therapist; the group visit is asked to an invented co-parent
+   with no answer yet (so it counts as nobody yet), and a second version of
+   the kindergarten's message moved it 10:00 → 11:30, held for the parent to
+   review. Days are relative to the seed day (noon UTC keeps the local day). */
+const FP_OWNER: FamilyPlanAdult = { uid: "local-sandbox", role: "owner", email: null };
+const FP_COPARENT = (lang: DemoLang): FamilyPlanAdult => ({ uid: "demo-coparent", role: "co_parent", email: lang === "he" ? null : "yoav@example.test" });
+const fpDay = (now: number, ahead: number) => at(now, -ahead, 12).slice(0, 10);
+
+function buildFamilyPlan(now: number, lang: DemoLang): FamilyPlanDate[] {
+  const t = (l: L) => l[lang];
+  const created = at(now, 0, 7);
+  const added = (by: string) => ({ at: created, kind: "added" as const, by, version: 1 });
+  const base = { origin: "message" as const, messageId: "demo-fp-msg-1", version: 1, status: "open" as const, createdBy: FP_OWNER.uid, createdAt: created, updatedAt: created, prep: [] };
+  const coparent = FP_COPARENT(lang);
+  return [
+    {
+      ...base, id: "demo-fp-form", kind: "deadline", title: t(L("Return the visit form", "להחזיר את טופס הסיור")), date: fpDay(now, 2),
+      sourceLine: t(L("Please return the signed form by Wednesday.", "נא להחזיר את הטופס החתום עד יום רביעי.")), sourceLineNo: 2,
+      holder: FP_OWNER, request: null,
+      history: [added(FP_OWNER.uid), { at: created, kind: "took", by: FP_OWNER.uid, version: 1 }],
+    },
+    {
+      ...base, id: "demo-fp-visit", kind: "join", title: t(L("Group visit to the science garden", "סיור קבוצתי בגן המדע")), date: fpDay(now, 3), time: "10:00",
+      sourceLine: t(L("The group visit to the science garden is on Thursday at 10:00. We ask one parent to join each group.", "הסיור הקבוצתי בגן המדע ביום חמישי בשעה 10:00. אנו מבקשים שהורה אחד יצטרף לכל קבוצה.")), sourceLineNo: 1,
+      prep: [{ id: "demo-fp-visit-p0", text: t(L("A hat and water", "כובע ובקבוק מים")), done: false }],
+      holder: null,
+      request: { toUid: coparent.uid, toEmail: coparent.email, fromUid: FP_OWNER.uid, note: t(L("Can you join the kindergarten visit on Thursday at 10:00?", "תוכל להצטרף לסיור של הגן ביום חמישי ב-10:00?")), askedAt: at(now, 0, 8), forVersion: 1, status: "asked" },
+      pendingChange: { date: fpDay(now, 3), time: "11:30", sourceLine: t(L("The garden can take us later. We now start at 11:30.", "הגן יכול לקבל אותנו מאוחר יותר. נתחיל בשעה 11:30.")), receivedAt: at(now, 0, 13) },
+      history: [added(FP_OWNER.uid), { at: at(now, 0, 8), kind: "asked", by: FP_OWNER.uid, who: coparent.uid, version: 1 }],
+    },
+    {
+      ...base, id: "demo-fp-speech", origin: "manual", messageId: undefined, kind: "event", title: t(L("Speech therapist", "קלינאית התקשורת")), date: fpDay(now, 9), time: "10:00",
+      holder: FP_OWNER, request: null,
+      history: [added(FP_OWNER.uid), { at: created, kind: "took", by: FP_OWNER.uid, version: 1 }],
+    },
+  ].map((row) => JSON.parse(JSON.stringify(row)) as FamilyPlanDate);
 }
 
 /** Per-collection document counts — what the dry run prints. */

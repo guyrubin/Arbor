@@ -1,4 +1,5 @@
 import React from "react";
+import { treeElements } from "./elementTree.testutil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Real component functions and collection listener callbacks under deterministic
@@ -57,12 +58,7 @@ import SchoolBrief from "../sections/SchoolBrief";
 import { Modal } from "../ui/Modal";
 
 type El = React.ReactElement<Record<string, any>>;
-function elements(node: React.ReactNode): El[] {
-  if (Array.isArray(node)) return node.flatMap(elements);
-  if (!React.isValidElement<Record<string, any>>(node)) return [];
-  const element = node as React.ReactElement<{ children?: React.ReactNode }>;
-  return [element, ...React.Children.toArray(element.props.children).flatMap(elements)];
-}
+const elements = (node: React.ReactNode): El[] => treeElements(node) as El[];
 const find = (node: React.ReactNode, predicate: (el: El) => boolean) => elements(node).find(predicate)!;
 const byId = (node: React.ReactNode, id: string) => find(node, el => el.props["data-testid"] === id);
 function owner(key: string, component: any, props: any = {}) { h.cursor = 0; h.slots = h.owners.get(key) ?? []; h.owners.set(key, h.slots); return component(props); }

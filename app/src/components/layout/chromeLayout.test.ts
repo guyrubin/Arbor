@@ -65,16 +65,21 @@ const safetyRing = readFileSync(path.join(here, "SafetyRing.tsx"), "utf8");
 const childContextHeader = readFileSync(path.join(here, "ChildContextHeader.tsx"), "utf8");
 const profileSwitcher = readFileSync(path.join(here, "..", "profile", "ProfileSwitcher.tsx"), "utf8");
 const indexCss = readFileSync(path.join(here, "..", "..", "index.css"), "utf8");
+const dsCss = readFileSync(path.join(here, "..", "..", "design", "ds.css"), "utf8");
 // Drop comments so prose about a banned pattern cannot trip (or satisfy) a scan.
 const stripComments = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
 /* ── IA-01 / IA-18 / IA-25 (wave T) — Safety life-ring is canon chrome ───── */
 
-describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", () => {
-  it("Topbar control band, Shell accessories strip and the More-sheet header each mount <SafetyRing", () => {
-    for (const [name, src] of [["Topbar", topbar], ["Shell", shell], ["MobileNav", mobileNav]] as const) {
+describe("IA-01 — the Safety life-ring is mounted in both chrome homes", () => {
+  // v10 re-pin: the phone strip sits outside <main> and never scrolls away
+  // (F-SHELL-3), so the Menu sheet no longer repeats Safety; the strip and the
+  // top bar are its two homes, one per width.
+  it("Topbar control band and the Shell accessories strip each mount <SafetyRing; the Menu does not repeat it", () => {
+    for (const [name, src] of [["Topbar", topbar], ["Shell", shell]] as const) {
       expect(stripComments(src), `${name} does not mount <SafetyRing`).toContain("<SafetyRing");
     }
+    expect(stripComments(mobileNav)).not.toContain("<SafetyRing");
   });
 
   it("Topbar: the ring is the FIRST control in the band, in a non-shrinking wrapper", () => {
@@ -93,9 +98,10 @@ describe("IA-01 — the Safety life-ring is mounted in all three chrome homes", 
     expect(strip.indexOf("<SafetyRing")).toBeLessThan(strip.indexOf("requestOpenSearch"));
   });
 
-  it("MobileNav: the More-sheet header row mounts the ring and closes the sheet on navigate", () => {
-    const header = stripComments(mobileNav.slice(mobileNav.indexOf("<Sheet"), mobileNav.indexOf("</Sheet>")));
-    expect(header).toMatch(/<SafetyRing onNavigate=\{\(\) => setMoreOpen\(false\)\} \/>/);
+  it("the phone strip that holds the ring is outside <main>, so it never scrolls away", () => {
+    const strip = shell.indexOf("<ChildContextHeader");
+    expect(strip).toBeGreaterThan(-1);
+    expect(strip).toBeLessThan(shell.indexOf('<main id="main"'));
   });
 
   it("SafetyRing: aria-label = nav.tab.safety, navigates to the safety route, ≥44px, hidden while kid-locked", () => {
@@ -184,14 +190,19 @@ describe("UC-8b — the sticky sub-tab row is flush with the scrollport", () => 
   // to reach past them to the sticky-inset lines this guard is about.
   const stickyRow = shell.slice(shell.indexOf('role="tablist"') - 400, shell.indexOf('role="tablist"') + 2600);
 
-  it("keeps the sticky row in flow below Back, without an overlapping negative inset", () => {
-    expect(stickyRow).toContain("sticky");
-    expect(stickyRow).toMatch(/top:\s*0/);
-    expect(stickyRow).not.toContain("marginBlockStart:");
-    expect(stickyRow).not.toContain("paddingBlockStart:");
-    const negativeInset = /marginBlockStart:\s*"calc\(-1 \* var\(--arbor-main-pt\)\)"/;
-    expect(negativeInset.test(stickyRow)).toBe(false);
-    expect(negativeInset.test('marginBlockStart: "calc(-1 * var(--arbor-main-pt))"')).toBe(true);
+  // v10 re-pin: the row's layout moved to the design system (ds.css
+  // .ds.ds-shellrow). Back never renders beside a pill row any more (Shell:
+  // `back` is null when the row has more than one pill), so the row is the
+  // first thing in <main> and can cancel <main>'s top padding: stuck, it is
+  // flush with the scrollport and nothing slides through the gap above it.
+  it("is sticky and flush with the scrollport, and Back never renders beside it", () => {
+    const rule = /\.ds\.ds-shellrow \{([^}]*)\}/.exec(dsCss)?.[1] ?? "";
+    expect(rule).toContain("position: sticky");
+    expect(rule).toContain("top: calc(-1 * var(--arbor-main-pt, 0px))");
+    expect(rule).toContain("margin-block: calc(-1 * var(--arbor-main-pt, 0px)) 14px");
+    expect(rule).toContain("padding-block: calc(var(--arbor-main-pt, 0px) + 2px) 10px");
+    expect(shell).toContain("const back = pillRow.length > 1 || isCompanionHome(activeTab) ? null : backTargetFor(activeTab);");
+    expect(shell.indexOf("{back && <button")).toBeLessThan(shell.indexOf('className="ds ds-shellrow"'));
   });
 
   it("--arbor-main-pt matches <main>'s actual Tailwind top padding", () => {
@@ -262,11 +273,10 @@ describe("IA-03 / MOB-26 — the mobile chrome is one strip, not three rows", ()
     expect(actions).not.toContain("setSettingsOpen(true)");
   });
 
-  it("the sticky pill row no longer spends a whole extra row of margin", () => {
-    const bare = stripComments(shell);
-    const stickyRow = bare.slice(bare.indexOf('role="tablist"') - 400, bare.indexOf('role="tablist"') + 600);
-    expect(stickyRow).toContain("mb-4");
-    expect(stickyRow).not.toContain("mb-6");
+  it("the sticky pill row spends 14 px below it, not a whole extra row of margin", () => {
+    const rule = /\.ds\.ds-shellrow \{([^}]*)\}/.exec(dsCss)?.[1] ?? "";
+    expect(rule).toMatch(/margin-block: [^;]* 14px/);
+    expect(rule).not.toMatch(/margin-block: [^;]* 24px/);
   });
 });
 
@@ -303,7 +313,8 @@ describe("IA-04 / IA-17 — exactly one child switcher at every width", () => {
     // …while the capabilities that were NOT duplicated stay put (law 6): editing,
     // and the family list — now the switcher's own dropdown (B-SHELL-38), so the
     // separate glance card is not mounted.
-    expect(src).toContain("<ProfileEditDrawer");
+    // v10 (canvas V77): editing moved into the switcher's own menu, beside Add child.
+    expect(stripComments(readFileSync(path.join(here, "TopbarKidSwitcher.tsx"), "utf8"))).toContain("<ProfileEditDrawer");
     expect(src).toContain("<TopbarKidSwitcher");
     expect(src).not.toContain("<FamilyGlanceCard />");
     // B-SHELL-18: the glance card is identity only — exactly one control
@@ -412,9 +423,12 @@ describe("IA-07 — the hub pill row tells you it scrolls, and lands on a pill",
     expect(fade).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
   });
 
-  it("the band snaps on the inline axis and every pill declares an anchor", () => {
-    expect(row).toContain('scrollSnapType: "x mandatory"');
-    expect(row).toContain('scrollSnapAlign: "start"');
+  // v10 re-pin: the band's scroll behaviour lives in the design system; the
+  // phone row scrolls (desktop wraps, so nothing is ever scrolled past there).
+  it("the phone band snaps on the inline axis and every pill declares an anchor", () => {
+    expect(dsCss).toMatch(/\.ds\.ds-shellrow\[data-composition="phone"\] \.ds-pillrow \{[^}]*scroll-snap-type: x mandatory/);
+    expect(dsCss).toMatch(/\.ds\.ds-shellrow\[data-composition="phone"\] \.ds-pillrow \.pill \{[^}]*scroll-snap-align: start/);
+    expect(row).toContain('composition === "phone" ? { maskImage: PILL_EDGE_FADE, WebkitMaskImage: PILL_EDGE_FADE } : undefined');
   });
 
   it("the active pill is scrolled into view on every tab change", () => {
@@ -431,8 +445,8 @@ describe("IA-07 — the hub pill row tells you it scrolls, and lands on a pill",
     const fade = bare.slice(bare.indexOf("const PILL_EDGE_FADE ="), bare.indexOf("const PILL_EDGE_FADE =") + 240);
     expect(fade).toContain("black 14px");
     expect(fade).toContain("black calc(100% - 14px)");
-    expect(row).toContain("-mx-[14px] px-[14px]");
-    expect(row).toContain('scrollPaddingInline: "14px"');
+    expect(dsCss).toMatch(/\.ds\.ds-shellrow\[data-composition="phone"\] \{[^}]*margin-inline: -14px/);
+    expect(dsCss).toMatch(/\.ds\.ds-shellrow\[data-composition="phone"\] \.ds-pillrow \{[^}]*scroll-padding-inline: 14px; padding-inline: 14px/);
     // NEGATIVE CONTROL: the r2 band (4 px padding under a 14 px fade) is caught
     expect('className="sticky z-20 flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 pb-2 no-scrollbar"').not.toContain("px-[14px]");
   });
@@ -463,17 +477,13 @@ describe("TJB-25 — Today collapses to the Weekly Report below md", () => {
     expect([...new Set(pills)].filter((p) => !hidden.has(p))).toEqual(["overview", "weekly"]);
   });
 
-  it("Shell hides the pill with a CLASS — the route is never filtered out", () => {
-    expect(bare).toContain("isCompactHiddenTool");
-    expect(bare).toContain('"hidden md:inline-flex" : "inline-flex"');
-    // The hub's pill set is still mapped unfiltered by breakpoint (pillRowFor
-    // = hubTabsForSection, except routes with no pill row — B-CAREPRO-30):
-    // the pill returns at md.
-    expect(bare).toContain("pillRowFor(section, activeTab).map((it) =>");
-  });
-
-  it("a parent who IS on a collapsed tool still sees its pill (no orphan state)", () => {
-    expect(bare).toContain("!on && isCompactHiddenTool(section, it.tab)");
+  // v10 re-pin: Day windows and Reminders left Now's row (they fold into
+  // Weekly report and Gentle reminders), so the row is the same at every width
+  // and Shell hides no pill by breakpoint.
+  it("Shell maps the home's whole row at every width — no pill is hidden by breakpoint", () => {
+    expect(bare).not.toContain("isCompactHiddenTool");
+    expect(bare).not.toContain('"hidden md:inline-flex"');
+    expect(bare).toContain("{pillRow.map((it) => {");
   });
 
   it("law 6 — both collapsed routes keep a door that is NOT the pill", () => {

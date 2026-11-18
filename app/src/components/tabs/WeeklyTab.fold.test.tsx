@@ -128,16 +128,17 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
     expect(TAB).not.toMatch(/RecapStoryCards|generateIsMove|weekly-recap|weekly-insight|PageHeader|HeroAvatar/);
   });
 
-  it("order: kicker → title → the counts line → the dashboard (or the empty card) → the carry band → the phone's summary door → the invite disclosure", () => {
-    const ret = TAB.indexOf("  return (\n");
+  it("order (v10 stops): kicker → title → the counts line → the week (or the empty card) → what helped → the carry band → your day → the invite disclosure", () => {
+    const ret = TAB.indexOf("const kicker = (");
     const marks = [
       'data-testid="weekly-eyebrow"',
       'data-testid="weekly-title"',
       'data-testid="weekly-glance-sub"',
-      "<WeekGlance",
-      'data-module="weekly-empty"',
+      'stage === "weekly-glance" && week ? (',
+      'stage === "weekly-empty" ? (',
+      'data-module="weekly-helped"',
       'data-module="weekly-carry"',
-      '{summaryDoor("end")}',
+      'data-module="weekly-day"',
       "<details",
     ].map((mark) => TAB.indexOf(mark, ret));
     expect(ret).toBeGreaterThan(0);
@@ -145,32 +146,42 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
     expect([...marks].sort((a, b) => a - b)).toEqual(marks);
   });
 
-  it("the kicker is 12 px in sentence case; the counts line shows at every width", () => {
-    const eyebrowTag = /<p data-testid="weekly-eyebrow"[^>]*>/.exec(TAB)?.[0] ?? "";
-    expect(eyebrowTag).toContain("text-[12px]");
-    expect(eyebrowTag).not.toMatch(/uppercase|text-\[11px\]/);
+  it("the kicker is the canvas kicker over the one h1; the counts line shows at every width", () => {
+    const eyebrowTag = /<span data-testid="weekly-eyebrow"[^>]*>/.exec(TAB)?.[0] ?? "";
+    expect(eyebrowTag).toContain('className="kicker"');
+    expect(TAB.match(/<h1\b/g)).toHaveLength(1);
     const subTag = /<p data-testid="weekly-glance-sub"[^>]*>/.exec(TAB)?.[0] ?? "";
     expect(subTag).not.toBe("");
     expect(subTag).not.toMatch(/\bhidden\b/);
   });
 
-  it("every band control keeps the 44 px floor", () => {
+  it("every band control is a 44 px design-system control (btn sm or the touch-safe ds-link)", () => {
     for (const id of ["weekly-accept", "weekly-generate", "weekly-carry-back"]) {
       const at = TAB.indexOf(`data-testid="${id}"`);
       expect(at, id).toBeGreaterThan(0);
-      expect(TAB.slice(at, TAB.indexOf(">", TAB.indexOf("className=", at))), id).toContain("min-h-[44px]");
+      const tag = TAB.slice(at, TAB.indexOf(">", TAB.indexOf("className=", at)));
+      expect(tag, id).toMatch(/btn primary sm|ds-link/);
     }
+    // ds.css: .btn is 48 px tall, .ds-link 44 px; the band adds its own 44 px floor.
+    const css = readFileSync(path.join(here, "../weekly/v10/weeklyV10.css"), "utf8");
+    expect(css).toMatch(/\.wk10-carry-moves \.btn \{ min-height: 44px; \}/);
   });
 
   for (const lang of ["en", "he"] as const) {
     it(`${lang}: the header reads "Weekly report · {dates}" and "{first}'s week, at a glance."`, () => {
       const html = render(lang, []);
-      const kicker = /<p data-testid="weekly-eyebrow"[^>]*>([^<]*)<\/p>/.exec(html)?.[1] ?? "";
-      const range = new Intl.DateTimeFormat(lang === "he" ? "he-IL" : "en-GB", { month: "short", day: "numeric" })
-        .formatRange(new Date(2026, 9, 10), new Date(2026, 9, 16));
-      expect(kicker).toBe(translate(lang, "elev.wk.kicker", { range }));
-      if (lang === "en") expect(kicker).toMatch(/^Weekly report · 10\D+16 Oct$/);
-      expect(/<h1 data-testid="weekly-title"[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.headline", { first: "Noa" }));
+      const kicker = /<span data-testid="weekly-eyebrow"[^>]*>([^<]*)<\/span>/.exec(html)?.[1] ?? "";
+      // V77: day first, as the boards write it ("14 to 20 Nov"); one month named once.
+      const last = new Date(2026, 9, 16).toLocaleDateString(lang === "he" ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
+      const range = `10${lang === "he" ? " עד " : " to "}${last}`;
+      // V77 (N-Week-D/M): the kicker is the week's dates alone; the place is the shell's breadcrumb.
+      expect(kicker).toBe(range);
+      if (lang === "en") expect(kicker).toBe("10 to 16 Oct");
+      // Negative control: the "Weekly report ·" prefix the release shipped is gone.
+      expect(kicker).not.toContain(translate(lang, "elev.wk.kicker", { range: "" }).replace(/\s*·\s*$/, ""));
+      // Negative control: the en-dash range the release shipped no longer renders.
+      expect(kicker).not.toMatch(/[–-]/);
+      expect(/<h1 [^>]*data-testid="weekly-title"[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.headline", { first: "Noa" }));
       expect(/<p data-testid="weekly-glance-sub"[^>]*>([^<]*)<\/p>/.exec(html)?.[1]).toBe(translate(lang, "elev.wk.glance.sub"));
     });
 
@@ -181,7 +192,7 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
       expect(stamps(html)).toHaveLength(1);
       const tag = stampedTag(html);
       expect(tag).toContain('data-testid="weekly-carry-back"');
-      expect(tag).toContain("background:var(--arbor-ink)");
+      expect(tag).toContain('class="btn primary sm"');
       expect(html).not.toContain('data-testid="weekly-accept"');
       expect(html).not.toContain('data-testid="weekly-generate"');
       expect(html).toContain(translate(lang, "elev.wk.carry.none"));
@@ -198,7 +209,7 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
       expect(gen).not.toBe("");
       expect(gen).not.toContain("data-primary-move");
       expect(gen).not.toContain("gradient");
-      expect(gen).toContain("underline");
+      expect(gen).toContain('class="ds-link"');
       const band = html.indexOf('data-module="weekly-carry"');
       expect(html.indexOf('data-module="weekly-glance"')).toBeLessThan(band);
       expect(html.indexOf('data-testid="weekly-generate"')).toBeGreaterThan(band);
@@ -223,11 +234,12 @@ describe("#/weekly — the ONE stamp lives in the carry band (v3 F-NOW-3 re-pin 
       expect(stamps(html)).toHaveLength(1);
       const tag = stampedTag(html);
       expect(tag).toContain('data-testid="weekly-accept"');
-      expect(tag).toContain("--arbor-gradient-primary");
-      expect(html.match(/--arbor-gradient-primary/g)).toHaveLength(1);
+      expect(tag).toContain('class="btn primary sm"');
+      // The page's one filled primary control is the accept.
+      expect(html.match(/class="btn primary sm"/g)).toHaveLength(1);
       const back = tagOf(html, "weekly-carry-back");
       expect(back).not.toContain("data-primary-move");
-      expect(back).toContain("background:transparent");
+      expect(back).toContain('class="ds-link"');
       expect(html).toContain(`<bdi dir="auto">${TRY[lang]}</bdi>`);
       expect(html).toContain(translate(lang, "today.action.make").replace(/'/g, "&#x27;"));
       expect(html).not.toContain('data-testid="weekly-generate"');

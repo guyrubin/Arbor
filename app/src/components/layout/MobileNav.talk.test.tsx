@@ -1,7 +1,9 @@
 /**
- * v3 F-SHELL-3 (IA-03) — the phone dock is Now · My child · Together · Talk ·
- * More, and the More sheet reads: the three doors, Search, then the three
- * places under their v3 pill names.
+ * v10 (design system v10.1) — the phone dock is Now · My child · Together ·
+ * Talk · Menu, and Menu is four rows: For you, the parent; Care, together;
+ * Settings; Pause Arbor. (v3 F-SHELL-3's More sheet indexed fifteen entries:
+ * the doors, Search and every place's pages; the pills are the shell's row now
+ * and Search, Safety and Kid Mode stay in the top strip.)
  *
  * Talk is the Talk with Arbor door (COMPANION_DOORS). It opens the
  * conversation through the one conversation door (lib/companionConversation,
@@ -65,6 +67,8 @@ vi.mock("./Sidebar", () => ({ badgeText: () => "" }));
 vi.mock("./SafetyRing", () => ({ default: () => <span data-sheet-header="safety" /> }));
 vi.mock("./KidModeButton", () => ({ default: () => <span data-sheet-header="kid-mode" /> }));
 vi.mock("../search/SearchModal", () => ({ requestOpenSearch: vi.fn() }));
+const settingsBus = vi.hoisted(() => ({ open: vi.fn() }));
+vi.mock("./settingsBus", () => ({ requestOpenSettings: settingsBus.open }));
 vi.mock("../ui/Sheet", () => ({
   Sheet: ({ title, headerActions, children }: { title?: string; headerActions?: React.ReactNode; children: React.ReactNode }) =>
     <div data-testid="more-sheet"><header>{title}{headerActions}</header>{children}</div>,
@@ -83,7 +87,6 @@ vi.mock("react/jsx-dev-runtime", async (original) => {
   return { ...runtime, jsxDEV: (...a: Parameters<typeof runtime.jsxDEV>) => { capture(a[0], a[1]); return runtime.jsxDEV(...a); } };
 });
 import MobileNav from "./MobileNav";
-import { gamesOpenFor } from "../practice/studioWorlds";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -104,17 +107,15 @@ const dockButtons = (html: string) => dockOf(html).split("<button").slice(1).map
 const words = (markup: string) => markup.replace(/<span class="msr[^"]*"[^>]*>[^<]*<\/span>/g, "").replace(/<[^>]+>/g, "").trim();
 const FILLED = /FILL(?:'|&#x27;) 1/;
 const name = (door: { en: string; he: string }, lang: Lang) => (lang === "he" ? door.he : door.en);
-const groupOf = (html: string, id: string) => new RegExp(`<div[^>]*data-testid="more-place-${id}-group"[^>]*>[\\s\\S]*?</div></div>`).exec(html)?.[0] ?? "";
-const rowsOf = (group: string) => group.split("<button").slice(1).map((row) => "<button" + row.slice(0, row.indexOf("</button>")));
 
-describe("v3 IA-03 — the dock: Now · My child · Together · Talk · More", () => {
+describe("v10 — the dock: Now · My child · Together · Talk · Menu", () => {
   it.each(["en", "he"] as const)("five buttons in that order, equal flex slots, 64 px tall, labels at 12 px (%s)", (lang) => {
     const html = render("overview", lang);
     const buttons = dockButtons(html);
     expect(buttons.map(words)).toEqual([
       ...COMPANION_PLACES.map((place) => (lang === "he" ? place.he : place.en)),
       translate(lang, "companion.mobile-nav.talk"),
-      translate(lang, "nav.short.more"),
+      translate(lang, "nav.short.menu"),
     ]);
     for (const button of buttons) {
       const cls = /class="([^"]*)"/.exec(button)![1].split(" ");
@@ -153,7 +154,7 @@ describe("v3 IA-03 — the dock: Now · My child · Together · Talk · More", (
     }
   });
 
-  // [route, the one lit slot]: 0 Now · 1 My child · 2 Together · 3 Talk · 4 More
+  // [route, the one lit slot]: 0 Now · 1 My child · 2 Together · 3 Talk · 4 Menu
   const LIT: [ActiveTab, number][] = [
     ["overview", 0], ["weekly", 0], ["coach", 0], ["scholar", 0],
     ["development", 1], ["journal", 1], ["profile", 1], ["memory", 1],
@@ -171,207 +172,84 @@ describe("v3 IA-03 — the dock: Now · My child · Together · Talk · More", (
   });
 });
 
-describe("v3 IA-03 — the More sheet: doors, Search, then the three places", () => {
-  it.each(["en", "he"] as const)("reads header, doors, Search, then the place groups, with no support group (%s)", (lang) => {
+describe("v10 — Menu: four rows (For you, Care, Settings, Pause Arbor)", () => {
+  const sheetOf = (html: string) => html.slice(html.indexOf('data-testid="more-sheet"'));
+  const rowsOfSheet = (html: string) => sheetOf(html).split("<button").slice(1).map((row) => "<button" + row.slice(0, row.indexOf("</button>")));
+
+  it.each(["en", "he"] as const)("titled Menu, the two doors without a slot, then Settings and Pause Arbor (%s)", (lang) => {
     const html = render("overview", lang);
-    const sheet = html.slice(html.indexOf('data-testid="more-sheet"'));
-    const at = (needle: string) => {
-      const i = sheet.indexOf(needle);
-      expect(i, needle).toBeGreaterThan(-1);
-      return i;
-    };
-    const order = [
-      at('data-sheet-header="safety"'), at('data-sheet-header="kid-mode"'), at(`aria-label="${translate(lang, "aria.settings")}"`),
-      at('data-testid="more-doors-group"'), at('data-testid="more-search"'), at(`<span>${translate(lang, "top.search")}</span>`),
-      at('data-testid="more-records-group"'),
-      ...COMPANION_PLACES.map((place) => at(`data-testid="more-place-${place.id}-group"`)),
-    ];
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(sheet).not.toContain("more-support-group");
+    const sheet = sheetOf(html);
+    expect(sheet).toContain(translate(lang, "nav.popover.menu"));
+    const rows = rowsOfSheet(html);
+    const titles = rows.map((row) => /<b>([^<]*)<\/b>/.exec(row)?.[1]);
+    const door = (id: string) => name(COMPANION_DOORS.find((d) => d.id === id)!, lang);
+    expect(titles).toEqual([door("learn"), door("care"), translate(lang, "aria.settings"), translate(lang, "companion.pause.more")]);
+    // Search, Safety and Kid Mode stay in the top strip: the sheet never repeats them.
+    expect(sheet).not.toContain("data-sheet-header");
+    expect(sheet).not.toContain('data-testid="more-search"');
+    // Talk has its own slot in the bar, so it is not a row.
+    expect(sheet).not.toContain('data-more-door="talk"');
   });
 
-  it.each(["en", "he"] as const)("three door rows in COMPANION_DOORS order, named in the parent's language (%s)", (lang) => {
-    const html = render("overview", lang);
-    const group = /<section[^>]*data-testid="more-doors-group"[^>]*>[\s\S]*?<\/section>/.exec(html)![0];
-    expect(group).toContain(`>${translate(lang, "companion.more.doors")}</h3>`);
-    const rows = rowsOf(group);
-    expect(rows).toHaveLength(COMPANION_DOORS.length);
-    rows.forEach((row, i) => {
-      const door = COMPANION_DOORS[i];
-      expect(row).toContain(`data-more-door="${door.id}"`);
-      expect(row).toContain(name(door, lang));
-      expect(row).toContain(`>${door.icon}</span>`);
-      expect(words(row)).not.toMatch(/\d/);
-    });
-    if (lang === "he") for (const door of COMPANION_DOORS) expect(door.he).not.toMatch(/[A-Za-z]/);
+  it.each(["en", "he"] as const)("each row names what is inside it, in the parent's language (%s)", (lang) => {
+    const rows = rowsOfSheet(render("overview", lang));
+    const subs = rows.map((row) => /<span class="small">([^<]*)<\/span>/.exec(row)?.[1]);
+    expect(subs).toEqual(["nav.menu.learn.sub", "nav.menu.care.sub", "nav.menu.settings.sub", "nav.menu.pause.sub"].map((k) => translate(lang, k)));
+    for (const sub of subs) expect(sub).toBeTruthy();
+    if (lang === "he") for (const sub of subs) expect(sub).not.toMatch(/[A-Za-z]/);
   });
 
-  it("the Talk door opens the conversation; For you and Care open their homes; none joins the destination set", () => {
+  it("For you and Care open their homes; Settings and Pause ask the shell for the settings sheet", () => {
     render("overview");
-    const rows = state.buttons.filter((button) => button["data-more-door"]) as Props[];
-    expect(rows.map((row) => row["data-more-door"])).toEqual(COMPANION_DOORS.map((door) => door.id));
-    for (const row of rows) expect(row["data-more-destination"]).toBeUndefined();
-    rows.forEach((row, i) => {
-      const door = COMPANION_DOORS[i];
-      state.setActiveTab.mockClear();
-      row.onClick();
-      if (door.id === "talk") {
-        expect(row["aria-haspopup"]).toBe("dialog");
-        expect(state.setActiveTab).not.toHaveBeenCalled();
-      } else {
-        expect(row["aria-haspopup"]).toBeUndefined();
-        expect(state.setActiveTab).toHaveBeenCalledWith(door.tab);
-      }
-    });
-    expect(conversation.request.mock.calls).toEqual([[{ source: "more" }]]);
+    const learn = state.buttons.find((b) => b["data-more-door"] === "learn") as Props;
+    const care = state.buttons.find((b) => b["data-more-door"] === "care") as Props;
+    learn.onClick();
+    care.onClick();
+    expect(state.setActiveTab).toHaveBeenNthCalledWith(1, "masterclasses");
+    expect(state.setActiveTab).toHaveBeenNthCalledWith(2, "consult");
+    const settings = state.buttons.find((b) => b["data-testid"] === "menu-settings") as Props;
+    const pause = state.buttons.find((b) => b["data-testid"] === "more-pause") as Props;
+    settings.onClick();
+    pause.onClick();
+    expect(settingsBus.open).toHaveBeenNthCalledWith(1);
+    expect(settingsBus.open).toHaveBeenNthCalledWith(2, { focus: "pause-arbor" });
+    expect(conversation.request).not.toHaveBeenCalled();
   });
 
   it.each(["en", "he"] as const)("a door row is current on its own door's routes only (%s)", (lang) => {
-    for (const [tab, current] of [["masterclasses", "learn"], ["consult", "care"], ["coach", null], ["overview", null]] as const) {
-      render(tab, lang);
-      const rows = state.buttons.filter((button) => button["data-more-door"]);
-      expect(rows.filter((row) => row["aria-current"] === "page").map((row) => row["data-more-door"]), tab).toEqual(current ? [current] : []);
+    for (const [tab, current] of [["masterclasses", "learn"], ["learn", "learn"], ["consult", "care"], ["safety", "care"], ["overview", null], ["development", null]] as const) {
+      const rows = rowsOfSheet(render(tab, lang));
+      const lit = rows.filter((row) => row.includes('aria-current="page"')).map((row) => /data-more-door="([^"]*)"/.exec(row)?.[1]);
+      expect(lit, tab).toEqual(current ? [current] : []);
     }
   });
 
-  it.each(["en", "he"] as const)("each place lists its v3 pill names, in place order, and nothing else (%s)", (lang) => {
-    const html = render("overview", lang);
-    const expected: Record<string, string[]> = {
-      now: [translate(lang, "nav.pill.weekly")],
-      child: [translate(lang, "companion.more.milestones"), translate(lang, "companion.more.moments"), translate(lang, "companion.more.about", { name: "Noa" })],
-      // v4 re-pin: Together's three filters, in its order (Routines · Play · Stories).
-      together: ["companion.together-view.routines", "companion.together-view.play", "companion.together-view.stories"].map((key) => translate(lang, key)),
-    };
-    for (const place of COMPANION_PLACES) {
-      const group = groupOf(html, place.id);
-      expect(group, place.id).toContain(`>${lang === "he" ? place.he : place.en}</h4>`);
-      expect(rowsOf(group).map(words), place.id).toEqual(expected[place.id]);
+  it.each(["en", "he"] as const)("navigating rows end in a chevron that flips in Hebrew; Pause Arbor has none (%s)", (lang) => {
+    const rows = rowsOfSheet(render("overview", lang));
+    for (const row of rows.slice(0, 3)) {
+      expect(row).toContain(">chevron_right</span>");
+      expect(row).toContain("rtl:-scale-x-100");
+      expect(row).not.toContain("chevron_left");
     }
-    // Every label resolves (no key shape) and the Hebrew carries no Latin
-    // except the child's name.
-    for (const label of Object.values(expected).flat()) {
-      expect(label).not.toMatch(/^[a-z]+(?:\.[\w-]+)+$/);
-      if (lang === "he") expect(label.replace("Noa", "")).not.toMatch(/[A-Za-z]/);
-    }
+    expect(rows[3]).not.toContain("chevron_right");
   });
 
-  it.each(["en", "he"] as const)("no old hub name is an entry, and no row carries a sub-line or a number (%s)", (lang) => {
-    const html = render("overview", lang);
-    const records = /<section[^>]*data-testid="more-records-group"[^>]*>[\s\S]*?<\/section>/.exec(html)![0];
-    const labels = rowsOf(records).map(words);
-    expect(labels).toHaveLength(7);
-    // "Stories" survives only as Together's pill (it opens #/practice?f=stories);
-    // the old Stories hub, like the others, is never a row's destination.
-    for (const hub of ["journal", "behaviors", "learn", "care", "profile"]) {
-      expect(labels, hub).not.toContain(translate(lang, "nav.cat." + hub));
-    }
-    const destinations = [...records.matchAll(/data-more-destination="([^"]*)"/g)].map((m) => m[1]);
-    for (const old of ["journal", "behaviors", "stories", "learn", "care", "memory", "masterclasses", "consult"]) {
-      expect(destinations, old).not.toContain(old);
-    }
-    for (const row of rowsOf(records)) {
-      expect(row.match(/<span/g)?.length, "glyph, label, chevron").toBe(3);
-      expect(words(row)).not.toMatch(/\d/);
-    }
-  });
-
-  it("the destination set is the v3 index, and every row lands where its pill does", () => {
-    const hashes: string[] = [];
-    render("overview");
-    const rows = state.buttons.filter((button) => button["data-more-destination"]) as Props[];
-    expect(rows.map((row) => row["data-more-destination"])).toEqual([
-      "weekly", "development", "timeline", "profile",
-      "practice?f=routines", "practice?f=games", "practice?f=stories",
-    ]);
-    const win = { location: { hash: "" } };
-    vi.stubGlobal("window", win);
-    for (const row of rows) {
-      state.setActiveTab.mockClear();
-      win.location.hash = "";
-      row.onClick();
-      const [route, query] = String(row["data-more-destination"]).split("?");
-      if (query) {
-        // Together's filter rides the hash query (shared contract 1).
-        expect(state.setActiveTab).not.toHaveBeenCalled();
-        hashes.push(win.location.hash);
-        expect(win.location.hash).toBe(`/${route}?${query}`);
-      } else {
-        expect(state.setActiveTab).toHaveBeenCalledWith(route);
-        expect(win.location.hash).toBe("");
-      }
-    }
-    expect(hashes).toHaveLength(3);
-  });
-
-  // v4 re-pin: Play (f=games) is one of Together's three filters at every age —
-  // under three, or with no world that fits, it opens on the away ideas — so
-  // its row never lands on an empty view and is always there.
-  it("Play follows the Together pill: a row before three too, and About falls back when there is no name", () => {
-    state.child = { id: "child-b", name: "", age: 2 };
-    const html = render("overview");
-    const together = rowsOf(groupOf(html, "together")).map(words);
-    expect(together).toEqual(["routines", "play", "stories"].map((k) => translate("en", `companion.together-view.${k}`)));
-    expect(together).not.toContain(translate("en", "companion.together-view.games"));
-    expect(rowsOf(groupOf(html, "child")).map(words)).toContain(translate("en", "companion.more.about-child"));
-  });
-
-  it.each(["en", "he"] as const)("Play stays a row when Kid Mode is open but no world fits her: it opens on the away ideas (%s)", (lang) => {
-    state.noWorlds = true;
-    const html = render("overview", lang);
-    const together = rowsOf(groupOf(html, "together")).map(words);
-    expect(together).toContain(translate(lang, "companion.together-view.play"));
-    expect(together).toHaveLength(3);
-    expect(state.buttons.map((button) => button["data-more-destination"])).toContain("practice?f=games");
-  });
-
-  it("gamesOpenFor is one predicate: the Kid Mode door is open AND a world fits, as Together's Games pill reads it", () => {
-    expect(gamesOpenFor("en", { age: 5 })).toBe(true);
-    expect(gamesOpenFor("he", { age: 5 })).toBe(true);
-    expect(gamesOpenFor("en", { age: 2 })).toBe(false);
-    state.noWorlds = true;
-    expect(gamesOpenFor("en", { age: 5 })).toBe(false);
-    // Together's Games pill gates on the same two conditions (or reads this
-    // predicate once the Together lane adopts it), so the row never lands on
-    // a Games view that is not there.
-    const together = fs.readFileSync(path.resolve(__dirname, "../companion/TogetherView.tsx"), "utf8");
-    expect(together).toMatch(/kidAvailable && worlds\.length|gamesOpenFor\(/);
-  });
-
-  it.each(["en", "he"] as const)("a row is current only on its own route, and a Together row only with its filter (%s)", (lang) => {
-    render("profile", lang);
-    expect(state.buttons.filter((b) => b["aria-current"] === "page" && b["data-more-destination"]).map((b) => b["data-more-destination"])).toEqual(["profile"]);
-    vi.stubGlobal("window", { location: { hash: "#/practice?f=stories" }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
-    render("practice", lang);
-    expect(state.buttons.filter((b) => b["aria-current"] === "page" && b["data-more-destination"]).map((b) => b["data-more-destination"])).toEqual(["practice?f=stories"]);
-  });
-
-  it.each(["en", "he"] as const)("every chevron points inline-end: one rtl flip each, never a left glyph (%s)", (lang) => {
-    const html = render("overview", lang);
-    const chevrons = [...html.matchAll(/<span class="([^"]*)"[^>]*>chevron_right<\/span>/g)].map((m) => m[1]);
-    const rows = state.buttons.filter((button) => button["data-more-door"] || button["data-more-destination"]);
-    expect(rows).toHaveLength(COMPANION_DOORS.length + 7);
-    expect(chevrons).toHaveLength(rows.length);
-    for (const cls of chevrons) {
-      expect(cls.split(" ").filter((c) => c === "rtl:-scale-x-100")).toHaveLength(1);
-      expect(cls).not.toContain("rotate");
-    }
-    expect(html).not.toContain("chevron_left");
-  });
-
-  it("every dock button and sheet row keeps the 44 px floor", () => {
+  it("every dock button and menu row keeps the 44 px floor", () => {
     const html = render("overview");
     const classes = [...html.matchAll(/<button[^>]*class="([^"]*)"/g)].map((m) => m[1]);
-    expect(classes.length).toBeGreaterThanOrEqual(5 + 1 + COMPANION_DOORS.length + 1 + 7);
-    for (const cls of classes) expect(cls).toMatch(/min-h-\[64px\]|min-h-11|min-h-\[44px\]|w-11 h-11/);
+    expect(classes.length).toBe(5 + 4);
+    for (const cls of classes) expect(cls).toMatch(/min-h-\[64px\]|ds-menurow/);
+    const css = fs.readFileSync(path.resolve(__dirname, "../../design/ds.css"), "utf8");
+    expect(css).toMatch(/\.ds \.ds-menurow \{[^}]*min-height: 64px/);
   });
 
-  it("the new keys exist in both languages; the Hebrew has no Latin words but the name slot", () => {
-    for (const key of ["companion.more.doors", "companion.more.milestones", "companion.more.moments", "companion.more.about", "companion.more.about-child"] as const) {
-      expect(companionEn[key], key).toBeTruthy();
-      expect(companionHe[key], key).toBeTruthy();
-      expect(companionHe[key].replace("{name}", "")).not.toMatch(/[A-Za-z]/);
+  it("the new keys exist in both languages; the Hebrew has no Latin words", () => {
+    for (const key of ["nav.short.menu", "nav.popover.menu", "nav.menu.learn.sub", "nav.menu.care.sub", "nav.menu.settings.sub", "nav.menu.pause.sub"]) {
+      expect(translate("en", key), key).not.toBe(key);
+      expect(translate("he", key), key).not.toBe(key);
+      expect(translate("he", key)).not.toMatch(/[A-Za-z]/);
     }
-    expect(companionEn["companion.more.doors"]).toBe("Talk, learn, get support");
+    expect(translate("en", "nav.short.menu")).toBe("Menu");
   });
 });
 

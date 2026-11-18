@@ -864,7 +864,7 @@ export function buildConsultPacket(input: BuildPacketInput): ConsultPacket {
     });
     sections.push({
       id: "everyday-plans",
-      title: "Everyday plans (picture-book plans)",
+      title: "Challenge Plans (picture-book plans)",
       titleKey: "elev.packet.section.everydayPlans",
       note: "Plans the parent composed from Arbor's reviewed patterns and approved; the nights are the parent's own confirmations — counts, never a rate.",
       noteKey: "elev.packet.note.everydayPlans",

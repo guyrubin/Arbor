@@ -47,8 +47,9 @@ vi.mock("../companion/familyTopicEvents", () => ({ openFamilyTopicSheet: h.openS
 // The Talk panel's one door (CompanionWorkspace holds the listener).
 vi.mock("../../lib/companionConversation", () => ({ requestCompanionConversation: h.talk }));
 import { useSearchResults } from "./useSearchResults";
-import { getSearchIndex, searchCatalog, ROUTINES_INTENT_TAB } from "../../lib/searchIndex";
+import { exactRouteFor, getSearchIndex, searchCatalog, ROUTINES_INTENT_TAB } from "../../lib/searchIndex";
 import { translate } from "../../lib/i18n";
+import { HOME_PILLS } from "../../lib/navigation";
 import { COMPANION_DOORS, COMPANION_PLACES, homeForTab } from "../../lib/companionPlaces";
 
 const translations = {
@@ -75,7 +76,7 @@ beforeEach(() => {
   h.actions.selectFamilyTopic.mockReset();
   h.actions.updateFamilyTopic.mockReset();
   h.records = empty(); h.topics = []; h.childId = "child-a"; h.lang = "en"; h.cursor = 0; h.memos = [];
-  h.index = { getSearchIndex, searchCatalog };
+  h.index = { getSearchIndex, searchCatalog, exactRouteFor };
 });
 
 describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
@@ -109,7 +110,9 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
   it.each(["en", "he"] as const)("IA-05r: a home's own route never repeats the home's name under its header (%s)", (lang) => {
     h.lang = lang;
     const homes = [...COMPANION_PLACES, ...COMPANION_DOORS];
-    const rows = render("").ordered;
+    // v10: the zero query is the jump map now; the route rows are the hook's
+    // `routes` list (still built for the index), checked the same way.
+    const rows = render("").routes;
     let seen = 0;
     for (const home of homes) {
       const own = rows.find(r => r.id === "route:" + home.tab);
@@ -138,7 +141,7 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
     }
   });
 
-  it.each(["routines", "Routine", "שגרות", "שגרה"])("%j opens Plans first, under Plans' own home", (query) => {
+  it.each(["routines", "Routine", "שגרות", "שגרה"])("%j opens Together › Routines first, under its own home (v10)", (query) => {
     for (const lang of ["en", "he"] as const) {
       h.lang = lang; h.memos = [];
       const result = render(query);
@@ -157,9 +160,7 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
   });
 
   it.each(["plans", "Growth Plans", "תוכניות", "תוכניות התפתחות", translate("en", "plan.title"), translate("he", "plan.title")])(
-    "IA-05r: the old name %j still opens the renamed Plans route first", (query) => {
-      // Transitional, until F-SHELL-1 replaces the PlansTab heading.
-      expect(ROUTINES_INTENT_TAB).toBe("plans");
+    "v10: Plans' name or an old one, %j, opens Now › Plans first", (query) => {
       for (const lang of ["en", "he"] as const) {
         h.lang = lang; h.memos = [];
         const first = render(query).ordered[0];
@@ -170,19 +171,20 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
   );
 
   it.each([
-    ["en", ["Together", "Routines"]],
-    ["he", ["ביחד", "שגרות"]],
-  ] as const)("IA-05r: a routines query reads Together › Routines with the interests glyph (%s)", (lang, crumb) => {
+    ["en", "Together", "Routines", ["Now", "Plans"]],
+    ["he", "ביחד", "שגרות", ["עכשיו", "תוכניות"]],
+  ] as const)("v10: a routines query reads Routines under Together with its glyph; a plan record reads Now › Plans (%s)", (lang, together, routines, plansCrumb) => {
     h.lang = lang;
     const first = render("routines").ordered[0];
-    expect(first.id).toBe("route:plans");
-    expect(first.label).toBe(crumb[1]);
-    expect(first.crumb).toEqual(crumb);
-    expect(first.group).toEqual({ id: "together", label: crumb[0], icon: "interests" });
+    expect(first.id).toBe("route:practice");
+    expect(first.label).toBe(routines);
+    // Together's own route sits under Together's header: no crumb repeats it.
+    expect(first.crumb).toBeUndefined();
+    expect(first.group).toEqual({ id: "together", label: together, icon: "interests" });
     expect(first.icon).toBe("interests");
-    // A Routines plan row reads the same crumb when it has no words of its own.
+    // A plan record with no words of its own reads where plans live now.
     h.records = { ...empty(), actionPlans: [{ id: "p", title: "Invented kite routine", issue: "", phases: [], scripts: [], successIndicators: [] }] };
-    expect(row(render("kite").record, "plan-p").crumb).toEqual(crumb);
+    expect(row(render("kite").record, "plan-p").crumb).toEqual(plansCrumb);
   });
 
   it("no row wears the old generic route arrow; every catalogue row has a home", () => {
@@ -191,7 +193,8 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
         h.lang = lang; h.memos = [];
         const rows = render(query).ordered;
         expect(rows.some(r => r.icon === "arrow_forward"), query).toBe(false);
-        for (const r of rows.filter(r => r.kind !== "ask")) {
+        // v10: Keep and Ask act on the words; they belong to no home.
+        for (const r of rows.filter(r => r.kind !== "ask" && r.kind !== "keep")) {
           expect(HOME_IDS, r.id).toContain(r.group?.id);
           if (r.kind === "route") {
             expect(r.icon, r.id).toBe(r.group!.icon);
@@ -199,7 +202,7 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
             // crumb and no second line at all.
             if (r.crumb) expect(r.crumb[0], r.id).toBe(r.group!.label);
             else expect(r.sub, r.id).toBe("");
-          } else {
+          } else if (r.kind !== "jump") {
             expect(r.crumb, r.id).toBeUndefined();
           }
         }
@@ -207,17 +210,30 @@ describe("v3 IA-05 · a route row names its home and reads as a crumb", () => {
     }
   });
 
-  it("zero query lists the go-anywhere routes home by home, Sidebar order", () => {
+  // v10 re-pin (was: the zero query listed every route row): the empty field
+  // is the jump map, every pill of every home under its home, Sidebar order,
+  // each with the shell's own pill label; it lists no record.
+  it.each(["en", "he"] as const)("zero query is the jump map: every home's pills, Sidebar order, the shell's labels (%s)", (lang) => {
+    h.lang = lang; h.memos = [];
     const rows = render("").ordered;
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every(r => r.kind === "route")).toBe(true);
+    expect(rows.every(r => r.kind === "jump")).toBe(true);
     const rank = rows.map(r => HOME_IDS.indexOf(r.group!.id));
     expect(rank.every(i => i >= 0)).toBe(true);
     expect(rank).toEqual([...rank].sort((a, b) => a - b));
-    // NEGATIVE CONTROL: the index's own order is not already home by home.
-    const prior = getSearchIndex().filter(e => e.kind === "route").map(e => HOME_IDS.indexOf(homeOf(e.tab, "en").id));
-    expect(prior).not.toEqual([...prior].sort((a, b) => a - b));
-    // Within a home the index order holds (a stable sort).
+    const expected = [...COMPANION_PLACES, ...COMPANION_DOORS].flatMap((home) => HOME_PILLS[home.id].length ? HOME_PILLS[home.id].map((it) => "jump:" + it.tab) : ["jump:" + home.tab]);
+    expect(rows.map(r => r.id)).toEqual(expected);
+    expect(rows.find(r => r.id === "jump:weekly")!.label).toBe(translate(lang, "nav.pill.weekly"));
+    expect(rows.find(r => r.id === "jump:overview")!.label).toBe(lang === "he" ? COMPANION_PLACES[0].he : COMPANION_PLACES[0].en);
+    rows.find(r => r.id === "jump:reports")!.go();
+    expect(h.actions.setActiveTab).toHaveBeenLastCalledWith("reports");
+  });
+
+  it("the route list the index still builds stays home by home, Sidebar order (a stable sort)", () => {
+    const rows = render("").routes;
+    expect(rows.every(r => r.kind === "route")).toBe(true);
+    const rank = rows.map(r => HOME_IDS.indexOf(r.group!.id));
+    expect(rank).toEqual([...rank].sort((a, b) => a - b));
     const indexOrder = getSearchIndex().filter(e => e.kind === "route").map(e => e.id);
     for (const home of HOME_IDS) {
       const mine = rows.filter(r => r.group!.id === home).map(r => r.id);

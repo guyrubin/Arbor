@@ -37,6 +37,7 @@ import { HERO_BAND_COPY } from './heroBandCopy';
 import { validDance, type MoveId } from './heroBandRules';
 import { HERO_BAND_FLAG_KEY, heroBandFlagOn, resetHeroBandFlagForTests } from '../../heroBandFlag';
 import { studioCopy } from '../../studioCopy';
+import { STUDIO_NEXT_FLAG_KEY, resetStudioNextFlagForTests } from '../../studioNextFlag';
 
 type Props = { children?: unknown; onClick?: () => void; disabled?: boolean; [key: string]: any };
 function nodes(node: unknown): ReactElement<Props>[] { if (Array.isArray(node)) return node.flatMap(nodes); if (!isValidElement<Props>(node)) return []; return [node, ...nodes(node.props.children)]; }
@@ -70,12 +71,17 @@ function watch(): MoveId[] {
 describe('Hero Band', () => {
   it('shows a dance, lets the child dance it back, and forgives a wrong move by showing the moves', () => {
     let tree = render();
-    expect(heading(tree)).toBe(en.ready); expect(pad(tree, 0).props.disabled).toBe(true); expect(nodes(tree).filter(n => n.props.className === 'band-pad')).toHaveLength(4);
+    expect(heading(tree)).toBe(en.ready); expect(nodes(tree).filter(n => n.props.className === 'band-pad')).toHaveLength(4);
+    // B-GAME-46: before the first dance a pad is live and only makes the hero move; nothing is recorded.
+    expect(pad(tree, 0).props.disabled).toBe(false); pad(tree, 0).props.onClick(); tree = render();
+    expect(heading(tree)).toBe(en.ready); expect(h.engine.hit).toHaveBeenCalledTimes(1); h.engine.hit.mockClear();
     const target = watch(); tree = render();
     expect(heading(tree)).toBe(en.yourTurn); expect(pad(tree, 0).props.disabled).toBe(false);
     expect(steps(tree).every(step => step.props['data-move'] === 'none')).toBe(true);
     const wrong = ([0, 1, 2, 3] as const).find(move => move !== target[0])!;
     pad(tree, wrong).props.onClick!(); tree = render();
+    // B-GAME-45: the pad that was tapped rings, and a note goes up from the dancer.
+    expect(nodes(pad(tree, wrong).props.children).some(n => n.props.className === 'band-ripple')).toBe(true); expect(nodes(tree).filter(n => n.props.className === 'band-note')).toHaveLength(1);
     expect(words(nodes(tree).find(n => n.props.role === 'status'))).toBe(en.retry);
     expect(steps(tree).map(step => step.props['data-move'])).toEqual(target);
     for (const move of target) { pad(render(), move).props.onClick!(); }
@@ -93,7 +99,7 @@ describe('Hero Band', () => {
     h.elapsed = 640 * 4 - 120; pad(render(), 3).props.onClick!();
     expect(h.engine.played).toHaveBeenCalledWith(4); expect(steps(render())[4].props['data-move']).toBe(3);
     h.run.onStep(4, 4, true); expect(steps(render())[4].props['data-now']).toBe(true);
-    button(render(), en.showTime).props.onClick!(); expect(h.run.steps).toBe(16); expect(nodes(render()).some(n => n.props.className === 'band-pad')).toBe(false);
+    button(render(), en.showTime).props.onClick!(); expect(h.run.steps).toBe(16); expect(nodes(render()).some(n => n.props.className === 'band-beams')).toBe(true); expect(nodes(render()).some(n => n.props.className === 'band-pad')).toBe(false);
     h.running = false; h.run.onEnd(); tree = render();
     const finish = nodes(tree).find(n => n.type === GameFinish)!; expect(finish).toBeDefined();
     expect(finish.props.creation).toEqual({ kind: 'dance', moves: [2, null, null, null, 3, null, null, null], tempo: 640 });
@@ -120,15 +126,16 @@ describe('Hero Band', () => {
     h.lang = 'he'; expect(heading(render())).toBe(he.ready);
   });
   it('leaves the Sound Orbit tile alone until a device opts in', () => {
-    const store = new Map<string, string>();
+    // A device that opted out of the next games (on by default since 16 Nov): Hero Band's own switch still works there.
+    const store = new Map<string, string>([[STUDIO_NEXT_FLAG_KEY, '0']]);
     vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
     vi.stubGlobal('location', { search: '' });
-    resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false); expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Sound Orbit');
+    resetStudioNextFlagForTests(); resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false); expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Sound Orbit');
     vi.stubGlobal('location', { search: '?heroBand=1' }); resetHeroBandFlagForTests();
     expect(heroBandFlagOn()).toBe(true); expect(store.get(HERO_BAND_FLAG_KEY)).toBe('1');
     expect(studioCopy('en').activities['rhythm-garden'].title).toBe('Hero Band'); expect(studioCopy('he').activities['rhythm-garden'].title).toBe(HERO_BAND_COPY.he.title);
-    expect(studioCopy('en').activities.memory.title).toBe('Memory Match');
+    expect(studioCopy('en').activities.memory.title).toBe('Mind Vault');
     vi.stubGlobal('location', { search: '?heroBand=0' }); resetHeroBandFlagForTests(); expect(heroBandFlagOn()).toBe(false);
-    vi.unstubAllGlobals(); resetHeroBandFlagForTests();
+    vi.unstubAllGlobals(); resetStudioNextFlagForTests(); resetHeroBandFlagForTests();
   });
 });

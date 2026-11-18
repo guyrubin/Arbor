@@ -46,7 +46,9 @@ const RITUAL_MOVE = { "data-primary-move": "start-family-ritual" } as const;
 type StartStatus = "saving" | "saved" | "failed";
 type StartScope = { key: string; attempts: Map<string, StartStatus> };
 
-export default function FamilyFormation() {
+/** `embedded`: the family ritual inside Together › Stories (v10.1) — a section
+ *  heading instead of the page header, and no route stamps (Stories owns them). */
+export default function FamilyFormation({ embedded = false }: { embedded?: boolean } = {}) {
   const { t, aiLang, uiLang } = useLanguage();
   // LC-22: the rituals were read-only prose — four repeatable practices with
   // no way to actually start one. "Start" accepts the ritual's FIRST step
@@ -137,8 +139,10 @@ export default function FamilyFormation() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 max-w-[1180px]">
-      <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={embedded ? "space-y-6" : "space-y-6 max-w-[1180px]"}>
+      {embedded
+        ? <div><h2 className="h3" style={{ margin: 0 }}>{t("sec.family.title")}</h2><p className="small">{t("sec.family.sub")}</p></div>
+        : <PageHeader title={t("sec.family.title")} subtitle={t("sec.family.sub")} />}
 
       {/* Family Charter — the real, editable tool (names the family's aim) */}
       {/* Item 11 (IA-02): the surface contract reaches the DOM. `data-module`
@@ -147,7 +151,7 @@ export default function FamilyFormation() {
           surfaceContract.ts declares for this route. */}
       {/* W2-SHELLPLAY critic r1: a real block (display:contents rendered no
           box, so space-y-6 collapsed to ~6 px above the rituals). */}
-      <div data-module="family-charter">
+      <div data-module={embedded ? undefined : "family-charter"}>
       {/* W2-SHELLPLAY critic r2 (B-PLAY-21 target order): ONE compact "Our
           family's way" line between the header and the ritual turn — the
           charter values as text, the current tone, and a 44 px Edit that opens
@@ -236,12 +240,12 @@ export default function FamilyFormation() {
           the module leads the page (the charter follows), and the declared
           move is stamped on ONE real control — the turn card's "Start it this
           week" — not on this wrapper. */}
-      <div data-module="family-rituals">
+      <div data-module={embedded ? undefined : "family-rituals"}>
         <h2 className="t-lg font-extrabold mb-3" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{he ? "טקסי משפחה" : "Family rituals"}</h2>
         {/* B-GROWTH-03 / ENG-25 — the ritual whose turn has come round, beside
             the rituals it belongs to (moved from #/development). Renders
             nothing when no ritual is due. */}
-        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={saved ? values : []} childName={childProfile?.name} childAge={childProfile?.age} startDisabled={startPending()} startFeedback={startFeedback} /></div>
+        <div className="mb-4 empty:hidden"><RitualTurnCard onStart={startRitual} started={ritualStarted} primaryMoveProps={embedded ? undefined : RITUAL_MOVE} onTurnChange={onTurnChange} charterValues={saved ? values : []} childName={childProfile?.name} childAge={childProfile?.age} startDisabled={startPending()} startFeedback={startFeedback} /></div>
         <div className="grid sm:grid-cols-2 gap-4">
           {FAMILY_RITUALS.filter((r) => r.id !== turnId).map((r) => {
             const glyph = RITUAL_ICON[r.id] ?? "history_edu";
@@ -261,7 +265,7 @@ export default function FamilyFormation() {
                       <Icon name="expand_more" size={16} className={`flex-shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} style={{ color: "var(--arbor-muted)" }} />
                     </h3>
                     <p className="text-xs mt-1 leading-relaxed" dir="auto" style={{ color: "var(--arbor-muted)" }}>{he ? r.purposeHe : r.purpose}</p>
-                    <span className="inline-block text-[10.5px] font-bold mt-2 px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{he ? r.cadenceHe : r.cadence}</span>
+                    <span className="inline-block text-[12px] font-bold mt-2 px-2 py-0.5 rounded-full" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{he ? r.cadenceHe : r.cadence}</span>
                   </div>
                 </button>
 
@@ -270,14 +274,14 @@ export default function FamilyFormation() {
                     <ol className="space-y-2">
                       {(he ? r.stepsHe : r.steps).map((s, i) => (
                         <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink-soft)" }}>
-                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-extrabold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{i + 1}</span>
+                          <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[12px] font-extrabold" style={{ background: "var(--arbor-clay)", color: "var(--arbor-on-accent)" }}>{i + 1}</span>
                           <span>{s}</span>
                         </li>
                       ))}
                     </ol>
                     <div className="rounded-xl p-3" style={{ background: "var(--arbor-green-soft)" }}>
-                      <p className="text-[10.5px] uppercase tracking-widest font-bold mb-1" style={{ color: "var(--arbor-green-ink)" }}>{he ? "למה זה חשוב" : "Why it matters"}</p>
-                      <p className="text-[12.5px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? r.whyHe : r.why}</p>
+                      <p className="text-[12px] uppercase tracking-widest font-bold mb-1" style={{ color: "var(--arbor-green-ink)" }}>{he ? "למה זה חשוב" : "Why it matters"}</p>
+                      <p className="text-[12px] leading-relaxed" dir="auto" style={{ color: "var(--arbor-ink)" }}>{he ? r.whyHe : r.why}</p>
                     </div>
                     {/* LC-22 — the one move this surface was missing. Capacity
                         "tiny": a first step is meant to be doable tonight. */}

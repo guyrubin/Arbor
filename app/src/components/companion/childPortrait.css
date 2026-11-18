@@ -2,11 +2,8 @@
 .child-portrait *, .portrait-evidence * { box-sizing: border-box; }
 .child-portrait button, .child-portrait select, .portrait-evidence button { min-height: var(--touch-min); cursor: pointer; }
 .child-portrait button:focus-visible, .child-portrait select:focus-visible, .portrait-evidence button:focus-visible { outline: 2px solid var(--arbor-clay); outline-offset: 4px; }
-.portrait-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-block: 8px 24px; }
-.portrait-intro > div { min-width: 0; }
 .portrait-kicker { margin: 0 0 12px; color: var(--arbor-muted); font-size: var(--t-kicker); font-weight: 600; letter-spacing: .07em; }
 [dir=rtl] .portrait-kicker { letter-spacing: 0; }
-.portrait-intro h1 { margin: 0; font-size: var(--t-hero); line-height: 1.12; font-weight: var(--arbor-w-hero); letter-spacing: -.025em; }
 .portrait-subtitle { max-width: 600px; margin: 14px 0 0; color: var(--arbor-muted); line-height: 1.7; font-size: 15px; }
 .portrait-identity { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; text-align: start; padding: 8px; border-radius: var(--r); }
 .portrait-identity > span { display: grid; gap: 3px; }
@@ -73,7 +70,7 @@
 .portrait-mark-button:hover { background: var(--arbor-paper-deep); }
 .portrait-mark { width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%; background: var(--arbor-ink-soft); outline: 4px solid var(--arbor-paper); margin-block-end: 5px; }
 .portrait-cell-label { font-size: 12px; line-height: 1.5; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.portrait-cell-count { color: var(--arbor-muted); font-size: 11px; line-height: 1.5; }
+.portrait-cell-count { color: var(--arbor-muted); font-size: 12px; line-height: 1.5; }
 .portrait-no-mark { width: 100%; display: flex; align-items: flex-start; justify-content: center; position: relative; padding-block-start: 11px; font-size: 20px; color: var(--arbor-muted); }
 .portrait-no-mark > span:first-child { width: 24px; background: var(--arbor-paper); text-align: center; }
 .portrait-map-note { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--arbor-muted); line-height: 1.7; margin-block: 16px 0; }
@@ -131,10 +128,8 @@
 .portrait-interpretation { margin-block: 20px 0; padding: 16px; background: var(--arbor-paper-deep); border-radius: var(--r); }
 .portrait-interpretation p { font-size: 13px; line-height: 1.7; margin: 0; }
 @media (max-width: 760px) {
-  .portrait-intro { align-items: flex-start; gap: 12px; }
   .portrait-identity { padding: 0; }
   .portrait-identity > span { display: none; }
-  .portrait-intro h1 { font-size: 31px; }
   .portrait-toolbar { flex-wrap: wrap; }
   .portrait-views { flex: 1; }
   .portrait-views button { padding-inline: 12px; }
@@ -154,9 +149,7 @@
   .portrait-environments, .portrait-domain-view { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
-  .portrait-intro { padding-block-start: 0; }
-  .portrait-kicker { font-size: 11px; margin-block-end: 10px; }
-  .portrait-intro h1 { font-size: 30px; line-height: 1.2; }
+  .portrait-kicker { font-size: 12px; margin-block-end: 10px; }
   .portrait-subtitle { font-size: 13px; margin-block-start: 10px; }
   .portrait-identity img, .portrait-identity > span:first-child { width: 42px !important; height: 42px !important; }
   .portrait-interests { display: block; }
@@ -167,13 +160,13 @@
   .portrait-views .msr { font-size: 16px !important; }
   .portrait-period { margin-inline-start: auto; }
   .portrait-chapters { gap: 8px; margin-block-end: 28px; }
-  .portrait-chapter-date { font-size: 11px; min-height: 32px; align-items: flex-start; }
+  .portrait-chapter-date { font-size: 12px; min-height: 32px; align-items: flex-start; }
   .portrait-date-line { display: none; }
   .portrait-memory { height: 232px; padding: 12px; border-radius: var(--r-sm); }
-  .portrait-memory-copy > .portrait-meta { font-size: 11px; line-height: 1.5; }
+  .portrait-memory-copy > .portrait-meta { font-size: 12px; line-height: 1.5; }
   .portrait-memory-copy > p { font-size: 17px; margin-block: 8px 12px; -webkit-line-clamp: 4; }
   .portrait-memory-art .msr { font-size: 29px !important; }
-  .portrait-memory-link { font-size: 11px; gap: 4px; }
+  .portrait-memory-link { font-size: 12px; gap: 4px; }
   .portrait-memory-link .msr { display: none; }
   .portrait-memory-photo { padding: 0; }
   .portrait-memory-photo > img { height: 100px; }
@@ -187,7 +180,7 @@
   .portrait-section-head p { font-size: 12px; }
   .portrait-section-head > .portrait-text-button { flex-shrink: 0; font-size: 12px; gap: 3px; }
   .portrait-thread-head, .portrait-thread { grid-template-columns: minmax(90px, 1.25fr) repeat(3, minmax(0, 1fr)); column-gap: 4px; }
-  .portrait-thread-head { font-size: 11px; line-height: 1.5; }
+  .portrait-thread-head { font-size: 12px; line-height: 1.5; }
   .portrait-thread { min-height: 92px; }
   .portrait-domain-label button { gap: 5px; }
   .portrait-domain-label span:last-child { font-size: 12px; }

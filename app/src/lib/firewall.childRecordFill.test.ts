@@ -53,6 +53,13 @@ const SCANNED = [
   "components/companion/MilestoneAreas.tsx",
   "components/companion/PortraitCards.tsx",
   "components/companion/milestonesModel.ts",
+  // v10.1: the map's What to notice next and its check object.
+  "components/companion/NoticeNext.tsx",
+  "components/companion/DevelopmentCheckCard.tsx",
+  // v10.1 (new frame): the header band, the open area's dated line, the reading key.
+  "components/companion/MilestonesBand.tsx",
+  "components/companion/AreaTimeline.tsx",
+  "components/companion/MilestonesReadGuide.tsx",
   // v3 FEAT-08: the words-and-firsts strip on My child (names and words, no fill).
   "components/companion/WordsFirstsStrip.tsx",
   // v3 F-CHILD-4 (MOB-02): My child's doors on a phone (place names, no count).
@@ -96,7 +103,8 @@ describe("B-GROWTH-07 — no proportional fill of a child record", () => {
     for (const rel of [
       "components/companion/DevelopmentMap.tsx", "components/companion/AreaRowDetail.tsx",
       "components/companion/MilestoneAreas.tsx", "components/companion/PortraitCards.tsx",
-      "components/companion/milestonesModel.ts",
+      "components/companion/milestonesModel.ts", "components/companion/NoticeNext.tsx",
+      "components/companion/DevelopmentCheckCard.tsx",
     ]) {
       expect(SCANNED).toContain(rel);
       const src = stripComments(read(rel));

@@ -205,7 +205,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
               <p className="text-[13px] font-bold mb-2" style={{ color: "var(--arbor-ink-soft)" }}>
                 {t("prac.read.trace.start")}
               </p>
-              <p className="text-[11px] mb-3" style={{ color: "var(--arbor-muted)" }}>
+              <p className="text-[12px] mb-3" style={{ color: "var(--arbor-muted)" }}>
                 {t("prac.read.trace.stroke", { current: Math.min(strokeIdx + 1, totalStrokes), total: totalStrokes })}
               </p>
               {!kidMode && (
@@ -294,14 +294,14 @@ export default function EarlyReadingTrack({ age, first, onLog, embedded = false 
           return (
             <button key={s.stage} role="tab" aria-selected={on} disabled={!ready}
               onClick={() => ready && setStage(s.stage)}
-              className="rounded-full px-3.5 min-h-[44px] text-[11.5px] font-extrabold transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-full px-3.5 min-h-[44px] text-[12px] font-extrabold transition disabled:opacity-40 disabled:cursor-not-allowed"
               title={ready ? t(STAGE_HINT_KEY[s.stage]) : t("prac.read.stage.locked", { first })}
               style={on ? { background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" } : { background: "#fff", color: "var(--arbor-muted)", border: "1px solid var(--arbor-rule)" }}>
               {t(STAGE_LABEL_KEY[s.stage])}
             </button>
           );
         })}
-        <span className="self-center text-[11px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(STAGE_HINT_KEY[stage])}</span>
+        <span className="self-center text-[12px] ms-1" style={{ color: "var(--arbor-muted)" }}>{t(STAGE_HINT_KEY[stage])}</span>
       </div>
 
       {stage === "phonics" && (
@@ -376,7 +376,7 @@ export default function EarlyReadingTrack({ age, first, onLog, embedded = false 
         {t("prac.read.intro", { first })}
       </p>
       {content}
-      <p className="text-[11px] mt-4" style={{ color: "var(--arbor-muted)" }}>
+      <p className="text-[12px] mt-4" style={{ color: "var(--arbor-muted)" }}>
         {t("prac.read.footer", { first })}
       </p>
     </SectionCard>

@@ -86,7 +86,7 @@ export default function WeekAnchorCard({
       }}
     >
       <span
-        className="inline-flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.16em]"
+        className="inline-flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-[0.16em]"
         style={{ color: "var(--arbor-sky-ink)" }}
       >
         <Icon name="calendar_month" size={16} />

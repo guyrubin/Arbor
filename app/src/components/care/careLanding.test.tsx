@@ -12,6 +12,7 @@
  * builder alone. Who sees what lists live grants only; nothing is a
  * directory. Counts only, no verdicts.
  */
+import { careCopy } from "./v10/careV10Copy";
 import React from "react";
 import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -159,42 +160,46 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
-      expect(textOf(html, "consult-kicker")).toBe(translate(locale, "elev.consult.kicker"));
-      expect(textOf(html, "consult-sub")).toBe(translate(locale, "elev.consult.sub"));
+      // Design V77 (N-Care-M): the phone kicker is "Your next visit"; the H1
+      // names the professional ("Prepare for the speech therapist"), no sub.
+      expect(textOf(html, "consult-kicker")).toBe(translate(locale, "elev.consult.visit.kicker"));
+      expect(html).not.toContain('data-testid="consult-sub"');
       const h1 = decode(/<h1 data-testid="consult-h1"[^>]*>([^<]*)<\/h1>/.exec(html)![1]);
-      expect(h1).toContain(translate(locale, "elev.careNet.appt.profession.slp"));
+      expect(h1).toBe(careCopy(locale).visits.heading(locale === "en" ? translate(locale, "elev.careNet.appt.profession.slp").toLowerCase() : translate(locale, "elev.careNet.appt.profession.slp")));
       expect(html.indexOf('data-testid="consult-kicker"')).toBeLessThan(html.indexOf('data-testid="consult-h1"'));
-      // the visit card heads the packet module, with the day count in neutral ink
+      // design v10.1: the visit scene (section 1) heads the packet module —
+      // the days to the booking as a figure, the production badge as its name
       const packet = sliceModule(html, "consult-packet", "consult-aside");
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeGreaterThan(0);
       expect(packet.indexOf('data-testid="consult-visit-head"')).toBeLessThan(packet.indexOf('data-testid="consult-audience-step"'));
-      expect(textOf(html, "consult-visit-in")).toBe(translate(locale, "elev.consult.inDays", { n: 3 }));
-      // ONE primary card in the packet: its head (the visit, then the since
-      // counts) directly followed by steps 1-3; the home program follows it
+      expect(html).toMatch(new RegExp(`data-testid="consult-visit-in" aria-label="${translate(locale, "elev.consult.inDays", { n: 3 }).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+      // one reading order inside the packet module: the visit (1), who it is
+      // for and your one line (2), then choose · preview · share (3); the
+      // appointments (4) and the home program follow
       const page = decode(html);
-      const [cardAt, cardEnd] = spanOf(page, "consult-visit-card", "section");
-      expect(cardAt).toBeGreaterThan(page.indexOf('data-module="consult-packet"'));
-      expect(cardEnd).toBeLessThan(page.indexOf('data-module="consult-aside"'));
       const at = (id: string) => page.indexOf(`data-testid="${id}"`);
-      for (const id of ["consult-visit-card-head", "consult-visit-head", "consult-since-head", "consult-audience-step", "consult-review-export"]) {
-        expect(at(id), id).toBeGreaterThan(cardAt);
-        expect(at(id), id).toBeLessThan(cardEnd);
-      }
-      const [headAt, headEnd] = spanOf(page, "consult-visit-card-head", "div");
-      expect(at("consult-visit-head")).toBeGreaterThan(headAt);
-      expect(at("consult-since-head")).toBeGreaterThan(at("consult-visit-head"));
-      expect(at("consult-since-head")).toBeLessThan(headEnd);
-      expect(at("consult-audience-step")).toBeGreaterThan(headEnd);
-      expect(page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"))).toBeGreaterThan(cardEnd);
-      // the numbered step headings, in order: 1 bring, 2 preview, 3 share
+      const order = ["consult-visit-card", "consult-visit-head", "consult-audience-step", "consult-reason-section", "consult-bring-row", "consult-preview", "consult-review-export"];
+      for (let i = 1; i < order.length; i++) expect(at(order[i]), order[i]).toBeGreaterThan(at(order[i - 1]));
+      expect(at("consult-review-export")).toBeLessThan(page.indexOf('data-module="consult-aside"'));
+      // Design V77 audit (N-Care-M, this harness's composition): "I have recommendations for home" closes the
+      // getting-ready card — after your one line, before the visit summary (desktop: it closes the Share card).
+      const home = page.indexOf(translate(locale, "elev.pilot.i.have.recommendations.for.home"));
+      expect(home).toBeGreaterThan(at("consult-reason-section"));
+      expect(home).toBeLessThan(at("consult-bring-row"));
+      // Design V77 audit (N-Care-M): the phone guide names four numbered stops — Visit, Summary, Dates, Note
+      // (Note: the Worth knowing card, back as drawn)
+      // (desktop keeps four: your next visit, getting ready, the visit summary, appointments)
+      const guide = /<nav class="guide[^"]*"[^>]*>([\s\S]*?)<\/nav>/.exec(html)![1];
+      const stops = [...guide.matchAll(/class="gnum[^"]*">(\d)</g)].map((m) => m[1]);
+      expect(stops).toEqual(["1", "2", "3", "4"]);
+      const short = careCopy(locale).visits.stopShort;
+      for (const label of [short.visit, short.summary, short.dates, short.note]) expect(decode(guide)).toContain(label);
+      // the builder's own step numbers step aside for the route's
       const numbered = [...html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)]
         .map((m) => decode(m[1].replace(/<[^>]+>/g, "")).trim())
         .filter((text) => /^[123]/.test(text));
-      expect(numbered).toEqual([
-        `1${translate(locale, "elev.consult.step.bring")}`,
-        `2${translate(locale, "elev.consult.step.preview")}`,
-        `3${translate(locale, "elev.consult.step.share")}`,
-      ]);
+      expect(numbered).toEqual([]);
+      expect(decode(html)).toContain(translate(locale, "elev.consult.step.share"));
       expect(textOf(html, "consult-preview-note")).toBe(translate(locale, "elev.consult.preview.note"));
     });
 
@@ -212,7 +217,7 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       expect((html.match(/gradient-cta|arbor-gradient-primary/g) ?? []).length).toBe(1);
     });
 
-    it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); the moments chip is a count`, () => {
+    it(`${locale}: "what to bring" chips are 44 px toggles (aria-pressed); design V77 — the moments chip is the group's name, its count on the section row`, () => {
       harness.locale = locale;
       harness.appts = [visitIn3()];
       const html = renderToStaticMarkup(<ConsultTab />);
@@ -227,7 +232,11 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       }
       const moments = chips.find((c) => c.includes('data-bring="moments"'));
       expect(moments).toContain('aria-pressed="true"');
-      expect(decode(row)).toContain(translate(locale, "elev.consult.bring.moments.other", { n: 2 }));
+      expect(decode(row)).not.toContain(translate(locale, "elev.consult.bring.moments.other", { n: 2 }));
+      const momentsChip = /<button[^>]*data-bring="moments"[^>]*>([\s\S]*?)<\/button>/.exec(row)![1];
+      expect(decode(momentsChip.replace(/<[^>]+>/g, "")).trim()).not.toMatch(/\d/);
+      // the count stays on the summary's section row ("Everyday moments 2")
+      expect(html).toMatch(/data-section="moments"[^>]*>[^<]*<b>\d+<\/b>/);
       // counts only: no share, ratio or "n of m" about the child
       expect(decode(row)).not.toMatch(/%|\d\s*\/\s*\d|\bof\b|מתוך/);
     });
@@ -309,30 +318,35 @@ describe("v3 EXTRA-CARE · the Care landing", () => {
       const booked = renderToStaticMarkup(<ConsultTab />);
       const head = booked.slice(booked.indexOf('data-testid="consult-visit-head"'), booked.indexOf('data-testid="consult-audience-step"'));
       expect(head).toContain('data-visit="booked"');
-      expect(decode(head)).toContain(translate(locale, "elev.consult.visit.appointments"));
-      expect(head).toMatch(/<button[^>]*data-testid="consult-visit-appointments"[^>]*min-h-\[44px\]/);
+      // Design V77: no "All appointments" link in the hero; the guide's stop 4
+      // and the Appointments section below carry them.
+      expect(head).not.toContain('data-testid="consult-visit-appointments"');
+      expect(decode(booked)).toContain(careCopy(locale).visits.stopAppointments);
+      expect(booked).toContain('data-testid="care-appointments');
       harness.appts = [];
       const none = renderToStaticMarkup(<ConsultTab />);
       expect(none).toContain('data-visit="none"');
       expect(textOf(none, "consult-visit-none")).toBe(translate(locale, "elev.consult.visit.none"));
       expect(decode(none)).toContain(translate(locale, "elev.consult.visit.add"));
+      expect(none).toMatch(/<button[^>]*data-testid="consult-visit-appointments"/);
     });
 
-    it(`${locale}: v4 — the builder's template: Visit summary is the clinical audience row (no teacher chip), Teacher brief is the teacher`, () => {
+    it(`${locale}: design V77 — "Who is it for?" carries the Teacher chip (no template row first); the Teacher brief links back to Visits`, () => {
       harness.locale = locale;
       const html = renderToStaticMarkup(<ConsultTab />);
-      const row = /<div[^>]*data-testid="consult-template-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
-      expect([...row.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1])).toEqual(["visit", "teacher"]);
-      expect(row).toMatch(/aria-checked="true"[^>]*data-template="visit"/);
-      expect(textOf(html, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.visit"));
-      const audiences = /<div[^>]*data-testid="consult-audience-row"[^>]*>[\s\S]*?<\/div>/.exec(html)![0];
-      expect(decode(audiences)).not.toContain(translate(locale, "elev.carehonesty.consult.audience.teacher"));
+      expect(html).not.toContain('data-testid="consult-template-row"');
+      const audiences = html.slice(html.indexOf('data-testid="consult-audience-row"'), html.indexOf('id="consult-reason"'));
+      const templates = [...audiences.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1]);
+      expect(templates).toEqual(["teacher"]);
+      expect(audiences).toMatch(/aria-checked="false"[^>]*data-testid="consult-template" data-template="teacher"/);
       harness.tab = "school-brief";
       const brief = renderToStaticMarkup(<ConsultTab />);
-      expect(brief).toMatch(/aria-checked="true"[^>]*data-template="teacher"/);
-      expect(textOf(brief, "consult-template-note")).toBe(translate(locale, "elev.consult.template.note.teacher"));
-      expect(brief).toContain('data-testid="consult-teacher-branch"');
+      // the brief does not copy the chooser: one link back to the visit summary
       expect(brief).not.toContain('data-testid="consult-audience-row"');
+      expect([...brief.matchAll(/data-template="([^"]+)"/g)].map((m) => m[1])).toEqual(["visit"]);
+      expect(brief).toMatch(/<button[^>]*data-testid="consult-template" data-template="visit"[^>]*class="care-brief-back"/);
+      expect(decode(brief)).toContain(careCopy(locale).brief.backSub);
+      expect(brief).toContain('data-testid="consult-teacher-branch"');
     });
   }
 

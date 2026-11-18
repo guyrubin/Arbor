@@ -97,12 +97,30 @@ export function readVocabulary(file = VOCAB) {
  *  this pragma may not render icons, so the opt-out cannot hide a real usage. */
 export const ICON_IGNORE_PRAGMA = "@icon-font-ignore";
 
-export function collectIconNames(vocabulary, files = sourceFiles()) {
+/** The static marketing pages (public/marketing) load the same subset font, so
+ *  their ligatures (quoted, or as the text of an element: `>door_open<`) count
+ *  too; without them a rebuild from src/ alone drops glyphs those pages paint. */
+const MARKETING = path.join(APP, "public", "marketing");
+export function marketingFiles(dir = MARKETING) {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => /\.(?:html|js)$/.test(f)).map((f) => path.join(dir, f));
+}
+
+export function collectIconNames(vocabulary, files, pages) {
+  // An explicit file list (a test, a single consumer) reads only those files;
+  // the default build reads all of src/ and the marketing pages.
+  const pageFiles = pages ?? (files ? [] : marketingFiles());
   const names = new Set();
-  for (const file of files) {
+  for (const file of files ?? sourceFiles()) {
     const text = readFileSync(file, "utf8");
     if (text.includes(ICON_IGNORE_PRAGMA)) continue;
     for (const m of text.matchAll(/["'`]([a-z][a-z0-9_]+)["'`]/g)) {
+      if (vocabulary.has(m[1])) names.add(m[1]);
+    }
+  }
+  for (const file of pageFiles) {
+    const text = readFileSync(file, "utf8");
+    for (const m of text.matchAll(/(?:["'`]|>\s*)([a-z][a-z0-9_]+)(?:["'`]|\s*<)/g)) {
       if (vocabulary.has(m[1])) names.add(m[1]);
     }
   }

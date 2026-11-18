@@ -86,6 +86,13 @@ export function PreviewItemRows({ items, lang, className, style }: { items: Pack
 }
 import { ClinicalLanguageError } from "../../lib/clinicalScan";
 import HomeProgramShareCard, { HomeProgramAdherenceView, homeProgramLinkOn, sharedViewMode, type HomeProgramGrant } from "../program/HomeProgramShare";
+import { Guide } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
+import PeopleScene from "../care/v10/PeopleScene";
+import PeopleLanes, { peopleLanes } from "../care/v10/PeopleLanes";
+import ShareCarries from "../care/v10/ShareCarries";
+import { careCopy } from "../care/v10/careV10Copy";
+import "../care/v10/care.css";
 
 // IA W4.5 + CARE-3: the professional share scopes mirror the W4.1 preset
 // audiences one-to-one — derived from the single REPORTS definition
@@ -111,6 +118,7 @@ export function weekPrimaryAction(email: string): "grant" | "hint" {
 }
 
 export default function TrustedSharing() {
+  const composition = useComposition();
   const { childProfile, openPaywall, setActiveTab, activeTab, behaviorLogs, milestones, actionPlans, approvedMemoryItems } = useArbor();
   // B-BOOK-79: the Everyday plans (counts) ride the same shared input as the recipient's view.
   const booksCol = useChildCollection<PlanBookDoc>(childProfile.id, "books");
@@ -296,6 +304,8 @@ export default function TrustedSharing() {
   // move to the persistent "Sharing history" card — the grant records
   // (createdAt/expiresAt/revokedAt) ARE the audit trail, surviving reloads.
   const isLiveGrant = (g: ShareGrant) => !g.revokedAt && (!g.expiresAt || Date.parse(g.expiresAt) > Date.now());
+  // Design v10.1: the scene's count — every live share the family holds.
+  const liveGrants = shares.filter(isLiveGrant);
   const team = shares.filter((g) => isLiveGrant(g) && g.accessMode !== "family_workspace");
   // W2-CAREPRO c2 r2 — the done state, fed by the existing grant list (no new
   // write): once a live week grant exists, the card says who reads the week,
@@ -450,14 +460,37 @@ export default function TrustedSharing() {
   // here). This page links there.
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mx-auto w-full min-w-0 max-w-[920px] flex flex-col gap-6">
-      {/* W2-CAREPRO r2: flush — the column's gap-6 is the only rhythm. */}
-      <PageHeader
-        flush
-        eyebrow={t("nav.care")}
-        title={t("sec.sharing.title")}
-        subtitle={t("sec.sharing.sub", { name: first })}
+    /* Design v10.1 (Care › People): a guide, the Trusted sharing scene, and
+       three numbered sections — who sees what (the co-parent invite and the
+       week share), the people you share with (the roster, one-tap revoke),
+       then shared with you, your data and the record. */
+    <div className={composition === "desk" ? "ds ds-desk care-v10 care-people" : "ds ds-phone care-v10 care-people"} data-composition={composition}>
+      <div className="care-visits flex flex-col gap-6">
+      <Guide
+        mini={composition === "phone"}
+        label={careCopy(uiLang).onThisPage}
+        className="care-guide"
+        stops={composition === "desk" ? [
+          // Design V77 (N-People-D): who sees what, before you invite, what a share carries, shares and your data.
+          { id: "people-who", title: careCopy(uiLang).people.stopWho, sub: careCopy(uiLang).people.stopWhoSub },
+          { id: "people-invite", title: careCopy(uiLang).people.stopInvite, sub: careCopy(uiLang).people.stopInviteSub },
+          { id: "people-carry", title: careCopy(uiLang).people.stopCarry, sub: careCopy(uiLang).people.stopCarrySub },
+          { id: "people-roster", title: careCopy(uiLang).people.stopShares, sub: careCopy(uiLang).people.stopMoreSub },
+        ] : [
+          // N-People-M: three short stops.
+          { id: "people-who", title: careCopy(uiLang).people.stopWho },
+          { id: "people-carry", title: careCopy(uiLang).people.stopKinds },
+          { id: "people-roster", title: careCopy(uiLang).people.invitesHead },
+        ]}
       />
+      <div className={composition === "desk" ? "route gut" : "route m"}>
+      <section className="rsec" id="people-who">
+      <span className="rstop on" style={{ top: 14 }} aria-hidden="true">1</span>
+      {/* Design V77 (N-People): the kicker is the page's name ("Trusted sharing"), the heading the question it answers. */}
+      <PeopleScene composition={composition} kicker={t("sec.sharing.title")} title={careCopy(uiLang).people.lanesLabel(first)} liveCount={liveGrants.length} loading={loading} childName={first}>
+        {/* Design V77 (N-People): who sees what — you, then every live share. */}
+        <PeopleLanes composition={composition} lanes={peopleLanes(liveGrants, careCopy(uiLang).people, (g) => roleLabel(g.role))} copy={careCopy(uiLang).people} childName={first} />
+      </PeopleScene>
 
       {error && (
         <ErrorState
@@ -481,7 +514,6 @@ export default function TrustedSharing() {
           hand-off it produces (LC-17) are two steps of one capability, so
           they carry one stamp between them rather than competing as two. */}
       <div data-module="sharing-grant" style={{ display: "contents" }}>
-      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       {!error && (
         <section data-testid="share-week-card" className="rounded-[22px] p-5 flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-x-6 lg:gap-y-4" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)", boxShadow: "var(--shadow-sm)" }}>
           {/* W2-CAREPRO r2: at lg the card is two columns — what is shared on
@@ -612,6 +644,15 @@ export default function TrustedSharing() {
           )}
         </section>
       )}
+      {/* Design v10.1: the week share (the route's one move) leads; the
+          co-parent invite follows it (on desktop it runs beside both). */}
+      {/* V77 N-People: the rail is "Invites · waiting for an answer" (stop 2). */}
+      <div id="people-invite" className={composition === "desk" ? "care-people-invite-head" : "sr-only"} data-testid="people-invite-head">
+        <span className="rstop inline" aria-hidden="true">2</span>
+        <span className="h3">{careCopy(uiLang).people.invitesHead}</span>
+        <span className="small">{careCopy(uiLang).people.invitesSub}</span>
+      </div>
+      <CoParentInvite key={childProfile.id} childId={childProfile.id} childName={childProfile.name} grants={shares} onChanged={reloadOwn} />
       <ReceiptNoteLine note={receipt.note} testId="sharing-receipt" />
       {invite && (
         <div data-testid="share-invite" className="border-y py-4 flex flex-wrap items-center gap-3" style={{ borderColor: "var(--arbor-rule)" }}>
@@ -626,7 +667,7 @@ export default function TrustedSharing() {
           <button onClick={() => setInvite(null)} aria-label={t("aria.cancel")} className="touch-target flex-shrink-0">
             <Icon name="close" size={17} style={{ color: "var(--arbor-muted)" }} />
           </button>
-          <p className="text-[11.5px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
+          <p className="text-[12px] leading-relaxed basis-full" style={{ color: "var(--arbor-muted)" }}>{t("elev.learnCare.share.invite.hint")}</p>
         </div>
       )}
 
@@ -655,7 +696,7 @@ export default function TrustedSharing() {
                 <button key={r} onClick={() => setDraft({ ...draft, role: r })} aria-pressed={draft.role === r} className="inline-flex items-center rounded-full px-3.5 min-h-11 text-xs font-bold" style={draft.role === r ? { background: "var(--arbor-green-soft)", color: "var(--arbor-green-ink)" } : { background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}>{roleLabel(r)}</button>
               ))}
             </div>
-            <p className="text-[11px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
+            <p className="text-[12px] mt-2 leading-relaxed" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.nothingDefault")}</p>
           </div>
           <div>
             <p className="text-xs font-bold mb-1.5" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.form.what")}</p>
@@ -680,8 +721,8 @@ export default function TrustedSharing() {
           </>}
           {reviewing && <div className="space-y-4" aria-live="polite">
             <div className="rounded-2xl p-4 space-y-3" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
-              <div className="flex items-start justify-between gap-3"><div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
-              <div><p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.recipient")}</p><p className="text-sm font-extrabold mt-0.5 break-all" dir="auto" style={{ color: "var(--arbor-ink)" }}>{draft.recipientEmail.trim()}</p></div><Chip tone="mint">{roleLabel(draft.role)}</Chip></div>
+              <div><p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-muted)" }}>{t("sec.sharing.review.canSee")}</p><div className="flex flex-wrap gap-1.5 mt-1.5">{draft.scopes.map((scope) => <Chip key={scope} tone="sky">{t(shareScopeLabelKey(scope))}</Chip>)}</div></div>
 
               {/* LC-17 — THE ACTUAL PREVIEW. A parent consenting to share their
                   child's data has to see what is being shared, not a label for
@@ -689,7 +730,7 @@ export default function TrustedSharing() {
                   server runs for the recipient, with the same fail-closed
                   guards, so this is the recipient's view and not a mock-up. */}
               <div data-testid="share-scope-preview" className="rounded-xl p-3.5 space-y-2.5" style={{ background: "var(--arbor-paper-elevated)", border: "1px solid var(--arbor-rule)" }}>
-                <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
+                <p className="text-[12px] font-bold uppercase tracking-wide" style={{ color: "var(--arbor-green-ink)" }}>{t("elev.learnCare.share.preview.title")}</p>
                 {/* B-DIST-01: what the recipient reads opens with the demo header. */}
                 {childProfile.demo === true && (
                   <p data-demo-header className="t-xs font-bold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{t("elev.demo.header")}</p>
@@ -702,14 +743,14 @@ export default function TrustedSharing() {
                   previewPacket.sections.map((section) => (
                     <div key={section.id}>
                       {/* B-CAREPRO-15: headings in the parent's language (titleKey), never the English fallback. */}
-                      <p className="text-[12.5px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
+                      <p className="text-[12px] font-extrabold" dir="auto" style={{ color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</p>
                       <ul className="list-disc ps-5 mt-1 space-y-0.5">
                         <PreviewItemRows items={section.items} lang={uiLang} className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-muted)" }} />
                       </ul>
                     </div>
                   ))
                 )}
-                <p className="text-[11px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("elev.learnCare.share.preview.hint")}</p>
+                <p className="text-[12px] leading-relaxed" style={{ color: "var(--arbor-faint)" }}>{t("elev.learnCare.share.preview.hint")}</p>
               </div>
               <div className="flex items-center gap-2 text-xs" style={{ color: "var(--arbor-muted)" }}><Icon name="schedule" size={16} /> {t(`share.duration.${draft.duration}`)}</div>
             </div>
@@ -746,7 +787,21 @@ export default function TrustedSharing() {
           with the revoke action folded in. The former duplicate "Active shares"
           list is gone. */}
       </div>
+      </section>
 
+      {/* V77 N-People §3: what each kind of share carries, from the grants production makes. */}
+      <section className="rsec" id="people-carry" aria-labelledby="people-carry-title">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">{composition === "desk" ? 3 : 2}</span>
+      {/* N-People-D: the cards name themselves; N-People-M heads the section "What a share carries · the week, a custom share". */}
+      {composition === "desk"
+        ? <h2 id="people-carry-title" className="sr-only">{careCopy(uiLang).people.stopCarry}</h2>
+        : <div className="rh care-people-rh"><h2 id="people-carry-title" className="h3">{careCopy(uiLang).people.stopCarry}</h2><span className="small">{careCopy(uiLang).people.stopCarrySub}</span></div>}
+      <ShareCarries name={first} copy={careCopy(uiLang).people} durations={DURATIONS.map((d) => t(`share.duration.${d}`))} roles={ROLES.map((r) => roleLabel(r))} />
+      </section>
+
+      <section className="rsec" id="people-roster" aria-labelledby="people-roster-title">
+      <span className="rstop" style={{ top: 14 }} aria-hidden="true">{composition === "desk" ? 4 : 3}</span>
+      <div className="rh care-people-rh"><h2 id="people-roster-title" className="h3">{composition === "desk" ? careCopy(uiLang).people.sharesHead : careCopy(uiLang).people.invitesAndShares}</h2>{composition === "desk" && <span className="small">{careCopy(uiLang).people.stopMoreSub}</span>}</div>
       {!error && (
         <div data-module="sharing-roster" style={{ display: "contents" }}>
         {/* W2-CAREPRO r2: with nobody on the roster, one muted line — not a
@@ -803,6 +858,9 @@ export default function TrustedSharing() {
           while the fold belongs to the primary move. Demoted modules keep their
           own `data-module` stamp and add `data-module-demoted`, which is what
           makes the budget rule countable: top-level = stamps minus demoted. */}
+      </section>
+
+      <section className="rsec" id="people-more">
       <details data-module-disclosure="sharing-more" className={`${cardCls} p-0 overflow-hidden`}>
         <summary className="cursor-pointer list-none px-6 py-4 min-h-[44px] flex items-center gap-3">
           <span className="grid place-items-center w-9 h-9 rounded-2xl flex-shrink-0" style={{ background: "var(--arbor-lav-soft)", color: "var(--arbor-lav-ink)" }}>
@@ -894,6 +952,9 @@ export default function TrustedSharing() {
 
         </div>
       </details>
+      </section>
+      </div>
+      </div>
 
       {/* CARE-2: read-only recipient viewer — exactly the granted scopes,
           server-assembled and guard-checked. No capture paths, no writes. */}
@@ -936,7 +997,7 @@ export default function TrustedSharing() {
                 view.sections.map((section) => (
                   <div key={section.id} className="rounded-2xl p-4 space-y-2" style={{ background: "var(--arbor-paper-deep)", border: "1px solid var(--arbor-rule)" }}>
                     <h3 className="text-sm font-extrabold" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{sectionTitle(section, uiLang)}</h3>
-                    {sectionNote(section, uiLang) && <p className="text-[11px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{sectionNote(section, uiLang)}</p>}
+                    {sectionNote(section, uiLang) && <p className="text-[12px]" dir="auto" style={{ color: "var(--arbor-muted)" }}>{sectionNote(section, uiLang)}</p>}
                     {/* W2-CAREPRO c2 r2: the recipient reads the same isolated
                         rows the sharer previewed (one per moment / milestone). */}
                     <ul dir={uiLang === "he" ? "rtl" : "ltr"} className="list-disc ps-5 space-y-1.5">
@@ -955,6 +1016,6 @@ export default function TrustedSharing() {
         </div>
       </Modal>
 
-    </motion.div>
+    </div>
   );
 }

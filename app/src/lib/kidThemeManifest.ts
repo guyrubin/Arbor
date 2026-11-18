@@ -20,6 +20,7 @@ import { STUDIO_V2_GAME_WORLDS } from "../components/kidmode/studioGameWorlds";
 import { KID_WORLDS, SNEAK_FREEZE_WORLD, type KidWorldId } from "../components/kidmode/kidWorlds";
 import { studioNextFlagOn, type StudioNextHost } from "../components/kidmode/studioV2/studioNextFlag";
 import { heroBandFlagOn } from "../components/kidmode/studioV2/heroBandFlag";
+import { JOSEPH_STORY_ART, JOSEPH_STORY_ID } from "./storyPlateArt";
 
 export const KID_THEME_IDS = ["film3d", "storybook"] as const;
 export type KidThemeId = (typeof KID_THEME_IDS)[number];
@@ -157,14 +158,53 @@ const studioPortal = (id: typeof STUDIO_PORTAL_IDS[number]): KidArt => ({
 });
 /** The Studio's own film (16 Nov 2026): 3:2 crops of the episodes' stills and
  *  empty set plates, the same world, light and companions a child knows from
- *  the show. Chosen frame by frame with no child in them; covers show the
- *  companions (Aya, Chock, Pep), rooms are empty so the child's hero stands in
- *  them. Builder and sources: ROS, Kids backlog B-KID-171. */
+ *  the show. Chosen frame by frame with no child in them (except the `-crew`
+ *  tile covers below); covers show the companions (Aya, Chock, Pep), rooms are
+ *  empty so the child's hero stands in them. Builder and sources: ROS, Kids
+ *  backlog B-KID-171. */
 const STUDIO_FILM = "/visuals/studio-v2/film/";
 const studioFilm = (name: string, objectPosition = "50% 50%", width = 1536): KidArt => ({
   src: `${STUDIO_FILM}${name}.webp`, src480: `${STUDIO_FILM}${name}-480.webp`, width,
   objectPosition, altKey: null, provenanceId: `studio-film:${name}:2026-11-16`, hasHero: false,
 });
+/** Studio game tiles with Bebe and GobGob, the show's two children
+ *  (B-KID-171, 16 Nov 2026; B-KID-176 the same day): each cover shows its own
+ *  game being played, so a child can tell the games apart before opening one:
+ *  the game's own pieces in the film's world (a new scene, generated from the
+ *  kit's props, set plates and piece art only, never from a picture of either
+ *  child), with the two children added as cut-outs of the kit's own finished
+ *  renders (cut only, never redrawn or regenerated) and, where the game has
+ *  them, its companions in their places. Each file is named in
+ *  lib/childLikenessFiles.named.ts under Guy's approval (BD-32, third
+ *  permission, extended the same day to the covers). A tile shows the cover of
+ *  the game it opens: with the Next Studio switch on, a host tile opens a Bop
+ *  game and wears that game's cover. Tiles only: the game screen keeps the
+ *  companion cover, because the child's own hero stands in that picture.
+ *  The builder scripts live in the private operations tree, not here. */
+const crew2 = (name: string, objectPosition = "50% 60%") => studioFilm(`cover-${name}-crew2`, objectPosition);
+const STUDIO_CREW_COVERS: Readonly<Record<string, KidArt>> = {
+  memory: crew2("memory"),
+  pattern: crew2("pattern"),
+  puzzle: crew2("puzzle"),
+  sneak: studioFilm("cover-sneak-crew", "70% 60%"),
+  "feelings-forest": crew2("feelings"),
+  "calm-builder": crew2("calm"),
+  "rhythm-garden": crew2("rhythm"),
+  "river-rescue": crew2("canal"),
+};
+const STUDIO_NEXT_CREW_COVERS: Readonly<Record<StudioNextHost, KidArt>> = {
+  memory: crew2("delivery"),
+  pattern: crew2("sun"),
+  puzzle: crew2("oops"),
+  "river-rescue": crew2("rover"),
+};
+/** Hero Band on the rhythm-garden tile, under either switch that hosts it there. */
+const HERO_BAND_CREW_COVER = crew2("band");
+export function studioCrewCover(id: string): KidArt | null {
+  if (id === "rhythm-garden" && (studioNextFlagOn() || heroBandFlagOn())) return HERO_BAND_CREW_COVER;
+  if (Object.hasOwn(STUDIO_NEXT_CREW_COVERS, id) && studioNextFlagOn()) return STUDIO_NEXT_CREW_COVERS[id as StudioNextHost];
+  return Object.hasOwn(STUDIO_CREW_COVERS, id) ? STUDIO_CREW_COVERS[id] : null;
+}
 /** The home valley for portrait tablets and phones (the wide one is "studio.sky"). */
 export const STUDIO_VALLEY_TALL = { src: `${STUDIO_V30}valley-tall.webp`, src480: `${STUDIO_V30}valley-tall-480.webp`, width: 1024 } as const;
 /** The Bop games' toy-world art: one shared folder of authored, shipped
@@ -191,6 +231,18 @@ export function studioNextCover(id: string): StudioNextCover | null {
   const stem = id === "rhythm-garden" ? (studioNextFlagOn() || heroBandFlagOn() ? "card-band" : null)
     : Object.hasOwn(STUDIO_NEXT_COVERS, id) && studioNextFlagOn() ? STUDIO_NEXT_COVERS[id as StudioNextHost] : null;
   if (!stem) return null;
+  const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
+  return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
+}
+
+/** The room each Next Studio game plays in (BopScene). Its intro fetches it
+ *  while the cover shows, so the stage never paints an empty floor first
+ *  (B-KID-175). Same files and sizes as BopScene, so the browser reuses it. */
+const STUDIO_NEXT_SCENES: Record<StudioNextHost | "rhythm-garden", string> = { memory: "scene-delivery", pattern: "scene-sun", puzzle: "scene-table", "river-rescue": "scene-floor", "rhythm-garden": "scene-band" };
+export const BOP_SCENE_SIZES = "(min-width: 700px) 620px, 100vw";
+export function studioNextScene(id: string): StudioNextCover | null {
+  if (!studioNextCover(id) || !Object.hasOwn(STUDIO_NEXT_SCENES, id)) return null;
+  const stem = STUDIO_NEXT_SCENES[id as keyof typeof STUDIO_NEXT_SCENES];
   const src = studioBopArt(stem), src480 = studioBopArt(`${stem}-480`);
   return { src, src480, srcSet: `${src480} 480w, ${src} 1024w` };
 }
@@ -242,6 +294,9 @@ export const KID_THEME_MANIFEST: Record<KidThemeId, Partial<Record<KidArtKey, Ki
     "world.kid-quest.tile": studioFilm("room-arch-tall", "50% 55%", 864),
     ...Object.fromEntries(FILM3D_STORY_COVERS.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%")])),
     ...Object.fromEntries(FILM3D_STORY_COVERS_2X3.map((id) => [storyCoverKey(id), film(`story-${id}`, "50% 30%", 832)])),
+    // B-BOOK-83: the complete child's-own-hero set replaces only this shared
+    // cover; the eight authored scenes use the same reviewed registry.
+    [storyCoverKey(JOSEPH_STORY_ID)]: JOSEPH_STORY_ART.cover,
     "home.stage": studioFilm("room-terrace", "60% 55%"),
   },
   storybook: {

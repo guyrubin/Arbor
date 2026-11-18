@@ -32,6 +32,7 @@ const FILES = {
   captureBar: "components/overview/QuickCaptureBar.tsx",
   routineTemplates: "components/plans/RoutineTemplates.tsx",
   routines: "components/plans/RoutinesCard.tsx",
+  planScripts: "components/plans/v10/PlanScripts.tsx",
 } as const;
 
 /** Anything that declares a 44 px floor, in any of the four accepted forms. */
@@ -53,7 +54,8 @@ const CONTROLS: { id: string; file: keyof typeof FILES; near: string }[] = [
   // the one template row left is RoutineTemplates' board chips.
   { id: "OBJ-BEH-08 template chips", file: "routineTemplates", near: "data-routine-template={r.id}" },
   { id: "OBJ-BEH-08 suggestion chips", file: "plans", near: "setPlanChallengeTopic(s.topic)" },
-  { id: "OBJ-BEH-08 refine in coach", file: "plans", near: 'source: "plans-coreg"' },
+  // v10: "Refine in Coach" moved with the scripts into PlanScripts (the seed stays in PlansTab).
+  { id: "OBJ-BEH-08 refine in coach", file: "planScripts", near: "onClick={onRefine}" },
   { id: "OBJ-BEH-08 routine step input", file: "routines", near: "elev.closeloop.routines.addStep" },
   { id: "OBJ-BEH-08 new routine input", file: "routines", near: "elev.closeloop.routines.newName" },
 ];

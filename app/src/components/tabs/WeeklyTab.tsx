@@ -1,61 +1,89 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "motion/react";
 import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { cardCls } from "../ui/kit";
 import { useWeeklyRecap, recapWeekId, recapWeekStartMs, weekAnchorDate } from "../../hooks/useWeeklyRecap";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useObservations } from "../../hooks/useObservations";
 import { track } from "../../lib/analytics";
-import { nextPrepareVisit, type Appointment } from "../../lib/careTrack";
+import { appointmentStartMs, nextPrepareVisit, type Appointment } from "../../lib/careTrack";
 import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { weekGlance, glanceHasCounts } from "../../lib/weekGlance";
-import { weekReportLines } from "../../lib/weekReport";
+import { weekReportLines, type WeekPlace } from "../../lib/weekReport";
+import { weekInstrument, type InstrumentDate } from "../../lib/weekInstrument";
+import { fmtDayTimeV10 } from "../../lib/formatDate";
+import { useFamilyPlanDates } from "../../hooks/useFamilyPlan";
+import { adultLabel } from "../familyPlan/format";
+import { familyPlanCopy } from "../familyPlan/familyPlanCopy";
+import { NOW_V10_COPY } from "../companion/now10/nowV10Copy";
+import { dayField } from "../../lib/dayField";
+import { parentWords } from "../../lib/recordCounts";
+import { behaviorTypeLabel } from "../../content/behaviorTaxonomy";
+import type { DomainId } from "../../lib/domains/registry";
+import { predictRhythm, RHYTHM_WINDOW_DAYS } from "../../rhythm/predict";
+import { buildDayWindowsSummary } from "../../growth/dayWindowsAgg";
+import { ageYearsOf } from "../../lib/age/forChild";
 import { EMPTY_ART } from "../../lib/parentArt";
+import { DsRoot, Fig, Guide, LivingForm, Route, RouteSection, Scene, StartHere, type GuideStop } from "../../design/primitives";
+import { useComposition } from "../../design/useComposition";
 import QuickLogModal from "../overview/QuickLogModal";
 import { weeklyChipIds, isEmptyCurrentWeek, reportWeekBounds } from "../weekly/weeklySelection";
 import { whatWorkedThisWeek, WhatWorkedSend } from "../weekly/WhatWorkedCard";
-import WeekGlance from "../weekly/WeekGlance";
+import WeekInstrument from "../weekly/v10/WeekInstrument";
+import WhatHelped from "../weekly/v10/WhatHelped";
+import CarryNextWeek from "../weekly/v10/CarryNextWeek";
+import YourDay from "../weekly/v10/YourDay";
+import WeekReadGuide from "../weekly/v10/WeekReadGuide";
+import { landOnStop } from "../weekly/v10/landing";
+import { weekRowEndText } from "../weekly/v10/rowEnd";
+import { useShellRowEnd } from "../../lib/shellSlots";
+import { weeklyCopy } from "../weekly/v10/weeklyCopy";
 import InviteCard from "../referral/InviteCard";
+import "../weekly/v10/weeklyV10.css";
 
 /* B-OCCL-02 (6 Oct): the route's ONE data-primary-move literal, spread on the
    control that performs the move, never on a wrapper.
-   v3 F-NOW-3: the move lives in the carry band at the end of the report. While
-   an AI digest's suggestion is not yet today's step, the band's "Make it
+   v3 F-NOW-3: the move lives in the carry band ("For next week", stop 3).
+   While an AI digest's suggestion is not yet today's step, the band's "Make it
    today's step" carries it (acceptRendered); in every other state (nothing
    stored, the digest call failed, a fallback digest, the step already taken, a
    history week without an AI suggestion) the band's "Back to Now" carries it.
    Exactly one of the two renders the stamp: never none, never two. */
 const ACCEPT_STAMP = { "data-primary-move": "accept-recap-recommendation" } as const;
 
+const PLACE_KEY: Record<WeekPlace, string> = {
+  home: "elev.wk.place.home",
+  school: "elev.wk.place.school",
+  transit: "elev.wk.place.transit",
+  public: "elev.wk.place.public",
+};
+
+/** The stop ids, top to bottom; `day-windows` lands on the last. */
+const STOP = { week: "wk-stage", helped: "wk-helped", next: "wk-next", day: "wk-day" } as const;
+
 /**
- * WeeklyTab — the Weekly report (v3 F-NOW-3), as the v3 mock draws it: the
- * kicker with the report week's dates, "{first}'s week, at a glance.", the
- * counts-not-scores line, then the dashboard (WeekGlance: four count tiles,
- * the day strip beside What helped and the child's words, every area), and the
- * carry band "For next week:" with the digest's suggestion. A past week
- * renders the same dashboard over its own dates, stepped to with Previous week
- * / Next week. The digest is written by useWeeklyRecap (auto-generated once a
- * week holds records); its only trace here is the band's suggestion.
+ * WeeklyTab — Now › Weekly report (design system v10.1, boards N-Week-D/M),
+ * and the `day-windows` route, which opens this page at "Your day at a glance".
+ * Four numbered stops: (1) the week, drawn as an instrument of what the parent
+ * recorded, with the headline "{first}'s week, at a glance." and "Counts, not
+ * scores."; (2) what helped; (3) what to carry into next week: the digest's
+ * suggestion (the route's one primary move), the areas, the next visit; (4) the
+ * parent's day at a glance. A past week renders the same page over its own
+ * dates, stepped to with Previous week / Next week.
  *
- * Clinical firewall: counts only, everywhere on the page; no share, no
- * denominator, no trend, no colour that grades the child.
- *
- * Departures from the v3 mock, on purpose: (1) the words card is fed by the
- * child's word observations kept this week (lib/weekReport), not by the
- * digest's weekQuotes, so it shows what the parent kept, never what a model
- * picked; (2) Previous / Next also render on phones (the mock's phone frame
- * has none), so every stored week stays reachable at 390 px.
+ * Clinical firewall: counts of what the parent recorded, everywhere on the
+ * page; no share of a whole about the child, no trend, no colour that grades.
  */
 export default function WeeklyTab() {
-  const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, actionLoop } = useArbor();
+  const { childProfile, setActiveTab, acceptTodayAction, activeTodayAction, actionLoop, behaviorLogs, activeTab } = useArbor();
   const { user } = useAuth();
   const { t, uiLang } = useLanguage();
   const he = uiLang === "he";
-  // ENG-07: the empty week offers the move that fills it, in place. QuickLogModal
-  // is the existing "openable from anywhere" capture and portals through Modal.
+  const copy = weeklyCopy(uiLang);
+  const composition = useComposition();
+  const phone = composition === "phone";
+  // ENG-07: the empty week offers the move that fills it, in place.
   const [logOpen, setLogOpen] = useState(false);
 
   const recap = useWeeklyRecap();
@@ -71,11 +99,8 @@ export default function WeeklyTab() {
   const selected = reports.find((r) => r.id === (selectedId ?? currentId)) ?? null;
   const hasStoredCurrentWeek = reports.some((r) => r.id === currentId);
   const emptyCurrentWeek = isEmptyCurrentWeek(selectedId, currentId, hasStoredCurrentWeek);
-  // The weeks Previous / Next step through: the current week leads (synthetic
-  // when unstored), then every stored week, newest first.
   const chipIds = weeklyChipIds(reports.map((r) => r.id), currentId);
-  // TJB-19: a week id is a storage key and never renders; the current week
-  // names itself, a past week reads its localized date label.
+  // TJB-19: a week id is a storage key and never renders.
   const reportById = useMemo(() => new Map(reports.map((r) => [r.id, r])), [reports]);
   const chipLabel = (id: string) => (id === currentId ? t("elev.wk.thisWeek") : labelFor(reportById.get(id)));
   const viewId = selectedId ?? currentId;
@@ -87,21 +112,34 @@ export default function WeeklyTab() {
   const first = childProfile.name.split(" ")[0];
   const parentFirst = (user?.displayName || t("nav.parent")).split(" ")[0];
   const locale = he ? "he" : "en";
+  const dateLocale = he ? "he-IL" : "en-GB";
 
-  // P1 language fix: this week's stored text is in another language and a
-  // language-correct regeneration is expected, so the band holds it back.
   const awaitingLanguage = selected?.id === currentId && recap.languageRefreshPending;
-
-  /* B-OCCL-03: an accept renders only for an AI digest not yet taken into
-     today; otherwise "Back to Now" carries the stamp (see ACCEPT_STAMP). */
   const digestAccepted = !!selected?.digest && activeTodayAction?.recommendation === selected.digest.tryThisWeek.trim();
   const acceptRendered = !!selected && !awaitingLanguage && selected.digest?.generated === "ai" && !!selected.digest.tryThisWeek.trim() && !digestAccepted;
 
-  /* The report week's counts (lib/weekGlance) and lines (lib/weekReport). The
-     current week runs from its first instant to now; a past week is whole,
-     bounded by the instants its report id holds (reportWeekBounds), so the
-     history dashboard counts exactly the week its report was filed under. */
+  /* The report week's counts (lib/weekGlance), lines (lib/weekReport) and
+     instrument (lib/weekInstrument), all over the same span: the current week
+     from its first instant to now, a past week whole (reportWeekBounds). */
   const observations = useObservations();
+  const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
+  /* The dates the rail draws: dated visits and the Family plan's open dates,
+     each with who has it ("nobody yet" when no adult has taken it). */
+  const plan = useFamilyPlanDates(childProfile.id);
+  const meUid = user?.uid ?? "local-sandbox";
+  const railDates = useMemo<InstrumentDate[]>(() => {
+    const fp = familyPlanCopy[locale];
+    const planDates = plan.all
+      .filter((d) => d.status === "open")
+      .map((d) => {
+        const [y, m, day] = d.date.split("-").map(Number);
+        const [h, mi] = (d.time ?? "00:00").split(":").map(Number);
+        const who = d.holder ? adultLabel(d.holder, meUid, fp) : NOW_V10_COPY[locale].familyPlanNobody;
+        return { id: `plan:${d.id}`, startMs: new Date(y, m - 1, day, h || 0, mi || 0).getTime(), label: d.title, sub: d.time ? `${d.time} · ${who}` : who, nobody: !d.holder };
+      });
+    const visits = appointments.items.map((a) => ({ id: a.id, startMs: appointmentStartMs(a), label: appointmentRoleLabel(a, t) }));
+    return [...visits, ...planDates];
+  }, [plan.all, appointments.items, meUid, locale, t]);
   const week = useMemo(() => {
     const bounds = reportWeekBounds(viewId, weekAnchorDate(selected), { weekId: recapWeekId, weekStartMs: recapWeekStartMs });
     const nowMs = Date.now();
@@ -110,42 +148,107 @@ export default function WeeklyTab() {
       : bounds && { startMs: bounds.startMs, endMs: bounds.endMs, lastMs: bounds.endMs };
     if (!span) return null;
     const counts = weekGlance({ observations, actionLoop, now: new Date(span.endMs), weekStartMs: span.startMs });
+    const glance = isCurrent ? counts : { ...counts, today: 7 };
     return {
       ...span,
-      // A past week lies wholly behind: no day of its strip is today.
-      glance: isCurrent ? counts : { ...counts, today: 7 },
+      glance,
       lines: weekReportLines({ observations, actionLoop, startMs: span.startMs, endMs: span.endMs }),
+      instrument: weekInstrument({
+        observations,
+        actionLoop,
+        logs: behaviorLogs,
+        dates: railDates,
+        dayStarts: glance.perDay.map((d) => d.startMs),
+        endMs: span.endMs,
+        isCurrent,
+      }),
     };
-  }, [viewId, isCurrent, selected, observations, actionLoop]);
+  }, [viewId, isCurrent, selected, observations, actionLoop, behaviorLogs, railDates]);
   const dashboardShown = !!week && (glanceHasCounts(week.glance) || !!selected);
 
-  // The kicker's dates: the report week's first and last day ("10–16 Oct").
+  // N-Week-D: the pill row ends with the week's own sentence (only for this week).
+  const rowEndText = week && isCurrent ? weekRowEndText(week.glance.perDay.map((d) => d.startMs), week.glance.today, locale) : "";
+  useShellRowEnd(rowEndText ? { text: rowEndText } : null);
+
+  /* The week's hard-moment logs (the hard kind's "marked settled" line) and,
+     per area, the newest record the parent kept: its day and their own words
+     (lib/recordCounts parentWords), or the kind they picked; a hard moment
+     the parent marked settled says so. By area draws them as N-Week-D does. */
+  const weekHardLogs = useMemo(() => {
+    if (!week) return [];
+    return behaviorLogs.filter((l) => {
+      const ms = Date.parse(l.timestamp);
+      return typeof l.intensity === "number" && Number.isFinite(ms) && ms >= week.startMs && ms <= week.endMs;
+    });
+  }, [behaviorLogs, week]);
+  const areaDetail = useMemo(() => {
+    const out: Partial<Record<DomainId, { ms: number; text: string; hard: boolean; settled: boolean }>> = {};
+    if (!week) return out;
+    const logById = new Map(behaviorLogs.map((l) => [`behaviorLogs:${l.id}`, l]));
+    for (const o of observations) {
+      if (o.kind !== "moment" || o.origin !== "behaviorLogs") continue;
+      const ms = Date.parse(o.at);
+      if (!Number.isFinite(ms) || ms < week.startMs || ms > week.endMs) continue;
+      const log = logById.get(o.id);
+      if (!log) continue;
+      const own = parentWords(log);
+      const hard = typeof log.intensity === "number";
+      for (const d of o.domains) {
+        const prev = out[d];
+        if (prev && prev.ms >= ms) continue;
+        out[d] = { ms, text: own ? `“${own}”` : behaviorTypeLabel(log.behaviorType, t), hard, settled: hard && !!log.resolved };
+      }
+    }
+    return out;
+  }, [week, behaviorLogs, observations, t]);
+
+  // The kicker's dates, day first as the boards write them ("14 to 20 Nov").
   const range = useMemo(() => {
     const fallback = selected ? labelFor(selected) : currentLabel;
     if (!week) return fallback;
-    const firstDay = week.glance.perDay[0].startMs;
-    const lastDay = Math.max(firstDay, Math.min(week.glance.perDay[6].startMs, week.lastMs - 1));
-    try {
-      return new Intl.DateTimeFormat(he ? "he-IL" : "en-GB", { month: "short", day: "numeric" }).formatRange(firstDay, lastDay);
-    } catch {
-      return fallback;
-    }
-  }, [week, he, selected, labelFor, currentLabel]);
+    const firstDay = new Date(week.glance.perDay[0].startMs);
+    const lastDay = new Date(Math.max(firstDay.getTime(), Math.min(week.glance.perDay[6].startMs, week.lastMs - 1)));
+    const dm = (d: Date) => d.toLocaleDateString(he ? "he-IL" : "en-GB", { day: "numeric", month: "short" });
+    const sameMonth = firstDay.getMonth() === lastDay.getMonth();
+    return `${sameMonth ? firstDay.getDate() : dm(firstDay)}${copy.rangeJoin}${dm(lastDay)}`;
+  }, [week, he, selected, labelFor, currentLabel, copy.rangeJoin]);
 
-  // B-TODAY-29: the sentences the parent marked "held the plan" this week;
-  // their text-only send is What helped's one action.
+  // B-TODAY-29: the sentences the parent marked "held the plan" this week.
   const worked = useMemo(
     () => (week ? whatWorkedThisWeek(actionLoop, week.startMs, { locale, childName: first, nowMs: week.endMs }) : []),
     [actionLoop, week, locale, first]
   );
 
-  // The summary door names the next visit's professional when one is booked
-  // inside its Prepare window (the same visit Consult anchors on).
-  const appointments = useChildCollection<Appointment>(childProfile.id, "appointments");
-  const visit = nextPrepareVisit(appointments.items, Date.now());
-  const summaryLabel = visit ? t("elev.wk.summary.role", { role: appointmentRoleLabel(visit, t) }) : t("wk.brief", { first });
-  // v3 F-NOW-3: the door opens the Care summary (#/handoff, FEAT-09), the
-  // professional summary the mock's "Add to the summary" names.
+  // The weekday the held words were used, when they all share one ("on Saturday").
+  const heldDays = new Set(worked.map((l) => new Date(l.at).toLocaleDateString(dateLocale, { weekday: "long" })));
+  const heldDay = heldDays.size === 1 ? [...heldDays][0] : undefined;
+
+  // Your day at a glance: the rhythm window production's day windows read.
+  const nowMs = Date.now();
+  const ageYears = ageYearsOf(childProfile);
+  const daySummary = useMemo(() => {
+    const logs = behaviorLogs.map((l) => ({ timestamp: l.timestamp, intensity: l.intensity }));
+    const rhythm = predictRhythm(logs, Date.now(), { ageYears });
+    return buildDayWindowsSummary(rhythm, Date.now(), logs);
+  }, [behaviorLogs, ageYears]);
+  const field = useMemo(() => dayField(behaviorLogs, Date.now()), [behaviorLogs]);
+  // Your day's lead line, from the same window: logs at home, and the weekday most logged.
+  const dayFoot = useMemo(() => {
+    const since = Date.now() - RHYTHM_WINDOW_DAYS * 86_400_000;
+    const inWindow = behaviorLogs.filter((l) => { const ms = Date.parse(l.timestamp); return Number.isFinite(ms) && ms >= since; });
+    if (inWindow.length === 0) return "";
+    const home = inWindow.filter((l) => (l.context ?? "").toLowerCase() === "home").length;
+    const byDay = Array.from({ length: 7 }, () => 0);
+    for (const l of inWindow) byDay[new Date(l.timestamp).getDay()] += 1;
+    const top = byDay.indexOf(Math.max(...byDay));
+    const weekday = new Date(1970, 0, 4 + top).toLocaleDateString(dateLocale, { weekday: "long" });
+    return copy.dayFoot(home, byDay[top], weekday);
+  }, [behaviorLogs, dateLocale, copy]);
+
+  // The next visit inside its Prepare window (the visit Care › Visits anchors on).
+  const visit = nextPrepareVisit(appointments.items, nowMs);
+  const visitStart = visit ? appointmentStartMs(visit) : null;
+  // The Visit summary (#/handoff folds into Care › Visits).
   const openSummary = () => setActiveTab("handoff");
 
   // The digest the band shows; recap_opened once per shown week.
@@ -157,14 +260,22 @@ export default function WeeklyTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shownDigestWeek, recap.recapUnopened]);
 
+  // `day-windows` folds into this page: land on "Your day at a glance".
+  //   The landing is measured (weekly/v10/landing): the stamped primary move
+  //   ends fully above the screen or fully below the shell's top strip.
+  useEffect(() => {
+    if (activeTab !== "day-windows") return;
+    const root = document.querySelector<HTMLElement>('[data-testid="weekly-v10"]');
+    return root ? landOnStop(STOP.day, root) : undefined;
+  }, [activeTab]);
+
   const carry = shownDigestWeek && selected?.digest ? selected.digest.tryThisWeek.trim() : "";
+  const carryIsDraft = !!carry && selected?.digest?.generated === "ai";
   const carryNote = isCurrent && (generating || awaitingLanguage)
     ? t("elev.wk.carry.writing")
     : !isCurrent
       ? t("elev.wk.carry.history")
       : t("elev.wk.carry.none");
-  // Generation is automatic; while this week holds records and no digest
-  // exists yet, one quiet text link can still ask for it.
   const canWrite = isCurrent && !selected?.digest && !generating && !awaitingLanguage && !!week && glanceHasCounts(week.glance);
 
   const stepButton = (id: string, dir: "prev" | "next") => (
@@ -173,164 +284,298 @@ export default function WeeklyTab() {
       data-testid={dir === "prev" ? "weekly-prev" : "weekly-next"}
       onClick={() => setSelectedId(id)}
       aria-label={t(dir === "prev" ? "elev.wk.prev.aria" : "elev.wk.next.aria", { week: chipLabel(id) })}
-      className="inline-flex items-center gap-2 rounded-2xl px-4 text-sm font-semibold transition active:scale-[0.98]"
-      style={{ background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule-strong)", minHeight: 44 }}
+      className="btn ghost sm wk10-step"
     >
-      {dir === "prev" && <Icon name="arrow_back" size={16} className="rtl:-scale-x-100" />}
+      {dir === "prev" && <Icon name="arrow_back" size={18} className="rtl:-scale-x-100" />}
       {t(dir === "prev" ? "elev.wk.prev" : "elev.wk.next")}
-      {dir === "next" && <Icon name="arrow_forward" size={16} className="rtl:-scale-x-100" />}
+      {dir === "next" && <Icon name="arrow_forward" size={18} className="rtl:-scale-x-100" />}
     </button>
   );
 
-  /* B-TODAY-22: ONE outline door to the visit summary (#/handoff). A secondary
-     move, never a second gradient beside the band's accept. It sits in the
-     header from md up and closes the page on phones: one handler, two seats,
-     one visible at a time, each with its own test id. */
-  const summaryDoor = (placement: "header" | "end") => (
+  /* B-TODAY-22: ONE outline door to the Visit summary, a secondary move, never
+     a second gradient beside the band's accept. Beside the figures on desktop;
+     a full-width button under the week on phones (one tree, one seat). */
+  const summaryDoor = (
     <button
       type="button"
       onClick={openSummary}
-      data-testid={placement === "header" ? "weekly-snapshot-door" : "weekly-snapshot-door-phone"}
-      data-placement={placement}
-      className={`${placement === "header" ? "hidden md:inline-flex" : "inline-flex md:hidden w-full"} items-center justify-center gap-2 rounded-2xl px-5 text-sm font-bold transition active:scale-[0.98]`}
-      style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44 }}
+      data-testid="weekly-snapshot-door"
+      className={`btn ghost ${phone ? "block" : "sm"} wk10-summary`}
     >
-      <Icon name="description" size={16} /> <bdi>{summaryLabel}</bdi>
+      <Icon name="description" size={18} /> {copy.addToSummary}
     </button>
   );
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col gap-6 max-w-[1180px]">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className="min-w-0">
-          {/* The kicker carries the report week's dates, in the page's language
-              (F-06: never the raw week id); 12 px, sentence case. */}
-          <p data-testid="weekly-eyebrow" className="text-[12px] font-bold mb-1" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.wk.kicker", { range })}
-          </p>
-          <h1 data-testid="weekly-title" className="text-[28px] md:text-[40px] leading-[1.1] font-medium" style={{ color: "var(--arbor-ink)", fontFamily: "var(--font-display)" }}>
-            {t("elev.wk.headline", { first })}
-          </h1>
-          <p data-testid="weekly-glance-sub" className="mt-2 text-sm" style={{ color: "var(--arbor-muted)" }}>
-            {t("elev.wk.glance.sub")}
-          </p>
-        </div>
-        {/* On phones the summary door closes the page, so the header row shows
-            only when a week step exists; from md up it always holds the door. */}
-        <div data-testid="weekly-header-actions" className={`${prevId || nextId ? "flex" : "hidden md:flex"} flex-wrap items-center gap-2`}>
-          {prevId && stepButton(prevId, "prev")}
-          {nextId && stepButton(nextId, "next")}
-          {summaryDoor("header")}
-        </div>
-      </header>
+  const counts = week?.glance.counts;
+  // The rail's end: the next dated item after the report week, within the Prepare window.
+  const weekEnd = week ? week.glance.perDay[6].startMs + 86_400_000 : 0;
+  const beyond = useMemo(() => {
+    if (!week || !isCurrent) return null;
+    const next = railDates
+      .filter((d): d is InstrumentDate & { startMs: number } => d.startMs !== null && d.startMs >= weekEnd && d.startMs - nowMs <= 14 * 86_400_000)
+      .sort((a, b) => a.startMs - b.startMs)[0];
+    return next ? { label: next.label, sub: next.sub, ms: next.startMs, nobody: next.nobody } : null;
+  }, [week, isCurrent, railDates, weekEnd, nowMs]);
+  // The days a milestone was marked, from the same glance Milestones counts.
+  const milestoneDays = week
+    ? week.glance.perDay.filter((d) => d.milestones > 0).map((d) => new Date(d.startMs).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric" })).join(", ")
+    : "";
+  const notThisTime = week?.instrument.counts.not ?? 0;
+  const placesLine = !week
+    ? ""
+    : week.lines.places.length === 1 && week.lines.places[0].place === "home" && week.lines.places[0].n === week.glance.counts.moments
+      ? copy.allAtHome
+      : week.lines.places.map((p) => t(PLACE_KEY[p.place], { n: p.n })).join(" · ");
+  const figures = counts && (counts.moments > 0 || counts.helped > 0 || notThisTime > 0) && (
+    <div className="wk10-figs">
+      {counts.moments > 0 && <Fig n={counts.moments} unit={copy.momentsKept(counts.moments)} sub={placesLine} size="md" />}
+      {counts.helped > 0 && <Fig n={counts.helped} unit={copy.stepsHelped(counts.helped)} sub={notThisTime > 0 ? copy.notThisTimeN(notThisTime) : undefined} size="md" />}
+    </div>
+  );
 
-      {dashboardShown && week ? (
-        <WeekGlance
-          glance={week.glance}
-          lines={week.lines}
-          childFirst={first}
-          helpedAction={<WhatWorkedSend lines={worked} parentName={parentFirst} locale={locale} t={t} />}
-          onOpenMilestones={() => setActiveTab("milestones")}
-        />
-      ) : !selected ? (
-        /* F-06: the current week with nothing kept yet says so honestly; its
-           ONE move is the explicit secondary capture-moment (surfaceContract
-           weekly), opened in place. */
-        <div data-module="weekly-empty" className={`${cardCls} p-8 text-center text-sm`} style={{ color: "var(--arbor-muted)" }}>
-          {/* P7-DESIGN art: the week's still life above the honest line (decorative). */}
-          <figure aria-hidden="true" data-testid="weekly-empty-art" className="m-0 mx-auto mb-4 overflow-hidden" style={{ inlineSize: "min(300px, 100%)", borderRadius: "var(--r-xl)", background: "var(--arbor-paper-deep)" }}>
-            <img src={EMPTY_ART.weekly.src} srcSet={EMPTY_ART.weekly.srcSet} width={EMPTY_ART.weekly.width} height={EMPTY_ART.weekly.height} alt="" loading="lazy" decoding="async" style={{ display: "block", inlineSize: "100%", blockSize: "auto", aspectRatio: "3 / 2", objectFit: "cover" }} />
-          </figure>
-          <p>{emptyCurrentWeek ? t("elev.wk.emptyThisWeek") : t("wk.noReports")}</p>
-          <button
-            type="button"
-            onClick={() => setLogOpen(true)}
-            data-secondary-move="capture-moment"
-            data-testid="weekly-log-a-moment"
-            className="mt-4 inline-flex items-center gap-2 font-bold text-sm rounded-2xl px-5 py-3 transition active:scale-[0.98]"
-            style={{ background: "transparent", color: "var(--arbor-green-ink)", border: "1px solid var(--arbor-green-ink)", minHeight: 44, minWidth: 44 }}
-          >
-            <Icon name="add" size={16} /> {t("elev.wk.logMoment")}
-          </button>
-        </div>
-      ) : null}
+  const stops: GuideStop[] = [
+    { id: STOP.week, title: copy.stopWeek, sub: copy.stopWeekSubV },
+    ...(dashboardShown ? [{ id: STOP.helped, title: copy.stopHelped, sub: copy.stopHelpedSubV }] : []),
+    { id: STOP.next, title: copy.stopNext, sub: copy.stopNextSubV },
+    { id: STOP.day, title: copy.stopDay, sub: copy.stopDaySubV },
+  ];
+  const stopNo = (id: string) => stops.findIndex((s) => s.id === id) + 1;
 
-      {/* For next week: the digest's one suggestion, carried forward. */}
-      <div data-module="weekly-carry" data-testid="weekly-carry" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-[18px] py-[14px]" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}>
-        <Icon name="lightbulb" size={20} style={{ color: "var(--arbor-sky-ink)" }} />
-        <p data-testid="weekly-carry-text" className="m-0 min-w-0 flex-1 basis-[14rem] text-sm leading-relaxed">
-          <b>{t("elev.wk.carry.label")}</b>{" "}
-          {carry ? <bdi dir="auto">{carry}</bdi> : <span style={{ color: "var(--arbor-muted)" }}>{carryNote}</span>}
-        </p>
-        {/* AIX-S6 / TODAY-1: the suggestion feeds Today through the EXISTING
-            acceptTodayAction seam with digest provenance, and ONLY for an AI
-            digest; a fallback digest's text stays plain. Once taken, an honest
-            done-state replaces the accept. */}
-        {selected?.digest && !awaitingLanguage && selected.digest.generated === "ai" && !!carry && (
-          digestAccepted ? (
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "var(--arbor-green-ink)" }} role="status">
-              <Icon name="check_circle" size={16} /> {t("wk.todayStepSet")}
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { track("recap_try_accept", { week: selected.id }); acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest"); }}
-              {...ACCEPT_STAMP}
-              data-testid="weekly-accept"
-              className="inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[13px] font-extrabold rounded-xl transition active:scale-[0.98]"
-              style={{ background: "var(--arbor-gradient-primary)", color: "var(--arbor-on-accent)" }}
-            >
-              <Icon name="task_alt" size={16} /> {t("today.action.make")}
-              <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-            </button>
-          )
-        )}
-        {canWrite && (
-          <button
-            type="button"
-            data-testid="weekly-generate"
-            onClick={() => void generate()}
-            className="inline-flex items-center gap-1.5 min-h-[44px] px-2 text-[13px] font-semibold underline underline-offset-4"
-            style={{ color: "var(--arbor-ink)" }}
-          >
-            <Icon name="auto_awesome" size={16} /> {t("elev.wk.carry.write")}
-          </button>
-        )}
-        <button
-          type="button"
-          data-testid="weekly-carry-back"
-          onClick={() => setActiveTab("overview")}
-          {...(acceptRendered ? undefined : ACCEPT_STAMP)}
-          className="inline-flex items-center gap-1.5 min-h-[44px] px-4 text-[13px] font-bold rounded-xl transition active:scale-[0.98]"
-          style={acceptRendered
-            ? { background: "transparent", color: "var(--arbor-ink)" }
-            : { background: "var(--arbor-ink)", color: "var(--arbor-paper-elevated)" }}
-        >
-          {t("elev.wk.carry.back")}
-          <Icon name="arrow_forward" size={14} className="rtl:-scale-x-100" />
-        </button>
+  /* Stop 1 is the week or, with nothing to count and nothing stored, the empty
+     card: they exclude each other, so they share ONE stamp. */
+  const stage: "weekly-glance" | "weekly-empty" | null = dashboardShown && week ? "weekly-glance" : !selected ? "weekly-empty" : null;
+  const stageStamp = { "data-module": stage ?? undefined };
+
+  /* Desktop (N-Week-D): the week's scene beside the "How to read this week"
+     rail; phone draws the guide as a row under the scene (N-Week-M). */
+  const wrapStage = (scene: React.ReactNode) =>
+    !phone && stage === "weekly-glance" ? (
+      <div className="g12 wk10-stagegrid">
+        <div className="x8">{scene}</div>
+        <div className="x4">
+          <WeekReadGuide composition={composition} copy={copy} />
+        </div>
       </div>
+    ) : (
+      scene
+    );
 
-      {summaryDoor("end")}
+  const art = EMPTY_ART.weekly;
+  const kicker = (
+    <span className="gsec">
+      <span data-testid="weekly-eyebrow" className="kicker">{range}</span>
+      {isCurrent && <StartHere>{copy.startHere}</StartHere>}
+    </span>
+  );
 
-      {/* B-SHELL-29: the invite (the ONE place a link leaves the app; it
-          carries no child content) stays on Weekly, folded into the page's
-          one collapsed disclosure; it is demoted, so the budget is unchanged. */}
-      <details data-module-disclosure="weekly-more" data-testid="weekly-invite-more" className={`${cardCls} p-0 overflow-hidden`}>
-        <summary className="cursor-pointer list-none px-6 py-3 min-h-[44px] flex items-center gap-3">
-          <Icon name="favorite" size={18} style={{ color: "var(--arbor-muted)" }} />
-          <span id="weekly-invite-title" className="block min-w-0 text-[15px] font-semibold" style={{ color: "var(--arbor-ink)" }}>{t("elev.words.invite.title")}</span>
-          <Icon name="expand_more" size={20} className="ms-auto" style={{ color: "var(--arbor-muted)" }} />
-        </summary>
-        <div data-module="weekly-invite" data-module-demoted className="px-6 pb-5">
-          <section data-testid="weekly-invite" aria-labelledby="weekly-invite-title">
-            <p className="text-[13px]" style={{ color: "var(--arbor-muted)" }}>{t("elev.words.invite.sub", { name: first })}</p>
-            <InviteCard />
-          </section>
-        </div>
-      </details>
+  return (
+    <DsRoot composition={composition} className="wk10" data-testid="weekly-v10">
+      <Guide stops={stops} mini={phone} label={copy.onThisPage} current={activeTab === "day-windows" ? stops.length - 1 : 0} />
+      <Route composition={composition} tight={phone}>
+        <RouteSection id={STOP.week} n={stopNo(STOP.week)} on aria-labelledby="weekly-title">
+          {wrapStage(
+          <Scene field="now" className="wk10-scene" orbs={phone ? [{ size: 260, left: -170, top: -150, opacity: 0.5 }, { size: 200, right: -110, top: -120, opacity: 0.55, b: true }] : [{ size: 420, left: -250, top: -250, opacity: 0.55 }, { size: 300, right: -150, top: -190, opacity: 0.55, b: true }]}>
+            <header className="wk10-head">
+              <div className="stack wk10-headtext">
+                {kicker}
+                <h1 id="weekly-title" data-testid="weekly-title" className="hero">{t("elev.wk.headline", { first })}</h1>
+                <p data-testid="weekly-glance-sub" className="wk10-sub">{t("elev.wk.glance.sub")}</p>
+              </div>
+              {(prevId || nextId) && (
+                <div data-testid="weekly-header-actions" className="line wk10-steps">
+                  {prevId && stepButton(prevId, "prev")}
+                  {nextId && stepButton(nextId, "next")}
+                </div>
+              )}
+              {!phone && stage !== "weekly-empty" && <LivingForm src={art.src} srcSet={art.srcSet} width={96} height={43} crop={{ w: 124.7, h: 83.1, x: -14.4, y: -21.8 }} className="wk10-art" />}
+            </header>
+
+            {stage === "weekly-glance" && week ? (
+              <div {...stageStamp} data-testid="weekly-glance" className="wk10-stage">
+                <div className="wk10-figrow">
+                  {figures}
+                  {!phone && summaryDoor}
+                </div>
+                <WeekInstrument
+                  data={week.instrument}
+                  composition={composition}
+                  copy={copy}
+                  locale={dateLocale}
+                  beyond={beyond}
+                  todayStep={isCurrent && !!activeTodayAction && !activeTodayAction.outcome}
+                  hardSettled={weekHardLogs.length > 0 && weekHardLogs.every((l) => !!l.resolved)}
+                  footer={
+                    <div className="line wk10-chiprow">
+                      <button type="button" className="wk-q" data-testid="weekly-tile-milestones" onClick={() => setActiveTab("milestones")}>
+                        {phone ? copy.milestonesShort(counts?.milestones ?? 0) : copy.milestonesChip(counts?.milestones ?? 0, milestoneDays)}
+                        <Icon name="chevron_right" size={15} className="rtl:-scale-x-100" />
+                      </button>
+                      <span className="wk-q">{phone ? copy.kidShort(counts?.kid ?? 0) : copy.kidChip(counts?.kid ?? 0)}</span>
+                    </div>
+                  }
+                />
+              </div>
+            ) : stage === "weekly-empty" ? (
+              /* F-06: the current week with nothing kept yet says so honestly;
+                 its ONE move is the explicit secondary capture-moment
+                 (surfaceContract weekly), opened in place. */
+              <div {...stageStamp} className="wk10-empty">
+                <figure aria-hidden="true" data-testid="weekly-empty-art" className="wk10-empty-art">
+                  <img src={art.src} srcSet={art.srcSet} width={art.width} height={art.height} alt="" loading="lazy" decoding="async" />
+                </figure>
+                <div className="stack wk10-empty-text">
+                  <p>{emptyCurrentWeek ? t("elev.wk.emptyThisWeek") : t("wk.noReports")}</p>
+                  <div className="line wk10-empty-moves">
+                    <button type="button" onClick={() => setLogOpen(true)} data-secondary-move="capture-moment" data-testid="weekly-log-a-moment" className="btn ghost sm">
+                      <Icon name="add" size={18} /> {t("elev.wk.logMoment")}
+                    </button>
+                    {summaryDoor}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </Scene>
+          )}
+          {/* Phone: the Visit summary door sits under the scene card, as N-Week-M draws it. */}
+          {phone && stage === "weekly-glance" && summaryDoor}
+          {phone && stage === "weekly-glance" && <WeekReadGuide composition={composition} copy={copy} />}
+        </RouteSection>
+
+        {dashboardShown && week && (
+          <RouteSection id={STOP.helped} n={stopNo(STOP.helped)} stopTop={2} aria-labelledby="wk-helped-title">
+            <div data-module="weekly-helped">
+              <WhatHelped
+                composition={composition}
+                copy={copy}
+                t={t}
+                uiLang={uiLang}
+                locale={dateLocale}
+                childFirst={first}
+                hardCount={week.instrument.counts.hard}
+                steps={week.lines.steps}
+                heldWords={<WhatWorkedSend lines={worked} parentName={parentFirst} locale={locale} t={t} />}
+                hasHeldWords={worked.length > 0}
+                wordsDay={heldDay}
+                words={week.lines.words}
+                onPlans={() => setActiveTab("plans")}
+                onHardMoments={() => setActiveTab("behaviors")}
+              />
+            </div>
+          </RouteSection>
+        )}
+
+        <RouteSection id={STOP.next} n={stopNo(STOP.next)} stopTop={2} aria-labelledby="wk-next-title">
+          <div data-module="weekly-carry">
+            <CarryNextWeek
+              composition={composition}
+              copy={copy}
+              t={t}
+              uiLang={uiLang}
+              locale={dateLocale}
+              areas={week?.lines.areas ?? []}
+              areaDetail={areaDetail}
+              visit={visit && visitStart !== null ? { startMs: visitStart, role: appointmentRoleLabel(visit, t) } : null}
+              nowMs={nowMs}
+              onHardMoments={() => setActiveTab("behaviors")}
+              onMoments={() => setActiveTab("timeline")}
+              onPrepare={() => setActiveTab("consult")}
+              forNextWeek={
+                <div data-testid="weekly-carry" className="stack wk10-carry">
+                  {carry ? (
+                    <div className={carryIsDraft ? "wk10-draft" : "wk10-plain"}>
+                      {carryIsDraft && (
+                        <p className="line1 wk10-draftlabel">
+                          <Icon name="edit" size={15} /> {copy.arborDraft}
+                        </p>
+                      )}
+                      <p data-testid="weekly-carry-text" className="nx-q">
+                        <span className="sr-only">{t("elev.wk.carry.label")} </span>
+                        <bdi dir="auto">{carry}</bdi>
+                      </p>
+                    </div>
+                  ) : (
+                    <p data-testid="weekly-carry-text" className="line1 wk10-note">{carryNote}</p>
+                  )}
+                  <div className="line wk10-carry-moves">
+                    {/* AIX-S6 / TODAY-1: the suggestion feeds Today through the
+                        EXISTING acceptTodayAction seam with digest provenance,
+                        and ONLY for an AI digest. Once taken, an honest
+                        done-state replaces the accept. */}
+                    {selected?.digest && !awaitingLanguage && selected.digest.generated === "ai" && !!carry && (
+                      digestAccepted ? (
+                        <span className="wk10-done" role="status">
+                          <Icon name="check_circle" size={18} /> {t("wk.todayStepSet")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { track("recap_try_accept", { week: selected.id }); acceptTodayAction(selected.digest!.tryThisWeek, "standard", "digest"); }}
+                          {...ACCEPT_STAMP}
+                          data-testid="weekly-accept"
+                          className="btn primary sm"
+                        >
+                          <Icon name="task_alt" size={18} /> {t("today.action.make")}
+                        </button>
+                      )
+                    )}
+                    {canWrite && (
+                      <button type="button" data-testid="weekly-generate" onClick={() => void generate()} className="ds-link">
+                        {t("elev.wk.carry.write")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      data-testid="weekly-carry-back"
+                      onClick={() => setActiveTab("overview")}
+                      {...(acceptRendered ? undefined : ACCEPT_STAMP)}
+                      className={acceptRendered ? "ds-link" : "btn primary sm"}
+                    >
+                      {t("elev.wk.carry.back")}
+                    </button>
+                  </div>
+                </div>
+              }
+            />
+          </div>
+        </RouteSection>
+
+        <RouteSection id={STOP.day} n={stopNo(STOP.day)} stopTop={2} aria-labelledby="wk-day-title">
+          <div data-module="weekly-day">
+            <YourDay
+              composition={composition}
+              copy={copy}
+              t={t}
+              uiLang={uiLang}
+              locale={dateLocale}
+              field={field}
+              summary={daySummary}
+              foot={dayFoot}
+              onHardMoments={() => setActiveTab("behaviors")}
+              aside={
+                /* B-SHELL-29: the invite (the ONE place a link leaves the app;
+                   it carries no child content) stays on Weekly, folded into the
+                   page's one collapsed disclosure; demoted, so the budget is
+                   unchanged. */
+                <details data-module-disclosure="weekly-more" data-testid="weekly-invite-more" className="wk10-invite">
+                  <summary className="nx-inv">
+                    <span className="gi" aria-hidden="true"><Icon name="favorite" size={18} /></span>
+                    <span id="weekly-invite-title">{t("elev.words.invite.title")}</span>
+                    <Icon name="expand_more" size={22} className="wk10-invite-chev" />
+                  </summary>
+                  <div data-module="weekly-invite" data-module-demoted className="wk10-invite-body">
+                    <section data-testid="weekly-invite" aria-labelledby="weekly-invite-title">
+                      <p className="small">{t("elev.words.invite.sub", { name: first })}</p>
+                      <InviteCard />
+                    </section>
+                  </div>
+                </details>
+              }
+            />
+          </div>
+        </RouteSection>
+      </Route>
 
       <QuickLogModal open={logOpen} onClose={() => setLogOpen(false)} />
-    </motion.div>
+    </DsRoot>
   );
 }
