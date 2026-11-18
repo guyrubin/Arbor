@@ -78,7 +78,21 @@
 .arbor-play [data-kid-decision] [data-kid-book-art] img[data-story-art-image] {
   object-position: var(--story-art-position) !important;
 }
+/* The reviewed decision scene needs the whole question before its answers.
+ * Let the surrounding reader scroll when necessary, never hide the last
+ * sentence in a separate, unmarked text scroller. */
+.arbor-play [data-kid-decision]:has(.story-artwork) [data-kid-book-text] {
+  max-block-size: none;
+}
+@media (min-width: 1024px) {
+  /* A wider reading column keeps all three choices and Back on the spread. */
+  .arbor-play [data-kid-decision]:has(.story-artwork) {
+    grid-template-columns: auto minmax(0, 30rem);
+  }
+}
 @media (max-width: 639px) {
+  /* Reserve the extra text line without pushing the choices below the fold. */
+  .arbor-play [data-kid-decision]:has(.story-artwork) [data-kid-book-art] { block-size: 18dvh; }
   /* All of the hungry brothers remain visible in the short choice band. */
   .arbor-play [data-kid-decision] .story-artwork-picture { object-fit: contain; }
   .arbor-play [data-kid-decision] .story-artwork-recovery p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

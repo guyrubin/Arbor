@@ -69,6 +69,7 @@ export async function verifyJosephStory({ browser, base, output }) {
       // picture so all three answers remain reachable. It is tested as such.
       if (id === 'decision' && cell.h <= 520) {
         assert.equal(await art.isVisible(), false);
+        await paint();
         return { id, picture: 'intentionally hidden on short decision page' };
       }
       await scope.locator(`[data-story-art-image="${id}"]`).waitFor({ state: 'visible' });
@@ -162,7 +163,23 @@ export async function verifyJosephStory({ browser, base, output }) {
           const text = page.locator('[data-kid-book-text]');
           assert.equal(await text.getAttribute('lang'), cell.lang);
           assert.equal(await text.getAttribute('dir'), cell.lang === 'he' ? 'rtl' : 'ltr');
-          if (choice === 0) { pages.push({ ...current, controls: readingControls }); await shot(beat); }
+          let decisionReading;
+          if (beat === 'decision') {
+            decisionReading = await text.evaluate(element => {
+              const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+              const range = document.createRange();
+              range.selectNodeContents(element);
+              const glyphs = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+              return { text: element.textContent, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fontSize: parseFloat(style.fontSize), glyphsFit: glyphs.length > 0 && glyphs.every(rect => rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1) };
+            });
+            assert.ok(decisionReading.scrollHeight <= decisionReading.clientHeight + 1 && decisionReading.glyphsFit, `${cell.id}: the full decision narration fits its paragraph without an inner text scroll`);
+            assert.ok(decisionReading.fontSize >= 20, `${cell.id}: decision words keep the readable type floor`);
+            if (cell.h > 520) {
+              const visibleReader = await page.locator('[data-joseph-review-scroll]').boundingBox();
+              assert.ok(readingControls.every(control => inside(control, visibleReader)), `${cell.id}: all choices and Back are fully visible before scrolling`);
+            }
+          }
+          if (choice === 0) { pages.push({ ...current, controls: readingControls, decisionReading }); await shot(beat); }
           if (beat === 'consequence') {
             const words = await text.innerText();
             outcomes.push(words);
@@ -172,6 +189,27 @@ export async function verifyJosephStory({ browser, base, output }) {
             const options = page.locator('[data-testid="decision-choice"]');
             assert.equal(await options.count(), 3);
             assert.equal(await page.locator('[data-kid-book-next]').count(), 0, 'decision has no unusable Next');
+            if (choice === 0) {
+              // A short landscape viewport can scroll the whole reading
+              // panel. Prove every glyph/control is reachable there, then
+              // exercise the real Back action before taking a choice.
+              const back = page.locator('[data-kid-book-nav] button').first();
+              const visibleReader = await page.locator('[data-joseph-review-scroll]').boundingBox();
+              await text.scrollIntoViewIfNeeded();
+              assert.ok(inside(await text.boundingBox(), visibleReader), `${cell.id}: the complete decision paragraph can be read in the viewport`);
+              for (const control of [options.nth(0), options.nth(1), options.nth(2), back]) {
+                await control.scrollIntoViewIfNeeded();
+                assert.ok(inside(await control.boundingBox(), visibleReader), `${cell.id}: each choice and Back is reachable in the reading viewport`);
+              }
+              if (cell.h <= 520) await shot('decision-navigation');
+              await back.click();
+              await page.locator('[data-kid-book-beat="fear"]').waitFor({ state: 'visible' });
+              await readPicture('fear');
+              await page.locator('[data-kid-book-next]').click();
+              await page.locator('[data-kid-book-beat="decision"]').waitFor({ state: 'visible' });
+              await readPicture('decision');
+              assert.equal(await text.textContent(), decisionReading.text, 'decision Back/Next preserves every authored word');
+            }
             await options.nth(choice).click();
           } else if (beat === 'growth' && choice === 0) {
             // Back preserves the selected choice; Next returns to this same
