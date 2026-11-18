@@ -25,7 +25,7 @@ export async function verifyJosephStory({ browser, base, output }) {
   for (const cell of cells) {
     const context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
     const page = await context.newPage();
-    const errors = [], unexpected = [], narrationReads = [], staticReads = [], screenshots = [], pages = [], outcomes = [];
+    const errors = [], unexpected = [], narrationReads = [], staticReads = [], screenshots = [], pages = [], outcomes = [], endings = [];
     const decodedAssets = new Map();
     let injectedMissing = false;
     page.on('pageerror', error => errors.push(error.message));
@@ -138,7 +138,9 @@ export async function verifyJosephStory({ browser, base, output }) {
       await page.waitForFunction(() => document.documentElement.classList.contains('msr-ready'));
       assert.equal(await page.locator('[data-joseph-review]').getAttribute('dir'), cell.lang === 'he' ? 'rtl' : 'ltr');
       pages.push(await readPicture('cover'));
-      await controls();
+      const coverControls = await controls();
+      const coverViewport = await page.locator('[data-joseph-review-scroll]').boundingBox();
+      assert.ok(coverControls.every(control => inside(control, coverViewport)), `${cell.id}: cover navigation is fully visible`);
       await shot('cover');
       // All three choices traverse the actual reader. The first pass captures
       // every shipped scene; later passes prove distinct outcomes and reread.
@@ -163,23 +165,39 @@ export async function verifyJosephStory({ browser, base, output }) {
           const text = page.locator('[data-kid-book-text]');
           assert.equal(await text.getAttribute('lang'), cell.lang);
           assert.equal(await text.getAttribute('dir'), cell.lang === 'he' ? 'rtl' : 'ltr');
-          let decisionReading;
-          if (beat === 'decision') {
-            decisionReading = await text.evaluate(element => {
-              const box = element.getBoundingClientRect(), style = getComputedStyle(element);
-              const range = document.createRange();
-              range.selectNodeContents(element);
-              const glyphs = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
-              return { text: element.textContent, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fontSize: parseFloat(style.fontSize), glyphsFit: glyphs.length > 0 && glyphs.every(rect => rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1) };
-            });
-            assert.ok(decisionReading.scrollHeight <= decisionReading.clientHeight + 1 && decisionReading.glyphsFit, `${cell.id}: the full decision narration fits its paragraph without an inner text scroll`);
-            assert.ok(decisionReading.fontSize >= 20, `${cell.id}: decision words keep the readable type floor`);
-            if (cell.h > 520) {
-              const visibleReader = await page.locator('[data-joseph-review-scroll]').boundingBox();
-              assert.ok(readingControls.every(control => inside(control, visibleReader)), `${cell.id}: all choices and Back are fully visible before scrolling`);
-            }
+          const reading = await text.evaluate(element => {
+            const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            const glyphs = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+            return { text: element.textContent, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fontSize: parseFloat(style.fontSize), glyphsFit: glyphs.length > 0 && glyphs.every(rect => rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1) };
+          });
+          assert.ok(reading.scrollHeight <= reading.clientHeight + 1 && reading.glyphsFit, `${cell.id}/${beat}: the complete narration fits its paragraph without an inner text scroll`);
+          assert.ok(reading.fontSize >= 20, `${cell.id}/${beat}: story words keep the readable type floor`);
+          const scrollPanel = page.locator('[data-joseph-review-scroll]');
+          const visibleReader = await scrollPanel.boundingBox();
+          const pageBox = await page.locator(`[data-kid-book-beat="${beat}"]`).boundingBox();
+          reading.requiresWholePageScroll = pageBox.height > visibleReader.height + 1;
+          reading.navigationInitiallyVisible = readingControls.every(control => inside(control, visibleReader));
+          assert.ok(reading.navigationInitiallyVisible || reading.requiresWholePageScroll, `${cell.id}/${beat}: a page that fits the viewport cannot clip its navigation`);
+          if (beat === 'decision' && cell.h > 520) assert.ok(reading.navigationInitiallyVisible, `${cell.id}: all choices and Back are fully visible before scrolling`);
+          if (choice === 0) { pages.push({ ...current, controls: readingControls, reading }); await shot(beat); }
+          // If the whole page is taller than the reading viewport, prove
+          // every glyph and action is reachable through that one scroller.
+          // The paragraph itself must never hide or scroll its final lines.
+          const scrollBefore = await scrollPanel.evaluate(element => element.scrollTop);
+          await text.scrollIntoViewIfNeeded();
+          assert.ok(inside(await text.boundingBox(), visibleReader), `${cell.id}/${beat}: the complete paragraph is readable in the viewport`);
+          const reachableControls = [];
+          for (const control of await page.locator('[data-kid-book-reader] button:visible:enabled').all()) {
+            await control.scrollIntoViewIfNeeded();
+            const box = await control.boundingBox();
+            assert.ok(inside(box, visibleReader), `${cell.id}/${beat}: every navigation/choice control is reachable in the viewport`);
+            reachableControls.push(box);
           }
-          if (choice === 0) { pages.push({ ...current, controls: readingControls, decisionReading }); await shot(beat); }
+          reading.reachableControls = reachableControls;
+          reading.wholePanelScrolled = Math.abs(await scrollPanel.evaluate(element => element.scrollTop) - scrollBefore) > 1;
+          if (choice === 0 && reading.wholePanelScrolled) await shot(`${beat}-reading`);
           if (beat === 'consequence') {
             const words = await text.innerText();
             outcomes.push(words);
@@ -190,17 +208,8 @@ export async function verifyJosephStory({ browser, base, output }) {
             assert.equal(await options.count(), 3);
             assert.equal(await page.locator('[data-kid-book-next]').count(), 0, 'decision has no unusable Next');
             if (choice === 0) {
-              // A short landscape viewport can scroll the whole reading
-              // panel. Prove every glyph/control is reachable there, then
-              // exercise the real Back action before taking a choice.
+              // Exercise the real Back action before taking a choice.
               const back = page.locator('[data-kid-book-nav] button').first();
-              const visibleReader = await page.locator('[data-joseph-review-scroll]').boundingBox();
-              await text.scrollIntoViewIfNeeded();
-              assert.ok(inside(await text.boundingBox(), visibleReader), `${cell.id}: the complete decision paragraph can be read in the viewport`);
-              for (const control of [options.nth(0), options.nth(1), options.nth(2), back]) {
-                await control.scrollIntoViewIfNeeded();
-                assert.ok(inside(await control.boundingBox(), visibleReader), `${cell.id}: each choice and Back is reachable in the reading viewport`);
-              }
               if (cell.h <= 520) await shot('decision-navigation');
               await back.click();
               await page.locator('[data-kid-book-beat="fear"]').waitFor({ state: 'visible' });
@@ -208,7 +217,7 @@ export async function verifyJosephStory({ browser, base, output }) {
               await page.locator('[data-kid-book-next]').click();
               await page.locator('[data-kid-book-beat="decision"]').waitFor({ state: 'visible' });
               await readPicture('decision');
-              assert.equal(await text.textContent(), decisionReading.text, 'decision Back/Next preserves every authored word');
+              assert.equal(await text.textContent(), reading.text, 'decision Back/Next preserves every authored word');
             }
             await options.nth(choice).click();
           } else if (beat === 'growth' && choice === 0) {
@@ -224,7 +233,12 @@ export async function verifyJosephStory({ browser, base, output }) {
         }
         await page.locator('[data-kid-book-ending]').waitFor({ state: 'visible' });
         await paint();
-        await controls();
+        const endingControls = await controls();
+        const endingViewport = await page.locator('[data-joseph-review-scroll]').boundingBox();
+        const endingTitle = await page.locator('[data-kid-book-end-title]').boundingBox();
+        assert.equal(endingControls.length, 2, 'the ending offers one replay and one shelf return');
+        assert.ok(inside(endingTitle, endingViewport) && endingControls.every(control => inside(control, endingViewport)), `${cell.id}: ending title, replay and shelf return are fully visible before scrolling`);
+        endings.push({ afterChoice: choice + 1, title: endingTitle, controls: endingControls });
         if (choice === 0) await shot('ending');
         if (choice < 2) {
           await page.locator('[data-kid-book-ending] button').first().click();
@@ -248,7 +262,7 @@ export async function verifyJosephStory({ browser, base, output }) {
       assert.deepEqual(await page.evaluate(() => window.josephReviewMedia), { plays: 0, captures: 0 });
       assert.deepEqual(errors, []);
       assert.deepEqual(unexpected, [], 'no external, generation, plan-image or other API calls');
-      results.push({ viewport: cell.id, surface: 'joseph-authored-legacy-reader', passed: true, story: STORY, pages, choices: outcomes.length, staticReads, narration: { synthetic: true, available: false, reads: narrationReads }, pictureRecovery: 'one injected 404 followed by the real static file', screenshots });
+      results.push({ viewport: cell.id, surface: 'joseph-authored-legacy-reader', passed: true, story: STORY, pages, endings, choices: outcomes.length, staticReads, narration: { synthetic: true, available: false, reads: narrationReads }, pictureRecovery: 'one injected 404 followed by the real static file', screenshots });
     } catch (error) {
       await shot('failure').catch(() => {});
       const layout = await page.locator('[data-kid-book-reader], [data-kid-book-cover], [data-kid-book-art], [data-story-artwork], [data-story-art-image], [data-kid-book-nav]').evaluateAll(elements => elements.map(element => {

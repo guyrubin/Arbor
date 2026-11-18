@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { HERO_STORIES, STORY_HE_REVIEW, getStorySpec, storiesForLanguage, storyHasLanguage } from "./heroJourneys";
 import { kidArt, storyCoverKey } from "./kidThemeManifest";
+import { storyBookArt } from "./storyPlateArt";
 import { pickTonightsStory } from "../components/kidmode/tonightsStory";
 
 const reviewed = Object.keys(STORY_HE_REVIEW);
@@ -89,13 +90,21 @@ describe("B-KID-23 + B-KID-46: a Hebrew child gets the illustrated stories again
     for (const s of covered) expect(storyHasLanguage(s, "he"), s.id).toBe(true);
     expect(storiesForLanguage(HERO_STORIES, "he")).toHaveLength(HERO_STORIES.length);
   });
-  it("film3d, Hebrew, 30 nights: Tonight is an illustrated story (its cover shows the hero), never the cover-less fallback", () => {
+  it("film3d, Hebrew, 30 nights: Tonight has its own illustrated cover, including child-free plates composed with the own hero", () => {
     const prefer = (s: { id: string }) => kidArt("film3d", storyCoverKey(s.id)) !== null;
     for (let d = 1; d <= 30; d++) {
       const day = `2026-12-${String(d).padStart(2, "0")}`;
       const { story } = pickTonightsStory(day, "child-he", { prefer, lang: "he", ageMonths: 72 });
       expect(story, day).not.toBeNull();
-      expect(kidArt("film3d", storyCoverKey(story!.id))?.hasHero, `${day} ${story!.id}`).toBe(true);
+      const cover = kidArt("film3d", storyCoverKey(story!.id));
+      expect(cover, `${day} ${story!.id}`).not.toBeNull();
+      const authored = storyBookArt("film3d", story!.id);
+      if (authored) {
+        // A reviewed shared plate must not bake in somebody else's child.
+        // KidBookCover's rendered identity tests prove the one own portrait.
+        expect(cover).toMatchObject({ src: authored.cover.src, src480: authored.cover.src480, hasHero: false });
+        expect(authored.cover.childFree).toBe(true);
+      } else expect(cover?.hasHero, `${day} ${story!.id}`).toBe(true);
     }
   });
 });

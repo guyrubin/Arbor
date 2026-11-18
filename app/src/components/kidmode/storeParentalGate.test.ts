@@ -129,10 +129,13 @@ describe("source contracts — no purchase reachable via the math-fallback path"
 });
 
 describe("kid register contains no external URLs (nothing to gate inside Kid Mode)", () => {
-  it("components/kidmode/*.tsx has no http(s) target and no window.open", () => {
+  it("shipping components/kidmode/*.tsx have no http(s) target and no window.open", () => {
     const dir = resolve(process.cwd(), "src", "components", "kidmode");
-    for (const name of readdirSync(dir)) {
-      if (!name.endsWith(".tsx")) continue;
+    // Test modules are not Kid Mode components; their synthetic remote-image
+    // fixtures do not create an external destination in the shipped product.
+    const components = readdirSync(dir).filter(name => name.endsWith(".tsx") && !/\.(?:test|spec)\.tsx$/.test(name));
+    expect(components).toEqual(expect.arrayContaining(["KidDashboard.tsx", "ParentChallenge.tsx", "KidBookCover.tsx"]));
+    for (const name of components) {
       const text = readFileSync(join(dir, name), "utf8");
       expect(text, `${name} must not carry an external URL`).not.toMatch(/https?:\/\//);
       expect(text, `${name} must not open windows`).not.toMatch(/window\.open/);

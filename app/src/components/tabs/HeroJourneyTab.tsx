@@ -1739,20 +1739,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     );
     const bookSide = (
       <>
-        {!onCover && <div className="px-5 pt-4">{renderChoices()}</div>}
+        {!onCover && <div className="px-5 pt-4" data-kid-book-choice-panel="">{renderChoices()}</div>}
         {bookNav}
       </>
     );
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" style={{ marginInline: -20, marginBlockStart: -24 }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" data-story-authored={authoredCover ? activeStory.id : undefined} style={{ marginInline: -20, marginBlockStart: -24 }}>
         <AnimatePresence mode="wait" initial={false}>
           {atEnd ? (
             <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
               {/* B-KID-94: the ONE finish moment — the hero cheers and the child
                   keeps this book's sticker (its cover, die-cut), earned once. */}
-              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
-              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
-                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+              <div className="pt-4" data-kid-book-ending-keepsake=""><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
+              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center" data-kid-book-ending-actions="">
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} data-kid-book-end-title="" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
                   <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
                   <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>

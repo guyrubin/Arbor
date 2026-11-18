@@ -78,10 +78,9 @@
 .arbor-play [data-kid-decision] [data-kid-book-art] img[data-story-art-image] {
   object-position: var(--story-art-position) !important;
 }
-/* The reviewed decision scene needs the whole question before its answers.
- * Let the surrounding reader scroll when necessary, never hide the last
- * sentence in a separate, unmarked text scroller. */
-.arbor-play [data-kid-decision]:has(.story-artwork) [data-kid-book-text] {
+/* Every reviewed page shows the whole narration. Let the surrounding reader
+ * scroll when necessary, never hide the last sentence in an inner scroller. */
+.arbor-play [data-story-authored] [data-kid-book-text] {
   max-block-size: none;
 }
 @media (min-width: 1024px) {
@@ -97,4 +96,39 @@
   .arbor-play [data-kid-decision] .story-artwork-picture { object-fit: contain; }
   .arbor-play [data-kid-decision] .story-artwork-recovery p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .arbor-play [data-kid-decision] .story-artwork-recovery { inset-block-start: 6px; }
+}
+@media (min-width: 640px) and (max-height: 520px) {
+  /* A short landscape spread uses the available width for its words and
+   * keeps the existing portrait camera and readable type scale. */
+  .arbor-play [data-story-authored] [data-kid-book-page] {
+    grid-template-columns: auto minmax(0, 32rem);
+    column-gap: 24px;
+    padding-block: 8px;
+  }
+  .arbor-play [data-story-authored] [data-kid-book-page] .kid-page-plate { padding-block: 8px; }
+  .arbor-play [data-story-authored] [data-kid-book-text] { max-inline-size: none; padding-block-start: 8px !important; }
+  .arbor-play [data-story-authored] [data-kid-book-choice-panel]:empty { display: none; }
+  .arbor-play [data-story-authored] [data-kid-book-page] [data-kid-book-nav] { padding-block: 8px; }
+  /* The short Decision composition remains one wide panel with three
+   * answers across; no art and no smaller narration or choice text. */
+  .arbor-play [data-story-authored] [data-kid-decision] { padding-block: 4px; }
+  .arbor-play [data-story-authored] [data-kid-decision] [data-kid-book-choice-panel] { padding-block-start: 8px; }
+  .arbor-play [data-story-authored] [data-kid-decision] [data-testid="decision-choice"] { padding-block: 10px; }
+  .arbor-play [data-story-authored] [data-kid-decision] [data-kid-book-nav] { padding-block: 4px; }
+  /* Keep the existing one hero and earned sticker beside the ending actions. */
+  .arbor-play [data-story-authored] [data-kid-book-ending] {
+    display: grid;
+    grid-template-columns: minmax(0, 284px) minmax(0, 360px);
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    max-inline-size: 760px;
+    margin: 12px auto;
+    padding: 16px 24px;
+    border-radius: var(--kid-r-l, 32px);
+    background: var(--arbor-paper-elevated);
+  }
+  .arbor-play [data-story-authored] [data-kid-book-ending-keepsake],
+  .arbor-play [data-story-authored] [data-kid-book-ending-actions] { padding-block-start: 0; }
+  .arbor-play [data-story-authored] [data-kid-finish-moment] { flex-direction: row; justify-content: center; gap: 12px; }
 }

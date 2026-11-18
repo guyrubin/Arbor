@@ -187,6 +187,7 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
     env.profile = { ...env.profile, age: 7, avatar: undefined, photoUrl: identity === "profile-only" ? "data:image/png;base64,SYNTHETIC_PROFILE_ONLY" : undefined, comicAvatarUrl: identity === "remote" ? "https://synthetic.invalid/approved-hero.webp" : undefined } as ChildProfile;
     const tab = harness(HeroJourneyTab, { initialStoryId: story.id, pinNonce: 1 });
     expect(marker(tab.tree, "data-kid-book-cover")).toBeTruthy();
+    expect(marker(tab.tree, "data-kid-book-reader")?.props["data-story-authored"]).toBe(JOSEPH_STORY_ID);
     const cover = find(tab.tree, node => node.type === StoryArtwork)!;
     expect(cover.props.art.id).toBe("cover");
     expect(cover.props.heroUrl).toBe(identity === "remote" ? env.profile.comicAvatarUrl : undefined);
@@ -210,6 +211,7 @@ describe("B-BOOK-28: actual legacy kid open/page/choice/ending boundaries", () =
       expect(marker(tab.tree, "data-kid-book-cover")).toBeUndefined();
       expect(page(tab.tree)?.props.scene.beatId).toBe("call");
       expect(page(tab.tree)?.props.authoredArt).toBeNull();
+      expect(marker(tab.tree, "data-kid-book-reader")?.props["data-story-authored"]).toBeUndefined();
       tab.unmount();
     }
   });
