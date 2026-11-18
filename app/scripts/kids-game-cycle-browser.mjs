@@ -167,9 +167,17 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
     const phone = viewport.id.startsWith('mobile-');
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h },
       reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
-    const errors = [], brokenResources = [], unexpectedRequests = [], trace = [];
+    const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [], trace = [];
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
+      // The no-Firebase preview probes the optional sandbox proof sheet even
+      // though this synthetic child has no approved avatar. Supply an explicit
+      // absent sheet, keeping the real hero resolver's Sprout fallback. Never
+      // serve the private proof assets or exempt other failed game resources.
+      if (url.origin === origin && url.pathname === '/_proof/hero/sheet.json') {
+        fixtureRequests.push({ path: url.pathname, fixture: 'absent hero sheet: null' });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
+      }
       if (url.origin === origin && !url.pathname.startsWith('/api/')) return route.continue();
       unexpectedRequests.push(url.href); return route.abort();
     });
@@ -202,7 +210,8 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
     const stem = `${game.id}-${viewport.id}`;
     const record = { case: 'default-game-cycle', game: game.id, adventure: game.adventure, viewport: viewport.id,
       lang: viewport.lang, input: phone ? 'emulated touch' : 'mouse', sound: 'off', motion: 'reduce',
-      clock: 'controlled timers; visible controls only', sessions: [], screenshots: [], trace };
+      clock: 'normal loading, then controlled gameplay timers; visible controls only',
+      sessions: [], screenshots: [], fixtureRequests, trace };
     const shot = async label => {
       const name = `${stem}-${label}.png`;
       await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
@@ -218,14 +227,19 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
       await page.goto(url.href);
       await page.locator('[data-studio-home]').waitFor({ state: 'visible' });
       await page.evaluate(() => document.fonts.ready);
-      await page.clock.pauseAt(new Date('2026-11-18T12:01:00Z'));
       assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
       await press(page.locator(`button.studio-v2__door[data-world="${game.world}"]`));
       await press(page.locator(`[data-studio-activity="${game.id}"]`));
       await page.locator('[data-studio-phase="intro"]').waitFor({ state: 'visible' });
       await press(page.locator('[data-studio-start]'));
       await page.locator(`[data-adventure="${game.adventure}"]`).waitFor({ state: 'visible' });
+      // React may delay a fulfilled lazy boundary for its 300ms Suspense
+      // fallback minimum. Keep its clock running through real code loading;
+      // pause only after the mechanic is mounted and before the child starts.
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1_000));
+      assert.equal(await page.locator(`[data-adventure="${game.adventure}"]`).getAttribute('data-phase'), 'ready');
       assert.equal(await page.locator(`[data-adventure="${game.adventure}"]`).getAttribute('dir'), viewport.lang === 'he' ? 'rtl' : 'ltr');
+      assert.equal(await page.locator('[data-game-hero-source]:not([data-game-hero-source="mascot"])').count(), 0, 'The synthetic child keeps the neutral mascot fallback');
       await page.locator(`[data-adventure="${game.adventure}"] img`).evaluateAll(images => Promise.all(images.map(image => image.decode())));
       if (game.adventure === 'rover') record.firstFloor = await roverFloor(page);
       await shot('ready');
@@ -281,8 +295,13 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
       await writeFile(path.join(folder, `${stem}.json`), JSON.stringify(record, null, 2));
     } catch (error) {
       await shot('failed').catch(() => {});
+      const failureState = await page.evaluate(() => ({
+        studioPhase: document.querySelector('[data-studio-phase]')?.getAttribute('data-studio-phase') ?? null,
+        adventurePhase: document.querySelector('[data-adventure]')?.getAttribute('data-phase') ?? null,
+        loadingFallback: !!document.querySelector('[data-testid="kid-stage-fallback"]'),
+      })).catch(() => null);
       await writeFile(path.join(folder, `${stem}.json`), JSON.stringify({ ...record, passed: false,
-        error: String(error), errors, brokenResources, unexpectedRequests }, null, 2));
+        error: String(error), failureState, errors, brokenResources, unexpectedRequests }, null, 2));
       throw new Error(`${stem}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     } finally { await context.close(); }
   }

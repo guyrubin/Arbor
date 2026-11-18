@@ -187,8 +187,18 @@ try {
   }
   results.push(...await verifyStudioWorldPlates({ browser, base, output }));
   results.push(...await verifyBookPictureRecovery({ browser, base, output }));
-  results.push(...await verifyDefaultGameCycles({ browser, base, output }));
-  results.push(...await verifyJosephStory({ browser, base, output }));
-  await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game and book components and assets', results }, null, 2));
+  // These suites own separate contexts and evidence folders. Preserve both
+  // results when either fails, so one playthrough cannot hide reader evidence.
+  const completeFlows = await Promise.allSettled([
+    verifyDefaultGameCycles({ browser, base, output }),
+    verifyJosephStory({ browser, base, output }),
+  ]);
+  const failures = [];
+  for (const flow of completeFlows) {
+    if (flow.status === 'fulfilled') results.push(...flow.value);
+    else failures.push(flow.reason);
+  }
+  await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game and book components and assets', passed: failures.length === 0, results, failures: failures.map(error => String(error)) }, null, 2));
+  if (failures.length) throw new AggregateError(failures, 'Complete game and story verification failed');
   console.log(JSON.stringify({ passed: true, cases: results.length, results }, null, 2));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }
