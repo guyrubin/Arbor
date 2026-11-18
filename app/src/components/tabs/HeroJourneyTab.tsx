@@ -55,6 +55,8 @@ import TonightFromToday from "../stories/TonightFromToday";
 import { consumeTonightMode, type TonightMode } from "../../lib/tonightMode";
 import { useKidTheme } from "../../hooks/useKidTheme";
 import { kidArtSrcSet, storyCoverArt } from "../../lib/kidThemeManifest";
+import { storyBookArt, storyPageArt } from "../../lib/storyPlateArt";
+import { StoryArtwork } from "../stories/StoryArtwork";
 import { StoryCard, STORY_PACK_LABEL, STORY_PACK_SOFT } from "../stories/StoryCard";
 import { consumeStoryOpen } from "../../lib/storyOpenRequest";
 import { setKidSurfaceTitle } from "../kidmode/kidSurfaceTitle";
@@ -316,6 +318,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // may be sent for new art; a raw photo or remote URL is not a generation input.
   const canonicalHeroUrl = resolveHeroUrl(childProfile);
   const heroAvatarUrl = canonicalHeroUrl?.startsWith("data:image/") ? canonicalHeroUrl : undefined;
+  const kidTheme = useKidTheme();
+  // A reviewed static cover is a real page even without an inline hero.
+  // Parent generation and every other legacy book retain their prior rule.
+  const canShowCover = (storyId: string | undefined) => Boolean(heroAvatarUrl || (kidMode && storyBookArt(kidTheme, storyId)));
   const kidArtTheme = (story: HeroStorySpec) =>
     heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined;
   const kidPinInit = useRef<{ story: HeroStorySpec; refused: boolean; render?: HeroJourneyRender; personalised?: boolean; lang: "en" | "he" } | null | undefined>(undefined);
@@ -330,7 +336,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   }
   const kidPinOpen = kidPinInit.current && !kidPinInit.current.refused ? kidPinInit.current : null;
   const [coverArt, setCoverArt] = useState<{ url?: string; loading: boolean; error: boolean }>({ loading: false, error: false });
-  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && heroAvatarUrl));
+  const [onCover, setOnCover] = useState(() => Boolean(kidPinOpen && canShowCover(kidPinOpen.story.id)));
   const coverRun = useRef(0);
   // R2: the shelf entry belongs to reading the book to its end, not to the
   // Finish button (a re-read has none). These three keep that idempotent.
@@ -339,7 +345,6 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const shelvingRef = useRef(false);
   const coverRetried = useRef(false);
   const heroAvatarStyle = normalizeAvatarStyle(childProfile.avatar?.style);
-  const kidTheme = useKidTheme();
   // B-KID-70 (R-4): a story's cover in the child's ONE theme (manifest), or null
   // — then today's rendering (emoji motif / SVG hills) stays; never another theme's file.
   const storyCover = (id: string) => storyCoverArt(kidTheme, id);
@@ -363,6 +368,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     });
   };
   const [activeStory, setActiveStory] = useState<HeroStorySpec | null>(() => kidPinOpen?.story ?? null);
+  const reviewedKidCoverAvailable = kidMode && Boolean(storyBookArt(kidTheme, activeStory?.id));
   const [storedRender, setRender] = useState<HeroJourneyRender | null>(() => kidPinOpen?.render ?? null);
   // Gate switches cannot flash an earlier parent's personalized words while
   // effects settle. The child branch derives its authored render synchronously.
@@ -543,7 +549,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     setFinishing(false);
     finishingRef.current = false;
     setAtEnd(false);
-    setOnCover(Boolean(heroAvatarUrl));
+    setOnCover(canShowCover(story.id));
   };
   useEffect(() => {
     if (!initialStoryId || !pinKey) return;
@@ -632,13 +638,12 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     reachedEnding.current = false;
     coverRetried.current = false;
     setCoverArt({ loading: false, error: false });
-    // With a hero the book opens on its cover; without one there is no cover to
-    // show and the reader opens on beat 1 exactly as before.
-    setOnCover(Boolean(activeStory && render && heroAvatarUrl));
+    // A child's inline hero or a reviewed static kid cover can open the book.
+    setOnCover(Boolean(activeStory && render && canShowCover(activeStory.id)));
     if (kidMode || !activeStory || !render || !heroAvatarUrl) return;
     drawCover();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStory?.id, heroAvatarUrl, renderLang, kidMode]);
+  }, [activeStory?.id, heroAvatarUrl, renderLang, kidMode, reviewedKidCoverAvailable]);
 
   const saveStoryAsComic = async () => {
     if (isKidModeActive() || !activeStory || !render || !heroAvatarUrl) return;
@@ -813,7 +818,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   const canAdvance = !isDecision || !!choiceId;
   // M2: the cover is a PAGE, not a beat. It sits before beat 1 and the counter
   // says so ("Cover", then "1 / 8") — the eight beats keep their own numbers.
-  const hasCoverPage = Boolean(heroAvatarUrl);
+  const hasCoverPage = canShowCover(activeStory?.id);
   const atFirstPage = onCover || (sceneIndex === 0 && !hasCoverPage);
   const goBack = () => {
     if (onCover) return;
@@ -1676,6 +1681,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
   // is unchanged.
   if (kidMode) {
     const bookArt = storyCover(activeStory.id)?.src;
+    const authoredCover = storyBookArt(kidTheme, activeStory.id)?.cover;
     // B-BOOK-26: no shared picture (B-BOOK-31 dropped the reference family's
     // cover) -> the book's title card with the child's OWN portrait, the shelf
     // tile's composition scaled up; the card then carries the title, so the
@@ -1683,7 +1689,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
     const bookArtBox = (
       <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
-        {bookArt
+        {authoredCover
+          ? <StoryArtwork art={authoredCover} lang={renderLang} heroUrl={heroAvatarUrl ?? heroCameoUrl} heroName={childProfile.name?.split(" ")[0]} />
+          : bookArt
           ? <img src={bookArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: storyCover(activeStory.id)?.objectPosition }} />
           : <KidBookTitleCard title={isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)} pack={activeStory.pack} hero={coverHero} heroSize={162} titleSize={28} />}
       </div>
@@ -1698,7 +1706,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       setAtEnd(false);
       setChoiceId(undefined);
       setSceneIndex(0);
-      setOnCover(Boolean(heroAvatarUrl));
+      setOnCover(canShowCover(activeStory.id));
     };
     const bigButton = { minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer" } as const;
     // B-KID-128: the page's controls sit under the words - on the wide spread
@@ -1731,20 +1739,20 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     );
     const bookSide = (
       <>
-        {!onCover && <div className="px-5 pt-4">{renderChoices()}</div>}
+        {!onCover && <div className="px-5 pt-4" data-kid-book-choice-panel="">{renderChoices()}</div>}
         {bookNav}
       </>
     );
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" style={{ marginInline: -20, marginBlockStart: -24 }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" data-story-authored={authoredCover ? activeStory.id : undefined} style={{ marginInline: -20, marginBlockStart: -24 }}>
         <AnimatePresence mode="wait" initial={false}>
           {atEnd ? (
             <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
               {/* B-KID-94: the ONE finish moment — the hero cheers and the child
                   keeps this book's sticker (its cover, die-cut), earned once. */}
-              <div className="pt-4"><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
-              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center">
-                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+              <div className="pt-4" data-kid-book-ending-keepsake=""><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
+              <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center" data-kid-book-ending-actions="">
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} data-kid-book-end-title="" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
                   <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
                   <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
@@ -1776,6 +1784,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                 childId={childProfile.id}
                 fallbackArtUrl={storyCover(activeStory.id)?.src}
                 fallbackArtHasHero={storyCover(activeStory.id)?.hasHero ?? false}
+                authoredArt={storyPageArt(kidTheme, activeStory.id, displayScene.beatId)}
                 textLang={renderLang}
                 aside={bookSide}
                 decision={isDecision && !choiceId}

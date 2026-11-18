@@ -7,9 +7,11 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { document.documentElement.lang = uiLang; document.documentElement.dir = uiLang === 'he' ? 'rtl' : 'ltr'; }, [uiLang]);
   return <Language.Provider value={{uiLang, setUiLang}}>{children}</Language.Provider>;
 }
-export function useLanguage() { const state = useContext(Language); return { ...state, t: (key: string, vars?: Record<string, unknown>) => translate(state.uiLang, key, vars as never) }; }
+export function useLanguage() { const state = useContext(Language); return { ...state, aiLang: state.uiLang, t: (key: string, vars?: Record<string, unknown>) => translate(state.uiLang, key, vars as never) }; }
 const childProfile = { id: 'studio-v2-synthetic-review', name: '', age: 5, ageMonths: 62, ageMonthsAsOf: '2026-10-15', kidTheme: 'film3d', primaryLanguage: 'en', languages: ['en','he'] };
-const arbor = { childProfile, childProfiles: [childProfile], settings: {}, activities: [], updateChildProfile: () => {} };
+/** Configure only the synthetic child before a dedicated review mounts. */
+export function configurePreviewChild(profile: Record<string, unknown>) { Object.assign(childProfile, profile); }
+const arbor = { childProfile, childProfiles: [childProfile], settings: {}, activities: [], behaviorLogs: [], updateChildProfile: () => {} };
 export const useArbor = () => arbor;
 export const useArborOptional = useArbor;
 export const useAuth = () => ({ user: { uid: 'local-sandbox' }, loading: false });

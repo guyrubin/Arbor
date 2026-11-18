@@ -16,6 +16,7 @@
 import React, { useState } from "react";
 import type { HeroPackId } from "../../types";
 import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidThemeManifest";
+import { storyBookArt } from "../../lib/storyPlateArt";
 
 /** The pack's soft tint (page) and full colour (spine) — the same pack tokens
  *  the catalogue uses, so a title card belongs to its pack, never a random hue. */
@@ -88,6 +89,7 @@ export function isKidCoverLoaded(currentArtSrc: string | null, loadedArtSrc: str
 
 export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onOpen, layout, eager = false, hero }: KidBookCoverProps) {
   const art = storyCoverArt(theme, storyId);
+  const portraitSlot = storyBookArt(theme, storyId)?.cover.heroSlot;
   // B-KID-122: until the picture has loaded the slot shows the book's own
   // title card (pack tint + title, tokens only), and the picture fades in over
   // it (no fade under reduced motion). The slot's 3:4 box never changes size.
@@ -134,6 +136,9 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
             className="absolute inset-0 h-full w-full object-cover transition-opacity duration-300 motion-reduce:transition-none"
             style={{ objectPosition: art.objectPosition, opacity: loaded ? 1 : 0 }}
           />
+          {/* B-BOOK-83: the reviewed plate is child-free. Keep the SAME own
+              portrait the caller already supplied on the old title card. */}
+          {portraitSlot && hero && <span data-kid-book-own-hero="" style={{ position: "absolute", left: `${portraitSlot.centerX * 100}%`, bottom: `${(1 - portraitSlot.bottom) * 100}%`, transform: "translateX(-50%)", inlineSize: layout === "row" ? 34 : 44, blockSize: layout === "row" ? 34 : 44, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--arbor-paper-elevated)", border: "2px solid var(--comic-ink)" }}>{hero}</span>}
           </>
         ) : (
           <KidBookTitleCard title={title} pack={pack} hero={hero} heroSize={layout === "row" ? 34 : 44} />

@@ -20,6 +20,8 @@ export type BookStringKey =
   | "choices.aria"
   | "repair.tap"
   | "picture"
+  | "picture.unavailable"
+  | "picture.retry"
   | "hearTitle"
   | "sound.on"
   | "sound.off"
@@ -61,6 +63,8 @@ const EN: Record<BookStringKey, string> = {
   "choices.aria": "What will happen next?",
   "repair.tap": "Tap",
   picture: "The picture",
+  "picture.unavailable": "We couldn’t open this picture.",
+  "picture.retry": "Try the picture again",
   hearTitle: "Hear the title",
   "sound.on": "Sound is on",
   "sound.off": "Sound is off",
@@ -101,6 +105,8 @@ const HE: Record<BookStringKey, string> = {
   "choices.aria": "מה יקרה עכשיו?",
   "repair.tap": "להקיש",
   picture: "התמונה",
+  "picture.unavailable": "לא הצלחנו לפתוח את התמונה.",
+  "picture.retry": "לנסות שוב את התמונה",
   hearTitle: "לשמוע את השם",
   "sound.on": "הצליל פועל",
   "sound.off": "הצליל כבוי",

@@ -103,12 +103,13 @@ describe("B-KID-70 (R-4b): tonight and the catalogue lead with illustrated stori
     expect(worldArtwork("story-noahs-ark", "film3d")).toBeUndefined();
     expect(dash).toContain("{!tonightLib && !tonightsArtHasHero && ("); // B-BOOK release re-pin
   });
-  it("(d) the reader uses the cover on every beat, cropped per beat, without the cameo over a hero cover", () => {
+  it("(d) legacy cover crops and reviewed per-beat plates never receive a duplicate cameo", () => {
     const player = readFileSync(path.join(SRC, "components/stories/HeroScenePlayer.tsx"), "utf8");
     expect(player).toContain("objectPosition: BEAT_FOCUS[(beatNumber - 1) % BEAT_FOCUS.length]");
     // B-KID-76 (b): one cameo element shared by the card page and the kid book page.
     expect(player).toContain("{!(fallbackArtUrl && fallbackArtHasHero) && cameo}");
-    expect(player).toContain("{!sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}");
+    expect(player).toContain("{!authoredArt && !sceneArt && !(fallbackArtUrl && fallbackArtHasHero) && cameo}");
+    expect(player).toContain("<StoryArtwork art={authoredArt}");
     // B-KID-53 polish: one visible indicator (the nav row); the player keeps only "Page n of N" for AT.
     expect(player).not.toContain('<span aria-hidden="true" dir="ltr"');
     expect(player).toContain('<span className="sr-only">{kidsStoriesText("journey.beat", aiLang, { current: beatNumber, total: beatTotal })}</span>');

@@ -4,14 +4,19 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { RELEASE_VIEWPORTS, DEVICE_VIEWPORTS } from './capture/release-config.mjs';
+import { verifyBookPictureRecovery } from './kids-book-browser.mjs';
+import { verifyStudioWorldPlates } from './kids-stage-art-browser.mjs';
+import { verifyDefaultGameCycles } from './kids-game-cycle-browser.mjs';
+import { verifyJosephStory } from './kids-joseph-browser.mjs';
 const output = path.resolve('output/kids-performance');
 await mkdir(output, { recursive: true });
-const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json' };
+const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
 const server = createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (pathname.includes('..') || pathname.startsWith('/_proof') || pathname.startsWith('/api')) { res.statusCode = 404; res.end('{}'); return; }
-    const root = pathname.startsWith('/visuals/') || pathname.startsWith('/fonts/') ? 'public' : 'dist-studio-preview';
+    const root = pathname.startsWith('/visuals/') || pathname.startsWith('/fonts/') || pathname.startsWith('/audio/') ? 'public' : 'dist-studio-preview';
     const file = path.join(root, pathname === '/' ? 'index.html' : pathname);
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
     res.end(await readFile(file));
@@ -115,6 +120,85 @@ try {
       throw error;
     } finally { await context.close(); }
   }
-  await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game components and assets', results }, null, 2));
+  // Sneak's positioned layers need a definite height in an auto-height host.
+  // Exercise the actual preview, reproduce the old percentage chain in an
+  // isolated negative control, then check the live scene after a resize.
+  const sneakCells = [...RELEASE_VIEWPORTS, ...DEVICE_VIEWPORTS.filter(cell => cell.id.startsWith('landscape-'))];
+  for (const { id, w: width, h: height, lang } of sneakCells) {
+    const context = await browser.newContext({ viewport: { width, height }, reducedMotion: 'reduce' });
+    await context.route('**/*', route => route.request().url().startsWith(base) ? route.continue() : route.abort());
+    await context.addInitScript(() => {
+      localStorage.setItem('arbor.flags.sneakFreeze', '1');
+      Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true });
+    });
+    const page = await context.newPage(), errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    try {
+      await page.goto(`${base}/?lang=${lang}`);
+      await page.locator('button.studio-v2__door[data-world="playbank"]').click();
+      await page.locator('button.studio-v2__activity').filter({ hasText: lang === 'he' ? 'דג מלוח' : 'Sneak & Freeze' }).click();
+      await page.locator('[data-studio-start]').click();
+      const stage = page.locator('[data-sneak-stage]');
+      await stage.waitFor({ state: 'visible' });
+      await page.evaluate(() => { window.scrollTo(0, 0); return document.fonts.ready; });
+      await page.waitForFunction(() => {
+        const field = document.querySelector('[data-sneak-stage]')?.getBoundingClientRect();
+        const bar = document.querySelector('.review-bar')?.getBoundingClientRect();
+        return field && bar && field.width > 200 && field.height > 200
+          && field.top >= bar.bottom - 1 && Math.abs(field.bottom - innerHeight) <= 2;
+      });
+      const box = await stage.boundingBox();
+      assert.ok(box && box.width > 200 && box.height > 200, 'Sneak owns a usable playfield');
+      assert.ok(box.x >= -1 && box.x + box.width <= width + 1, 'Field stays inside the viewport width');
+      assert.ok(box.y + box.height <= height + 2, 'Field fits below the actual review header');
+      const oldHeight = await page.evaluate(() => {
+        const source = document.querySelector('.studio-game-view--full');
+        const host = document.createElement('div');
+        host.style.cssText = `position:absolute;left:0;top:0;width:${source.getBoundingClientRect().width}px;height:auto;visibility:hidden;pointer-events:none`;
+        const clone = source.cloneNode(true);
+        clone.style.setProperty('block-size', '100%', 'important');
+        clone.style.setProperty('height', '100%', 'important');
+        host.append(clone); document.body.append(host);
+        const measured = clone.querySelector('[data-sneak-stage]').getBoundingClientRect().height;
+        host.remove(); return measured;
+      });
+      assert.equal(oldHeight, 0, 'The old percentage chain reproduces the empty embedded scene');
+      await stage.focus();
+      await page.keyboard.down('Space');
+      await page.waitForFunction(() => document.querySelector('[data-sneak-stage]')?.getAttribute('aria-pressed') === 'true');
+      assert.equal(await stage.getAttribute('aria-pressed'), 'true', 'Holding the real field reaches the game');
+      await page.keyboard.up('Space');
+      await page.waitForFunction(() => document.querySelector('[data-sneak-stage]')?.getAttribute('aria-pressed') === 'false');
+      assert.equal(await stage.getAttribute('aria-pressed'), 'false', 'Letting go freezes the hero');
+      await page.screenshot({ path: path.join(output, `sneak-${id}.png`), fullPage: true });
+      await page.setViewportSize({ width, height: height + 80 });
+      await page.waitForFunction(previousHeight => {
+        const field = document.querySelector('[data-sneak-stage]')?.getBoundingClientRect();
+        return field && field.height > previousHeight && Math.abs(field.bottom - innerHeight) <= 2;
+      }, box.height);
+      const resized = await stage.boundingBox();
+      assert.ok(resized && resized.height > box.height, 'Viewport resize grows the actual scene');
+      assert.deepEqual(errors, []);
+      results.push({ game: 'sneak', viewport: id, passed: true, oldHeight, fieldHeight: box.height, resizedHeight: resized.height, pageErrors: errors });
+    } catch (error) {
+      await page.screenshot({ path: path.join(output, `failed-sneak-${id}.png`), fullPage: true }).catch(() => {});
+      throw error;
+    } finally { await context.close(); }
+  }
+  results.push(...await verifyStudioWorldPlates({ browser, base, output }));
+  results.push(...await verifyBookPictureRecovery({ browser, base, output }));
+  // These suites own separate contexts and evidence folders. Preserve both
+  // results when either fails, so one playthrough cannot hide reader evidence.
+  const completeFlows = await Promise.allSettled([
+    verifyDefaultGameCycles({ browser, base, output }),
+    verifyJosephStory({ browser, base, output }),
+  ]);
+  const failures = [];
+  for (const flow of completeFlows) {
+    if (flow.status === 'fulfilled') results.push(...flow.value);
+    else failures.push(flow.reason);
+  }
+  await writeFile(path.join(output, 'results.json'), JSON.stringify({ fixture: 'synthetic-preview; actual game and book components and assets', passed: failures.length === 0, results, failures: failures.map(error => String(error)) }, null, 2));
+  if (failures.length) throw new AggregateError(failures, 'Complete game and story verification failed');
   console.log(JSON.stringify({ passed: true, cases: results.length, results }, null, 2));
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); }

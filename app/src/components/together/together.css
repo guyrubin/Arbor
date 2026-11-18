@@ -322,6 +322,12 @@
 .ds .compact-band .mch.m .mcl p { grid-column: 1; }
 .ds .compact-band .mch.m .mcf { grid-column: 2; justify-content: flex-end; }
 .ds .compact-band .mch.m .fig b { font-size: 34px; }
+/* Stories has both a book count and a reading action. Give its phone subtitle
+   a full row so the action's intrinsic width cannot squeeze words to one glyph. */
+.ds.stories-v10 .compact-band .mch.m { grid-template-columns: minmax(0, 1fr); }
+.ds.stories-v10 .compact-band .mch.m .mcl p,
+.ds.stories-v10 .compact-band .mch.m .mcf { grid-column: 1 / -1; }
+.ds.stories-v10 .compact-band .mch.m .mcf { justify-content: space-between; }
 /* Compact, desk: the band's switch and figure share one row. */
 .ds.ds-desk .compact-band .mch .mcr { flex-direction: row; align-items: center; gap: 20px; }
 /* Compact, desk: the stage's padding and the first band tighten too (first routine card above the Ask bar). */

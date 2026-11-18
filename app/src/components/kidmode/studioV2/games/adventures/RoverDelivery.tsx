@@ -4,6 +4,7 @@ import { selectionHaptic } from '../../../../../lib/native';
 import { useLanguage } from '../../../../../context/LanguageContext';
 import { useArborOptional } from '../../../../../context/ArborContext';
 import { GameShell, GameFinish } from '../../../game/GameShell';
+import { useGameSession } from '../../../game/GameSessionContext';
 import { kidSfx } from '../../../audio/kidAudio';
 import { StudioPlayHero } from '../../StudioPlayHero';
 import { useAdventureVoice } from './AdventureGuide';
@@ -28,15 +29,18 @@ export default function RoverDelivery() {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
   const w = ROVER_DELIVERY_COPY[lang], shared = ADVENTURE_COPY[lang];
   const child = useArborOptional()?.childProfile;
+  // Studio owns the result and remounts the mechanic for Play again. Keep
+  // the authored turned-floor replay there as well as on standalone routes.
+  const firstSpin = (useGameSession()?.replay ?? 0) % ROVER_SPINS;
   const [challenge, setChallengeState] = useState<Challenge>(() => defaultChallenge(child));
   const [round, setRoundState] = useState(0);
   /** B-GAME-46: how far the floors are turned this play; each play again turns them once more. */
-  const [spin, setSpinState] = useState(0);
+  const [spin, setSpinState] = useState(firstSpin);
   /** Quarter turns of each sign, counted up, so a sign only ever turns clockwise. */
-  const [turns, setTurnsState] = useState<number[]>(() => initialTurns(levelFor(defaultChallenge(child), 0)));
+  const [turns, setTurnsState] = useState<number[]>(() => initialTurns(levelFor(defaultChallenge(child), 0, firstSpin)));
   const [folded, setFoldedState] = useState(false);
   const [phase, setPhaseState] = useState<Phase>('ready');
-  const [car, setCarState] = useState<RoverPlace>(() => roverAtStart(levelFor(defaultChallenge(child), 0)));
+  const [car, setCarState] = useState<RoverPlace>(() => roverAtStart(levelFor(defaultChallenge(child), 0, firstSpin)));
   const [trail, setTrail] = useState<number[]>([]);
   const [parks, setParksState] = useState(0);
   const [hint, setHint] = useState<RoverHint>(null);

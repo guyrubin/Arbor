@@ -18,6 +18,32 @@ describe("finite child-owned quest", () => {
     expect(checkpointSteps([{ ...row("spot", "left"), questId: "other" }])).toEqual([]);
     expect(checkpointSteps([row("spot", "left"), row("lights", "lamp")])).toEqual(["spot"]);
   });
+  it("rejects conflicting duplicate checkpoints and does not display later orphaned choices", () => {
+    const valid = row("spot", "left");
+    const conflict = row("spot", "middle");
+    expect(checkpointChoice([valid, { ...valid }], "spot")).toBe("left");
+    expect(checkpointChoice([valid, conflict], "spot")).toBeUndefined();
+    expect(checkpointChoice([valid, { ...valid, questId: "other" }], "spot")).toBeUndefined();
+    expect(checkpointSteps([valid, conflict, row("pillows", "pillow")])).toEqual([]);
+    const orphan = [valid, row("lights", "lamp"), row("pause", "quiet")];
+    expect(checkpointSteps(orphan)).toEqual(["spot"]);
+    store.items = orphan; store.loaded = true; store.confirmed = true;
+    store.isCurrent.mockReturnValue(true);
+    const progress = useStudioQuestProgress("kid");
+    expect(progress.choices).toEqual({ spot: "left" });
+    expect(progress.completed).toBe(false);
+  });
+  it("never claims a confirmed quest finish from a retired owner or child receipt", async () => {
+    store.items = QUEST_STEPS.map(step => row(step, QUEST_CHOICES_FOR_TEST[step]));
+    store.loaded = true; store.confirmed = true;
+    store.isCurrent.mockReturnValue(false);
+    const retired = useStudioQuestProgress("kid");
+    expect(retired.confirmed).toBe(false);
+    expect(retired.completed).toBe(false);
+    await expect(retired.advance("look")).rejects.toThrow("scope");
+    store.isCurrent.mockReturnValue(true);
+    expect(useStudioQuestProgress("kid").completed).toBe(true);
+  });
   it("writes a bounded choice to deterministic doc, and rejects a stale owner receipt", async () => {
     store.items = [row("spot", "middle")]; store.upsert.mockClear();
     await useStudioQuestProgress("kid").advance("blanket");

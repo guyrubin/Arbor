@@ -14,7 +14,16 @@ describe("optional V2 game boundary", () => {
     const complete = vi.fn(); let session: ReturnType<typeof useGameSession> = null;
     function Read() { session = useGameSession(); return null; }
     renderToStaticMarkup(<GameCompletionProvider onComplete={complete}><Read /></GameCompletionProvider>);
-    expect(session).toEqual({ playOnly: true, onComplete: complete });
+    expect(session).toEqual({ playOnly: true, replay: 0, onComplete: complete });
+    expect(complete).not.toHaveBeenCalled();
+    (session as unknown as { onComplete: () => void }).onComplete();
+    expect(complete).toHaveBeenCalledOnce();
+  });
+  it("forwards the explicit replay count without completing the session", () => {
+    const complete = vi.fn(); let session: ReturnType<typeof useGameSession> = null;
+    function Read() { session = useGameSession(); return null; }
+    renderToStaticMarkup(<GameCompletionProvider onComplete={complete} replay={3}><Read /></GameCompletionProvider>);
+    expect(session).toEqual({ playOnly: true, replay: 3, onComplete: complete });
     expect(complete).not.toHaveBeenCalled();
     (session as unknown as { onComplete: () => void }).onComplete();
     expect(complete).toHaveBeenCalledOnce();

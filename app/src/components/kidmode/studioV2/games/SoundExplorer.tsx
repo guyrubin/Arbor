@@ -17,6 +17,8 @@ function ExplorerPlay({ childId }: { childId: string }) {
   const muted = useKidReadAloudMuted(childId);
   const audio = useRef<ExplorerAudio | null>(null);
   const [round, setRound] = useState(0);
+  const roundRef = useRef(round);
+  roundRef.current = round;
   const [clue, setClue] = useState(false);
   const [matched, setMatched] = useState(false);
   const [heard, setHeard] = useState(false);
@@ -48,7 +50,18 @@ function ExplorerPlay({ childId }: { childId: string }) {
           <div className="studio-sound-emblem" aria-hidden="true"><Glyph /></div>
           <div className="studio-game-actions">
             <button type="button" className="studio-game-button studio-game-button--go" disabled={muted || matched} onClick={() => {
-              const played = audio.current?.play(sound) ?? false; setHeard(played); setUnavailable(!played);
+              const player = audio.current;
+              const played = player?.play(sound) ?? false;
+              setHeard(played); setUnavailable(!played);
+              // A temporary audio-context, decode, or network failure must not
+              // permanently silence this game. Retry missing files, but NEVER
+              // autoplay when loading completes: the next child tap plays sound.
+              if (!played && player && !muted) {
+                const requestedRound = round;
+                void player.load().then(ready => {
+                  if (ready && audio.current === player && roundRef.current === requestedRound) setUnavailable(false);
+                }).catch(() => { /* The authored picture clue remains available. */ });
+              }
             }}><Volume2 aria-hidden="true" size={22} />{heard ? copy.replay : copy.listen}</button>
             {!muted && !unavailable && <button type="button" className="studio-game-button" aria-expanded={showClue} onClick={() => setClue(value => !value)}><Lightbulb aria-hidden="true" size={22} />{showClue ? copy.hideClue : copy.clue}</button>}
           </div>
