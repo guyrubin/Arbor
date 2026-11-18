@@ -42,6 +42,41 @@ export async function verifyStudioWorldPlates({ browser, base, output }) {
           const heading = scene.getByRole('heading', { level: 1 });
           await heading.waitFor({ state: 'visible' });
           await page.evaluate(() => document.fonts.ready);
+          // Maker covers are React.lazy imports with a null Suspense fallback.
+          // They start on mounting the world (no idle/IntersectionObserver gate).
+          // Wait for their actual SVGs, and visit the shelf as a reader would so
+          // any lazy raster images also load before the full-page capture.
+          const activityArt = scene.locator('[data-activity-art]');
+          for (let index = 0; index < await activityArt.count(); index++) {
+            await activityArt.nth(index).scrollIntoViewIfNeeded();
+          }
+          const covers = scene.locator('[data-maker-cover]');
+          const makerCovers = [];
+          for (let index = 0; index < await covers.count(); index++) {
+            const cover = covers.nth(index);
+            await cover.locator(':scope > svg').waitFor({ state: 'visible' });
+            makerCovers.push(await cover.getAttribute('data-maker-cover'));
+          }
+          const shelfImages = await scene.locator('.studio-v2__activity img:visible, .studio-v2__activity svg image').evaluateAll(async elements => {
+            const sources = await Promise.all(elements.map(async element => {
+              if (element instanceof HTMLImageElement) {
+                await element.decode();
+                return element.currentSrc || element.src;
+              }
+              return new URL(element.href.baseVal, document.baseURI).href;
+            }));
+            return Promise.all([...new Set(sources)].map(async src => {
+              const image = new Image();
+              image.src = src;
+              await image.decode();
+              return { src, width: image.naturalWidth, height: image.naturalHeight };
+            }));
+          });
+          assert.ok(shelfImages.every(image => image.width > 0 && image.height > 0), 'All displayed shelf image resources decode');
+          await page.evaluate(() => new Promise(resolve => {
+            window.scrollTo(0, 0);
+            requestAnimationFrame(() => requestAnimationFrame(resolve));
+          }));
           const plates = scene.locator(`img[data-studio-plate="${world.id}"]:visible`);
           await plates.first().waitFor({ state: 'visible' });
           const images = await plates.evaluateAll(async elements => Promise.all(elements.map(async image => {
@@ -72,15 +107,15 @@ export async function verifyStudioWorldPlates({ browser, base, output }) {
           const title = (await heading.innerText()).trim();
           assert.ok(title.length > 0, 'The world heading is readable text');
           const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-          await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
+          await page.screenshot({ path: path.join(output, screenshot), fullPage: true, animations: 'disabled' });
           assert.equal(overflow, false, 'No horizontal document overflow');
           assert.deepEqual(pageErrors, [], 'No page errors while opening the world');
           assert.deepEqual(brokenArt, [], 'No missing art while opening the world');
           rows.push({ world: world.id, viewport: viewport.id, lang: viewport.lang, passed: true,
-            heading: title, imageCount: images.length, images, overflow, screenshot,
+            heading: title, imageCount: images.length, images, makerCovers, shelfImages, overflow, screenshot,
             pageErrors: [...pageErrors], brokenArt: [...brokenArt] });
         } catch (error) {
-          await page.screenshot({ path: path.join(output, `failed-${screenshot}`), fullPage: true }).catch(() => {});
+          await page.screenshot({ path: path.join(output, `failed-${screenshot}`), fullPage: true, animations: 'disabled' }).catch(() => {});
           await writeFile(path.join(output, `failed-studio-stage-${world.id}-${viewport.id}.json`), JSON.stringify({
             world: world.id, viewport: viewport.id, error: String(error), pageErrors, brokenArt,
           }, null, 2));

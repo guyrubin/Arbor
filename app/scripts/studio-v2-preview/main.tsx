@@ -13,6 +13,7 @@ import { KidHearItButton, KidSoundToggle } from '../../src/components/kidmode/ki
 import { studioActivity, type StudioActivityId, type StudioWorldId } from '../../src/components/kidmode/studioV2/studioCatalog';
 import { studioCopy } from '../../src/components/kidmode/studioV2/studioCopy';
 import '../../src/index.css';
+import '../../src/components/kidmode/studioV2/studioBar.css';
 import './preview.css';
 type View = 'home' | 'world' | 'game' | 'collection' | 'quest' | 'books';
 function Preview() {
@@ -33,7 +34,7 @@ function Preview() {
   const title = view === 'game' ? copy.activities[game].title : view === 'world' ? copy.worlds[world].title : view === 'quest' ? (uiLang === 'he' ? 'פינה נעימה' : 'A cozy corner') : copy.collection;
   const back = () => { setView(view === 'game' ? 'world' : 'home'); window.scrollTo(0,0); };
   return <>
-    <main className="arbor-play studio-review" dir={uiLang === 'he' ? 'rtl' : 'ltr'}>
+    <main className="arbor-play studio-review" data-kid-studio="" dir={uiLang === 'he' ? 'rtl' : 'ltr'}>
       {view !== 'home' && <header className="studio-v2-bar review-bar"><button onClick={back} aria-label={uiLang === 'he' ? 'חזרה' : 'Back'}><ArrowLeft /></button><strong data-kid-bar-title="">{title}</strong><KidHearItButton /><KidSoundToggle childId="studio-v2-synthetic-review" lang={uiLang} /><HoldExitButton onExit={home} /></header>}
       {view === 'home' && <StudioHome onWorld={id => {setWorld(id);setView('world');}} onCollection={() => setView('collection')} onQuest={() => setView('quest')} onExit={home} />}
       {view === 'world' && <StudioWorld worldId={world} onActivity={openGame} onBooks={() => setView('books')} />}
@@ -42,7 +43,7 @@ function Preview() {
       {view === 'quest' && <StudioQuest onHome={home} />}
       {view === 'books' && <section className="review-books"><h1>{copy.books}</h1><p>{uiLang === 'he' ? 'הספרים האישיים מופיעים באפליקציה שלך.' : 'Your personal books appear in the Arbor app.'}</p><button className="studio-game-button-v2" onClick={home}>{uiLang === 'he' ? 'לשמיים שלי' : 'Back to my sky'}</button></section>}
     </main>
-    <footer className="review-tools"><span>{uiLang === 'he' ? 'תצוגת עיצוב • נבט מלווה כאן. באפליקציה מופיע האווטאר המאושר של הילד.' : 'Design preview • Sprout stands in here. The app uses your child’s approved avatar.'}</span><button onClick={() => setUiLang(uiLang === 'he' ? 'en' : 'he')}><Languages size={18} />{uiLang === 'he' ? 'English' : 'עברית'}</button></footer>
+    <footer className="review-tools" data-kid-studio=""><span>{uiLang === 'he' ? 'תצוגת עיצוב • נבט מלווה כאן. באפליקציה מופיע האווטאר המאושר של הילד.' : 'Design preview • Sprout stands in here. The app uses your child’s approved avatar.'}</span><button onClick={() => setUiLang(uiLang === 'he' ? 'en' : 'he')}><Languages size={18} />{uiLang === 'he' ? 'English' : 'עברית'}</button></footer>
   </>;
 }
 // The separate CI-only book fixture mounts the production reader; ordinary

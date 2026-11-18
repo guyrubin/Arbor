@@ -49,6 +49,12 @@ export async function verifyBookPictureRecovery({ browser, base, output }) {
       const retry = page.locator('[data-book-picture-retry]');
       await retry.waitFor({ state: 'visible' });
       await page.evaluate(() => document.fonts.ready);
+      await page.waitForFunction(() => document.documentElement.classList.contains('msr-ready'));
+      const glyphs = await page.locator('[data-book-reader] .msr').evaluateAll(elements => elements.map(element => {
+        const style = getComputedStyle(element), rect = element.getBoundingClientRect();
+        return { name: element.textContent, font: style.fontFamily, loaded: document.fonts.check(`${style.fontSize} 'Material Symbols Rounded'`, element.textContent || ''), visible: style.visibility === 'visible', width: rect.width, size: parseFloat(style.fontSize) };
+      }).filter(glyph => glyph.width > 0));
+      assert.ok(glyphs.length > 0 && glyphs.every(glyph => glyph.loaded && glyph.visible && glyph.font.includes('Material Symbols Rounded') && Math.abs(glyph.width - glyph.size) <= 1), `${label}: actual loaded icon glyphs, not fallback ligature text: ${JSON.stringify(glyphs)}`);
       const before = await page.locator('[data-book-page]').getAttribute('data-book-page');
       const beforeWords = await page.locator('[data-book-text]').innerText();
       assert.equal(before, scenario.page);
@@ -69,14 +75,19 @@ export async function verifyBookPictureRecovery({ browser, base, output }) {
       assert.equal(requests.length, 1, 'an absent image does not poll or loop');
       assert.equal(await page.locator('img[src^="/api/plans/plates/"]').count(), 0, 'no unauthenticated bare image request');
       const missingShot = `${label}-picture-unavailable.png`;
-      await page.screenshot({ path: path.join(folder, missingShot) });
+      await page.screenshot({ path: path.join(folder, missingShot), animations: 'disabled' });
       ready = true;
       // Operate the real button, hook, image request and image decode.
       await retry.click();
       await page.waitForFunction(() => {
         const img = document.querySelector('[data-book-plate] img');
-        return img?.complete && img.naturalWidth > 0;
+        if (!img?.complete || img.naturalWidth <= 0) return false;
+        const style = getComputedStyle(img), rect = img.getBoundingClientRect();
+        return style.visibility === 'visible' && Number(style.opacity) === 1 && rect.width > 0 && rect.height > 0;
       });
+      // A decoded image can still be in its first transparent fade frame.
+      // Observe the final paint before capturing the recovered picture.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       assert.equal(await retry.count(), 0, 'successful image retires its recovery action');
       assert.equal(await page.locator('[data-book-page]').getAttribute('data-book-page'), before, 'retry preserves the story position');
       assert.equal(await page.locator('[data-book-text]').innerText(), beforeWords, 'retry preserves story text and navigation');
@@ -86,8 +97,8 @@ export async function verifyBookPictureRecovery({ browser, base, output }) {
       assert.deepEqual(errors, [], 'no page errors');
       assert.deepEqual(unexpected, [], 'no external, model, generation or unrecognized API calls');
       const recoveredShot = `${label}-picture-recovered.png`;
-      await page.screenshot({ path: path.join(folder, recoveredShot) });
-      results.push({ viewport: cell.id, surface: `book-picture-recovery-${scenario.id}`, passed: true, page: before, imageReads: requests.length, authenticated: !!scenario.authorization, recoveryBounds: { art, card, target }, screenshots: [`books/${missingShot}`, `books/${recoveredShot}`] });
+      await page.screenshot({ path: path.join(folder, recoveredShot), animations: 'disabled' });
+      results.push({ viewport: cell.id, surface: `book-picture-recovery-${scenario.id}`, passed: true, page: before, imageReads: requests.length, authenticated: !!scenario.authorization, iconGlyphs: glyphs, recoveryBounds: { art, card, target }, screenshots: [`books/${missingShot}`, `books/${recoveredShot}`] });
     } catch (error) {
       await page.screenshot({ path: path.join(folder, `${label}-failure.png`) }).catch(() => {});
       await writeFile(path.join(folder, `${label}-failure.json`), JSON.stringify({ message: String(error), errors, requests, unexpected }, null, 2));

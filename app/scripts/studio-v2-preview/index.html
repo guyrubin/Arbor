@@ -1,1 +1,49 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#121c3a"><title>Arbor Kids — Studio V2</title><meta name="description" content="A private review of the Arbor Kids Studio V2 sky and games."></head><body><div id="root" class="arbor-app"></div><script type="module" src="./main.tsx"></script></body></html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#121c3a"><title>Arbor Kids — Studio V2</title><meta name="description" content="A private review of the Arbor Kids Studio V2 sky and games.">
+<!-- Match the production index.html's self-hosted Icon font and readiness
+     gate. The fixture must render the real glyphs before measuring controls. -->
+<link rel="preload" as="font" type="font/woff2" href="/fonts/material-symbols-rounded-subset.woff2" crossorigin>
+<style>
+  @font-face {
+    font-family: 'Material Symbols Rounded';
+    font-style: normal;
+    font-weight: 100 700;
+    src: url('/fonts/material-symbols-rounded-subset.woff2') format('woff2');
+    font-display: block;
+  }
+  .msr {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    vertical-align: middle;
+    font-variation-settings: 'opsz' 24, 'wght' 500, 'GRAD' 0, 'FILL' 0;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    text-transform: none;
+    letter-spacing: normal;
+    -webkit-user-select: none;
+    user-select: none;
+    visibility: hidden;
+  }
+  html.msr-ready .msr { visibility: visible; }
+  html:not(.msr-ready) .msr { inline-size: 1em; overflow: hidden; }
+</style>
+<script>
+  (function () {
+    var html = document.documentElement;
+    function reveal() { html.classList.add('msr-ready'); }
+    try {
+      if (!document.fonts || !document.fonts.load) { return; }
+      document.fonts
+        .load("24px 'Material Symbols Rounded'", 'home')
+        .then(function (faces) { if (faces && faces.length) reveal(); })
+        .catch(function () {});
+    } catch (e) {}
+  })();
+</script>
+</head><body><div id="root" class="arbor-app"></div><script type="module" src="./main.tsx"></script></body></html>
