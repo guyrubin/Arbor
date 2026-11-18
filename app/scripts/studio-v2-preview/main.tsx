@@ -12,7 +12,7 @@ import { HoldExitButton } from '../../src/components/kidmode/HoldExitButton';
 import { KidHearItButton, KidSoundToggle } from '../../src/components/kidmode/kidReadAloud';
 import { studioActivity, type StudioActivityId, type StudioWorldId } from '../../src/components/kidmode/studioV2/studioCatalog';
 import { studioCopy } from '../../src/components/kidmode/studioV2/studioCopy';
-import '../../src/index.css';
+import './styles.css';
 import '../../src/components/kidmode/studioV2/studioBar.css';
 import './preview.css';
 type View = 'home' | 'world' | 'game' | 'collection' | 'quest' | 'books';

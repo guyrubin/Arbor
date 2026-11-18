@@ -21,6 +21,7 @@ export async function verifyJosephStory({ browser, base, output }) {
   assert.equal(frames.size, 9, 'a complete reviewed cover plus eight scenes is required');
   const cells = [...RELEASE_VIEWPORTS, ...DEVICE_VIEWPORTS.filter(cell => cell.id.startsWith('landscape-'))];
   const results = [];
+  const failures = [];
   for (const cell of cells) {
     const context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
     const page = await context.newPage();
@@ -191,11 +192,25 @@ export async function verifyJosephStory({ browser, base, output }) {
       assert.deepEqual(unexpected, [], 'no external, generation, plan-image or other API calls');
       results.push({ viewport: cell.id, surface: 'joseph-authored-legacy-reader', passed: true, story: STORY, pages, choices: outcomes.length, staticReads, narration: { synthetic: true, available: false, reads: narrationReads }, pictureRecovery: 'one injected 404 followed by the real static file', screenshots });
     } catch (error) {
-      await page.screenshot({ path: path.join(folder, `${cell.id}-failure.png`), animations: 'disabled' }).catch(() => {});
-      await writeFile(path.join(folder, `${cell.id}-failure.json`), JSON.stringify({ message: String(error), errors, unexpected, narrationReads, staticReads, pages }, null, 2));
-      throw error;
+      await shot('failure').catch(() => {});
+      const layout = await page.locator('[data-kid-book-reader], [data-kid-book-cover], [data-kid-book-art], [data-story-artwork], [data-story-art-image], [data-kid-book-nav]').evaluateAll(elements => elements.map(element => {
+        const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+        return {
+          tag: element.tagName, className: element.className,
+          box: { x: box.x, y: box.y, width: box.width, height: box.height },
+          display: style.display, visibility: style.visibility, opacity: style.opacity,
+          position: style.position, aspectRatio: style.aspectRatio, flexDirection: style.flexDirection,
+          gridTemplateColumns: style.gridTemplateColumns, maxBlockSize: style.maxBlockSize,
+          image: element instanceof HTMLImageElement ? { src: element.currentSrc, complete: element.complete, naturalWidth: element.naturalWidth, naturalHeight: element.naturalHeight } : undefined,
+        };
+      })).catch(() => []);
+      const failure = { viewport: cell.id, surface: 'joseph-authored-legacy-reader', passed: false, story: STORY, message: String(error), errors, unexpected, narrationReads, staticReads, pages, screenshots, layout };
+      results.push(failure);
+      failures.push(new Error(`${cell.id}: ${error instanceof Error ? error.message : String(error)}`, { cause: error }));
+      await writeFile(path.join(folder, `${cell.id}-failure.json`), JSON.stringify(failure, null, 2));
     } finally { await context.close(); }
   }
-  await writeFile(path.join(folder, 'results.json'), JSON.stringify({ passed: true, scope: 'Actual HeroJourneyTab/HeroScenePlayer and committed Joseph art, synthetic geometric identity/profile/storage. All choices, back, reread, shelf return, exit and image retry in EN/HE release/landscape cells. Narration unavailable by fixture; no real-child or physical-device/narrator acceptance.', results }, null, 2));
+  await writeFile(path.join(folder, 'results.json'), JSON.stringify({ passed: failures.length === 0, scope: 'Actual HeroJourneyTab/HeroScenePlayer and committed Joseph art, synthetic geometric identity/profile/storage. All choices, back, reread, shelf return, exit and image retry in EN/HE release/landscape cells. Narration unavailable by fixture; no real-child or physical-device/narrator acceptance.', results }, null, 2));
+  if (failures.length) throw new AggregateError(failures, `Joseph reader failed in ${failures.length}/${cells.length} cells: ${results.filter(result => !result.passed).map(result => result.viewport).join(', ')}. All cell evidence is in joseph/results.json.`);
   return results;
 }

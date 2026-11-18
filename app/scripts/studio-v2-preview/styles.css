@@ -1,0 +1,4 @@
+/* The preview's Vite root is this directory. Include the production utility
+   sources explicitly so mounted readers receive their real layout rules. */
+@import "../../src/index.css";
+@source "../../src";

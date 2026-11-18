@@ -15,6 +15,53 @@ const GAMES = [
   { id: 'rhythm-garden', adventure: 'hero-band', world: 'studio' },
 ];
 
+/** Installed before app code. Exempt only the sound bank's exact, inaudible
+ * iOS unlock buffer; unfamiliar sources fail closed as potentially audible.
+ * Exported so negative controls can verify this same browser instrumentation. */
+export function installGameCycleAudioProbe() {
+  window.gameCycleAudio = { sources: 0, silentUnlocks: 0, audibleSources: 0, media: 0, speech: 0, captures: 0 };
+  window.gameCycleAudioDetails = [];
+  // A browser method may delegate through its base prototype. A Web Audio
+  // source can start only once; do not count that one start at both wrappers.
+  const seen = new WeakSet();
+  const observeSource = source => {
+    if (seen.has(source)) return;
+    seen.add(source);
+    const bufferSource = typeof window.AudioBufferSourceNode === 'function' && source instanceof window.AudioBufferSourceNode;
+    const buffer = bufferSource ? source.buffer : null;
+    let sample = null;
+    if (buffer?.length === 1 && buffer.numberOfChannels === 1) {
+      try { sample = buffer.getChannelData(0)[0]; } catch { /* Unreadable is not proved silent. */ }
+    }
+    const silentUnlock = !!buffer && buffer.length === 1 && buffer.numberOfChannels === 1
+      && Number.isFinite(buffer.sampleRate) && buffer.sampleRate > 0 && source.loop === false && sample === 0;
+    window.gameCycleAudio.sources++;
+    window.gameCycleAudio[silentUnlock ? 'silentUnlocks' : 'audibleSources']++;
+    window.gameCycleAudioDetails.push({
+      kind: bufferSource ? 'buffer' : typeof window.OscillatorNode === 'function' && source instanceof window.OscillatorNode ? 'oscillator' : 'scheduled',
+      frames: buffer?.length ?? null, channels: buffer?.numberOfChannels ?? null,
+      sampleRate: buffer?.sampleRate ?? null, loop: bufferSource ? source.loop : null,
+      sample, silentUnlock,
+      phase: document.querySelector('[data-adventure]')?.getAttribute('data-phase') ?? null,
+    });
+  };
+  for (const prototype of [window.AudioScheduledSourceNode?.prototype, window.AudioBufferSourceNode?.prototype, window.OscillatorNode?.prototype]) {
+    if (!prototype?.start) continue;
+    const original = prototype.start;
+    prototype.start = function(...args) { observeSource(this); return original.apply(this, args); };
+  }
+  const count = (prototype, method, field) => {
+    if (!prototype?.[method]) return;
+    const original = prototype[method];
+    prototype[method] = function(...args) { window.gameCycleAudio[field]++; return original.apply(this, args); };
+  };
+  count(window.HTMLMediaElement?.prototype, 'play', 'media');
+  count(window.SpeechSynthesis?.prototype, 'speak', 'speech');
+  if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => {
+    window.gameCycleAudio.captures++; throw new Error('No capture in synthetic game fixture');
+  };
+}
+
 /** Watch the same information a child sees; each driver has a finite budget. */
 async function playCycle(page, game, press, trace) {
   const root = page.locator(`[data-adventure="${game.adventure}"]`);
@@ -162,7 +209,7 @@ async function roverFloor(page) {
 export async function verifyDefaultGameCycles({ browser, base, output }) {
   const folder = path.join(output, 'game-cycles');
   await mkdir(folder, { recursive: true });
-  const rows = [], origin = new URL(base).origin;
+  const rows = [], failures = [], origin = new URL(base).origin;
   for (const viewport of RELEASE_VIEWPORTS) for (const game of GAMES) {
     const phone = viewport.id.startsWith('mobile-');
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h },
@@ -184,22 +231,8 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
     await context.addInitScript(() => {
       localStorage.setItem('arbor.kid.readAloud.muted.studio-v2-synthetic-review', '1');
       Math.random = () => 0;
-      window.gameCycleAudio = { sources: 0, media: 0, speech: 0, captures: 0 };
-      const count = (prototype, method, field) => {
-        if (!prototype?.[method]) return;
-        const original = prototype[method];
-        prototype[method] = function(...args) { window.gameCycleAudio[field]++; return original.apply(this, args); };
-      };
-      count(window.AudioScheduledSourceNode?.prototype, 'start', 'sources');
-      // Buffer sources override start(when, offset, duration) in Web Audio.
-      count(window.AudioBufferSourceNode?.prototype, 'start', 'sources');
-      count(window.OscillatorNode?.prototype, 'start', 'sources');
-      count(window.HTMLMediaElement?.prototype, 'play', 'media');
-      count(window.SpeechSynthesis?.prototype, 'speak', 'speech');
-      if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => {
-        window.gameCycleAudio.captures++; throw new Error('No capture in synthetic game fixture');
-      };
     });
+    await context.addInitScript(installGameCycleAudioProbe);
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
     page.on('pageerror', error => errors.push(error.message));
@@ -285,14 +318,16 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
       assert.equal(await page.locator('[data-adventure]').count(), 0, 'No game remounts after returning Home');
       assert.equal(await page.locator('[data-studio-phase="result"]').count(), 0, 'No stale timer publishes a result after exit');
       record.audio = await page.evaluate(() => window.gameCycleAudio);
-      assert.deepEqual(record.audio, { sources: 0, media: 0, speech: 0, captures: 0 }, 'Sound off and camera-free play remain silent throughout both sessions and exit');
+      record.audioDetails = await page.evaluate(() => window.gameCycleAudioDetails);
+      const { audibleSources, media, speech, captures } = record.audio;
+      assert.deepEqual({ audibleSources, media, speech, captures }, { audibleSources: 0, media: 0, speech: 0, captures: 0 }, 'Sound off and camera-free play emit no audible sources throughout both sessions and exit');
+      assert.ok(record.audio.silentUnlocks <= (game.adventure === 'delivery' ? 2 : 0), 'Only Delivery begins each session with its known silent iOS unlock');
+      assert.ok(record.audioDetails.every(source => !source.silentUnlock || source.phase === 'ready'), 'Silent unlocks belong to the visible Begin gestures');
       assert.deepEqual(errors, [], 'No browser or React errors during complete cycles');
       assert.deepEqual(brokenResources, [], 'All requested game resources were served');
       assert.deepEqual(unexpectedRequests, [], 'Synthetic cycles make no API or external requests');
       await shot('home');
       record.passed = true;
-      rows.push(record);
-      await writeFile(path.join(folder, `${stem}.json`), JSON.stringify(record, null, 2));
     } catch (error) {
       await shot('failed').catch(() => {});
       const failureState = await page.evaluate(() => ({
@@ -300,10 +335,19 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
         adventurePhase: document.querySelector('[data-adventure]')?.getAttribute('data-phase') ?? null,
         loadingFallback: !!document.querySelector('[data-testid="kid-stage-fallback"]'),
       })).catch(() => null);
-      await writeFile(path.join(folder, `${stem}.json`), JSON.stringify({ ...record, passed: false,
-        error: String(error), failureState, errors, brokenResources, unexpectedRequests }, null, 2));
-      throw new Error(`${stem}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+      record.audio ??= await page.evaluate(() => window.gameCycleAudio).catch(() => null);
+      record.audioDetails ??= await page.evaluate(() => window.gameCycleAudioDetails).catch(() => null);
+      Object.assign(record, { passed: false, error: String(error), failureState, errors, brokenResources, unexpectedRequests });
+      failures.push(new Error(`${stem}: ${error instanceof Error ? error.message : String(error)}`, { cause: error }));
     } finally { await context.close(); }
+    rows.push(record);
+    await writeFile(path.join(folder, `${stem}.json`), JSON.stringify(record, null, 2));
+    // Keep a usable partial suite record even if a later browser/process fails.
+    await writeFile(path.join(folder, 'summary.json'), JSON.stringify({
+      expectedCells: RELEASE_VIEWPORTS.length * GAMES.length, completedCells: rows.length,
+      passedCells: rows.filter(row => row.passed).length, failedCells: failures.length, results: rows,
+    }, null, 2));
   }
+  if (failures.length) throw new AggregateError(failures, `${failures.length} of ${rows.length} default game cycle cells failed; see game-cycles/summary.json`);
   return rows;
 }
