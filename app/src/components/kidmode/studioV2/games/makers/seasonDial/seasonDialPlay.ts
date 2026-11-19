@@ -49,8 +49,9 @@ export function stageLayout(w: number, h: number, safeBottom = 14): StageLayout 
   const treeFoot = floorPoint(base, portrait ? 0.2 : H < 430 ? 0.5 : 0.24);
   const treeH = Math.min(portrait ? Math.min(H * 0.6, W * 1.16) : H * 0.78, treeFoot.y - Math.min(64, H * 0.1));
   const person = treeH * 0.37;
-  const r = Math.max(62, Math.min(132, Math.min(W, H) * (portrait ? 0.225 : 0.2)));
-  const dial = { cx: W - r - Math.max(14, W * 0.018), cy: H - r - safeBottom - Math.max(6, H * 0.012), r };
+  const r = Math.max(62, Math.min(132, Math.min(W, H) * (portrait ? 0.2 : 0.18)));
+  const pedestal = portrait ? Math.max(36, H * 0.05) : Math.max(18, H * 0.03);
+  const dial = { cx: W - r - Math.max(14, W * 0.018), cy: H - r - safeBottom - pedestal, r };
   const treeX = W * (portrait ? 0.44 : 0.37);
   return {
     w: W, h: H, portrait, view: { size, left, top }, horizon: line(VIEW_LINES.horizon), wallTop: line(VIEW_LINES.wallTop), floorTop: base.floorTop,

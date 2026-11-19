@@ -53,6 +53,28 @@ interface BoatAnim { fx: number; fy: number; tx: number; ty: number; start: numb
 interface Fit { w: number; h: number; portrait: boolean; short: boolean; wheel: number; base: number; /** On a short, wide screen the wheel sits beside the book: the room it takes at the screen's end. */ side: number; view: ViewFit }
 interface Coach { who: CoachWho; mood: CoachMood; line: string }
 const firstFit = (): Fit => ({ w: 390, h: 700, portrait: true, short: false, wheel: 170, base: 540, side: 0, view: { tilt: BOOK_TILT, box: stageBox(BOOK_TILT), wide: 0.66, near: 1.2 } });
+/** How far the closed book may rise and still stay inside the stage. The
+ * wanted lift clears the wheel; the slack is whatever room is left above a
+ * book that already fills its band. */
+const coverScale = (f: Fit) => {
+  const fitted = Math.max(f.view.wide, Math.min(f.view.near, f.w / (PAGE_W + 120)));
+  // The shut cover stands taller than the open pages. On a wide stage, hold
+  // it just under the whole-book fit so the title stays on the screen.
+  return f.portrait ? fitted : Math.min(fitted, f.view.wide * 0.94);
+};
+const coverRise = (f: Fit, scale: number, lifting: boolean) => {
+  if (!lifting) return 0;
+  const scaled = f.view.box.h * scale;
+  if (!f.portrait) {
+    // The closed cover projects above the fitted box. The pad under the book
+    // is spare room: spend it so the cover stays inside the stage.
+    const overhang = scaled * 0.22;
+    const spareBelow = Math.max(0, f.h - f.base);
+    return -Math.min(overhang, spareBelow);
+  }
+  const slack = Math.max(0, f.base - scaled);
+  return Math.min(Math.round(f.h * 0.1), slack);
+};
 
 export default function PaperBoat() {
   const { uiLang } = useLanguage(); const lang = uiLang === 'he' ? 'he' : 'en';
@@ -537,7 +559,8 @@ export default function PaperBoat() {
     const { fit: f, reduced: still } = live.current, c = cam.current, b = book.current;
     const settled = !turn.current && !pageDrag.current?.moved && closing.current === null && bookScene(position.current).settled;
     let scale = f.view.near, focus = SPREAD_W / 2, free = false;
-    if (cover.current.k > 0 && cover.current.at === null) { focus = PAGE_W * 1.5; free = true; scale = Math.max(f.view.wide, Math.min(f.view.near, f.w / (PAGE_W + 120))); }
+    if (cover.current.k > 0 && cover.current.at === null) { focus = PAGE_W * 1.5; free = true; scale = coverScale(f); }
+    else if (!f.portrait && cover.current.k > 0.4) scale = Math.min(scale, coverScale(f));
     else if (closing.current !== null) { focus = PAGE_W * 0.5 + PAGE_W * (1 - clamp01(((clock.current - closing.current) * 1000) / CLOSE_MS)) * 0.5; scale = f.view.wide; free = true; }
     else if (cover.current.k > 0.2) scale = f.view.wide;
     else if (cover.current.k > 0) focus = BOAT_BANK.x + 60;
@@ -553,7 +576,7 @@ export default function PaperBoat() {
     else focus = b.harbour.x + 50;
     const cx = free ? focus : viewCentre(focus, (f.w - f.side) / scale);
     // The closed book lies a little up the table, clear of the title under it.
-    const rise = cover.current.k > 0 && cover.current.at === null ? Math.round(f.h * (f.portrait ? 0.1 : 0.17)) : 0;
+    const rise = coverRise(f, scale, f.portrait ? cover.current.k > 0 && cover.current.at === null : cover.current.k > 0.4);
     const before = c.cx + c.scale * 1000 + c.rise;
     if (!c.ready || still) { c.cx = cx; c.scale = scale; c.rise = rise; c.ready = true; }
     else { const k = Math.min(1, dt * 2.6); c.cx += (cx - c.cx) * k; c.scale += (scale - c.scale) * Math.min(1, dt * 3.2); c.rise += (rise - c.rise) * k; if (Math.abs(cx - c.cx) < 0.05) c.cx = cx; if (Math.abs(scale - c.scale) < 0.0005) c.scale = scale; if (Math.abs(rise - c.rise) < 0.3) c.rise = rise; }
@@ -634,7 +657,7 @@ export default function PaperBoat() {
 
   /* ── render ────────────────────────────────────────────────────────────── */
   const b = book.current, t = clock.current, { view } = fit, { box } = view;
-  if (!cam.current.ready) { cam.current.scale = Math.max(view.wide, Math.min(view.near, fit.w / (PAGE_W + 120))); cam.current.cx = PAGE_W * 1.5; cam.current.rise = Math.round(fit.h * (fit.portrait ? 0.1 : 0.17)); }
+  if (!cam.current.ready) { cam.current.scale = coverScale(fit); cam.current.cx = PAGE_W * 1.5; cam.current.rise = coverRise(fit, cam.current.scale, true); }
   const scale = cam.current.scale;
   const openK = 1 - cover.current.k, openE = ease(openK), covered = cover.current.k > 0;
   const closeK = closing.current === null ? 0 : ease(clamp01(((t - closing.current) * 1000) / CLOSE_MS));
