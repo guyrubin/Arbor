@@ -22,10 +22,10 @@ import { describe, expect, it } from "vitest";
 import { createTestConfig } from "../testConfig";
 import { candidatesFor } from "./capabilities/candidates";
 import { routePolicyFor, selectProvider, type ProviderCandidate, type RoutePolicy } from "./capabilities/policy";
-import type { AiAudience, AiCapability, AiDataClass, CapabilityRequest } from "./capabilities/contracts";
+import { AiProviderError, type AiAudience, type AiCapability, type AiDataClass, type CapabilityRequest } from "./capabilities/contracts";
 import type { ModelRoute } from "./modelRouter";
 import { liveCandidatesFor, realtimePolicyFor } from "./liveResidency";
-import { ttsCandidateFor, ttsEndpointFor } from "../server/tts";
+import { ttsCandidateFor, ttsCapabilityRequest, ttsEndpointFor } from "../server/tts";
 import { bookTtsCandidate } from "../server/bookNarration";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -37,7 +37,7 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
 
 /** Exact, shrink-only: rows whose true request the current decision does not
  *  evaluate. A new gap fails; a closed gap fails until this number drops. */
-const GAP_ROWS_BASELINE = 16;
+const GAP_ROWS_BASELINE = 14;
 /** Exact, both ways: the rows that carry a parent's or child's words or voice
  *  (Text in) and run no crisis screen (Crisis screen starts with "no"). */
 const CRISIS_SCREEN_GAPS = ["api POST /score-utterance", "server/childAsr.ts", "server/planNarration.ts"];
@@ -275,10 +275,21 @@ describe("B-AIOPS-08 — AI caller inventory matches the source and the policy",
     expect(fixed).toMatch(/locale: "en"/);
   });
 
-  it("the TTS gap: /tts declares public data; book narration declares the child's name", () => {
+  it("read-aloud declares account and child_profile; a candidate that omits the child class is denied", () => {
     const tts = read("server/tts.ts");
-    const request = tts.slice(tts.indexOf("export async function synthesizeSpeech"), tts.indexOf("const decision = selectProvider"));
-    expect(request).toMatch(/dataClasses: \["public"\]/);
+    const request = tts.slice(tts.indexOf("export const ttsCapabilityRequest"), tts.indexOf("export async function synthesizeSpeech"));
+    expect(request).toMatch(/dataClasses: \[\.\.\.ttsDataClasses\]/);
+    expect(request).not.toMatch(/dataClasses: \["public"\]/);
+    expect(tts).toMatch(/export const ttsDataClasses = \["account", "child_profile"\]/);
+    expect(tts).toMatch(/selectProvider\(ttsCapabilityRequest\(input\.lang\)/);
+    const declared = ttsCapabilityRequest("he");
+    expect(declared.dataClasses).toEqual(["account", "child_profile"]);
+    const candidate = ttsCandidateFor(PROD);
+    expect(candidate.dataClasses).toEqual(expect.arrayContaining(["account", "child_profile"]));
+    const stripped = { ...candidate, dataClasses: candidate.dataClasses.filter((c) => c !== "child_profile") };
+    expect(() => selectProvider(declared, routePolicyFor(PROD), [stripped])).toThrow(AiProviderError);
+    try { selectProvider(declared, routePolicyFor(PROD), [stripped]); } catch (error) { expect((error as AiProviderError).code).toBe("policy_denied"); }
+    expect(selectProvider(declared, routePolicyFor(PROD), [candidate]).selected.ref.region).toBe("eu");
     expect(read("server/bookNarration.ts")).toMatch(/audience: "child", locale: [^,]+, dataClasses: \["child_profile"\]/);
   });
 
