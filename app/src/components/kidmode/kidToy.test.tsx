@@ -1,8 +1,7 @@
 /**
- * B-KID-133 (D-02) — the toy kit (KID-DESIGN-DIRECTION §2.3 + §2.7): every
- * tappable thing in Kids Mode is a moulded toy with a lip that sinks and
- * springs; yellow means GO; reduced motion keeps the lip press, drops the
- * squash. Rendered with react-dom/server (no jsdom in this repo).
+ * The toy kit: every tappable thing in Kids Mode is a flat ceramic control.
+ * GO is a dark face with a light label. Reduced motion drops the press scale.
+ * Rendered with react-dom/server (no jsdom in this repo).
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -39,21 +38,24 @@ describe("KidToy", () => {
 });
 
 describe("the toy recipe (index.css, .arbor-play only)", () => {
-  it("moulded lip + contact shadow + gloss, squash on press, spring on release", () => {
-    expect(toyCss).toContain("0 var(--toy-depth) 0 var(--toy-lip)");
-    expect(toyCss).toContain("transform: translateY(calc(var(--toy-depth) - 1px)) scale(1.03, 0.94);");
-    expect(toyCss).toContain("transition: transform var(--kid-dur-release) var(--kid-ease-spring)");
+  it("flat ceramic: no gloss, no lip, a small press, the focus ring stays", () => {
+    expect(toyCss).toContain("--toy-depth: 0px;");
+    expect(toyCss).toContain("background: var(--toy-face);");
+    expect(toyCss).toContain("margin-block-end: 0;");
+    expect(toyCss).not.toMatch(/linear-gradient|toy-lip|scale\(1\.03,\s*0\.94\)/);
+    expect(toyCss).toContain("transform: scale(0.98);");
     expect(toyCss).toContain("min-block-size: 64px;");
     expect(toyCss).toMatch(/\.kid-toy:focus-visible \{ outline: 3px solid var\(--arbor-sky\)/);
   });
-  it("GO = yellow face, ochre lip, navy label (dark on light: out of the white-label inventory)", () => {
-    expect(toyCss).toContain('.arbor-play .kid-toy[data-tone="go"] { --toy-face: var(--arbor-yellow); --toy-lip: var(--arbor-ochre); }');
+  it("GO is a dark face with a light label; not-yet stays the lavender wash", () => {
+    expect(toyCss).toContain('.arbor-play .kid-toy[data-tone="go"] { --toy-face: var(--arbor-ink); --toy-ink: var(--arbor-paper-elevated); border-color: transparent; }');
     expect(toyCss).toContain("--toy-ink: var(--arbor-ink);");
-    expect(toyCss).toContain('[data-state="not-yet"] { --toy-face: var(--arbor-lav-wash); --toy-lip: var(--arbor-lav)');
+    expect(toyCss).toContain('[data-state="not-yet"] { --toy-face: var(--arbor-lav-wash); --toy-ink: var(--arbor-lav-ink); }');
+    expect(toyCss).toContain('--toy-face: var(--studio-action);');
   });
-  it("reduced motion: the lip press only, no squash; motion tokens + keyframes have reduced forms", () => {
+  it("reduced motion drops the press; motion tokens + keyframes have reduced forms", () => {
     const reduced = toyCss.slice(toyCss.indexOf("@media (prefers-reduced-motion: reduce)"));
-    expect(reduced).toContain(".arbor-play .kid-toy:active { transform: translateY(calc(var(--toy-depth) - 1px)); }");
+    expect(reduced).toContain(".arbor-play .kid-toy:active { transform: none; }");
     expect(reduced).not.toContain("scale(");
     expect(css).toContain("--kid-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);");
     for (const k of ["kid-pop-in", "kid-bob", "kid-drop", "kid-wobble"]) expect(css).toContain(`@keyframes ${k}`);

@@ -66,7 +66,7 @@ export interface HudQuestProps {
 /** The chapter strip: things done, as pips or small icons. Never a score: no
  * numerals, no fraction, and the accessible text is the names of the steps. */
 export function HudQuest({ steps, current, label }: HudQuestProps) {
-  return <ol className="play-quest" data-play-quest="" aria-label={label}>
+  return <ol className="play-quest" data-play-quest="" data-has-current={steps.some((step, index) => !step.done && index === current) || undefined} aria-label={label}>
     {steps.map((step, index) => {
       const state = step.done ? 'done' : index === current ? 'now' : 'next';
       return <li key={step.key} className="play-quest__step" data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
@@ -111,6 +111,7 @@ export function HudButton({ label, icon, tone = 'paper', size = 'm', onClick, di
     aria-pressed={tone === 'chosen' ? true : undefined} aria-label={iconOnly ? label : undefined} disabled={disabled} onClick={onClick} {...data}>
     {icon && <span className="play-button__icon" aria-hidden="true">{icon}</span>}
     {!iconOnly && <span className="play-button__label">{label}</span>}
+    {tone === 'chosen' && <svg className="play-button__check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.6" /></svg>}
   </button>;
 }
 

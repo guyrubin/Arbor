@@ -142,10 +142,10 @@ export function DeskWallpaper({ sky }: { sky: 'day' | 'night' }) {
   }, []);
   return <span className="md-wallpaper" data-sky={sky} data-drawn={drawn} aria-hidden="true">
     <svg viewBox="0 0 64 60" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" focusable="false">
-      <rect width="64" height="60" style={{ fill: day ? 'var(--mk-indigo)' : 'var(--mk-night)' }} />
-      <rect y="12" width="64" height="9" style={{ fill: day ? 'color-mix(in srgb, var(--mk-indigo) 60%, var(--mk-bluebell))' : 'var(--mk-indigo-deep)' }} />
-      <rect y="21" width="64" height="9" style={{ fill: day ? 'color-mix(in srgb, var(--mk-bluebell) 60%, var(--mk-lilac))' : 'color-mix(in srgb, var(--mk-indigo-deep) 60%, var(--mk-indigo))' }} />
-      <rect y="30" width="64" height="30" style={{ fill: day ? 'color-mix(in srgb, var(--mk-lilac) 55%, var(--mk-rose))' : 'var(--mk-indigo)' }} />
+      <rect width="64" height="60" style={{ fill: day ? 'var(--studio-pearl)' : 'var(--studio-mist)' }} />
+      <rect y="12" width="64" height="9" style={{ fill: 'var(--studio-mist)' }} />
+      <rect y="21" width="64" height="9" style={{ fill: 'color-mix(in srgb, var(--studio-mist) 70%, var(--studio-teal-soft))' }} />
+      <rect y="30" width="64" height="30" style={{ fill: 'var(--studio-teal-soft)' }} />
       {day && CLOUDS.map(([x, y, w], index) => <g key={index} opacity=".75"><rect x={x + 2} y={y - 2} width={w - 5} height="2" style={{ fill: 'var(--mk-white)' }} /><rect x={x} y={y} width={w} height="2" style={{ fill: 'var(--mk-white)' }} /></g>)}
       {FAR.map((top, x) => <rect key={`f${x}`} x={x * 2} y={top} width="2" height={60 - top} style={{ fill: 'var(--mk-teal-deep)' }} />)}
       {NEAR.map((top, x) => <rect key={`n${x}`} x={x * 2} y={top} width="2" height={60 - top} style={{ fill: 'color-mix(in srgb, var(--mk-teal) 70%, var(--mk-teal-deep))' }} />)}
@@ -153,7 +153,7 @@ export function DeskWallpaper({ sky }: { sky: 'day' | 'night' }) {
     <canvas ref={canvas} width={VALLEY_W} height={VALLEY_H} className="md-wallpaper__valley" />
     <span className="md-wallpaper__dusk" />
     <svg className="md-wallpaper__stars" viewBox="0 0 64 60" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" focusable="false">
-      {STARS.map(([x, y], index) => <rect key={index} x={x} y={y} width="1" height="1" data-twinkle={index % 3 === 0} style={{ fill: 'var(--mk-butter)' }} />)}
+      {STARS.map(([x, y], index) => <rect key={index} x={x} y={y} width="1" height="1" data-twinkle={index % 3 === 0} style={{ fill: 'var(--studio-graphite-soft)' }} />)}
     </svg>
   </span>;
 }

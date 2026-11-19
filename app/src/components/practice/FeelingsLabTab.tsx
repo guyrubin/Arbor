@@ -17,6 +17,7 @@ import type { PracticeEvent } from "../../types";
 import { track } from "../../lib/analytics";
 import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/kidModeGate";
 import { SpeakButton } from "../ui/SpeakButton";
+import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 const HEBREW_EMOTION_LABELS: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(EMOTION_SCENARIOS.map((scenario) => [scenario.answer, scenario.answerLabelHe])),
@@ -220,7 +221,7 @@ export default function FeelingsLabTab() {
           <button
             type="button"
             data-primary-move="open-world-door"
-            onClick={() => requestKidMode({ view: "arcade", worldId: "feelings" })}
+            onClick={() => requestKidMode(parentDoorTarget("feelings"))}
             className="inline-flex items-center gap-1.5 t-sm font-extrabold rounded-xl px-4 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
           >

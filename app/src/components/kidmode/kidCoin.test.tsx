@@ -1,9 +1,8 @@
 /**
- * B-KID-133 (D-04) — game pieces are moulded coins (KID-DESIGN-DIRECTION
- * §2.6, §3.6): a square coin 96-168 px with the emoji embossed at 58 %, a
+ * Game pieces are flat coins: a square 96-168 px with the emoji at 58 %, a
  * label on a paper tag under it, centred auto-fit grid; wrong = lavender "not
- * yet" (never pink); no emoji outside a coin on the kid branch of the worlds
- * this item touched. Rendered with react-dom/server (no jsdom).
+ * yet" (never pink). No gloss, no lip, no recessed well. Rendered with
+ * react-dom/server (no jsdom).
  */
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -41,11 +40,12 @@ describe("the piece size rule", () => {
     expect(piece(1280, 800)).toBeLessThanOrEqual(168);
     expect(piece(1920, 1080)).toBe(168);
   });
-  it("the coin is square, its emoji 58 % of it, embossed, in a recessed well", () => {
+  it("the coin is square, its emoji 58 % of it, flat ceramic with a hairline", () => {
     expect(coinCss).toContain("aspect-ratio: 1;");
     expect(coinCss).toContain("font-size: 58cqi;");
-    expect(coinCss).toContain("filter: drop-shadow(0 3px 0 color-mix(in oklab, var(--arbor-ink) 22%, transparent));");
-    expect(coinCss).toContain("box-shadow: inset 0 3px 6px color-mix(in oklab, var(--arbor-ink) 18%, transparent);");
+    expect(coinCss).toContain("background: var(--coin-face);");
+    expect(coinCss).toContain("border: 1.5px solid var(--arbor-rule);");
+    expect(coinCss).not.toMatch(/linear-gradient|kid-coin::before|coin-depth|drop-shadow/);
     // never a -soft gradient token inside color-mix (an invalid declaration the browser drops)
     expect(coinCss).not.toMatch(/color-mix\([^;]*-soft\b/);
   });
@@ -63,7 +63,7 @@ describe("ChoiceTile in Kid Mode", () => {
     const wrong = renderToStaticMarkup(<ChoiceTile emoji="🔺" label="" state="wrong" />);
     expect(wrong).toContain('data-state="not-yet"');
     expect(wrong).not.toMatch(/pink|play-nudge/);
-    expect(coinCss).toContain('.kid-piece[data-state="not-yet"] .kid-coin { --coin-face: var(--arbor-lav-wash); --coin-lip: var(--arbor-lav); }');
+    expect(coinCss).toContain('.kid-piece[data-state="not-yet"] .kid-coin { --coin-face: var(--arbor-lav-wash); }');
     expect(coinCss).toContain('.kid-piece[data-state="not-yet"] .kid-coin { animation: kid-wobble');
     expect(renderToStaticMarkup(<ChoiceTile emoji="🔺" label="" state="correct" />)).toContain('data-state="correct"');
   });

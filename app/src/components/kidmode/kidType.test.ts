@@ -64,9 +64,10 @@ describe("kid files ask for no faux bold and no parent-scale type", () => {
     expect(src).not.toMatch(/fontWeight: 900|font-black/);
     expect(src).not.toMatch(/fontSize: 1[0-4]\b|text-\[1[0-4]px\]|"var\(--t-(sm|xs)\)"|\btext-(sm|xs)\b/);
   });
-  it("story words are the book voice at --kid-t-book (>= 20 px), line height from --kid-book-lh", () => {
+  it("story words use the loaded Studio voice at --kid-t-book (>= 20 px), line height from --kid-book-lh", () => {
     const player = read("..", "stories", "HeroScenePlayer.tsx");
-    expect(player).toContain("fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 600, lineHeight: \"var(--kid-book-lh)\"");
+    expect(player).toContain("fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 700, lineHeight: \"var(--kid-book-lh)\"");
+    expect(player).toContain('fontFamily: "var(--studio-font)"');
   });
   it("the bar names the place in the toy voice", () => {
     const overlay = read("KidModeOverlay.tsx");

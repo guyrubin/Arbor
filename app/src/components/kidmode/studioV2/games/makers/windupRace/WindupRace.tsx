@@ -361,7 +361,7 @@ export function WindupRound({ onAgain }: { onAgain: () => void }) {
 
     // -- the camera (a new chapter may have just been laid: read the course afresh) --
     const laid = G.course;
-    const windShot: Shot = { bearing: ROVER_BEARING, elevation: 0.27, distance: 4.4 - wound * 0.35, zoom: Z * (1 + wound * 0.08), ax, ay, lead: 0 };
+    const windShot: Shot = { bearing: ROVER_BEARING, elevation: portrait ? 0.27 : 0.3, distance: (portrait ? 4.4 : 5.2) - wound * 0.35, zoom: Z * (1 + wound * 0.08), ax: portrait ? ax : 0.33, ay, lead: 0 };
     let target: Shot = windShot, subjectX = rx, cut = false;
     if (G.phase === 'openShot') {
       const k = still ? 1 : ease(G.phaseT / (OPEN_S - 0.4));

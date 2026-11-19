@@ -9,6 +9,7 @@ import { dayKey } from "../../practice/signals";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useLanguage } from "../../context/LanguageContext";
 import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
+import "./studioPractice.css";
 
 /* Hero Pose — copy the hero's action pose. A gross-motor / body-imitation game:
    the hero shows a pose, the child strikes it, the grown-up confirms. Logs a
@@ -87,7 +88,7 @@ export default function HeroPoseWorld() {
     >
       {!kid && <ProgressPips total={poses.length} current={idx} tone="sky" />}
 
-      <div className="rounded-[var(--play-radius)] p-6 text-center comic-panel" style={{ background: "var(--arbor-sky-soft)" }}>
+      <div className={kid ? "studio-practice-stage studio-practice-stage--pose" : "rounded-[var(--play-radius)] p-6 text-center comic-panel"} style={kid ? undefined : { background: "var(--arbor-sky-soft)" }}>
         {/* M1 — the hero DEMONSTRATES the pose. This pairing (hero beside the
             pose glyph) is the game's whole fiction: "my hero shows it, I copy
             it". The kids-world branch dropped the avatar and left the glyph
@@ -101,7 +102,7 @@ export default function HeroPoseWorld() {
           <HeroAvatar size={88} mood="cheer" alt={t("elev.kids.pose.heroAlt", { name: first, pose: poseName })} />
           <span className="text-[34px] leading-none" aria-hidden="true">{pose.emoji}</span>
         </div>
-        <h2 className="font-black text-[26px]" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-sky-ink)" }}>{poseName}</h2>
+        <h2 className="font-black text-[26px]" style={{ fontFamily: kid ? "var(--studio-font)" : "var(--font-display)", color: kid ? "var(--studio-graphite)" : "var(--arbor-sky-ink)" }}>{poseName}</h2>
         <p className="text-[15px] font-bold mt-1" style={{ color: "var(--arbor-ink-soft)" }}>{poseCue}</p>
         <p className="play-story-caption text-[13px] font-semibold mt-3">{adaptedCue}</p>
       </div>

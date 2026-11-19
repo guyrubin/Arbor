@@ -203,7 +203,9 @@ describe("KidBookCover — the one cover", () => {
     expect(html).not.toContain("/visuals/");
     expect(html).not.toMatch(EMOJI);
     expect(html).not.toMatch(/#[0-9a-f]{3,8}\b/i);
-    expect(html).toContain("var(--arbor-pack-courage)");
+    expect(html).toContain('data-pack="courage"');
+    expect(html).toContain("var(--studio-pearl)");
+    expect(html).not.toContain("var(--comic-line)");
   });
 
   it("a finished book carries ONE small read mark — never a number or a star", () => {
@@ -219,7 +221,8 @@ describe("KidBookCover — the one cover", () => {
     const html = renderToStaticMarkup(<KidBookCover {...base} storyId="the-lantern-path" layout="grid" />);
     expect((html.match(/<button\b/g) ?? []).length).toBe(1);
     // the in-card title is aria-hidden; the caption is the visible + accessible name
-    expect(html).toContain('aria-hidden="true" data-kid-book-titlecard');
+    const titleCard = html.match(/<span[^>]*data-kid-book-titlecard=""[^>]*>/)?.[0];
+    expect(titleCard).toContain('aria-hidden="true"');
     expect((html.match(/The Lantern Path/g) ?? []).length).toBe(2);
   });
 });

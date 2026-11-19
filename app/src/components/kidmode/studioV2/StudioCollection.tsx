@@ -32,7 +32,7 @@ export function StudioCollection({ onActivity, onBooks, onQuest }: { onActivity:
       const content = <><KidSouvenirSticker kind={item.kind} refId={item.refId} /><span>{title}</span></>;
       return <li key={item.id}>{available ? <button type="button" className="studio-v2__glass-button studio-keepsakes__item" onClick={() => { if (!ledger.isCurrent()) return; if (isQuest) onQuest?.(); else if (item.kind === "book") onBooks(); else if (activity) onActivity(activity.id); }}>{content}</button> : <div className="studio-keepsakes__item">{content}</div>}</li>;
     })}</ul>}
-    <button type="button" onClick={onBooks} className="studio-v2__glass-button studio-keepsakes__books"><BookOpen size={24} aria-hidden="true" />{copy.books}</button>
+    <button type="button" onClick={onBooks} className="studio-v2__glass-button studio-keepsakes__books" data-studio-books=""><BookOpen size={24} aria-hidden="true" />{copy.books}</button>
       </div>
     </div>
   </section>;

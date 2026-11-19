@@ -1,5 +1,6 @@
 import React from "react";
 import { Icon } from "../ui/Icon";
+import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 
 /**
@@ -18,7 +19,7 @@ export default function ProgramKidWorldDoor({ worldId, label }: { worldId: strin
         type="button"
         data-testid="program-kid-world"
         data-world={worldId}
-        onClick={() => request({ view: "arcade", worldId })}
+        onClick={() => request(parentDoorTarget(worldId))}
         className="mt-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-5 t-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
         style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)" }}
       >

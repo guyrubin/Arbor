@@ -21,6 +21,7 @@ import { ArborMascot } from "../ui/ArborMascot";
 import { setKidStage } from "../kidmode/kidChrome";
 import { StoryArtwork } from "./StoryArtwork";
 import type { StoryPlateArt } from "../../lib/storyPlateArt";
+import "./legacyBook.css";
 
 /** B-KID-70 (R-4b): where the cover is cropped on each beat (object-position),
  *  so a book read on one cover still turns eight different pages. */
@@ -247,6 +248,7 @@ export function HeroScenePlayer({
 
   const cameo = (
     <div
+      data-kid-book-portrait={layout === "book" ? ((heroAvatarUrl ?? cameoUrl) ? "approved" : "mascot") : undefined}
       className="absolute bottom-2 h-[48%] max-h-48 rounded-2xl p-1"
       style={{ insetInlineStart: "5%", background: "var(--arbor-paper-elevated)", outline: "2px solid var(--comic-ink)", boxShadow: "var(--comic-pop)" }}
     >
@@ -296,10 +298,10 @@ export function HeroScenePlayer({
           lang={bookLang}
           dir={langDir(bookLang)}
           data-kid-book-text=""
-          className="min-h-[calc(3*1.5em_+_16px)] max-h-[calc(5*var(--kid-book-lh,1.5)*1em_+_16px)] sm:max-h-[50vh] sm:max-w-[32ch]"
-          // B-KID-133 (D-03): the book voice — Fraunces / Frank Ruhl 600 at
-          // --kid-t-book (20 px at a phone, 26 px wide), line height 1.5 (HE 1.6).
-          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 600, lineHeight: "var(--kid-book-lh)", overflowY: "auto", color: "var(--arbor-ink)", fontFamily: "var(--font-display), Georgia, serif" }}
+          className="sm:max-w-[36ch]"
+          // One readable paper page: long passages use the surrounding
+          // reader scroll, never a hidden inner paragraph or smaller type.
+          style={{ margin: 0, paddingInline: 20, paddingBlockStart: 16, fontSize: `max(${KID_BOOK_TEXT_PX}px, var(--kid-t-book))`, fontWeight: 700, lineHeight: "var(--kid-book-lh)", color: "var(--studio-graphite)", fontFamily: "var(--studio-font)" }}
         >
           {narration}
         </motion.p>

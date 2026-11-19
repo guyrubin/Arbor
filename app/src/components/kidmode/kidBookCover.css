@@ -1,0 +1,36 @@
+@import "./studioV2/studioTokens.css";
+
+/* The same owned cover and fallback title card, bound in the Studio's paper
+   and cloth materials. Artwork and identity keep their authored geometry. */
+.arbor-play .kid-book-cover__object {
+  border: 1px solid var(--studio-line);
+  border-start-start-radius: 8px;
+  border-end-start-radius: 8px;
+  border-start-end-radius: 14px;
+  border-end-end-radius: 14px;
+  box-shadow: 0 3px 0 var(--studio-mist), 0 10px 22px -12px var(--studio-shade);
+}
+.arbor-play .kid-book-cover__object::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 10px;
+  background: linear-gradient(to right, var(--studio-shade), transparent);
+  pointer-events: none;
+}
+.arbor-play[dir="rtl"] .kid-book-cover__object::after,
+.arbor-play [dir="rtl"] .kid-book-cover__object::after { background: linear-gradient(to left, var(--studio-shade), transparent); }
+.arbor-play .kid-book-cover__spine {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 10px;
+  background: var(--studio-mist);
+  border-inline-end: 1px solid var(--studio-line);
+}
+.arbor-play [data-kid-book]:focus-visible {
+  outline: 3px solid var(--studio-teal-ink);
+  outline-offset: 4px;
+  border-radius: 12px;
+}

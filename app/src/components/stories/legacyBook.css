@@ -1,0 +1,144 @@
+@import "../kidmode/studioV2/studioTokens.css";
+
+/* B-KID-172: the existing legacy manuscripts share one tactile Studio book.
+   No story, illustration, crop, approved identity or reading state changes.
+   The surrounding reader is the only scroller; the paper never clips words. */
+.arbor-play [data-kid-book-reader] {
+  color: var(--studio-graphite);
+  font-family: var(--studio-font);
+}
+.arbor-play [data-kid-book-reader] [data-kid-book-page],
+.arbor-play [data-kid-book-reader] [data-kid-book-cover] {
+  position: relative;
+  isolation: isolate;
+}
+.arbor-play [data-kid-book-reader] .kid-page-plate {
+  position: relative;
+  isolation: isolate;
+  background: var(--studio-surface);
+  color: var(--studio-graphite);
+  border: 1px solid var(--studio-line);
+  box-shadow: 0 18px 34px -22px var(--studio-shade);
+}
+.arbor-play [data-kid-book-reader] .kid-page-plate::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-inline: 2px;
+  inset-block-end: -6px;
+  block-size: 6px;
+  border: 1px solid var(--studio-line);
+  border-end-start-radius: 8px;
+  border-end-end-radius: 8px;
+  background: repeating-linear-gradient(to bottom, var(--studio-surface) 0 2px, var(--studio-line) 2px 3px);
+  box-shadow: 0 3px 0 var(--studio-mist);
+  pointer-events: none;
+}
+.arbor-play [data-kid-book-reader] [data-kid-book-art] {
+  border: 1px solid var(--studio-line);
+  background: var(--studio-mist) !important;
+}
+.arbor-play [data-kid-book-reader] [data-kid-book-text] {
+  max-block-size: none;
+  overflow: visible;
+  text-wrap: pretty;
+}
+.arbor-play [data-kid-book-reader] [data-kid-book-choice-panel]:empty { display: none; }
+.arbor-play [data-kid-book-reader] [data-kid-book-portrait],
+.arbor-play [data-kid-book-reader] .story-artwork-portrait {
+  outline: none !important;
+  border: 1px solid var(--studio-line) !important;
+  background: var(--studio-surface) !important;
+  box-shadow: 0 6px 16px var(--studio-shade) !important;
+}
+.arbor-play [data-kid-book-reader] [data-testid="decision-choice"] {
+  border-color: var(--studio-line) !important;
+  background: var(--studio-pearl) !important;
+  transition: background-color 160ms linear, transform 160ms var(--studio-ease-soft);
+}
+.arbor-play [data-kid-book-reader] [data-testid="decision-choice"] > span:first-child {
+  background: var(--studio-teal-soft) !important;
+  color: var(--studio-teal-ink) !important;
+}
+.arbor-play [data-kid-book-reader] [data-testid="decision-choice"] > span:last-child {
+  color: var(--studio-graphite) !important;
+  font-family: var(--studio-font);
+}
+.arbor-play [data-kid-book-reader] button:focus-visible {
+  outline: 3px solid var(--studio-teal-ink);
+  outline-offset: 3px;
+}
+.arbor-play [data-kid-book-reader] button:active { transform: scale(0.98); }
+.arbor-play [data-kid-book-reader] [data-kid-book-ending] {
+  max-inline-size: 620px;
+  margin: 16px auto;
+  padding: 20px 16px;
+  border: 1px solid var(--studio-line);
+  border-radius: 20px;
+  background: var(--studio-surface);
+  box-shadow: 0 18px 34px -22px var(--studio-shade);
+}
+@media (max-width: 639px) {
+  .arbor-play [data-kid-book-reader] [data-kid-book-page],
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] { padding: 8px 8px 12px; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-art] { border-radius: 16px 16px 0 0; }
+  .arbor-play [data-kid-book-reader] .kid-page-plate { border-block-start: 0; border-radius: 0 0 16px 16px; }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] [data-kid-book-art] { block-size: 18dvh; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-ending] { margin-inline: 8px; }
+}
+@media (min-width: 640px) {
+  /* The painting and words become the facing leaves of one book. */
+  .arbor-play [data-kid-book-reader] [data-kid-book-page],
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] { column-gap: 0; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-art] {
+    border-start-start-radius: 16px;
+    border-end-start-radius: 16px;
+    border-start-end-radius: 3px;
+    border-end-end-radius: 3px;
+  }
+  .arbor-play [data-kid-book-reader] .kid-page-plate {
+    border-inline-start: 0;
+    border-start-start-radius: 3px;
+    border-end-start-radius: 3px;
+    border-start-end-radius: 16px;
+    border-end-end-radius: 16px;
+    background: linear-gradient(to right, var(--studio-mist), transparent 18px), var(--studio-surface);
+  }
+  .arbor-play [data-kid-book-reader][dir="rtl"] .kid-page-plate {
+    background: linear-gradient(to left, var(--studio-mist), transparent 18px), var(--studio-surface);
+  }
+}
+@media (min-width: 1024px) {
+  .arbor-play [data-kid-book-reader] [data-kid-decision] { grid-template-columns: auto minmax(0, 30rem); }
+}
+@media (min-width: 640px) and (max-height: 520px) {
+  .arbor-play [data-kid-book-reader] [data-kid-book-page] {
+    grid-template-columns: auto minmax(0, 32rem);
+    padding-block: 8px;
+  }
+  .arbor-play [data-kid-book-reader] [data-kid-book-page] .kid-page-plate { padding-block: 8px; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-text] { max-inline-size: none; padding-block-start: 8px !important; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-page] [data-kid-book-nav] { padding-block: 8px; }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] { padding-block: 4px; }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] .kid-page-plate { border-radius: 16px; border-inline-start: 1px solid var(--studio-line); background: var(--studio-surface); }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] [data-kid-book-choice-panel] { padding-block-start: 8px; }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] [data-testid="decision-choice"] { padding-block: 10px; }
+  .arbor-play [data-kid-book-reader] [data-kid-decision] [data-kid-book-nav] { padding-block: 4px; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-ending] {
+    display: grid;
+    grid-template-columns: minmax(0, 284px) minmax(0, 360px);
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    max-inline-size: 760px;
+    margin: 12px auto;
+    padding: 16px 24px;
+  }
+  .arbor-play [data-kid-book-reader] [data-kid-book-ending-keepsake],
+  .arbor-play [data-kid-book-reader] [data-kid-book-ending-actions] { padding-block-start: 0; }
+  .arbor-play [data-kid-book-reader] [data-kid-finish-moment] { flex-direction: row; justify-content: center; gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play [data-kid-book-reader] button { transition: none; }
+  .arbor-play [data-kid-book-reader] button:active { transform: none; }
+}

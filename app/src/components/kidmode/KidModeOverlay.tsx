@@ -34,7 +34,7 @@ import { KidErrorBoundary } from "./KidErrorBoundary";
 import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
-import { studioActivity, studioActivityFits, STUDIO_V2_WORLDS, type StudioActivityId, type StudioWorldId } from "./studioV2/studioCatalog";
+import { studioActivity, studioActivityFits, studioSurfaceFor, STUDIO_V2_WORLDS, type StudioActivityId, type StudioWorldId } from "./studioV2/studioCatalog";
 import { studioCopy } from "./studioV2/studioCopy";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
@@ -75,8 +75,7 @@ export type StudioView = "studio-world" | "studio-game" | "studio-collection" | 
 type View = LegacyView | StudioView;
 const isStudioView = (view: string): view is StudioView => ["studio-world", "studio-game", "studio-collection", "studio-quest"].includes(view);
 export function studioActivityView(id: string): "arcade" | "studio-game" | null {
-  if (!studioActivity(id)) return null;
-  return ["reading", "adventures", "pose", "speech"].includes(id) ? "arcade" : "studio-game";
+  return studioSurfaceFor(id);
 }
 export function restoredKidView(view?: string, worldId?: string | null): View {
   if (view === "studio-world") return STUDIO_V2_WORLDS.includes(worldId as StudioWorldId) ? view : "home";
@@ -334,9 +333,10 @@ export default function KidModeOverlay() {
   const studio = studioCopy(uiLang === "he" ? "he" : "en");
   const activity = arcadeWorldId ? studioActivity(arcadeWorldId) : undefined;
   const studioOpen = view === "home" || isStudioView(view);
+  const studioSkin = studioOpen || view === "arcade" || view === "journeys";
   // B-KID-133 (D-01): navy behind a stage, so a slow stage image never flashes white.
   // The v30 Studio sits on its own pearl, so no navy band frames it (DESIGN.md §Kid register).
-  const kidCanvas = studioOpen ? "var(--studio-pearl, var(--arbor-ink))" : "var(--arbor-ink)";
+  const kidCanvas = studioSkin ? "var(--studio-pearl, var(--arbor-paper-elevated))" : "var(--arbor-ink)";
   const barTitle = view === "studio-world" ? studio.worlds[arcadeWorldId as StudioWorldId]?.title
     : view === "studio-game" ? activity ? studio.activities[activity.id].title : studio.invitation
     : view === "studio-collection" ? studio.collection
@@ -372,7 +372,7 @@ export default function KidModeOverlay() {
           // swallows any pointer that lands in those strips — the lock never depends on a
           // completed animation frame.
           // B-KID-133 (D-01): the kid canvas (navy behind a stage, pearl behind the Studio).
-          data-kid-studio={studioOpen ? "" : undefined}
+          data-kid-studio={studioSkin ? "" : undefined}
           style={{ position: "fixed", inset: 0, zIndex: 69, background: kidCanvas, pointerEvents: "auto" }}
         />
       )}
@@ -390,7 +390,7 @@ export default function KidModeOverlay() {
           aria-label={t("aria.kidMode")}
           className="arbor-play"
           data-kid-staged=""
-          data-kid-studio={studioOpen ? "" : undefined}
+          data-kid-studio={studioSkin ? "" : undefined}
           style={{
             position: "fixed",
             inset: 0,
@@ -406,7 +406,7 @@ export default function KidModeOverlay() {
           {/* ── Surface back-bar (only when a surface is open) ──────────────── */}
           {view !== "home" && (
             <header
-              className={studioOpen ? "studio-v2-bar" : undefined}
+              className={studioSkin ? "studio-v2-bar" : undefined}
               data-kid-bar-float={sneakOpen ? "" : undefined}
               style={{
                 position: "relative",

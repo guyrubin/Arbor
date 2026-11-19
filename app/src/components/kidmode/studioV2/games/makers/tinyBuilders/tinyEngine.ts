@@ -141,8 +141,8 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
     if (canvas.width !== pw || canvas.height !== ph) { canvas.width = pw; canvas.height = ph; }
     const next: Orient = w >= h ? 'landscape' : 'portrait';
-    const ppu = next === 'portrait' ? Math.min(h * 0.58 / 13.2, w * 0.92 / 17.8) : Math.min(h * 0.6 / 13.2, w * 0.94 / 43);
-    view = { cx: w / 2, cy: h * (next === 'portrait' ? 0.43 : 0.46), ppu, dist: 150, elev: 30, target: [0, 6, 0] };
+    const ppu = next === 'portrait' ? Math.min(h * 0.52 / 13.2, w * 0.84 / 17.8) : Math.min(h * 0.56 / 13.2, w * 0.9 / 43);
+    view = { cx: w / 2, cy: h * (next === 'portrait' ? 0.4 : 0.5), ppu, dist: 150, elev: 30, target: [0, 6, 0] };
     if (next !== orient || !laid) { orient = next; layParts(); }
     publish();
   }
@@ -271,7 +271,7 @@ export function createTinyEngine(canvas: HTMLCanvasElement, options: { mode: Bui
     if (!ctx) return;
     const at = site(), shadow = pal.tone('shadow');
     // The opening: the camera settles a little closer than it starts.
-    const base = view; view = intro > 0 ? { ...base, ppu: base.ppu * (1 + 0.16 * smoother(intro)), cy: base.cy + h * 0.05 * smoother(intro) } : base;
+    const base = view; view = intro > 0 ? { ...base, ppu: base.ppu * (1 + 0.06 * smoother(intro)), cy: base.cy - h * 0.03 * smoother(intro) } : base;
     drawRoom();
     const rise = ease(ayaUp);
     drawSprite(ctx, view, { image: ayaImg }, [at.aya, 1.15 - 5.6 - (1 - rise) * 6 + ayaHop * 1.1, RAIL_Z - 0.6], 6.2, { lean: ayaLean, squash: 1 + Math.min(0.08, ayaHop * 0.05) + 0.012 * Math.sin(time * 1.9) });

@@ -1,0 +1,57 @@
+@import "../kidmode/studioV2/studioTokens.css";
+
+/* The retained movement and rhythm activities share the Studio's material
+   language. Their Parent surfaces retain their own register. */
+.arbor-play .studio-practice-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 16px;
+  padding: clamp(20px, 4vw, 36px);
+  min-block-size: 244px;
+  border: 1px solid var(--studio-line);
+  border-radius: 24px;
+  background: linear-gradient(150deg, var(--studio-surface), var(--studio-pearl));
+  box-shadow: 0 12px 24px -18px var(--studio-shade);
+  color: var(--studio-graphite);
+  font-family: var(--studio-font);
+  text-align: center;
+}
+.arbor-play .studio-practice-stage--pose { gap: 4px; }
+.arbor-play .studio-beat-pad {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: clamp(144px, 38vw, 176px);
+  aspect-ratio: 1;
+  border: 8px solid var(--studio-surface);
+  border-radius: 50%;
+  background: var(--studio-action);
+  color: var(--studio-action-ink);
+  box-shadow: 0 0 0 1px var(--studio-line), 0 12px 22px -14px var(--studio-shade);
+  font: 800 clamp(22px, 5vw, 28px)/1.2 var(--studio-font);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease-out, background-color 120ms ease-out;
+}
+.arbor-play .studio-beat-pad::after {
+  content: "";
+  position: absolute;
+  inset: -15px;
+  border: 3px solid var(--studio-teal-ink);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+.arbor-play .studio-beat-pad[data-beat-flash] { transform: scale(1.035); }
+.arbor-play .studio-beat-pad[data-beat-flash]::after { opacity: 1; }
+.arbor-play .studio-beat-pad[data-beat-phase="scored"] { background: var(--studio-done); }
+.arbor-play .studio-beat-pad:focus-visible {
+  outline: 3px solid var(--studio-teal-ink);
+  outline-offset: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play .studio-beat-pad { transition: none; }
+  .arbor-play .studio-beat-pad[data-beat-flash] { transform: none; }
+}

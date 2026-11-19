@@ -1,6 +1,6 @@
 @import "../../studioTokens.css";
 /* Studio V2 chrome is shared (v30 register: frosted pearl, graphite primary, teal done, signal for a lit or next cue). Each game has a separate authored play scene. */
-.adventure { --studio-text: var(--studio-deep-ink); --studio-text-soft: var(--studio-ink-soft); --studio-edge: var(--studio-line); --studio-glass: var(--studio-surface); --adv-ink: var(--studio-deep-ink); color: var(--studio-text); background: var(--studio-canvas-soft); border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-panel); padding: clamp(16px,3vw,28px); max-inline-size: 1040px; margin-inline: auto; box-shadow: 0 24px 70px #0006,inset 0 1px 0 #ffffff1a; font-family: var(--studio-font); }
+.adventure { --studio-text: var(--studio-deep-ink); --studio-text-soft: var(--studio-ink-soft); --studio-edge: var(--studio-line); --studio-glass: var(--studio-surface); --adv-ink: var(--studio-deep-ink); color: var(--studio-text); background: var(--studio-canvas-soft); border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-panel); padding: clamp(16px,3vw,28px); max-inline-size: 1040px; margin-inline: auto; box-shadow: 0 18px 44px var(--studio-shade), inset 0 1px 0 var(--studio-surface); font-family: var(--studio-font); }
 .adventure button { font-family: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .adventure button:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 4px; }
 .adventure button:disabled { cursor: default; }
@@ -59,14 +59,14 @@
 .forest-friends { display: flex; align-items: end; justify-content: center; gap: clamp(36px,9vw,110px); padding-block-end: 8px; }
 .forest-friends > .studio-play-hero { margin-block-end: 12px; }
 .forest-mascot { display: grid; place-items: center; margin-block-end: -12px; filter: drop-shadow(0 10px 8px #50334544); }
-.forest-story { position: relative; display: flex; align-items: center; gap: var(--studio-space-2); background: #fff8e9; color: var(--studio-deep-ink); border: 2px solid #e8cba0; border-radius: 12px 20px 20px 20px; padding: 18px 20px; max-inline-size: 560px; box-shadow: 0 6px 0 #77573833,0 12px 24px #4d344140; }
+.forest-story { position: relative; display: flex; align-items: center; gap: var(--studio-space-2); background: var(--studio-frost); color: var(--studio-graphite); border: 1px solid var(--studio-surface); border-radius: 12px 20px 20px 20px; padding: 18px 20px; max-inline-size: 560px; box-shadow: 0 4px 0 var(--studio-line), 0 12px 24px var(--studio-shade); }
 .forest-story p { font-size: clamp(18px,2.7vw,23px); font-weight: 700; line-height: 1.5; margin: 0; }
-.adventure-hear { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); flex-shrink: 0; border: 1px solid #c6ab8e; border-radius: var(--studio-radius-control); background: #f5e6d4; color: var(--studio-deep-ink); }
+.adventure-hear { display: grid; place-items: center; inline-size: var(--studio-tap); block-size: var(--studio-tap); flex-shrink: 0; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-control); background: var(--studio-surface); color: var(--studio-deep-ink); }
 .adventure-hear:disabled { opacity: .45; }
 .adventure .adventure-hear:focus-visible { outline-color: var(--studio-deep-ink); }
 .forest-choices { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--studio-space-2); margin-block: var(--studio-space-3); }
-.forest-choices button { display: flex; flex: 1 1 110px; max-inline-size: 180px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-block-size: 110px; padding: 17px 10px; border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); background: var(--studio-glass); color: var(--studio-text); font-weight: 800; font-size: 18px; box-shadow: inset 0 1px 0 #fff3,0 6px 0 #0f1d393d; }
-.forest-choices button > svg { color: #8a5a00; }
+.forest-choices button { display: flex; flex: 1 1 110px; max-inline-size: 180px; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-block-size: 110px; padding: 17px 10px; border: 1px solid var(--studio-edge); border-radius: var(--studio-radius-control); background: var(--studio-glass); color: var(--studio-text); font-weight: 800; font-size: 18px; box-shadow: inset 0 1px 0 var(--studio-surface), 0 4px 0 var(--studio-line), 0 8px 16px var(--studio-shade); }
+.forest-choices button > svg { color: var(--studio-teal-ink); }
 .forest-choices--support button { font-size: 16px; }
 .forest-choices button:active { transform: translateY(2px); box-shadow: none; }
 /* Sound Orbit: three luminous instrument pods, each readable by shape. */
@@ -270,7 +270,7 @@
 .forest-response { left:auto; inset-inline-end:8%; top:-25px; width:80px; height:80px; padding:4px; }
 .forest-response .adventure-sprite { width:100%; }
 .forest-prop { width:130px; height:130px; inset-inline-start:calc(50% - 65px); bottom:-9px; }
-.forest-choices button { padding:10px; gap:3px; box-shadow:0 5px 0 #d5c3a8,0 9px 16px #604c2a12; }
+.forest-choices button { padding:10px; gap:3px; box-shadow:0 4px 0 var(--studio-line),0 9px 16px var(--studio-shade); }
 .forest-choices button > .adventure-sprite { width:80px; margin:-9px -5px -3px; }
 .forest-stage[data-phase=outcome] .forest-prop { animation:stage-response .55s ease-out; }
 .rhythm-stage { display:flex; flex-direction:column; justify-content:end; padding:32px 12px 28px; }
@@ -373,7 +373,7 @@
 .arbor-play .adventure .studio-play-hero[data-game-hero-source=current-portrait] { border:0; border-radius:0; overflow:visible; }
 .arbor-play .adventure .studio-play-hero img[data-hero-pose] { object-fit:contain; object-position:center bottom; border-radius:0; }
 .adventure-prompt { position:relative; align-items:stretch; gap:0; }
-.arbor-play .adventure .adventure-heading { padding-inline-end:48px; border:1px solid #decbae; border-radius:18px; font-size:20px!important; line-height:1.35; }
+.arbor-play .adventure .adventure-heading { padding-inline-end:48px; border:1px solid var(--studio-line); border-radius:18px; font-size:20px!important; line-height:1.35; }
 .adventure-guide-replay { position:absolute; inset-inline-end:5px; top:calc(50% - 22px); width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:50%; background:transparent; color:var(--studio-graphite); }
 .adventure-guide-replay:disabled { opacity:.35; }
 .adventure-sprout { position:relative; display:inline-block; flex-shrink:0; isolation:isolate; }
@@ -505,3 +505,10 @@
  .forest-choices button > .adventure-sprite { width:58px; }
  .arbor-play .adventure--forest .adventure-heading { padding-block:9px; }
 }
+
+/* A readable control bank across the authored scenes. Materials are shared;
+   canal water, theatre props and instrument colours stay in their worlds. */
+.adventure-actions button, .adventure-challenge { box-shadow: 0 3px 0 var(--studio-line), 0 7px 16px var(--studio-shade); }
+.adventure-challenge button[aria-pressed=true] { box-shadow: inset 0 -3px 0 currentColor; }
+.adventure-actions button:active:not(:disabled) { box-shadow: 0 1px 0 var(--studio-line); }
+.adventure .adventure-status:not(:empty) { padding-inline: 12px; border-radius: 12px; background: var(--studio-frost); box-shadow: inset 0 0 0 1px var(--studio-line); color: var(--studio-graphite); }

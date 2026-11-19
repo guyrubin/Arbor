@@ -192,7 +192,7 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
 
   return <section className="studio-game-view" data-studio-game={activityId} data-studio-phase={phase} dir={lang === "he" ? "rtl" : "ltr"} aria-label={copy.title}>
     {environment}
-    <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`}>
+    <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`} data-studio-created={phase === "result" ? creation?.kind : undefined}>
       <div className="studio-game-card__window" aria-hidden="true">
         {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}

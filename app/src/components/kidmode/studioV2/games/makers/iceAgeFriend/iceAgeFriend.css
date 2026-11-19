@@ -15,7 +15,7 @@
 .iaf-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* ── the hall: the dim room in front of the Ice Age ── */
-.iaf-hall { position: absolute; inset: 0; z-index: 2; pointer-events: none; transform: scale(1.03); transform-origin: 50% 46%; transition: opacity .9s var(--studio-ease-soft), transform 1.4s var(--studio-ease-soft); }
+.iaf-hall { position: absolute; inset: 0; z-index: 2; pointer-events: none; transform: none; transform-origin: 50% 46%; transition: opacity .9s var(--studio-ease-soft), transform 1.4s var(--studio-ease-soft); }
 /* The app caps every image at its box's width; this one is placed by the engine, so the cap is lifted. */
 .iaf-world .iaf-picture { position: absolute; left: var(--iaf-img-x, 0); top: var(--iaf-img-y, 0); inline-size: var(--iaf-img-w, 100%); block-size: var(--iaf-img-h, 100%); max-inline-size: none; display: block; user-select: none; -webkit-user-drag: none; }
 /* Frosted over, the room is nearly dark; as the glass clears, daylight comes in. A little out of focus: the eye is on the glass. */
@@ -32,7 +32,7 @@
 
 /* ── the crew on the hall's floor: small, dark against the window, looking up ── */
 .iaf-floor { position: absolute; inset: 0; z-index: 3; pointer-events: none; transition: opacity .5s var(--studio-ease-soft), visibility 0s .5s; }
-.iaf-crew { position: absolute; inset-block-end: max(calc(var(--play-safe-b, 14px) + 78px), 11%); display: flex; align-items: flex-end; gap: calc(var(--iaf-tall, 300px) * .012); pointer-events: none; }
+.iaf-crew { position: absolute; inset-block-end: max(calc(var(--play-safe-b, 14px) + 112px), 16%); display: flex; align-items: flex-end; gap: calc(var(--iaf-tall, 300px) * .012); pointer-events: none; }
 .iaf-floor[data-side=left] .iaf-crew { left: 5%; }
 .iaf-floor[data-side=right] .iaf-crew { right: 5%; flex-direction: row-reverse; }
 .iaf-friend { position: relative; flex: none; display: block; block-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3)), 40px); inline-size: max(calc(var(--iaf-tall, 300px) * var(--iaf-friend-tall, .3) * var(--iaf-friend-aspect, .45)), 26px); padding: 0; border: 0; border-radius: 12px; background: transparent; pointer-events: auto; transform-origin: 50% 100%; }

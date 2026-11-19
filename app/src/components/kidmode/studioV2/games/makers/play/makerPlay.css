@@ -87,7 +87,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 .play-coach__line { display: block; animation: play-line-in .34s var(--studio-ease-soft) both; }
 
 /* quest: pips for things done; the step in play wears the signal mark */
-.play-quest { grid-area: quest; justify-self: end; align-self: start; display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 9px; list-style: none; min-block-size: 44px;
+.play-quest { position: relative; grid-area: quest; justify-self: end; align-self: start; display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 9px; list-style: none; min-block-size: 44px;
   border: 1px solid var(--play-glass-edge); border-radius: 999px; background: var(--play-glass); -webkit-backdrop-filter: var(--play-blur); backdrop-filter: var(--play-blur); box-shadow: var(--play-glass-shade); }
 .play-quest__step { display: flex; align-items: center; gap: 8px; min-inline-size: 0; }
 .play-quest__pip { position: relative; display: grid; place-items: center; flex: none; inline-size: 30px; block-size: 30px; border-radius: 50%;
@@ -122,6 +122,8 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 .play-button:disabled { opacity: .46; cursor: default; }
 .play-button__icon { display: grid; place-items: center; flex: none; }
 .play-button__icon > svg { inline-size: 24px; block-size: 24px; }
+.play-button__check { flex: none; inline-size: 18px; block-size: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.play-button[data-icon-only] .play-button__check { position: absolute; inset-inline-end: -3px; inset-block-start: -3px; inline-size: 20px; block-size: 20px; padding: 3px; border-radius: 50%; background: var(--studio-teal-ink); color: var(--studio-surface); box-shadow: 0 0 0 2px var(--studio-surface); }
 [dir=rtl] .play-button__icon[data-flip], [dir=rtl] .play-button [data-flip] { transform: scaleX(-1); }
 
 /* chip and toast */
@@ -154,7 +156,10 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 [lang=he] .play-opening__place, [dir=rtl] .play-opening__place { letter-spacing: 0; }
 .arbor-play .play-opening .play-opening__title, .play-opening__title { margin: 0; color: var(--studio-graphite) !important; font: 900 clamp(40px, 11cqmin, 84px)/1.02 var(--studio-font) !important; letter-spacing: -.03em; text-wrap: balance; animation: play-title .7s var(--studio-ease-spring) .25s both; }
 [dir=rtl] .play-opening__title { letter-spacing: 0; }
-.play-opening__hint { margin: 10px 0 0; color: var(--studio-graphite-soft); font: 800 14px/1.2 var(--studio-font); animation: play-fade .5s var(--studio-ease-soft) 1.1s both, play-pulse 1.8s ease-in-out 1.6s infinite; }
+.play-opening__hint { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-block-size: var(--studio-tap); margin: 16px 0 0; padding: 12px 22px; border: 1px solid var(--studio-action); border-radius: 18px; background: var(--studio-action); color: var(--studio-action-ink); box-shadow: 0 4px 0 var(--studio-shade), 0 10px 24px var(--studio-shade); font: 800 17px/1.2 var(--studio-font); animation: play-rise .4s var(--studio-ease-soft) .25s both; }
+.play-opening__hint svg { inline-size: 22px; block-size: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+[dir=rtl] .play-opening__hint svg { transform: scaleX(-1); }
+.play-opening__skip:is(:focus-visible, :active) + .play-opening__lockup .play-opening__hint { outline: 3px solid var(--studio-teal-ink); outline-offset: 4px; }
 /* While the opening holds, the rest of the HUD waits out of frame. */
 .play-stage__hud:has(.play-opening) > :is(.play-quest, .play-dock, .play-toast) { opacity: 0; pointer-events: none; }
 .play-stage__hud:has(.play-opening) > .play-dock * { pointer-events: none; }
@@ -167,7 +172,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
 .play-stage[data-set-piece] .play-stage__bars::before, .play-stage[data-set-piece] .play-stage__bars::after { translate: 0 0; }
 .play-stage[data-set-piece] .play-stage__hud > :not(.play-setpiece) { opacity: 0; pointer-events: none; }
 .play-stage[data-set-piece] .play-stage__hud > :not(.play-setpiece) * { pointer-events: none; }
-.play-setpiece { grid-area: 1 / 1 / -1 / -1; display: grid; align-content: end; justify-items: center; gap: 12px; padding-block-end: clamp(26px, 9cqb, 80px); pointer-events: none; }
+.play-setpiece { grid-area: 1 / 1 / -1 / -1; display: grid; align-content: end; justify-items: center; gap: 12px; padding-block-end: max(clamp(26px, 9cqb, 80px), calc(clamp(14px, 5.5cqb, 56px) + 28px)); pointer-events: none; }
 .play-setpiece[data-active=false] { display: none; }
 .play-setpiece__caption { margin: 0; max-inline-size: min(92cqi, 620px); padding: 10px 22px; border: 1px solid var(--play-glass-edge); border-radius: 999px; background: var(--play-glass); -webkit-backdrop-filter: var(--play-blur); backdrop-filter: var(--play-blur); box-shadow: var(--play-glass-shade);
   color: var(--studio-graphite); font: 800 18px/1.25 var(--studio-font); text-align: center; text-wrap: balance; animation: play-rise .6s var(--studio-ease-soft) .5s both; }
@@ -196,11 +201,12 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
   .play-coach__portrait { inline-size: 58px; block-size: 58px; }
   .play-coach__bubble { padding: 8px 12px; padding-inline-start: 22px; font-size: 15.5px; border-radius: 18px; }
   .play-coach[data-side=end] .play-coach__bubble { padding-inline: 12px 22px; }
-  .play-quest { gap: 4px; padding: 6px; min-block-size: 0; }
+  .play-quest { gap: 4px; padding: 6px; min-block-size: 0; justify-content: center; }
+  .play-quest[data-has-current] { padding-block-end: 34px; min-inline-size: 104px; border-radius: 18px; }
   .play-quest__pip { inline-size: 24px; block-size: 24px; }
   .play-quest__pip > svg:not(.play-quest__tick) { inline-size: 15px; block-size: 15px; }
   .play-quest__tick { inline-size: 13px; block-size: 13px; }
-  .play-quest__step[data-state=now] .play-quest__label { display: none; }
+  .play-quest__step[data-state=now] .play-quest__label { position: absolute; inset-inline: 6px; inset-block-end: 5px; display: grid; place-items: center; min-block-size: 24px; padding: 0; font-size: 12px; line-height: 1.05; white-space: normal; text-align: center; text-wrap: balance; }
   .play-button[data-size=l] { padding-inline: 26px; }
 }
 @container play (max-height: 460px) {
@@ -255,6 +261,7 @@ button.play-coach__portrait:focus-visible, .play-button:focus-visible, .play-chi
   .play-stage [data-play-depth] { translate: none; }
   .play-stage__world[data-shake] { animation: none !important; }
   .play-stage__bars::before, .play-stage__bars::after { transition: none !important; }
+  .play-button:active:not(:disabled), .play-button:hover:not(:disabled), .play-chip[data-press]:active, .play-chip[data-press]:hover { scale: none; translate: none; }
 }
 @media (forced-colors: active) {
   .play-button, .play-chip, .play-quest, .play-coach__bubble, .play-toast__body, .play-setpiece__caption { border: 2px solid ButtonText; -webkit-backdrop-filter: none; backdrop-filter: none; }

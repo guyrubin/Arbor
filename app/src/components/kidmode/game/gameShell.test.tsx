@@ -43,7 +43,8 @@ describe("GameShell in Kid Mode", () => {
   });
   it("shows the instruction once, on a solid token surface", () => {
     expect((html.match(/Find the pairs\./g) ?? []).length).toBe(1);
-    expect(html).toMatch(/data-game-instruction=""[^>]*background:var\(--arbor-paper-elevated\)/);
+    expect(html).toMatch(/data-game-instruction=""[^>]*background:var\(--studio-frost\)/);
+    expect(html).toContain('data-kid-studio=""');
   });
   it("B-KID-133 (D-01): the world's card is the Stage behind the whole view — never a cropped banner strip in the shell", async () => {
     // B-KID-123's 4:3 banner is retired: the shell prints no picture of its own …
@@ -83,6 +84,7 @@ describe("GameShell on the parent door", () => {
     expect(html).toMatch(/<h1\b[^>]*>Mind Vault<\/h1>/);
     expect(html).toContain("Hero mission");
     expect(html).not.toContain("data-game-backdrop");
+    expect(html).not.toContain("data-kid-studio");
   });
 });
 

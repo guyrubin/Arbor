@@ -1,9 +1,11 @@
 /* Horizon Valley home (v30, 16 Nov 2026; replaces the 13 Oct Studio Sky night
-   atmosphere). The valley art is the atmosphere; doors, guide and rail are
-   frosted pearl glass with graphite type. Identity comes from the profile: no
+   atmosphere). The valley art is the atmosphere; doors and the rail have pearl
+   surfaces, inset pictures and graphite type. Identity comes from the profile: no
    child is drawn into the valley, the doors or the rail. */
 .studio-v2 {
   --studio-ease: cubic-bezier(.22, 1, .36, 1);
+  --studio-panel-depth: inset 0 1px 0 var(--studio-surface), 0 2px 0 var(--studio-line), 0 16px 32px var(--studio-shade);
+  --studio-control-depth: inset 0 1px 0 var(--studio-surface), 0 3px 0 var(--studio-line), 0 6px 14px var(--studio-shade);
   box-shadow: 0 30px 80px var(--studio-shade);
 }
 .studio-v2__sky {
@@ -19,8 +21,10 @@
 .studio-v2__greeting h1 > svg { color: var(--studio-teal); }
 .studio-v2__greeting p { font-size: 17px; font-weight: 600; color: var(--studio-text-soft); }
 .studio-v2__header-actions [data-kid-exit-caption] { color: var(--studio-text) !important; }
-.studio-v2__door { transition: translate .3s var(--studio-ease), box-shadow .3s var(--studio-ease); }
-.studio-v2__door > .studio-v2__portal-art { aspect-ratio: 194 / 164; }
+.studio-v2__door { background: linear-gradient(160deg, var(--studio-surface), var(--studio-pearl)); border-color: var(--studio-line); box-shadow: var(--studio-panel-depth); transition: translate .2s var(--studio-ease), box-shadow .2s var(--studio-ease); }
+.studio-v2__door > .studio-v2__portal-art { aspect-ratio: 194 / 164; border: 1px solid var(--studio-line); }
+.studio-v2__door > .studio-v2__portal-art::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 3px var(--studio-shade), inset 0 0 0 1px var(--studio-surface); pointer-events: none; }
+.studio-v2__door:active:not(:disabled) { translate: 0 2px; box-shadow: inset 0 1px 0 var(--studio-surface), 0 1px 0 var(--studio-line), 0 6px 14px var(--studio-shade); }
 .studio-v2__door-label { min-block-size: 48px; padding: 10px 2px 0; }
 .studio-v2__door-label small { margin-block-start: 3px; line-height: 1.25; color: var(--studio-text-soft); }
 .studio-v2__door-label > svg { inline-size: 18px; color: var(--studio-teal-ink); }
@@ -33,27 +37,33 @@
 .studio-v2__bubble { position: relative; font-weight: 800; }
 .studio-v2__bubble::after { content: ""; position: absolute; inset-inline-start: 18px; inset-block-end: -7px; inline-size: 14px; block-size: 14px; transform: rotate(45deg); background: var(--studio-surface); }
 .studio-v2__sprout { margin-block-start: 4px; }
-.studio-v2__quest { gap: 22px; }
+.studio-v2__quest { gap: 22px; background: linear-gradient(160deg, var(--studio-surface), var(--studio-pearl)); border-color: var(--studio-line); box-shadow: var(--studio-panel-depth); }
+.studio-v2__glass-button { border-color: var(--studio-line); background: linear-gradient(160deg, var(--studio-surface), var(--studio-pearl)); box-shadow: var(--studio-control-depth); transition: translate .18s var(--studio-ease), box-shadow .18s var(--studio-ease); }
+.studio-v2__glass-button:active:not(:disabled) { translate: 0 2px; box-shadow: inset 0 2px 3px var(--studio-line); }
+.studio-v2__plan-actions .studio-v2__glass-button[aria-pressed=true] { background: var(--studio-done); color: var(--studio-done-ink); border-color: var(--studio-done); box-shadow: inset 0 2px 4px var(--studio-shade); }
 .studio-v2__quest-steps li { position: relative; }
 .studio-v2__quest-steps li:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 50%; inset-block-start: 20px; inline-size: calc(100% + 8px); block-size: 4px; background: var(--studio-line); }
 .studio-v2__quest-steps li[data-connected=true]::after { background: var(--studio-done); }
-.studio-v2__quest-steps li > span { position: relative; z-index: 1; }
+.studio-v2__quest-steps li > span { position: relative; z-index: 1; box-shadow: inset 0 2px 3px var(--studio-line); }
 .studio-v2__quest-steps [aria-current=step] > span { box-shadow: 0 0 0 6px var(--studio-teal-soft); }
-.studio-v2 .studio-v2__action-button { font-size: 17px; font-weight: 800; }
+.studio-v2 .studio-v2__action-button { font-size: 17px; font-weight: 800; min-block-size: 56px; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--studio-surface) 24%, transparent), 0 3px 0 var(--studio-graphite), 0 8px 18px var(--studio-shade); }
+.studio-v2 .studio-v2__action-button:active:not(:disabled) { translate: 0 2px; box-shadow: inset 0 2px 4px var(--studio-shade); }
 .studio-v2--world { min-block-size: 744px; padding-block-start: 30px; padding-block-end: 26px; }
 .studio-v2--world::before { background: linear-gradient(90deg, color-mix(in srgb, var(--studio-pearl) 86%, transparent), color-mix(in srgb, var(--studio-pearl) 66%, transparent) 55%, color-mix(in srgb, var(--studio-pearl) 80%, transparent)); }
 .studio-v2__world-environment { position: absolute; inset: -40px; z-index: -2; pointer-events: none; filter: blur(16px) saturate(.95); transform: scale(1.06); }
 .studio-v2__world-environment > .studio-v2__portal-art { border-radius: 0; }
-.studio-v2__world-heading { background: linear-gradient(transparent, var(--studio-frost) 52%); padding-block-start: 64px; }
+.studio-v2__world-heading { background: linear-gradient(transparent, var(--studio-frost) 38%, var(--studio-pearl)); padding-block-start: 54px; border-radius: 0 0 18px 18px; }
 .studio-v2__world-heading > small { background: var(--studio-done); color: var(--studio-done-ink); }
 .studio-v2__world-window > .studio-v2__portal-art { border-color: var(--studio-surface); }
+.studio-v2__world-guide p { border: 1px solid var(--studio-line); box-shadow: var(--studio-control-depth); }
 /* The parent shell styles every aside with important declarations. */
-.arbor-play .studio-v2__keepsake-note { background: var(--studio-frost) !important; color: var(--studio-text) !important; }
+.arbor-play .studio-v2__keepsake-note { background: var(--studio-mist) !important; color: var(--studio-text) !important; border-color: var(--studio-line); box-shadow: inset 0 1px 0 var(--studio-surface); }
 .studio-v2__keepsake-note > svg { color: var(--studio-teal-ink); }
 .studio-v2__activity-art { position: relative; overflow: hidden; border-radius: 10px; }
 .studio-v2__activity-cue { position: absolute; inset-inline-end: 4px; inset-block-end: 4px; display: grid; place-items: center; inline-size: 36px; block-size: 36px; border-radius: 10px; color: var(--studio-text); background: var(--studio-frost); border: 1px solid var(--studio-surface); }
 @media (hover:hover) and (pointer:fine) {
-  .studio-v2__door:hover { box-shadow: 0 18px 44px var(--studio-shade); }
+  .studio-v2__door:hover { translate: 0 -4px; box-shadow: inset 0 1px 0 var(--studio-surface), 0 4px 0 var(--studio-line), 0 22px 36px var(--studio-shade); }
+  .studio-v2__glass-button:hover { translate: 0 -2px; }
   .studio-v2__action-button:hover { background: color-mix(in srgb, var(--studio-action) 86%, var(--studio-surface)); }
 }
 @media (min-width:641px) and (max-width:950px) {
@@ -75,8 +85,25 @@
 /* Keep the no-avatar state readable over the valley. */
 .studio-v2__hero-empty p { padding: 8px 14px; border-radius: 12px; background: var(--studio-frost); color: var(--studio-text); font-size: 14px; }
 
-.studio-v2__world-list { min-block-size: 680px; }
+.studio-v2__world-list { min-block-size: 610px; padding: 22px; border: 1px solid var(--studio-line); border-radius: 24px; background: var(--studio-pearl); box-shadow: var(--studio-panel-depth); }
+.studio-v2__world-list > h2 { margin-block-start: 0; }
+.studio-v2__world-list > .studio-v2__activity { background: var(--studio-surface); border-color: var(--studio-line); box-shadow: var(--studio-control-depth); }
+.studio-v2__activity > strong { flex: 1; min-inline-size: 0; }
+.studio-v2__activity-grid > .studio-v2__activity { border-color: var(--studio-line); box-shadow: inset 0 1px 0 var(--studio-surface), 0 3px 0 var(--studio-line), 0 8px 18px var(--studio-shade); }
+.studio-v2__activity-grid > .studio-v2__activity[data-kept=true] { border-color: var(--studio-teal-ink); }
+.studio-v2__activity-grid .studio-v2__activity-copy { border-block-start: 1px solid var(--studio-line); }
+.studio-v2__activity-grid .studio-v2__activity-state { border: 1px solid var(--studio-surface); }
+.studio-v2__activity--return .studio-v2__activity-icon { color: var(--studio-teal-ink); background: var(--studio-teal-soft); box-shadow: inset 0 2px 3px var(--studio-line); }
 .studio-v2__keepsake-note { margin-block-start: auto; padding: 14px 18px; }
 .studio-v2__portal-art > div { position: absolute; inset: 0; }
 @media(max-width:950px) { .studio-v2__world-list { min-block-size: auto; } .studio-v2__keepsake-note { margin-block-start: 12px; } }
+@media(max-width:640px) {
+  .studio-v2__world-list { padding: 22px 16px; margin-inline: -16px; border-radius: 24px 24px 0 0; border-inline: 0; border-block-end: 0; box-shadow: inset 0 1px 0 var(--studio-surface), 0 -8px 22px var(--studio-shade); }
+  .studio-v2__world-guide .studio-v2__sprout { inline-size: 56px; min-inline-size: 56px; block-size: 64px; }
+  .studio-v2__world-guide .studio-v2__sprout svg { inline-size: 56px; block-size: 64px; }
+  .studio-v2__world-guide p { padding: 10px 14px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .studio-v2__glass-button:hover, .studio-v2__door:active, .studio-v2__glass-button:active, .studio-v2 .studio-v2__action-button:active { translate: none; }
+}
 

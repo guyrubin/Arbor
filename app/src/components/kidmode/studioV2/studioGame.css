@@ -98,3 +98,24 @@
 .studio-game-card__guide { display: flex; align-items: center; gap: 10px; flex: 1; min-inline-size: 170px; }
 .studio-game-card__guide > svg { flex-shrink: 0; }
 .studio-game-card__guide > span { max-inline-size: 180px; padding: 10px 12px; border: 1px solid var(--studio-line); background: var(--studio-surface); color: var(--studio-text); font-size: 13.5px; line-height: 1.4; font-weight: 800; border-radius: 10px; }
+
+/* Entry, play and return use the same physical control edge. The child's
+   creation is the focus of its result; the cover becomes a smaller header. */
+.studio-game-card { border-block-end: 3px solid var(--studio-line); }
+.studio-game-button-v2 { box-shadow: 0 3px 0 var(--studio-line), 0 7px 16px var(--studio-shade); }
+.studio-game-button-v2--primary { box-shadow: 0 4px 0 var(--studio-line), 0 10px 24px var(--studio-shade); }
+.studio-game-button-v2:active { box-shadow: 0 1px 0 var(--studio-line); }
+.studio-game-card[data-studio-created] .studio-game-card__window { block-size: 128px; }
+.studio-game-card[data-studio-created] .studio-game-card__hero { inline-size: 150px; block-size: 150px; }
+.studio-game-card[data-studio-created] .studio-game-card__keepsake { margin-block-start: 12px; }
+/* A phone on its side keeps the entry picture beside its instruction and
+   action. It does not shrink the targets or crop the body into a viewport. */
+@media (min-width: 680px) and (max-height: 600px) {
+  .studio-game-view:not(.studio-game-view--play) { padding: 16px 20px 24px; min-block-size: calc(100dvh - 76px); }
+  .studio-game-card:not(.studio-game-card--unavailable) { inline-size: min(100%, 960px); display: grid; grid-template-columns: minmax(200px, .8fr) minmax(0, 1fr); gap: 22px; padding: 14px; align-items: stretch; }
+  .studio-game-card .studio-game-card__window { block-size: auto; min-block-size: 220px; }
+  .studio-game-card__body { padding: 10px 6px; min-inline-size: 0; }
+  .studio-game-card .studio-game-card__title { font-size: 28px; }
+  .studio-game-card__actions { margin-block-start: 16px; }
+  .studio-game-card[data-studio-created] { grid-template-columns: minmax(160px, .55fr) minmax(0, 1fr); }
+}

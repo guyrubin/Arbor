@@ -154,7 +154,7 @@ function TrailRun({ w, seed, onSay, onDone }: { w: Words; seed: number; onSay: (
       const W = root.offsetWidth, H = root.offsetHeight; if (!W || !H) return;
       const narrow = W < H * 0.95;
       const k = narrow ? W / 455 : Math.max(H / 470, W / 1050);
-      const gy = H * (narrow ? 0.735 : 0.75), viewW = W / k, lead = narrow ? LEAD.narrow : LEAD.wide;
+      const gy = H * (narrow ? 0.66 : 0.7), viewW = W / k, lead = narrow ? LEAD.narrow : LEAD.wide;
       // The sky plate: big enough to cover the view above the lake line and the whole of its slow drift.
       const ks = Math.max(k * (narrow ? SKY.narrow : SKY.wide), W * 1.56 / PLATES.sky.dusk.w, (gy - HORIZON * k + 40) / (PLATES.sky.dusk.h * SKY.lakeRow));
       const skyTop = gy - HORIZON * k - PLATES.sky.dusk.h * SKY.lakeRow * ks;

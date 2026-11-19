@@ -42,12 +42,13 @@ describe("the book page (HeroScenePlayer layout=book)", () => {
     // B-KID-128 re-pin: full-bleed at 4:5 on a phone, 3:4 spread from 640 px (kidBookLayout.test).
     expect(html).toContain("aspect-[4/5]");
   });
-  it("the words sit below at the kid scale (>= 18 px), up to five lines then scroll", () => {
-    expect(KID_BOOK_TEXT_PX).toBeGreaterThanOrEqual(18);
+  it("the complete paragraph stays at the kid scale; scrolling belongs to the whole reader", () => {
+    expect(KID_BOOK_TEXT_PX).toBeGreaterThanOrEqual(20);
     // B-KID-133 (D-03) re-pin: the book voice token, floored at KID_BOOK_TEXT_PX (20 px).
     expect(html).toMatch(/data-kid-book-text=""[^>]*font-size:max\(20px, var\(--kid-t-book\)\)/);
-    expect(html).toContain("overflow-y:auto");
-    expect(html).toContain("max-h-[calc(5*var(--kid-book-lh,1.5)*1em_+_16px)]"); // 25 Oct re-pin: a page runs to four lines, so the phone-only cap is five at the book line height (B-KID-133 D-03: 1.5, HE 1.6)
+    expect(html).not.toContain("overflow-y:auto");
+    expect(html).not.toMatch(/max-h-\[|max-height:/);
+    expect(html).toContain("font-family:var(--studio-font)");
     expect(html).toContain(scene.narration);
   });
   it("no meta row in front of the child: no Read aloud button, no Save, no smudged/Redraw page", () => {

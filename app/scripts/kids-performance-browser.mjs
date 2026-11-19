@@ -9,6 +9,9 @@ import { verifyBookPictureRecovery } from './kids-book-browser.mjs';
 import { verifyStudioWorldPlates } from './kids-stage-art-browser.mjs';
 import { verifyDefaultGameCycles } from './kids-game-cycle-browser.mjs';
 import { verifyJosephStory } from './kids-joseph-browser.mjs';
+import { verifyStoryCatalogue } from './kids-story-catalogue-browser.mjs';
+import { verifyAdditionalActivities } from './kids-additional-activities-browser.mjs';
+import { verifyMakerGameCycles } from './kids-maker-cycle-browser.mjs';
 const output = path.resolve('output/kids-performance');
 await mkdir(output, { recursive: true });
 const types = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.aac': 'audio/aac' };
@@ -185,13 +188,16 @@ try {
       throw error;
     } finally { await context.close(); }
   }
-  results.push(...await verifyStudioWorldPlates({ browser, base, output }));
-  results.push(...await verifyBookPictureRecovery({ browser, base, output }));
   // These suites own separate contexts and evidence folders. Preserve both
   // results when either fails, so one playthrough cannot hide reader evidence.
   const completeFlows = await Promise.allSettled([
+    verifyStudioWorldPlates({ browser, base, output }),
+    verifyBookPictureRecovery({ browser, base, output }),
     verifyDefaultGameCycles({ browser, base, output }),
     verifyJosephStory({ browser, base, output }),
+    verifyStoryCatalogue({ browser, base, output }),
+    verifyAdditionalActivities({ browser, base, output }),
+    verifyMakerGameCycles({ browser, base, output }),
   ]);
   const failures = [];
   for (const flow of completeFlows) {
