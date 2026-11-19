@@ -424,7 +424,7 @@
 
 /* ── the reader's toys in v30: flat ceramic, no specular gloss or lip.
    "go" = the graphite action, "paper" = white with a hairline, "sapphire"
-   (Sound on) = teal-soft. Scoped to the reader; other games keep theirs. ─ */
+   (Sound on) = teal-soft. The reader keeps these faces on top of the shared toy. ─ */
 .arbor-play .bk-reader .kid-toy {
   --toy-face: var(--studio-surface);
   --toy-ink: var(--studio-graphite);

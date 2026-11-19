@@ -56,6 +56,17 @@ export function studioMenuActivities(...args: Parameters<typeof studioActivities
   return offered.flatMap(id => eligible.filter(activity => activity.id === id));
 }
 export function studioActivity(id: string): StudioActivity | undefined { return STUDIO_V2_ACTIVITIES.find(a => a.id === id); }
+/** Skills that still live in the arcade. Every other skill opens its Studio game. */
+const STUDIO_ARCADE_ONLY = new Set<string>(["reading", "adventures", "pose", "speech"]);
+/** The one look for a skill: the Studio game when one exists, otherwise the arcade. */
+export function studioSurfaceFor(id: string): "arcade" | "studio-game" | null {
+  if (!studioActivity(id)) return null;
+  return STUDIO_ARCADE_ONLY.has(id) ? "arcade" : "studio-game";
+}
+/** A parent door opens the same surface the kid shelf uses for that world. */
+export function parentDoorTarget(worldId: string): { view: "arcade" | "studio-game"; worldId: string } {
+  return { view: studioSurfaceFor(worldId) === "studio-game" ? "studio-game" : "arcade", worldId };
+}
 export function studioActivityFromLegacy(refId: string): StudioActivity | undefined { return STUDIO_V2_ACTIVITIES.find(a => a.legacyWorldId === refId || a.id === refId); }
 export function studioLegacyRoute(id: StudioActivityId): { surface: "arcade"; worldId: string } | null {
   const worldId = studioActivity(id)?.legacyWorldId;

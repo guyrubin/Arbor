@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { STUDIO_WORLDS } from "../../practice/studioWorlds";
 import { kidViewKey, restoredKidView, studioActivityView } from "../KidModeOverlay";
+import { parentDoorTarget } from "./studioCatalog";
 
 describe("V2 routes preserve real destinations", () => {
   it.each(["memory", "feelings", "mimic", "sound-explorer", "pattern", "calm-builder", "beat", "puzzle", "sneak"])("opens %s through its real V2 game", id => {
@@ -24,6 +26,22 @@ describe("V2 routes preserve real destinations", () => {
       expect(restoredKidView("studio-world", id)).toBe("home");
       expect(restoredKidView("studio-game", id)).toBe("home");
     }
+  });
+  it("sends every parent door to the same surface the kid shelf uses", () => {
+    for (const world of STUDIO_WORLDS) {
+      const surface = studioActivityView(world.id);
+      expect(parentDoorTarget(world.id), world.id).toEqual({ view: surface === "studio-game" ? "studio-game" : "arcade", worldId: world.id });
+    }
+    expect(parentDoorTarget("feelings").view).toBe("studio-game");
+    expect(parentDoorTarget("memory").view).toBe("studio-game");
+    expect(parentDoorTarget("mimic").view).toBe("studio-game");
+    expect(parentDoorTarget("pattern").view).toBe("studio-game");
+    expect(parentDoorTarget("beat").view).toBe("studio-game");
+    expect(parentDoorTarget("speech").view).toBe("arcade");
+    expect(parentDoorTarget("adventures").view).toBe("arcade");
+    expect(parentDoorTarget("reading").view).toBe("arcade");
+    expect(parentDoorTarget("pose").view).toBe("arcade");
+    expect(parentDoorTarget("word-world").view).toBe("arcade");
   });
   it("gives every world and game a distinct mounted lifetime", () => {
     expect(new Set([kidViewKey("home", null), kidViewKey("studio-world", "feelings"), kidViewKey("studio-world", "playbank"), kidViewKey("studio-game", "feelings"), kidViewKey("studio-game", "memory")]).size).toBe(5);

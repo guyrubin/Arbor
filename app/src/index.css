@@ -1013,12 +1013,11 @@ html[lang="he"] .arbor-play,
 .arbor-play .kid-type-book  { font: 600 var(--kid-t-book)/var(--kid-book-lh) var(--font-display); }
 .arbor-play .kid-type-booktitle { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
 
-/* ── D-02 · The toy (§2.3): the one button / piece primitive ──────────── */
+/* ── D-02 · The toy: flat ceramic. No gloss, no lip, no squash. ─────────── */
 .arbor-play .kid-toy {
   --toy-face: var(--arbor-paper-elevated);
-  --toy-lip: color-mix(in oklab, var(--arbor-ink) 16%, var(--arbor-paper-elevated));
   --toy-ink: var(--arbor-ink);
-  --toy-depth: 6px;
+  --toy-depth: 0px;
   position: relative;
   display: inline-grid;
   grid-auto-flow: column;
@@ -1028,45 +1027,50 @@ html[lang="he"] .arbor-play,
   min-block-size: 64px;
   min-inline-size: 64px;
   padding-inline: 28px;
-  border: 0;
+  border: 1px solid var(--arbor-rule);
   border-radius: var(--kid-r-m);
   color: var(--toy-ink);
   font: 800 var(--kid-t-label, 18px)/1.1 var(--font-sans);
   letter-spacing: 0;
-  background:
-    linear-gradient(to bottom, color-mix(in oklab, var(--arbor-paper-elevated) 42%, transparent) 0, transparent 48%),
-    var(--toy-face);
-  box-shadow:
-    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 60%, transparent),
-    inset 0 -3px 0 color-mix(in oklab, var(--toy-lip) 60%, transparent),
-    0 var(--toy-depth) 0 var(--toy-lip),
-    0 calc(var(--toy-depth) + 10px) 18px -8px color-mix(in oklab, var(--arbor-ink) 50%, transparent);
-  transform: translateY(0) scale(1);
-  transition: transform var(--kid-dur-release) var(--kid-ease-spring), box-shadow 120ms var(--kid-ease-out);
+  background: var(--toy-face);
+  box-shadow: none;
+  transform: none;
+  transition: transform 160ms var(--kid-ease-out), background-color 160ms var(--kid-ease-out);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  margin-block-end: var(--toy-depth);
+  margin-block-end: 0;
 }
 .arbor-play .kid-toy:active {
-  transform: translateY(calc(var(--toy-depth) - 1px)) scale(1.03, 0.94);
-  transition-duration: var(--kid-dur-press), var(--kid-dur-press);
-  box-shadow:
-    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 60%, transparent),
-    inset 0 -2px 0 color-mix(in oklab, var(--toy-lip) 60%, transparent),
-    0 1px 0 var(--toy-lip),
-    0 4px 8px -4px color-mix(in oklab, var(--arbor-ink) 45%, transparent);
+  transform: scale(0.98);
+  transition-duration: var(--kid-dur-press);
 }
 .arbor-play .kid-toy:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 4px; }
-.arbor-play .kid-toy[data-tone="go"] { --toy-face: var(--arbor-yellow); --toy-lip: var(--arbor-ochre); }
+.arbor-play .kid-toy[data-tone="go"] { --toy-face: var(--arbor-ink); --toy-ink: var(--arbor-paper-elevated); border-color: transparent; }
 .arbor-play .kid-toy[data-tone="sapphire"] {
   --toy-face: var(--arbor-clay);
-  --toy-lip: color-mix(in oklab, var(--arbor-clay-deep) 65%, var(--arbor-ink));
   --toy-ink: var(--arbor-on-accent);
+  border-color: transparent;
 }
-.arbor-play .kid-toy[data-state="correct"] { --toy-face: var(--arbor-green-soft); --toy-lip: var(--arbor-success); --toy-ink: var(--arbor-green-ink); }
-.arbor-play .kid-toy[data-state="not-yet"] { --toy-face: var(--arbor-lav-wash); --toy-lip: var(--arbor-lav); --toy-ink: var(--arbor-lav-ink); }
-.arbor-play .kid-toy[data-size="s"] { --toy-depth: 4px; min-block-size: 48px; min-inline-size: 48px; padding-inline: 16px; }
-.arbor-play .kid-toy[data-size="l"] { --toy-depth: 8px; min-block-size: 80px; padding-inline: 32px; font-size: var(--kid-t-title, 24px); }
+.arbor-play .kid-toy[data-state="correct"] { --toy-face: var(--arbor-green-soft); --toy-ink: var(--arbor-green-ink); }
+.arbor-play .kid-toy[data-state="not-yet"] { --toy-face: var(--arbor-lav-wash); --toy-ink: var(--arbor-lav-ink); }
+.arbor-play .kid-toy[data-size="s"] { min-block-size: 48px; min-inline-size: 48px; padding-inline: 16px; }
+.arbor-play .kid-toy[data-size="l"] { min-block-size: 80px; padding-inline: 32px; font-size: var(--kid-t-title, 24px); }
+.arbor-play :where(.studio-v2, .studio-game-view, .adventure, [data-kid-studio]) .kid-toy {
+  --toy-face: var(--studio-surface);
+  --toy-ink: var(--studio-graphite);
+  border-color: var(--studio-line);
+  font-family: var(--studio-font);
+}
+.arbor-play :where(.studio-v2, .studio-game-view, .adventure, [data-kid-studio]) .kid-toy[data-tone="go"] {
+  --toy-face: var(--studio-action);
+  --toy-ink: var(--studio-action-ink);
+  border-color: transparent;
+}
+.arbor-play :where(.studio-v2, .studio-game-view, .adventure, [data-kid-studio]) .kid-toy[data-tone="sapphire"] {
+  --toy-face: var(--studio-teal-soft);
+  --toy-ink: var(--studio-teal-ink);
+  border-color: color-mix(in srgb, var(--studio-teal) 30%, transparent);
+}
 .arbor-play .kid-toy[data-shape="round"] {
   border-radius: 999px;
   padding: 0;
@@ -1082,8 +1086,8 @@ html[lang="he"] .arbor-play,
 .arbor-play .kid-toy[data-size="l"] .kid-toy-glyph { font-size: 34px; }
 @media (prefers-reduced-motion: reduce) {
   .arbor-play .kid-toy,
-  .arbor-play .kid-toy:active { transition: box-shadow 1ms; }
-  .arbor-play .kid-toy:active { transform: translateY(calc(var(--toy-depth) - 1px)); }
+  .arbor-play .kid-toy:active { transition: none; }
+  .arbor-play .kid-toy:active { transform: none; }
 }
 
 /* ── D-04 · Game pieces = moulded coins (§2.6, §3.6) ───────────────────
@@ -1093,8 +1097,6 @@ html[lang="he"] .arbor-play,
 .arbor-play { --piece: clamp(96px, min(24vw, 18dvh), 168px); }
 .arbor-play .kid-coin {
   --coin-face: var(--arbor-paper-elevated);
-  --coin-lip: color-mix(in oklab, var(--arbor-ink) 16%, var(--coin-face));
-  --coin-depth: 6px;
   position: relative;
   display: grid;
   place-items: center;
@@ -1102,32 +1104,17 @@ html[lang="he"] .arbor-play,
   inline-size: var(--coin-size, var(--piece));
   aspect-ratio: 1;
   border-radius: 999px;
+  border: 1.5px solid var(--arbor-rule);
   container-type: inline-size;
-  background:
-    linear-gradient(to bottom, color-mix(in oklab, var(--arbor-paper-elevated) 45%, transparent) 0, transparent 50%),
-    var(--coin-face);
-  box-shadow:
-    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 70%, transparent),
-    inset 0 -3px 0 color-mix(in oklab, var(--coin-lip) 60%, transparent),
-    0 var(--coin-depth) 0 var(--coin-lip),
-    0 calc(var(--coin-depth) + 10px) 18px -8px color-mix(in oklab, var(--arbor-ink) 50%, transparent);
-  transition: transform var(--kid-dur-release) var(--kid-ease-spring), box-shadow 120ms var(--kid-ease-out);
-}
-/* The recessed well the emoji sits in. */
-.arbor-play .kid-coin::before {
-  content: "";
-  position: absolute;
-  inset: 9%;
-  border-radius: 999px;
-  box-shadow: inset 0 3px 6px color-mix(in oklab, var(--arbor-ink) 18%, transparent);
-  pointer-events: none;
+  background: var(--coin-face);
+  box-shadow: none;
+  transition: transform 160ms var(--kid-ease-out);
 }
 .arbor-play .kid-coin-glyph {
   position: relative;
   font-size: calc(var(--coin-size, var(--piece)) * 0.58);
   font-size: 58cqi;
   line-height: 1;
-  filter: drop-shadow(0 3px 0 color-mix(in oklab, var(--arbor-ink) 22%, transparent));
 }
 /* Flat world washes for coin faces (never a -soft gradient token). */
 .arbor-play .kid-coin[data-wash="sky"]    { --coin-face: color-mix(in oklab, var(--arbor-sky) 12%, var(--arbor-paper-elevated)); }
@@ -1155,17 +1142,13 @@ html[lang="he"] .arbor-play,
   transition: opacity 160ms var(--kid-ease-out);
 }
 .arbor-play .kid-piece:active .kid-coin {
-  transform: translateY(calc(var(--coin-depth) - 1px)) scale(1.03, 0.94);
-  transition-duration: var(--kid-dur-press), var(--kid-dur-press);
-  box-shadow:
-    inset 0 2px 0 color-mix(in oklab, var(--arbor-paper-elevated) 70%, transparent),
-    0 1px 0 var(--coin-lip),
-    0 4px 8px -4px color-mix(in oklab, var(--arbor-ink) 45%, transparent);
+  transform: scale(0.98);
+  transition-duration: var(--kid-dur-press);
 }
 .arbor-play .kid-piece:focus-visible { outline: none; }
 .arbor-play .kid-piece:focus-visible .kid-coin { outline: 3px solid var(--arbor-sky); outline-offset: 4px; }
-.arbor-play .kid-piece[data-state="correct"] .kid-coin { --coin-face: var(--arbor-green-soft); --coin-lip: var(--arbor-success); }
-.arbor-play .kid-piece[data-state="not-yet"] .kid-coin { --coin-face: var(--arbor-lav-wash); --coin-lip: var(--arbor-lav); }
+.arbor-play .kid-piece[data-state="correct"] .kid-coin { --coin-face: var(--arbor-green-soft); }
+.arbor-play .kid-piece[data-state="not-yet"] .kid-coin { --coin-face: var(--arbor-lav-wash); }
 .arbor-play .kid-piece[data-state="not-yet"] .kid-coin { animation: kid-wobble 300ms var(--kid-ease-out) 1; }
 .arbor-play .kid-piece[data-dim] { opacity: 0.5; }
 .arbor-play .kid-piece:disabled { cursor: default; }
@@ -1202,7 +1185,7 @@ html[lang="he"] .arbor-play,
   background: var(--arbor-paper-elevated);
   box-shadow: 0 2px 0 color-mix(in oklab, var(--arbor-ink) 10%, transparent), 0 18px 36px -20px color-mix(in oklab, var(--arbor-ink) 55%, transparent);
 }
-.arbor-play .kid-track .kid-coin { --coin-depth: 4px; flex: 0 1 max(56px, calc(var(--piece) * 0.62)); inline-size: auto; min-inline-size: 36px; }
+.arbor-play .kid-track .kid-coin { flex: 0 1 max(56px, calc(var(--piece) * 0.62)); inline-size: auto; min-inline-size: 36px; }
 .arbor-play .kid-socket {
   display: grid;
   place-items: center;
@@ -1267,8 +1250,8 @@ html[lang="he"] .arbor-play,
 .arbor-play .kid-card:focus-visible { outline: 3px solid var(--arbor-sky); outline-offset: 4px; border-radius: var(--kid-r-m); }
 @media (prefers-reduced-motion: reduce) {
   .arbor-play .kid-coin,
-  .arbor-play .kid-piece:active .kid-coin { transition: box-shadow 1ms; }
-  .arbor-play .kid-piece:active .kid-coin { transform: translateY(calc(var(--coin-depth) - 1px)); }
+  .arbor-play .kid-piece:active .kid-coin { transition: none; }
+  .arbor-play .kid-piece:active .kid-coin { transform: none; }
   .arbor-play .kid-piece[data-state="not-yet"] .kid-coin,
   .arbor-play .kid-socket { animation: none; }
   /* M4 reduced: a 150 ms cross-fade between faces, no rotation. */

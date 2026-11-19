@@ -10,6 +10,7 @@ import { lastKidSessionStartedAt } from "../../lib/kidModeGate";
 import { trackPracticeStudioOpen, trackPracticeTogetherDid } from "../../lib/kpiEvents";
 import { TOGETHER_ART } from "../../lib/parentArt";
 import { usePracticeData } from "../../practice/usePracticeData";
+import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { readParentPin } from "../kidmode/parentGate";
 import { requestOpenSettings } from "../layout/settingsBus";
@@ -95,7 +96,7 @@ export function usePlayStudio() {
     const direct = (!opensInKidMode(world) || !worksInLanguage(world, lang)) && !!world.tab;
     trackPracticeStudioOpen(world.id, direct ? "direct" : "kidmode");
     if (direct && world.tab) setActiveTab(world.tab);
-    else requestKidMode({ view: "arcade", worldId: world.id });
+    else requestKidMode(parentDoorTarget(world.id));
   };
   const offlineIds: readonly string[] = kidAvailable ? OFFSCREEN_IDEAS.map((idea) => idea.id) : TOGETHER_CARDS;
   const offline = (id: string) => {

@@ -3,8 +3,8 @@
  *
  * A program week may name a kid world (`ProgramWeek.kidWorld`). The program
  * page offers ONE door, "Play {world} together", that opens the EXISTING Kid
- * Mode entry seam (useKidModeEntry → request({ view: "arcade", worldId })) on
- * that world — exactly what Together's world tile does for the same world.
+ * Mode entry seam (useKidModeEntry → request(parentDoorTarget(worldId))) on
+ * that world — the same surface Together's world tile opens.
  *
  * The door is offered only when Kid Mode can really open that world for THIS
  * child, by the rules the parent doors already use (no new gate):
