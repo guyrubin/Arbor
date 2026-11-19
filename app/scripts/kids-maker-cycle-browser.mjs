@@ -135,6 +135,45 @@ export async function waitForBottleFinish(readState, advance, previous, observat
   assert.fail('Polishing did not change the actual finish in the colour chapter within 2000ms');
 }
 
+/** One coherent DOM observation, including the real action for the next
+ * chapter. No renderer state or synthetic completion is consulted. */
+export function readCrankJointState() {
+  const root = document.querySelector('[data-adventure="crank-works"]'), world = root?.querySelector('.ck-world');
+  const button = root?.querySelector('button[data-crank-place]');
+  let visible = false, opacity = 1;
+  if (button) {
+    const box = button.getBoundingClientRect(); visible = box.width > 0 && box.height > 0;
+    for (let node = button; node; node = node.parentElement) {
+      const style = getComputedStyle(node); opacity *= Number(style.opacity);
+      if (style.display === 'none' || style.visibility !== 'visible') visible = false;
+    }
+  }
+  return { phase: world?.getAttribute('data-crank-phase') ?? null,
+    chapter: world?.getAttribute('data-crank-chapter') ?? null, step: world?.getAttribute('data-crank-step') ?? null,
+    nextAction: button ? { label: (button.textContent ?? '').trim(), visible: visible && opacity >= 0.99,
+      enabled: !button.disabled && button.getAttribute('aria-disabled') !== 'true' } : null };
+}
+
+/** AnchorCheck runs once: 1.5s setup plus a full turn at 2.3rad/s, then its
+ * authored `tested` event removes Test. Repeated clicks race that removal.
+ * Observe the next chapter within the existing 12s action bound instead. */
+export async function testCrankJointOnce(pressTest, readState, advance, observations) {
+  await pressTest();
+  const started = Date.now(); let waitedMs = 0;
+  while (waitedMs <= 12000) {
+    const state = await readState() ?? {}, elapsedMs = Date.now() - started;
+    const sample = { waitedMs, elapsedMs, phase: state.phase ?? null, chapter: state.chapter ?? null,
+      step: state.step ?? null, nextAction: state.nextAction ?? null };
+    observations.push(sample);
+    if (elapsedMs <= 12000 && sample.phase === 'playing' && sample.chapter === 'flowerCh' && sample.step === 'pickUp'
+      && sample.nextAction?.visible === true && sample.nextAction.enabled === true && sample.nextAction.label?.trim()) return sample;
+    if (elapsedMs >= 12000 || waitedMs === 12000) break;
+    const duration = Math.min(250, 12000 - elapsedMs, 12000 - waitedMs);
+    await advance(duration); waitedMs += duration;
+  }
+  assert.fail('The single joint test did not reach the authored flower pickup and its visible enabled action within 12000ms');
+}
+
 /** Native time can finish a short chapter between loop reads. The caller
  * supplies only this first cycle's actual DOM observations, before replay. */
 export function iceAgeCycleSteps(loopSteps, trace) {
@@ -317,7 +356,13 @@ async function play(h, game) {
       if (step === 'turnIt') { await press(page.locator('[data-crank-turn]')); turns++; await advance(600); }
       else if (step === 'lookIn') { await press(page.locator('[data-crank-look]')); looks++; await advance(3400); }
       else if (step === 'pickUp') { await press(page.locator('[data-crank-place]')); await advance(1600); }
-      else if (step === 'testJoint') { await press(page.locator('[data-crank-test]')); joints++; await advance(2500); }
+      else if (step === 'testJoint') {
+        assert.equal(joints, 0, 'The joint test starts once in the authored first chapter');
+        const observations = []; h.metrics.jointTest = { observations };
+        Object.assign(h.metrics.jointTest, await testCrankJointOnce(() => press(page.locator('[data-crank-test]')),
+          () => page.evaluate(readCrankJointState), advance, observations));
+        joints++;
+      }
       else await advance(1000);
       if (i === 14) await snapshot('mechanism');
     }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, nativeMakerScene, readMakerCanvasPaint, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
+import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, nativeMakerScene, readCrankJointState, readMakerCanvasPaint, testCrankJointOnce, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
 
 const allSteps = ['frost', 'hello', 'trace', 'brush', 'feed', 'part', 'scout', 'walk', 'low'];
 const withoutBrush = allSteps.filter(step => step !== 'brush');
@@ -35,6 +35,102 @@ describe('Ice Age first-cycle DOM observations', () => {
 });
 
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+const flowerPickup = { phase: 'playing', chapter: 'flowerCh', step: 'pickUp',
+  nextAction: { label: 'Plant the flower', visible: true, enabled: true } };
+
+describe('the single Crank joint test response', () => {
+  it('presses Test once and retains the authored sequence until the real next action is ready', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const press = vi.fn(async () => undefined), samples: unknown[] = [];
+    const advance = vi.fn(async (ms: number) => { now += ms; });
+    const testing = { phase: 'playing', chapter: 'pistonCh', step: 'testJoint', nextAction: null };
+    const result = await testCrankJointOnce(press, async () => now < 4250 ? testing : flowerPickup, advance, samples);
+    expect(press).toHaveBeenCalledOnce();
+    expect(result).toEqual({ waitedMs: 4250, elapsedMs: 4250, ...flowerPickup });
+    expect(samples).toHaveLength(18);
+    expect(samples[0]).toEqual({ waitedMs: 0, elapsedMs: 0, ...testing });
+    expect(samples.at(-1)).toEqual(result);
+    expect(advance).toHaveBeenCalledTimes(17);
+  });
+
+  it('accepts a completed action immediately without a redundant input or extra wait', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(0);
+    const press = vi.fn(), advance = vi.fn();
+    expect(await testCrankJointOnce(press, async () => flowerPickup, advance, []))
+      .toEqual({ waitedMs: 0, elapsedMs: 0, ...flowerPickup });
+    expect(press).toHaveBeenCalledOnce();
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('fails missing or wrong phases and missing, hidden, disabled or unnamed next actions', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    for (const state of [
+      {}, { ...flowerPickup, phase: 'opening' }, { ...flowerPickup, chapter: 'pistonCh' },
+      { ...flowerPickup, step: 'testJoint' }, { ...flowerPickup, step: 'bigShow' },
+      { ...flowerPickup, nextAction: null }, { ...flowerPickup, nextAction: { ...flowerPickup.nextAction, visible: false } },
+      { ...flowerPickup, nextAction: { ...flowerPickup.nextAction, enabled: false } },
+      { ...flowerPickup, nextAction: { ...flowerPickup.nextAction, label: ' ' } },
+    ]) {
+      now = 0;
+      const press = vi.fn(), samples: unknown[] = [], advance = vi.fn(async (ms: number) => { now += ms; });
+      await expect(testCrankJointOnce(press, async () => state, advance, samples)).rejects.toThrow('within 12000ms');
+      expect(press).toHaveBeenCalledOnce();
+      expect(samples).toHaveLength(49);
+      expect(advance).toHaveBeenCalledTimes(48);
+      expect(now).toBe(12000);
+    }
+  });
+
+  it('rejects an otherwise correct observation returned after the real wall deadline', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const press = vi.fn(), advance = vi.fn(), samples: unknown[] = [];
+    await expect(testCrankJointOnce(press, async () => { now = 12001; return flowerPickup; }, advance, samples))
+      .rejects.toThrow('within 12000ms');
+    expect(press).toHaveBeenCalledOnce();
+    expect(advance).not.toHaveBeenCalled();
+    expect(samples).toEqual([{ waitedMs: 0, elapsedMs: 12001, ...flowerPickup }]);
+  });
+
+  it('also bounds requested waits when the observed wall clock does not advance', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(0);
+    const press = vi.fn(), advance = vi.fn(), samples: unknown[] = [];
+    await expect(testCrankJointOnce(press, async () => ({}), advance, samples)).rejects.toThrow('within 12000ms');
+    expect(press).toHaveBeenCalledOnce();
+    expect(advance).toHaveBeenCalledTimes(48);
+    expect(samples.at(-1)).toMatchObject({ waitedMs: 12000, elapsedMs: 0 });
+  });
+
+  it('propagates an actual failed Test input without observing or retrying it', async () => {
+    const press = vi.fn(async () => { throw new Error('test input failed'); }), read = vi.fn(), advance = vi.fn();
+    await expect(testCrankJointOnce(press, read, advance, [])).rejects.toThrow('test input failed');
+    expect(press).toHaveBeenCalledOnce();
+    expect(read).not.toHaveBeenCalled();
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('reads the actual visible enabled next button, including its ancestor visibility', () => {
+    const ancestor = { parentElement: null }, button = { textContent: ' Plant the flower ', disabled: false, parentElement: ancestor,
+      getBoundingClientRect: () => ({ width: 200, height: 64 }), getAttribute: () => null };
+    const attributes: Record<string, string> = { 'data-crank-phase': 'playing', 'data-crank-chapter': 'flowerCh', 'data-crank-step': 'pickUp' };
+    const world = { getAttribute: (name: string) => attributes[name] };
+    const root = { querySelector: (selector: string) => selector === '.ck-world' ? world : button };
+    vi.stubGlobal('document', { querySelector: () => root });
+    const styles = vi.fn((_node: unknown) => ({ opacity: '1', display: 'block', visibility: 'visible' }));
+    vi.stubGlobal('getComputedStyle', styles);
+    expect(readCrankJointState()).toEqual(flowerPickup);
+    styles.mockImplementation(node => ({ opacity: '1', display: node === ancestor ? 'none' : 'block', visibility: 'visible' }));
+    expect(readCrankJointState().nextAction?.visible).toBe(false);
+    styles.mockImplementation(() => ({ opacity: '1', display: 'block', visibility: 'visible' }));
+    button.disabled = true;
+    expect(readCrankJointState().nextAction?.enabled).toBe(false);
+    vi.stubGlobal('document', { querySelector: () => null });
+    expect(readCrankJointState()).toEqual({ phase: null, chapter: null, step: null, nextAction: null });
+  });
+});
 
 describe('the single Bottle polish action response', () => {
   it('retains the old finish until a later native frame publishes the actual opposite finish', async () => {
