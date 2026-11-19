@@ -57,6 +57,7 @@ const NOT_CHILD_RECORD: Entry[] = [
   { file: "components/kidmode/studioV2/games/adventures/RiverRescue.tsx", match: "width: `${80 / map.size}%`", why: "the moving boat's footprint is one grid tile; map.size is the authored board geometry, never a child's performance or record" },
   { file: "components/kidmode/studioV2/games/makers/stitchGarden/StitchFriends.tsx", match: "width: `${l.w * 100}%`", why: "where each light of the WaitRing sits on the kit picture: l.w is a measured fraction of that image, fixed art geometry, not the child's progress or a stored record" },
   { file: "components/kidmode/studioV2/games/makers/clayTheatre/ClayTheatre.tsx", match: "width: `${LENS_SCREEN.width * 100}%`", why: "where the ProofLens's own screen sits on the kit picture of the tripod: LENS_SCREEN is a measured fraction of that image, fixed art geometry, not the child's progress or a stored record" },
+  { file: "components/kidmode/studioV2/games/makers/makerDesk/MakerDesk.tsx", match: "width: `${LID_TARGET.width}%`", why: "the computer's hit target fits the visible lid glass: LID_TARGET is derived from the four fixed measured corners of the kit picture, not the child's progress or a stored record" },
   { file: "components/kidmode/studioV2/games/makers/foxTrail/FoxTrail.tsx", match: "width: `${c[2]}%`", why: "the width of a drifting cloud in the dusk sky: c comes from the authored CLOUDS table, fixed scenery, not the child's progress or a stored record" },
 ];
 
@@ -150,6 +151,26 @@ describe("CN-004 · no proportional fill of a child record", () => {
     expect(classified(file, fillSites('width: `${placed.length / total * 100}%`')[0])).toBeUndefined();
     expect(classified(file, "<ProgressBar")).toBeUndefined();
     // Nor can another child-record component borrow the expression exemption.
+    expect(classified("components/sections/ChildProfile.tsx", sites[0])).toBeUndefined();
+  });
+
+  it("Maker Desk exempts only the fixed lid hit target, not a progress fill", () => {
+    const file = "components/kidmode/studioV2/games/makers/makerDesk/MakerDesk.tsx";
+    const desk = SOURCES.find(source => source.rel === file);
+    expect(desk).toBeTruthy();
+    const sites = fillSites(desk!.src);
+    expect(sites).toEqual(['width: `${LID_TARGET.width}%`']);
+    expect(classified(file, sites[0])?.why).toContain("four fixed measured corners");
+    for (const source of [
+      'width: `${completed / total * 100}%`',
+      'width: `${LID_TARGET.width * progress}%`',
+      '<ProgressBar value={completed} total={total} />',
+      '<RadialProgress value={completed} total={total} />',
+    ]) {
+      const rejected = fillSites(source);
+      expect(rejected).toHaveLength(1);
+      expect(classified(file, rejected[0])).toBeUndefined();
+    }
     expect(classified("components/sections/ChildProfile.tsx", sites[0])).toBeUndefined();
   });
 

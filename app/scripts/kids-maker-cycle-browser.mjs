@@ -48,6 +48,76 @@ export async function pauseMakerClock(page) {
   await page.clock.setSystemTime(time);
 }
 
+/** Native RAF is required for Ice Age's adaptive detail and for the canvas
+ * games whose bitmap can be cleared by Chromium's full-page capture resize. */
+export function nativeMakerScene(gameId) {
+  return {
+    'ice-age-friend': { opening: '[data-adventure="ice-age-friend"][data-iaf-phase="play"][data-iaf-step="frost"]' },
+    'crank-works': { opening: '.ck-world[data-crank-phase="playing"]', canvas: '.ck-canvas' },
+    'bottle-lab': { opening: '[data-adventure="bottle-lab"][data-act="shape"]', canvas: '[data-bl-canvas]' },
+  }[gameId] ?? null;
+}
+
+export async function waitForNativeMakerOpening(page, gameId) {
+  const scene = nativeMakerScene(gameId); assert.ok(scene, 'This maker uses an authored native opening');
+  // The reduced-motion opening ends naturally after 1400ms. Do not chase a
+  // skip button that can detach during pointer actionability checks.
+  await page.locator(scene.opening).waitFor({ state: 'visible', timeout: 6000 });
+  assert.equal(await page.locator('[data-play-skip]').count(), 0, 'The authored maker opening has ended');
+  if (gameId === 'ice-age-friend') assert.equal(await page.locator('.iaf-album li').count(), 0, 'The fresh Ice Age trip has no prior observations');
+}
+
+/** Inspect only a detached pixel copy, never the game's existing context.
+ * The full-page diagnostic measured 4096 painted samples before capture and
+ * zero after same-size backing writes with paused RAF; native RAF kept paint. */
+export function readMakerCanvasPaint(selector) {
+  const canvas = document.querySelector(selector);
+  if (!canvas) return { mounted: false };
+  const box = canvas.getBoundingClientRect(), ancestors = []; let opacity = 1, visible = true;
+  for (let node = canvas; node; node = node.parentElement) {
+    const style = getComputedStyle(node); opacity *= Number(style.opacity);
+    if (style.display === 'none' || style.visibility !== 'visible') visible = false;
+    ancestors.push({ tag: node.tagName, class: node.className, opacity: style.opacity, display: style.display, visibility: style.visibility });
+  }
+  const copy = document.createElement('canvas'); copy.width = 64; copy.height = 64;
+  const context = copy.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Read-only canvas paint inspection is unavailable');
+  if (canvas.width > 0 && canvas.height > 0) context.drawImage(canvas, 0, 0, 64, 64);
+  const pixels = context.getImageData(0, 0, 64, 64).data, colours = new Map(); let nontransparent = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3]) nontransparent++;
+    const colour = `${pixels[i]},${pixels[i + 1]},${pixels[i + 2]},${pixels[i + 3]}`;
+    colours.set(colour, (colours.get(colour) ?? 0) + 1);
+  }
+  return { mounted: true, width: canvas.width, height: canvas.height,
+    box: { x: box.x, y: box.y, width: box.width, height: box.height }, opacity, visible, ancestors,
+    samplePixels: 4096, nontransparent, uniqueColours: colours.size, commonColours: [...colours].sort((a, b) => b[1] - a[1]).slice(0, 5) };
+}
+
+export function hasMakerCanvasPaint(probe) {
+  return probe.mounted && probe.width > 0 && probe.height > 0 && probe.box.width > 0 && probe.box.height > 0
+    && probe.visible && probe.opacity >= 0.99 && probe.nontransparent > 3000 && probe.uniqueColours > 128;
+}
+
+export async function waitForMakerCanvasPaint(page, selector, evidence) {
+  for (let waitedMs = 0; waitedMs <= 4000; waitedMs += 50) {
+    const probe = await page.evaluate(readMakerCanvasPaint, selector);
+    evidence.push({ waitedMs, ...probe });
+    if (hasMakerCanvasPaint(probe)) return waitedMs;
+    if (waitedMs < 4000) await page.waitForTimeout(50);
+  }
+  assert.fail(`${selector} did not paint a visible scene within 4000ms of real waiting`);
+}
+
+/** Lazy kept-object previews need running time. A native maker must remain
+ * native through this boundary too, including its following replay. */
+export async function withMakerPreviewTime(page, nativeClock, inspect) {
+  if (nativeClock) return inspect();
+  await page.clock.resume();
+  try { return await inspect(); }
+  finally { await pauseMakerClock(page); }
+}
+
 /** Native time can finish a short chapter between loop reads. The caller
  * supplies only this first cycle's actual DOM observations, before replay. */
 export function iceAgeCycleSteps(loopSteps, trace) {
@@ -72,12 +142,8 @@ async function play(h, game) {
   const done = () => exists('[data-studio-phase="result"]');
   const opening = page.locator('[data-play-skip]');
   h.metrics.openingPressed = false;
-  if (game.id === 'ice-age-friend') {
-    // This is the same native-timer opening as replay. The optional skip can
-    // detach while pointer actionability is checked, so observe its real end.
-    await page.locator('[data-adventure="ice-age-friend"][data-iaf-phase="play"][data-iaf-step="frost"]').waitFor({ state: 'visible', timeout: 6000 });
-    assert.equal(await opening.count(), 0, 'The authored Ice Age opening has ended');
-    assert.equal(await page.locator('.iaf-album li').count(), 0, 'The fresh Ice Age trip has no prior observations');
+  if (nativeMakerScene(game.id)) {
+    await waitForNativeMakerOpening(page, game.id);
     h.metrics.openingMode = 'authored-timer';
   } else {
     h.metrics.openingPressed = await opening.count() > 0;
@@ -524,15 +590,13 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
   const runCell = async ({ viewport, game }, index) => {
     const started = Date.now();
     const phone = viewport.id.startsWith('mobile-');
-    // Ice Age chooses fur detail from actual RAF cost. A controlled 16ms RAF
-    // would incorrectly keep its most expensive tier on a slow CI renderer.
-    const nativeClock = game.id === 'ice-age-friend';
+    const nativeScene = nativeMakerScene(game.id), nativeClock = !!nativeScene;
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
     const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [];
     const stem = `${game.id}-${viewport.id}`;
     const record = { case: 'curated-maker-cycle', game: game.id, viewport: viewport.id, lang: viewport.lang,
       input: `${phone ? 'emulated touch' : 'mouse'} plus authored keyboard alternatives`, sound: 'off', motion: 'reduce',
-      clock: nativeClock ? 'native browser clock and real waits throughout; adaptive RAF untouched; real input only' : 'normal lazy loading, controlled game clock; real input only', screenshots: [], trace: [], fixtureRequests, inputs: { pointer: 0, keyboard: 0, held: 0 }, completionCount: 0 };
+      clock: nativeClock ? 'native browser clock and real waits throughout; renderer RAF untouched; real input only' : 'normal lazy loading, controlled game clock; real input only', screenshots: [], trace: [], fixtureRequests, inputs: { pointer: 0, keyboard: 0, held: 0 }, completionCount: 0 };
     try {
       await context.route('**/*', route => {
         const url = new URL(route.request().url());
@@ -554,8 +618,19 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
       const shots = new Set();
       const snapshot = async label => {
         if (shots.has(label)) return; shots.add(label);
+        const inspectPaint = nativeScene?.canvas && !['intro', 'result', 'home', 'failed'].includes(label);
+        let paint;
+        if (inspectPaint) {
+          paint = { snapshot: label, selector: nativeScene.canvas, before: [] };
+          (record.canvasPaint ??= []).push(paint);
+          nativeWaitMs += await waitForMakerCanvasPaint(page, nativeScene.canvas, paint.before);
+        }
         const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
         record.screenshots.push(`maker-cycles/${name}`);
+        if (paint) {
+          paint.after = await page.evaluate(readMakerCanvasPaint, nativeScene.canvas);
+          assert.ok(hasMakerCanvasPaint(paint.after), 'Native capture preserves the actually painted scene; the original PNG and pixel statistics are retained');
+        }
       };
       let controlledMs = 0, nativeWaitMs = 0, lastState = '';
       const attrs = () => page.evaluate(sel => ({ ...document.querySelector(sel)?.dataset }), selector);
@@ -650,16 +725,16 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
             // These saved-object previews have their own lazy chunks. Keep
             // normal time through Suspense, just as at the mechanic's entry;
             // an outer creation box alone can still be the blank fallback.
-            await page.clock.resume();
-            const picture = created.locator(':scope > [role="img"]');
-            await picture.waitFor({ state: 'visible' });
-            record.creationPreview = await picture.evaluate(async element => {
-              const sources = [...element.querySelectorAll('image, img')].map(node => node.getAttribute('href') || node.getAttribute('src')).filter(Boolean);
-              await Promise.all(sources.map(async src => { const image = new Image(); image.src = src; await image.decode(); }));
-              const { width, height } = element.getBoundingClientRect();
-              return { ...element.dataset, width, height, imageSources: sources.length, marks: element.querySelectorAll('path, rect, circle, ellipse, image').length };
+            record.creationPreview = await withMakerPreviewTime(page, nativeClock, async () => {
+              const picture = created.locator(':scope > [role="img"]');
+              await picture.waitFor({ state: 'visible' });
+              return picture.evaluate(async element => {
+                const sources = [...element.querySelectorAll('image, img')].map(node => node.getAttribute('href') || node.getAttribute('src')).filter(Boolean);
+                await Promise.all(sources.map(async src => { const image = new Image(); image.src = src; await image.decode(); }));
+                const { width, height } = element.getBoundingClientRect();
+                return { ...element.dataset, width, height, imageSources: sources.length, marks: element.querySelectorAll('path, rect, circle, ellipse, image').length };
+              });
             });
-            await pauseMakerClock(page);
             assert.ok(record.creationPreview.width >= 100 && record.creationPreview.height >= 100 && record.creationPreview.marks > 0, 'The actual made object is rendered, not its lazy placeholder');
             if (game.creation === 'bowl') assert.equal(record.creationPreview.seams.trim().split(/\s+/).length, record.play.sealedSeams, 'The result preserves every repaired seam');
             if (game.creation === 'textile') assert.ok(Number(record.creationPreview.motifs) >= 4, 'The result retains the sewn flowers');
@@ -690,13 +765,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         const replayOpening = page.locator('[data-play-skip]');
         let openingPressed = false;
         if (nativeClock) {
-          // Ice Age's reduced-motion opening ends naturally after 1400ms.
-          // A count-then-click races that authored timer on a busy renderer.
-          // Observe its real first playable step instead of chasing a skip
-          // button that is already detaching; no gameplay state is changed.
-          await page.locator('[data-adventure="ice-age-friend"][data-iaf-phase="play"][data-iaf-step="frost"]').waitFor({ state: 'visible', timeout: 6000 });
-          assert.equal(await replayOpening.count(), 0, 'The authored Ice Age replay opening has ended');
-          assert.equal(await page.locator('.iaf-album li').count(), 0, 'The fresh Ice Age replay has no observations from the completed trip');
+          await waitForNativeMakerOpening(page, game.id);
         } else {
           openingPressed = await replayOpening.count() > 0;
           if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }

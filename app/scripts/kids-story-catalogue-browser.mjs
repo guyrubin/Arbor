@@ -84,12 +84,20 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       // never force a style or accept a gray placeholder as visible artwork.
       await page.waitForFunction(() => {
         if (!document.querySelector('[data-book-reader]')) return true;
-        const base = document.querySelector('[data-book-plate] > img');
-        const images = [...document.querySelectorAll('[data-book-plate] > img, [data-book-state-plate] > img')];
-        return base instanceof HTMLImageElement && images.every(img => {
-          if (!(img instanceof HTMLImageElement) || !img.complete || img.naturalWidth <= 0) return false;
-          const style = getComputedStyle(img), rect = img.getBoundingClientRect();
+        const current = document.querySelector('[data-book-reader] .bk-turn[data-book-page]');
+        if (!current) return false;
+        // Only the mounted intended page: an opaque image inside a still
+        // transparent art, text or page container is not a painted book.
+        const surfaces = [current, ...current.querySelectorAll('.bk-art, .bk-text, .bk-cover-title, .bk-state-plate')];
+        const painted = element => {
+          const style = getComputedStyle(element), rect = element.getBoundingClientRect();
           return style.visibility === 'visible' && Number(style.opacity) === 1 && rect.width > 0 && rect.height > 0;
+        };
+        const base = current.querySelector('[data-book-plate] > img');
+        const images = [...current.querySelectorAll('[data-book-plate] > img, [data-book-state-plate] > img')];
+        return surfaces.every(painted) && base instanceof HTMLImageElement && images.every(img => {
+          if (!(img instanceof HTMLImageElement) || !img.complete || img.naturalWidth <= 0) return false;
+          return painted(img);
         });
       }, undefined, { timeout: 12000 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -176,7 +184,8 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       }
       if (scroll) await scroll.evaluate(element => { element.scrollTop = 0; });
       if (!legacy) await page.locator('[data-reading-scroll]').evaluateAll(elements => elements.forEach(element => { element.scrollTop = 0; }));
-      const frame = { name, words, lines, controls: toys, controlsInitiallyVisible: initiallyVisible, images };
+      const paintSurfaces = await page.locator('[data-book-reader] .bk-turn[data-book-page], [data-book-reader] .bk-turn[data-book-page] :is(.bk-art, .bk-text, .bk-cover-title, .bk-state-plate)').evaluateAll(elements => elements.map(element => ({ surface: element.className, opacity: Number(getComputedStyle(element).opacity) })));
+      const frame = { name, words, lines, controls: toys, controlsInitiallyVisible: initiallyVisible, images, paintSurfaces };
       frames.push(frame);
       if (capture) await shot(name);
       await persist();

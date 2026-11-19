@@ -33,7 +33,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Build actual Kids components with synthetic adapters
         run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
-      - name: Operate Sneak, Maker Desk and Ice Age in all four release cells
+      - name: Operate Sneak, Maker Desk, Ice Age, Crank Works and Bottle Lab in all four release cells
         timeout-minutes: 25
         run: node scripts/kids-game-regression-diagnostic.mjs
       - name: Retain original records and screenshots on success or failure
