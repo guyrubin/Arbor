@@ -89,14 +89,144 @@ jobs:
         run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
       - name: Verify Kids games, selected loading and audio cancellation (EN/HE)
         run: node scripts/kids-performance-browser.mjs
-      - name: Retain synthetic Kids browser evidence
+      - name: Retain synthetic Kids records and core browser evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: kids-performance-evidence
-          path: app/output/kids-performance
+          path: |
+            app/output/kids-performance
+            !app/output/kids-performance/story-catalogue/**/*.png
+            !app/output/kids-performance/maker-cycles/**
+            !app/output/kids-performance/additional-activities/**
           retention-days: 7
           overwrite: true
+      - name: Retain complete maker browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-maker-cycle-evidence
+          path: app/output/kids-performance/maker-cycles
+          retention-days: 7
+      - name: Retain additional activity browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-additional-activity-evidence
+          path: app/output/kids-performance/additional-activities
+          retention-days: 7
+      - name: Retain story evidence (david-and-goliath)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-david-and-goliath
+          path: app/output/kids-performance/story-catalogue/legacy-david-and-goliath-*/**
+          retention-days: 7
+      - name: Retain story evidence (moses-and-pharaoh)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-moses-and-pharaoh
+          path: app/output/kids-performance/story-catalogue/legacy-moses-and-pharaoh-*/**
+          retention-days: 7
+      - name: Retain story evidence (noahs-ark)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-noahs-ark
+          path: app/output/kids-performance/story-catalogue/legacy-noahs-ark-*/**
+          retention-days: 7
+      - name: Retain story evidence (jonah-and-the-great-fish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-jonah-and-the-great-fish
+          path: app/output/kids-performance/story-catalogue/legacy-jonah-and-the-great-fish-*/**
+          retention-days: 7
+      - name: Retain story evidence (joseph-and-his-brothers)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-joseph-and-his-brothers
+          path: app/output/kids-performance/story-catalogue/legacy-joseph-and-his-brothers-*/**
+          retention-days: 7
+      - name: Retain story evidence (jacob-wrestling-the-angel)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-jacob-wrestling-the-angel
+          path: app/output/kids-performance/story-catalogue/legacy-jacob-wrestling-the-angel-*/**
+          retention-days: 7
+      - name: Retain story evidence (five-smooth-stones-en)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-five-smooth-stones-en
+          path: app/output/kids-performance/story-catalogue/book-five-smooth-stones-*-en*/**
+          retention-days: 7
+      - name: Retain story evidence (five-smooth-stones-he)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-five-smooth-stones-he
+          path: app/output/kids-performance/story-catalogue/book-five-smooth-stones-*-he*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-poo-sit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-poo-sit
+          path: app/output/kids-performance/story-catalogue/plan-plan-poo-sit-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-sleep-alone)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-sleep-alone
+          path: app/output/kids-performance/story-catalogue/plan-plan-sleep-alone-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-dropoff)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-dropoff
+          path: app/output/kids-performance/story-catalogue/plan-plan-dropoff-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-big-feelings)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-big-feelings
+          path: app/output/kids-performance/story-catalogue/plan-plan-big-feelings-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-screen-end)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-screen-end
+          path: app/output/kids-performance/story-catalogue/plan-plan-screen-end-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-new-food)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-new-food
+          path: app/output/kids-performance/story-catalogue/plan-plan-new-food-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-toilet-start)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-toilet-start
+          path: app/output/kids-performance/story-catalogue/plan-plan-toilet-start-*/**
+          retention-days: 7
+      - name: Retain story evidence (plan-stay-in-bed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-story-plan-stay-in-bed
+          path: app/output/kids-performance/story-catalogue/plan-plan-stay-in-bed-*/**
+          retention-days: 7
       - run: npm test
       - run: npm run check:framework
       - run: npm run check:floors

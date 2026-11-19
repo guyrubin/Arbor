@@ -1,11 +1,11 @@
 import { useId } from 'react';
-import { FLOWER_OPEN, PEP_SIDE, ROOM_ART, ROVER_FRONT, ROVER_MARKS } from './windupKit';
+import { FLOWER_OPEN, PEP_SIT, ROOM_ART, ROVER_FRONT, ROVER_MARKS } from './windupKit';
 
 const mk = (name: string) => `var(--mk-${name})`;
 const mx = (a: string, b: string, share: number) => `color-mix(in srgb, ${mk(a)} ${share}%, ${b === 'transparent' ? 'transparent' : mk(b)})`;
 
 /** Wind-up Racer cover, a kit picture: Rover tearing along its felt track
- * under the pavilion's arches, its brass key spinning, Pep bounding behind,
+ * under the pavilion's arches, its brass key spinning, Pep watching behind,
  * a knit flower ahead. One subject, no text; it reads at 80px (Rover and the
  * key sit in the middle third that every crop keeps). */
 export default function WindupRaceCover({ size = 'tile' }: { size?: 'tile' | 'card' }) {
@@ -31,7 +31,7 @@ export default function WindupRaceCover({ size = 'tile' }: { size?: 'tile' | 'ca
     <path d="M-20 240 L420 218" style={{ fill: 'none', stroke: mx('cream', 'white', 50), strokeWidth: 3 }} />
     <path d="M-20 272 L420 252" style={{ fill: 'none', stroke: mx('cream', 'white', 50), strokeWidth: 5, strokeDasharray: '38 30' }} />
     <ellipse cx="44" cy="222" rx="40" ry="7" style={{ fill: `url(#${id}shade)` }} />
-    <g transform="translate(44 224) scale(-1 1)"><image href={PEP_SIDE.src} x="-44" y="-92" width="88" height="92" preserveAspectRatio="none" /></g>
+    <image href={PEP_SIT.src} x="-13" y="105" width="122" height="122" />
     <ellipse cx="338" cy="216" rx="32" ry="7" style={{ fill: `url(#${id}shade)` }} />
     <image href={FLOWER_OPEN.src} x="296" y="88" width="86" height="129" />
     {/* Dust behind the wheels, and the wind going by. */}

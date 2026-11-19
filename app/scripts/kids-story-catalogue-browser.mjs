@@ -1,8 +1,8 @@
 /** Actual complete catalogue reads. Real legacy and canonical reader state;
  * real committed canonical/Joseph art; explicitly synthetic profile, poses,
  * plan plate responses and unavailable narration. No generation or real user.
- * Every cell persists progress before another cell begins and failures do not
- * prevent the remaining titles/languages from producing useful evidence. */
+ * Three isolated cells run at a time. Each persists its own progress, and
+ * failures do not prevent the remaining titles/languages producing evidence. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -26,16 +26,26 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
     ...(cell.lang === 'he' && !cell.id.startsWith('landscape-') ? [{ ...cell, gender: 'boy', label: `${cell.id}-boy` }] : []),
   ]);
   const titles = [...LEGACY.map(id => ({ kind: 'legacy', id })), ...BOOKS.map(id => ({ kind: 'book', id })), ...PLANS.map(id => ({ kind: 'plan', id }))];
-  const results = [];
-  for (const title of titles) for (const cell of cells) {
+  const jobs = titles.flatMap(title => cells.map(cell => ({ title, cell, label: `${title.kind}-${title.id}-${cell.label}` })));
+  assert.equal(jobs.length, 120, 'the full catalogue keeps all 120 independent cells');
+  assert.equal(new Set(jobs.map(job => job.label)).size, jobs.length, 'each cell owns a unique evidence folder');
+  const results = new Array(jobs.length);
+  const reportErrors = [];
+  let reportWrites = Promise.resolve();
+  const writeResults = () => {
+    // Array slots preserve catalogue order even when cells finish out of order.
+    // Snapshot before queueing: no overlapping writes or later mutations.
+    const completed = results.filter(Boolean);
+    const body = JSON.stringify({ passed: completed.length === jobs.length && completed.every(result => result.passed), scope: 'Actual complete legacy/canonical/plan reads; committed canonical/Joseph art; synthetic geometric identity, unavailable narration and plan image bytes. No real-family eligibility or live plan-art acceptance.', expectedCells: jobs.length, completedCells: completed.length, results: completed }, null, 2);
+    reportWrites = reportWrites.then(() => writeFile(path.join(folder, 'results.json'), body)).catch(error => { reportErrors.push(String(error)); });
+    return reportWrites;
+  };
+  const runCell = async (title, cell) => {
     const label = `${title.kind}-${title.id}-${cell.label}`;
     const cellFolder = path.join(folder, label);
-    await mkdir(cellFolder, { recursive: true });
-    const context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
-    const page = await context.newPage();
-    page.setDefaultTimeout(12000);
     const errors = [], unexpected = [], requests = [], issues = [], screenshots = [], frames = [], paths = [];
-    const evidence = { title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames, paths, screenshots, issues, errors, unexpected, requests };
+    const evidence = { label, title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames, paths, screenshots, issues, errors, unexpected, requests };
+    let context, page;
     let injectedFailure = false, planRecovery = false;
     const check = (condition, message) => { if (!condition) issues.push(message); };
     const persist = () => writeFile(path.join(cellFolder, 'progress.json'), JSON.stringify(evidence, null, 2));
@@ -69,44 +79,6 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       });
       await page.waitForFunction(() => [...document.querySelectorAll('[data-kid-book-reader], [data-kid-book-reader] > div, [data-kid-book-text]')].every(element => Number(getComputedStyle(element).opacity) >= .995));
     };
-    page.on('pageerror', error => errors.push(error.message));
-    page.on('response', response => {
-      const url = new URL(response.url());
-      if (/\/visuals\/(books|stories)\//.test(url.pathname)) requests.push({ source: 'committed-art', path: url.pathname, status: response.status() });
-    });
-    await context.addInitScript(() => {
-      window.storyCatalogueMedia = { plays: 0, captures: 0, syntheses: 0 };
-      HTMLMediaElement.prototype.play = function () { window.storyCatalogueMedia.plays++; return Promise.resolve(); };
-      if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { window.storyCatalogueMedia.captures++; throw new Error('No recording in the synthetic catalogue'); };
-      if (window.speechSynthesis) window.speechSynthesis.speak = () => { window.storyCatalogueMedia.syntheses++; };
-    });
-    // A geometric layout plate, encoded by the browser: not an unrelated
-    // scene presented as accepted plan artwork. The production PNG loader is
-    // exercised with a real decodable image and its real authenticated route.
-    const geometricPng = Buffer.from(await page.evaluate(() => {
-      const canvas = document.createElement('canvas'); canvas.width = 1536; canvas.height = 1024;
-      const ctx = canvas.getContext('2d'); ctx.fillStyle = '#edf1ee'; ctx.fillRect(0, 0, 1536, 1024);
-      ctx.fillStyle = '#d5e1df'; ctx.fillRect(0, 696, 1536, 328);
-      ctx.strokeStyle = '#93aca8'; ctx.lineWidth = 3;
-      for (let x = 192; x < 1536; x += 192) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1024); ctx.stroke(); }
-      return canvas.toDataURL('image/png').split(',')[1];
-    }), 'base64');
-    await context.route('**/*', async route => {
-      const request = route.request(), url = new URL(request.url());
-      if (url.origin !== new URL(base).origin) { unexpected.push(request.url()); return route.abort(); }
-      if (url.pathname === `/api/children/${CHILD}/book-assets/${title.id}/file` && url.searchParams.get('path') === 'manifest.json') {
-        requests.push({ source: 'synthetic-unavailable-narration', path: url.pathname, method: request.method(), authorization: request.headers().authorization });
-        return route.fulfill({ status: 404, contentType: 'application/json', body: '{}', headers: { 'cache-control': 'no-store' } });
-      }
-      if (title.kind === 'plan' && url.pathname.startsWith(`/api/plans/plates/${title.id}/`)) {
-        const status = !injectedFailure ? 404 : 200;
-        injectedFailure = true;
-        requests.push({ source: 'synthetic-geometric-plan-plate', path: url.pathname, status, method: request.method(), authorization: request.headers().authorization });
-        return route.fulfill(status === 404 ? { status, contentType: 'application/json', body: '{}' } : { status, contentType: 'image/png', body: geometricPng });
-      }
-      if (url.pathname.startsWith('/api/')) { unexpected.push(`${request.method()} ${url.pathname}`); return route.abort(); }
-      return route.continue();
-    });
     const glyphs = async locator => locator.evaluateAll(elements => elements.map(element => {
       const box = element.getBoundingClientRect(), style = getComputedStyle(element);
       const range = document.createRange(); range.selectNodeContents(element);
@@ -156,6 +128,48 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       return frame;
     };
     try {
+      await mkdir(cellFolder, { recursive: true });
+      context = await browser.newContext({ viewport: { width: cell.w, height: cell.h }, reducedMotion: 'reduce' });
+      page = await context.newPage();
+      page.setDefaultTimeout(12000);
+      page.on('pageerror', error => errors.push(error.message));
+      page.on('response', response => {
+        const url = new URL(response.url());
+        if (/\/visuals\/(books|stories)\//.test(url.pathname)) requests.push({ source: 'committed-art', path: url.pathname, status: response.status() });
+      });
+      await context.addInitScript(() => {
+        window.storyCatalogueMedia = { plays: 0, captures: 0, syntheses: 0 };
+        HTMLMediaElement.prototype.play = function () { window.storyCatalogueMedia.plays++; return Promise.resolve(); };
+        if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { window.storyCatalogueMedia.captures++; throw new Error('No recording in the synthetic catalogue'); };
+        if (window.speechSynthesis) window.speechSynthesis.speak = () => { window.storyCatalogueMedia.syntheses++; };
+      });
+      // A geometric layout plate, encoded by the browser: not an unrelated
+      // scene presented as accepted plan artwork. The production PNG loader is
+      // exercised with a real decodable image and its real authenticated route.
+      const geometricPng = Buffer.from(await page.evaluate(() => {
+        const canvas = document.createElement('canvas'); canvas.width = 1536; canvas.height = 1024;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#edf1ee'; ctx.fillRect(0, 0, 1536, 1024);
+        ctx.fillStyle = '#d5e1df'; ctx.fillRect(0, 696, 1536, 328);
+        ctx.strokeStyle = '#93aca8'; ctx.lineWidth = 3;
+        for (let x = 192; x < 1536; x += 192) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1024); ctx.stroke(); }
+        return canvas.toDataURL('image/png').split(',')[1];
+      }), 'base64');
+      await context.route('**/*', async route => {
+        const request = route.request(), url = new URL(request.url());
+        if (url.origin !== new URL(base).origin) { unexpected.push(request.url()); return route.abort(); }
+        if (url.pathname === `/api/children/${CHILD}/book-assets/${title.id}/file` && url.searchParams.get('path') === 'manifest.json') {
+          requests.push({ source: 'synthetic-unavailable-narration', path: url.pathname, method: request.method(), authorization: request.headers().authorization });
+          return route.fulfill({ status: 404, contentType: 'application/json', body: '{}', headers: { 'cache-control': 'no-store' } });
+        }
+        if (title.kind === 'plan' && url.pathname.startsWith(`/api/plans/plates/${title.id}/`)) {
+          const status = !injectedFailure ? 404 : 200;
+          injectedFailure = true;
+          requests.push({ source: 'synthetic-geometric-plan-plate', path: url.pathname, status, method: request.method(), authorization: request.headers().authorization });
+          return route.fulfill(status === 404 ? { status, contentType: 'application/json', body: '{}' } : { status, contentType: 'image/png', body: geometricPng });
+        }
+        if (url.pathname.startsWith('/api/')) { unexpected.push(`${request.method()} ${url.pathname}`); return route.abort(); }
+        return route.continue();
+      });
       await page.goto(`${base}/?storyCatalogue=${title.kind}&id=${title.id}&lang=${cell.lang}&gender=${cell.gender}`);
       await page.waitForFunction(() => Boolean(window.storyCatalogueFixture));
       const spec = await page.evaluate(() => window.storyCatalogueFixture);
@@ -314,19 +328,46 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       if (issues.length) await shot('failure');
     } catch (error) {
       issues.push(String(error));
-      await shot('failure').catch(() => {});
-      evidence.layout = await page.locator('[data-kid-book-reader], [data-kid-book-page], [data-kid-book-text], [data-book-reader], [data-book-text], [data-book-art]').evaluateAll(elements => elements.map(element => {
-        const box = element.getBoundingClientRect(), style = getComputedStyle(element);
-        return { tag: element.tagName, attrs: [...element.attributes].filter(a => a.name.startsWith('data-')).map(a => [a.name, a.value]), box: { x: box.x, y: box.y, width: box.width, height: box.height }, overflow: style.overflow, fontSize: style.fontSize, text: element.textContent?.slice(0, 300) };
-      })).catch(() => []);
+      evidence.passed = false;
+      if (page) {
+        await shot('failure').catch(() => {});
+        evidence.layout = await page.locator('[data-kid-book-reader], [data-kid-book-page], [data-kid-book-text], [data-book-reader], [data-book-text], [data-book-art]').evaluateAll(elements => elements.map(element => {
+          const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+          return { tag: element.tagName, attrs: [...element.attributes].filter(a => a.name.startsWith('data-')).map(a => [a.name, a.value]), box: { x: box.x, y: box.y, width: box.width, height: box.height }, overflow: style.overflow, fontSize: style.fontSize, text: element.textContent?.slice(0, 300) };
+        })).catch(() => []);
+      }
     } finally {
-      await persist();
-      results.push(evidence);
-      await writeFile(path.join(folder, 'results.json'), JSON.stringify({ passed: results.every(result => result.passed), scope: 'Actual complete legacy/canonical/plan reads; committed canonical/Joseph art; synthetic geometric identity, unavailable narration and plan image bytes. No real-family eligibility or live plan-art acceptance.', expectedCells: titles.length * cells.length, results }, null, 2));
-      await context.close();
+      if (context) await context.close().catch(error => { issues.push(`context cleanup: ${error}`); evidence.passed = false; });
+      await persist().catch(error => { issues.push(`progress write: ${error}`); evidence.passed = false; });
     }
-  }
+    return evidence;
+  };
+  let nextJob = 0;
+  const worker = async () => {
+    while (nextJob < jobs.length) {
+      const index = nextJob++;
+      const { title, cell, label } = jobs[index];
+      const started = Date.now();
+      try {
+        results[index] = await runCell(title, cell);
+      } catch (error) {
+        // A harness/setup failure also owns a result; later cells still run.
+        results[index] = { label, title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames: [], paths: [], screenshots: [], issues: [`cell runner: ${error}`], errors: [], unexpected: [], requests: [] };
+        await mkdir(path.join(folder, label), { recursive: true }).then(() => writeFile(path.join(folder, label, 'progress.json'), JSON.stringify(results[index], null, 2))).catch(writeError => { reportErrors.push(`${label}: ${writeError}`); });
+      }
+      results[index].elapsedMs = Date.now() - started;
+      console.log(`[story-catalogue] ${results[index].passed ? 'PASS' : 'FAIL'} ${label} ${(results[index].elapsedMs / 1000).toFixed(1)}s`);
+      await writeResults();
+    }
+  };
+  const workers = await Promise.allSettled(Array.from({ length: 3 }, () => worker()));
+  for (const worker of workers) if (worker.status === 'rejected') reportErrors.push(String(worker.reason));
+  await reportWrites;
+  assert.equal(results.filter(Boolean).length, jobs.length, 'every scheduled cell records a result');
+  assert.deepEqual(results.map(result => result.label), jobs.map(job => job.label), 'final results retain all unique cells in deterministic catalogue order');
+  assert.equal(new Set(results.map(result => result.label)).size, 120, 'all 120 independent cells are retained');
+  await writeResults();
   const failed = results.filter(result => !result.passed);
-  if (failed.length) throw new AggregateError(failed.map(result => new Error(`${result.kind}/${result.title}/${result.viewport}/${result.gender}: ${result.issues.join('; ')}`)), `Story catalogue failed ${failed.length}/${results.length} cells; every cell's progress and screenshots are retained in story-catalogue.`);
+  if (failed.length || reportErrors.length) throw new AggregateError([...failed.map(result => new Error(`${result.kind}/${result.title}/${result.viewport}/${result.gender}: ${result.issues.join('; ')}`)), ...reportErrors.map(error => new Error(error))], `Story catalogue failed ${failed.length}/${results.length} cells with ${reportErrors.length} reporting errors; every cell's progress and screenshots are retained in story-catalogue.`);
   return results;
 }

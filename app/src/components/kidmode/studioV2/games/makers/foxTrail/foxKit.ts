@@ -59,6 +59,8 @@ const fy = (sheet: PepSheet, y: number) => ((y + sheet.dy - sheet.box[1]) / shee
 const pct = (sheet: PepSheet, pts: Outline) => `polygon(${pts.map(([x, y]) => `${fx(sheet, x).toFixed(2)}% ${fy(sheet, y).toFixed(2)}%`).join(', ')})`;
 const at = (sheet: PepSheet, x: number, y: number) => `${fx(sheet, x).toFixed(2)}% ${fy(sheet, y).toFixed(2)}%`;
 /** World units per board pixel: Pep stands about 128 units to his ear tips, a quarter of a phone's width. */
+/** The static cover uses the native right-facing mission pose; the runtime puppet keeps its own geometry. */
+export const PEP_COVER = made('kit-pep-mission-sniffing', 600, 624, 'shared kit library (kit v30/16-wonder-crew-key-art.png)');
 export const PEP_K = 0.29;
 export function pepParts(sheet: PepSheet = PEP_SIDE) {
   return {

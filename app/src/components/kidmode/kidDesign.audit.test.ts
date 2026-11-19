@@ -46,7 +46,7 @@ const COLOUR = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g;
  *  colour literals per kid stylesheet. May only shrink. The token file holds
  *  the register's ten source colours; the rest of the shell holds none. */
 const COLOUR_LITERALS: Readonly<Record<string, number>> = {
-  "components/kidmode/studioV2/games/adventures/adventures.css": 137,
+  "components/kidmode/studioV2/games/adventures/adventures.css": 0,
   // The makers' material palette (16 Nov 2026): the one token file their scene art draws from.
   "components/kidmode/studioV2/games/makers/makerPalette.css": 64,
   // The makers' shared play kit (the Game Cut): one stage and one HUD for all twelve, on tokens only.

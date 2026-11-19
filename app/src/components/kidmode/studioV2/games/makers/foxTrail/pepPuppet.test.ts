@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { STRIDE, pepPose, type PuppetInput } from './pepPuppet';
-import { BLOOMS, DOME_SUN, FERNS, FRIENDS, GATHER, LAYERS, PEP_SIDE, PLATES, SPRITES, STATION_CREW, pepParts } from './foxKit';
+import { BLOOMS, DOME_SUN, FERNS, FRIENDS, GATHER, LAYERS, PEP_COVER, PEP_SIDE, PLATES, SPRITES, STATION_CREW, pepParts } from './foxKit';
 
 const still: PuppetInput = { phase: 0, speed: 0, accel: 0, air: false, vy: 0, tuck: 0, spin: 0, squash: 0, stretch: 0, sit: 0, shake: 0, t: 1, reduced: false };
 
@@ -74,7 +74,7 @@ describe('the trail’s kit pictures', () => {
     }
   });
   it('ships every sprite and friend it shows', () => {
-    for (const art of [...Object.values(SPRITES), ...Object.values(FRIENDS).map(f => f.art), PEP_SIDE]) expect(existsSync(path.join(PUBLIC, art.src)), art.src).toBe(true);
+    for (const art of [...Object.values(SPRITES), ...Object.values(FRIENDS).map(f => f.art), PEP_SIDE, PEP_COVER]) expect(existsSync(path.join(PUBLIC, art.src)), art.src).toBe(true);
   });
   it('stacks the valley far to near: each layer nearer, bigger and faster than the one behind', () => {
     for (let i = 1; i < LAYERS.length; i++) {

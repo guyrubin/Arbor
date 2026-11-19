@@ -70,7 +70,6 @@ export default function SeasonDial() {
   const [held, setHeld] = useState(false);
   const [awake, setAwake] = useState(false);
   const [cheer, setCheer] = useState(0);
-  const [look, setLook] = useState(0);
   const [camera, setCamera] = useState<PlayCamera>({ x: 0.5, y: 0.42, zoom: 1.28 });
   const [caption, setCaption] = useState('');
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -458,7 +457,7 @@ export default function SeasonDial() {
     const hit = what ?? world.current?.touchAt(x, y) ?? 'openSky', year = wrapYear(turnsRef.current), season = seasonAt(year);
     const gave = world.current?.answer(hit, x, y) ?? 0;
     fx.current?.burst(x / layoutRef.current.w, y / layoutRef.current.h, 'ring', { tones: ['white'] });
-    void selectionHaptic(); setLook(x);
+    void selectionHaptic();
     if (hit === 'cloudPuff') gather(x, y);
     else if (hit === 'sunDisc') shine(x, y);
     else if (hit === 'treeCrown') {
@@ -601,11 +600,12 @@ export default function SeasonDial() {
   const sprite = (id: CastId, picture: CastPicture, spot: Spot) => {
     const show = shows[id]; if (show <= 0.02) return null;
     const ratio = picture.width / picture.height, h = spot.h * picture.tall;
-    const toward = look ? (look < spot.x ? -1 : 1) : (layout.tree.x < spot.x ? -1 : 1), flip = picture.faces !== 0 && picture.faces !== toward;
+    // Kit poses keep their native anatomy and equipment attachment sides.
+    // A touch still answers through the cheer wrapper and the world below.
     return <button type="button" key={id} className="sd-friend" data-sd-friend={id} aria-label={w.friends[id]} onClick={() => pokeFriend(spot)}
       style={{ left: spot.x, top: spot.y, inlineSize: h * ratio, blockSize: h, opacity: Math.min(1, show * 1.4), '--sd-in': show.toFixed(3) } as CSSProperties}>
       <span className="sd-friend__shadow" aria-hidden="true" />
-      <span key={cheer} className="sd-friend__body" data-cheer={cheer > 0 || undefined}><img src={h > 240 ? picture.src : picture.src480 ?? picture.src} alt="" draggable={false} decoding="async" style={flip ? { transform: 'scaleX(-1)' } : undefined} /></span>
+      <span key={cheer} className="sd-friend__body" data-cheer={cheer > 0 || undefined}><img src={h > 240 ? picture.src : picture.src480 ?? picture.src} alt="" draggable={false} decoding="async" /></span>
     </button>;
   };
   const d = layout.dial;

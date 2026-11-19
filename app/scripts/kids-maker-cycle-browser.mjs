@@ -41,7 +41,8 @@ async function play(h, game) {
   const root = h.root;
   const done = () => exists('[data-studio-phase="result"]');
   const opening = page.locator('[data-play-skip]');
-  if (await opening.count()) await press(opening);
+  h.metrics.openingPressed = await opening.count() > 0;
+  if (h.metrics.openingPressed) await press(opening);
   await advance(300);
   const currentLabels = await page.locator('.play-quest__step[data-state="now"] .play-quest__label').evaluateAll(nodes => nodes.map(node => { const box = node.getBoundingClientRect(); return { text: node.textContent?.trim(), width: box.width, height: box.height, display: getComputedStyle(node).display }; }));
   for (const label of currentLabels) assert.ok(label.text && label.width > 0 && label.height > 0 && label.display !== 'none', 'The current maker chapter stays readable on this viewport');
@@ -90,10 +91,28 @@ async function play(h, game) {
       const state = await attrs(), act = state.act;
       if (['shape', 'colour', 'dress'].includes(act) && !chapters.includes(act)) {
         chapters.push(act);
-        if (act === 'shape') await key(page.locator('[data-bl-glass]'), 'Enter');
-        if (act === 'colour') { await key(page.locator('[data-bl-disc]').last(), 'Enter'); await key(page.locator('[data-bl-aya]'), 'Enter'); }
-        if (act === 'dress') { await key(page.locator('[data-bl-art]').first(), 'Enter'); await press(page.locator('[data-bl-turn="right"]')); await key(page.locator('[data-bl-art]').last(), 'Enter'); }
+        if (act === 'shape') {
+          await key(page.locator('[data-bl-glass]'), 'Enter');
+          assert.notEqual((await attrs()).shape, state.shape, 'The glass gesture changes the actual bottle shape');
+        }
+        if (act === 'colour') {
+          const disc = page.locator(`[data-bl-disc]:not([data-bl-disc="${state.tint}"])`).last();
+          const tint = await disc.getAttribute('data-bl-disc');
+          await key(disc, 'Enter');
+          assert.equal((await attrs()).tint, tint, 'The chosen tint reaches the actual bottle');
+          await key(page.locator('[data-bl-aya]'), 'Enter');
+          assert.notEqual((await attrs()).finish, state.finish, 'Polishing changes the actual finish');
+        }
+        if (act === 'dress') {
+          await key(page.locator('[data-bl-art]').first(), 'Enter');
+          await press(page.locator('[data-bl-turn="right"]'));
+          await key(page.locator('[data-bl-art]').last(), 'Enter');
+          assert.ok(Number((await attrs()).stickers) >= 2, 'Both chosen stickers reach the actual bottle');
+        }
         await advance(1600);
+        // The product intentionally also offers Next after a patient nine
+        // seconds. This gate must prove successful making, before that escape.
+        assert.ok(await exists(`[data-bl-next="${act}"]`), 'Actual making unlocks the chapter action before the patient-wait fallback');
       } else if (await exists('[data-bl-next]')) {
         Object.assign(decisions, await attrs()); await snapshot(act); await press(page.locator('[data-bl-next]'));
       } else if (await exists('[data-bl-keep]')) { await press(page.locator('[data-bl-keep]')); }
@@ -253,8 +272,32 @@ async function playOtherMaker(h, game) {
   if (game.id === 'season-dial') {
     const dial = page.locator('[data-sd-dial]');
     const season = async index => { await key(dial, 'Home'); await advance(700); for (let i = 0; i < index; i++) { await key(dial, 'PageUp'); await advance(700); } };
+    const castSeen = new Set(), castChecks = [];
+    const inspectCast = async gesture => {
+      const pictures = await page.locator('[data-sd-friend] img').evaluateAll(nodes => nodes.map(node => {
+        const transform = getComputedStyle(node).transform, m = transform === 'none' ? new DOMMatrix() : new DOMMatrix(transform);
+        return { id: node.closest('[data-sd-friend]').getAttribute('data-sd-friend'), determinant: m.a * m.d - m.b * m.c, src: node.currentSrc };
+      }));
+      for (const picture of pictures) { assert.ok(picture.determinant > 0, `${picture.id} keeps its native kit anatomy after ${gesture}`); castSeen.add(picture.id); }
+      castChecks.push({ gesture, pictures });
+    };
+    const touchBothSides = async () => {
+      const scene = page.locator('[data-sd-scene]'), box = await scene.boundingBox(); assert.ok(box);
+      await inspectCast('arrival');
+      for (const x of [0.04, 0.96]) { await press(scene, { position: { x: box.width * x, y: box.height * 0.45 } }); await inspectCast(x < 0.5 ? 'left scene touch' : 'right scene touch'); }
+    };
     await until(async () => (await attrs()).phase === 'meet', 6000, 'Meet the seasons');
-    for (let i = 0; i < 4; i++) { await season(i); await advance(3000); }
+    for (let i = 0; i < 4; i++) {
+      await season(i); await advance(3000); await touchBothSides();
+      if (i === 0) {
+        // Two normal dial nudges take spring into the pictured rain, where
+        // GobGob visits. Verify his attachment sides under the same touches.
+        await key(dial, 'ArrowRight'); await key(dial, 'ArrowRight'); await advance(250);
+        await touchBothSides(); await key(dial, 'Home');
+      }
+    }
+    for (const id of ['chockSummer', 'pepAutumn', 'gobgobRain']) assert.ok(castSeen.has(id), `Native orientation was exercised for ${id}`);
+    h.metrics.castOrientation = castChecks;
     await until(async () => (await attrs()).phase === 'grow', 10000, 'Four seasons met');
     await snapshot('seasons');
     const asks = [];
@@ -405,7 +448,7 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
       if (text !== lastState && record.trace.length < 160) { lastState = text; record.trace.push({ at: controlledMs, ...state }); }
     };
     const exists = async sel => { const loc = page.locator(sel); return await loc.count() > 0 && await loc.first().isVisible(); };
-    const press = async loc => { if (phone) await loc.tap(); else await loc.click(); record.inputs.pointer++; await advance(32); };
+    const press = async (loc, options = {}) => { if (phone) await loc.tap(options); else await loc.click(options); record.inputs.pointer++; await advance(32); };
     const key = async (loc, name) => { await loc.focus(); await loc.press(name); record.inputs.keyboard++; await advance(32); };
     const until = async (condition, budget, label) => {
       for (let elapsed = 0; elapsed <= budget; elapsed += 250) { if (await condition()) return; await advance(250); }
@@ -425,9 +468,28 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
       const url = new URL(base); url.searchParams.set('lang', viewport.lang); url.searchParams.set('studioNext', '1');
       await page.goto(url.href); await page.locator('[data-studio-home]').waitFor({ state: 'visible' }); await page.evaluate(() => document.fonts.ready);
       await press(page.locator(`button.studio-v2__door[data-world="${game.world}"]`));
-      await press(page.locator(`[data-studio-activity="${game.id}"]`));
-      await page.locator('[data-studio-phase="intro"]').waitFor({ state: 'visible' }); await snapshot('intro');
-      await press(page.locator('[data-studio-start]')); await root.waitFor({ state: 'visible' });
+      const activityTile = page.locator(`[data-studio-activity="${game.id}"]`);
+      if (game.id === 'fox-trail' || game.id === 'windup-race') {
+        const nativePose = game.id === 'fox-trail' ? 'kit-pep-mission-sniffing.webp' : 'pep-idle.webp';
+        const pose = activityTile.locator(`image[href$="${nativePose}"]`);
+        await pose.waitFor({ state: 'attached' });
+        const orientation = await pose.evaluate(async element => {
+          const image = new Image(); image.src = element.getAttribute('href'); await image.decode();
+          const matrix = element.getCTM();
+          return { src: image.src, determinant: matrix.a * matrix.d - matrix.b * matrix.c };
+        });
+        assert.ok(orientation.determinant > 0, 'The static cover retains its approved native pose without an ancestor reflection');
+        record.coverPose = orientation;
+      }
+      await press(activityTile);
+      const session = page.locator('[data-studio-phase]');
+      await session.waitFor({ state: 'visible' });
+      record.entryPhase = await session.getAttribute('data-studio-phase');
+      // Makers use their own PlayOpening immediately. The other curated
+      // activities have the shared Studio introduction and Start control.
+      if (record.entryPhase === 'intro') { await snapshot('intro'); await press(page.locator('[data-studio-start]')); }
+      else assert.equal(record.entryPhase, 'play', 'The actual maker session opens directly into its authored opening');
+      await root.waitFor({ state: 'visible' });
       // Keep React's Suspense minimum running until the real mechanic mounts.
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
       assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
@@ -448,7 +510,10 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
       else await press(page.locator('[data-studio-replay]'));
       await root.waitFor({ state: 'visible' });
       assert.equal(await page.locator(resultSelector).count(), 0, 'Replay clears the prior completion');
-      await snapshot('replay'); record.replay = { fresh: true, state: await attrs() };
+      const replayOpening = page.locator('[data-play-skip]');
+      const openingPressed = await replayOpening.count() > 0;
+      if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
+      await snapshot('replay'); record.replay = { fresh: true, openingPressed, state: await attrs() };
       // Exit while a new session is active; future callbacks must not finish it.
       await press(page.locator('.review-bar > button').first());
       await page.locator(`.studio-v2--world[data-world="${game.world}"]`).waitFor({ state: 'visible' });

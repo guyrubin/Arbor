@@ -704,7 +704,7 @@ export function BookReader({
                     <span>{labelFor(repair.promptLabel, lang)}</span>
                   </p>
                 )}
-                {!atEnd && <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
+                {!atEnd && <nav className="bk-nav" data-compact={layout.compactNav ? "" : undefined} style={{ minBlockSize: px(layout.compactNav ? 56 : Math.min(layout.navPx, 96) - 8) }}>
                   {!onCover ? <KidToy tone="paper" shape="round" glyph={TURN_GLYPHS.back} data-book-back="" aria-label={bookString("back", lang)} onClick={back} /> : <span />}
                   {forward}
                 </nav>}

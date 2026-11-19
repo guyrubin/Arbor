@@ -162,6 +162,8 @@ export interface BookPageLayout {
   titlePx: number;
   /** Height reserved at the bottom of the text box for the page controls. */
   navPx: number;
+  /** A dense stacked page uses 56 px controls to preserve readable words. */
+  compactNav?: boolean;
   /** Height of the choice-card row (0 when none), and one card's width and
    *  picture height. */
   cardsPx: number;
@@ -659,22 +661,39 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const colW = Math.min(W, 640);
   const colX = Math.round((W - colW) / 2);
   const padI = 20;
-  const padB = 16;
-  const navPx = 84;
+  let padB = 16;
+  let navPx = 84;
   const textW = colW - 2 * padI;
   // the decision page's cards replace the words in a second state: the sheet is
   // sized by the words, never by the cards (they never ride over the hero)
   const cardsPx = 0;
   const promptPx = content.prompt ? 56 : 0;
   const titlePx = Math.round(clamp(W * 0.085, 30, 40));
-  const fixed = navPx + (cardsPx ? cardsPx + 12 : 0) + promptPx + titleHeight(content.title ?? 0, textW, titlePx) + 2 * padB;
+  let fixed = navPx + (cardsPx ? cardsPx + 12 : 0) + promptPx + titleHeight(content.title ?? 0, textW, titlePx) + 2 * padB;
   const maxArtH = colW / PHONE_WINDOW;
   const floorArtH = Math.min(maxArtH, Math.ceil(Math.min(STACKED_ART_MIN_W, W - 16) / PHONE_WINDOW));
+  // p10's longer English echo used to force 17 px words beneath the 300 px
+  // picture. Only a dense, plain reading page borrows from the footer and
+  // paper margins: 56 px toys plus the sheet's 10 px gap still give generous
+  // tap targets. Use this only when the full words plus a real-font buffer
+  // fit: shorter Safari/SE screens keep their existing scrolling layout.
+  // Covers, choices and pending repairs retain their layout.
+  const compactFontBuffer = 8;
+  const compactNavPx = 56 + SHEET_GAP;
+  const wordsAtFloor = estimateTextHeight(content.paras, textW, 18, c.lineHeight);
+  const compactNav = !content.title && !content.choices && !content.prompt
+    && H - fixed - wordsAtFloor < floorArtH
+    && H - floorArtH - 2 * 8 - compactNavPx >= wordsAtFloor + compactFontBuffer;
+  if (compactNav) {
+    padB = 8;
+    navPx = compactNavPx;
+    fixed = navPx + 2 * padB;
+  }
   // Prefer a generous picture (>= 52 % of the height): take the largest type
   // that leaves it; else the largest that leaves the floor; else the floor.
   const maxType = W <= 480 ? 22 : 24;
   const targetArtH = Math.min(maxArtH, Math.max(H * 0.52, floorArtH));
-  const artAt = (type: number) => Math.min(maxArtH, H - (fixed + estimateTextHeight(content.paras, textW, type, c.lineHeight)));
+  const artAt = (type: number) => Math.min(maxArtH, H - (fixed + estimateTextHeight(content.paras, textW, type, c.lineHeight) + (compactNav ? compactFontBuffer : 0)));
   const floorType = Math.ceil(c.tokenPx);
   const types: number[] = [];
   for (let type = Math.max(maxType, floorType); type >= floorType; type--) types.push(type);
@@ -685,7 +704,9 @@ function layoutStacked(c: Ctx): BookPageLayout {
   // the reader's DOM net shrinks further only if it must) — never the token
   const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? lowTypes[lowTypes.length - 1] ?? floorType;
   const natural = artAt(typePx);
-  const wordsArtH = Math.floor(Math.max(natural, floorArtH));
+  // A compact page gives the spare pixels to real glyph wrapping, rather
+  // than growing its picture and reclaiming the font buffer as artwork.
+  const wordsArtH = compactNav ? floorArtH : Math.floor(Math.max(natural, floorArtH));
   // The cards state: keep the words' window when the cards fit under it at a
   // size a child can read; else step the window down (to none at all) until
   // they do. The cards never ride over the art.
@@ -730,6 +751,7 @@ function layoutStacked(c: Ctx): BookPageLayout {
     lineHeight: c.lineHeight,
     titlePx,
     navPx,
+    compactNav,
     cardsPx,
     cardW: plan?.cardW ?? 0,
     cardPicH: plan?.picH ?? 0,

@@ -5,9 +5,8 @@
  * - A story with a cover in the child's ONE theme (kidThemeManifest) shows that
  *   cover, portrait, edge to edge.
  * - A story with no cover in the theme gets a designed title card drawn from
- *   tokens: the pack's soft tint, a paper page framed by the comic line, the
- *   pack's spine band on the inline-start edge, the title set in the display
- *   face. No emoji, no flat colour block, never another theme's file.
+ *   Studio tokens: pearl paper, a cloth spine on the inline-start edge, and
+ *   the title in the Studio face. No emoji, never another theme's file.
  * - A finished book carries a small "read" mark (a tick in a disc) — never a
  *   count, a star or a score.
  * The title is printed under the cover; it is the button's accessible name.
@@ -19,8 +18,8 @@ import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidTheme
 import { storyBookArt } from "../../lib/storyPlateArt";
 import "./kidBookCover.css";
 
-/** The pack's soft tint (page) and full colour (spine) — the same pack tokens
- *  the catalogue uses, so a title card belongs to its pack, never a random hue. */
+/** Legacy pack colours remain available to catalogue callers. The shared
+ *  title card itself uses the Studio's paper and cloth materials. */
 export const KID_BOOK_TINT: Record<HeroPackId, { page: string; spine: string }> = {
   courage: { page: "var(--arbor-peach-soft)", spine: "var(--arbor-pack-courage)" },
   responsibility: { page: "var(--arbor-yellow-soft)", spine: "var(--arbor-pack-responsibility)" },
@@ -91,7 +90,7 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
   const art = storyCoverArt(theme, storyId);
   const portraitSlot = storyBookArt(theme, storyId)?.cover.heroSlot;
   // B-KID-122: until the picture has loaded the slot shows the book's own
-  // title card (pack tint + title, tokens only), and the picture fades in over
+  // title card (Studio paper + title, tokens only), and the picture fades in over
   // it (no fade under reduced motion). The slot's 3:4 box never changes size.
   const [loadedArt, setLoadedArt] = useState<string | null>(null);
   const loaded = isKidCoverLoaded(art?.src480 ?? null, loadedArt);
