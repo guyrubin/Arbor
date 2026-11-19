@@ -74,7 +74,7 @@ const getAuth = (): GoogleAuth => {
  * other) keeps its own declared region, which the route policy denies before
  * a call is made (COACH-3, unchanged).
  */
-export const ttsEndpointFor = (config: ArborConfig): { host: string; region: string } => {
+export const ttsEndpointFor = (config: Pick<ArborConfig, "vertexLocation">): { host: string; region: string } => {
   const region = providerRegion(config.vertexLocation);
   return region === "eu"
     ? { host: "https://eu-texttospeech.googleapis.com", region }
