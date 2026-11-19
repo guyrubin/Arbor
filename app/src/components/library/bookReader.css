@@ -287,8 +287,14 @@
   text-wrap: pretty;
 }
 .arbor-play .bk-text[data-kind="page"] .bk-words { display: flex; flex-direction: column; justify-content: center; }
-.arbor-play .bk-words p { margin: 0 0 0.6em; }
+.arbor-play .bk-words p { margin: 0 0 0.6em; flex-shrink: 0; }
 .arbor-play .bk-words p:last-child { margin-block-end: 0; }
+/* At the 18px reading floor, a short screen or a longer name can still need
+   more paper. Scroll the whole sheet, including its navigation, instead of
+   shrinking the words again or centring overflow above an inner scroller. */
+.arbor-play .bk-text[data-reading-scroll] { overflow-y: auto; overscroll-behavior: contain; }
+.arbor-play .bk-text[data-reading-scroll] .bk-words,
+.arbor-play .bk-text[data-reading-scroll] .bk-cover-words { flex: 0 0 auto; overflow: visible; justify-content: flex-start; }
 /* the child's name in running text: the teal of the cover's name line, so it
    reads as the child's own word (fix round 1, ruling 8: weight alone is not
    enough) */
@@ -296,11 +302,15 @@
 .arbor-play .bk-name-line bdi,
 .arbor-play .bk-end-frame bdi { font-weight: 800; color: var(--studio-teal-ink); }
 
-.arbor-play .bk-cover-words { display: flex; flex-direction: column; justify-content: center; gap: 0.4em; }
+/* The title's font bounds can exceed its tight line box into the paper's
+   padding. Keep that ink visible; a genuinely long cover already uses the
+   whole-paper overflow fallback, rather than an inner title scroller. */
+.arbor-play .bk-cover-words { display: flex; flex-direction: column; justify-content: center; gap: 0.4em; overflow: visible; }
 .arbor-play .bk-title {
   margin: 0;
-  font-family: var(--studio-font);
-  font-weight: 800;
+  font-family: var(--studio-font) !important;
+  font-weight: 800 !important;
+  color: var(--studio-graphite);
   line-height: 1.05;
   letter-spacing: -0.015em;
   text-wrap: balance;
@@ -419,6 +429,12 @@
 }
 .arbor-play .bk-nav .bk-grow,
 .arbor-play .bk-wide-toy { flex: 1 1 auto; }
+/* Dense phone pages preserve the reading floor by using a smaller footer,
+   not smaller words. These targets remain comfortably above 44 px. */
+.arbor-play .bk-reader .bk-nav[data-compact] { gap: 10px; }
+.arbor-play .bk-reader .bk-nav[data-compact] > .kid-toy { min-block-size: 56px; }
+.arbor-play .bk-reader .bk-nav[data-compact] > .kid-toy[data-shape="round"] { --toy-size: 56px; }
+.arbor-play .bk-text:has(> .bk-nav[data-compact]) { gap: 10px; }
 .arbor-play .bk-text[data-kind="page"] .bk-wide-toy,
 .arbor-play .bk-text[data-kind="panel"] .bk-wide-toy { flex: 0 1 auto; }
 
@@ -519,10 +535,17 @@
   animation: bk-fade 420ms var(--kid-ease-out) both;
 }
 .arbor-play .bk-end-main { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; gap: 0.5em; }
-.arbor-play .bk-end-title { margin: 0; font: 800 clamp(44px, 5vw, 76px)/1.05 var(--studio-font); letter-spacing: -0.02em; text-wrap: balance; }
+.arbor-play .bk-end-title { margin: 0; font: 800 clamp(44px, 5vw, 76px)/1.15 var(--studio-font); font-family: var(--studio-font) !important; font-weight: 800 !important; color: var(--studio-graphite); letter-spacing: -0.02em; text-wrap: balance; }
 .arbor-play .bk-end-frame { margin: 0; font: 700 clamp(22px, 1.8vw, 34px)/1.45 var(--studio-font); text-wrap: balance; }
 .arbor-play .bk-end-toys { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
 .arbor-play .bk-end-toys .kid-toy { white-space: nowrap; }
+.arbor-play .bk-text[data-end] { overflow-y: auto; overscroll-behavior: contain; }
+.arbor-play .bk-end[data-compact] { gap: 12px; }
+.arbor-play .bk-end[data-compact] .bk-end-main { flex: 1 0 auto; gap: 8px; }
+.arbor-play .bk-end[data-compact] .bk-end-toys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); inline-size: 100%; gap: 8px; flex-shrink: 0; }
+.arbor-play .bk-end[data-compact] .bk-end-toys .kid-toy { min-block-size: 56px; padding: 10px 12px; font-size: 20px; gap: 8px; }
+.arbor-play .bk-end[data-compact] .bk-end-toys .kid-toy .msr { font-size: 24px !important; }
+.arbor-play .bk-reader[data-mode="stacked"] .bk-end[data-compact] .bk-end-toys { grid-template-columns: minmax(0, 1fr); }
 .arbor-play .bk-grownup-toggle {
   appearance: none;
   display: inline-flex;

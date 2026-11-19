@@ -1,0 +1,20 @@
+/* Each emotion keeps its complete name. The coin stays at the shared size;
+   only its answer tag may make the button wider. Narrow screens can wrap the
+   answer row instead of splitting a feeling inside a word. */
+.arbor-play [data-kid-mood-play] > .kid-piece-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.arbor-play [data-kid-mood-play] .kid-piece {
+  inline-size: max-content;
+  min-inline-size: var(--piece);
+}
+
+.arbor-play [data-kid-mood-play] .kid-piece-tag {
+  max-inline-size: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}

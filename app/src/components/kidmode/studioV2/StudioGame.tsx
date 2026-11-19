@@ -192,9 +192,13 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
 
   return <section className="studio-game-view" data-studio-game={activityId} data-studio-phase={phase} dir={lang === "he" ? "rtl" : "ltr"} aria-label={copy.title}>
     {environment}
-    <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`}>
+    <div className={`studio-game-card${phase === "result" ? " studio-game-card--result" : ""}`} data-studio-created={phase === "result" ? creation?.kind : undefined}>
       <div className="studio-game-card__window" aria-hidden="true">
-        {maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+        {/* The finish brings the existing hero and crew into their empty world
+            room. Populated game covers remain the introduction, so a baked-in
+            host cannot appear a second time behind the live cast. */}
+        {phase === "result" && activity ? <StudioWorldPlate worldId={activity.worldId} sizes="(min-width: 700px) 620px, 100vw" />
+          : maker ? <StudioMakerCover id={maker} size="card" /> : cover ? <img src={cover.src480} srcSet={cover.srcSet} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" /> : isStudioAdventure(activityId) ? <StudioAdventureScene activityId={activityId} /> : art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 620px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
         {activity && <span className="studio-game-card__world">{labels.worlds[activity.worldId].title}</span>}
         <div className="studio-game-card__hero"><StudioPlayHero size={230} celebrate={phase === "result"} /></div>
         {phase === "result" && <StudioCrewCheer className="studio-stage__card-cheer" />}

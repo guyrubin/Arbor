@@ -11,6 +11,7 @@ import { selectionHaptic } from "../../lib/native";
 import { isKidModeActive, noteKidActivity } from "../../lib/kidModeGate";
 import { beatClick, closeBeatAudio } from "../../practice/beatAudio";
 import { kidAudioAllowed, onKidHush } from "../kidmode/audio/kidAudio";
+import "./studioPractice.css";
 
 /* Beat Keeper — tap on the beat. A rhythm/timing game (regulation): the drum
    flashes AND clicks on every beat at a steady tempo (B-KID-37: the first
@@ -184,8 +185,18 @@ export default function BeatKeeperWorld() {
     >
       {!kid && <ProgressPips total={rounds.length} current={roundIdx} tone="clay" />}
 
-      <div className="rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel" style={{ background: "var(--arbor-green-soft)", minHeight: 220 }}>
-        <button
+      <div className={kid ? "studio-practice-stage studio-practice-stage--beat" : "rounded-[var(--play-radius)] p-6 grid place-items-center comic-panel"} style={kid ? undefined : { background: "var(--arbor-green-soft)", minHeight: 220 }}>
+        {kid ? <button
+          type="button"
+          className="studio-beat-pad"
+          onClick={phase === "playing" ? tap : start}
+          data-beat={phase === "playing" ? pulse : undefined}
+          data-beat-phase={phase}
+          data-beat-flash={phase === "playing" && flash ? "" : undefined}
+          aria-label={phase === "playing" ? t("elev.play.beat.tapAria") : phase === "scored" ? t("elev.play.beat.scoredAria") : t("elev.play.beat.startAria")}
+        >
+          {phase === "playing" ? t("elev.play.beat.tap") : phase === "scored" ? "✔" : t("elev.play.beat.start")}
+        </button> : <button
           onClick={phase === "playing" ? tap : start}
           data-beat={phase === "playing" ? pulse : undefined}
           aria-label={phase === "playing" ? t("elev.play.beat.tapAria") : phase === "scored" ? t("elev.play.beat.scoredAria") : t("elev.play.beat.startAria")}
@@ -199,7 +210,7 @@ export default function BeatKeeperWorld() {
           }}
         >
           {phase === "playing" ? t("elev.play.beat.tap") : phase === "scored" ? "✔" : t("elev.play.beat.start")}
-        </button>
+        </button>}
       </div>
 
       {phase === "scored" && (

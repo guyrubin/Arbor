@@ -1,0 +1,6 @@
+/* Choice phrases may wrap between words. Their paper tags must be at least
+   as wide as one whole word; keep the shared coin and readable type sizes. */
+.arbor-play [data-adventure-choices] .kid-piece-tag {
+  min-inline-size: min-content;
+  overflow-wrap: normal;
+}

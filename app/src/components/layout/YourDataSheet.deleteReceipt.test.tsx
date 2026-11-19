@@ -44,6 +44,9 @@ vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast: vi.fn()
 vi.mock("../ui/Icon", () => ({ default: () => null }));
 vi.mock("../ui/Modal", () => ({ default: () => null }));
 vi.mock("../../lib/childData", () => ({
+  // The sheet now requires the registered sink inventory. This fixture
+  // deliberately models only two registered stores (see SUBS below).
+  CHILD_SUBCOLLECTIONS: ["behaviorLogs", "milestones"],
   exportChildData: vi.fn(), downloadJson: vi.fn(),
   downloadDeletionReceipt: (r: { erasedAt: string }) => { h.downloads.push([`arbor-deletion-receipt-${r.erasedAt.slice(0, 10)}.json`, r]); },
 }));
@@ -126,6 +129,16 @@ describe.each(["en", "he"] as const)("delete receipt (%s)", (lang) => {
     expect(notes(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.placesAll", { n: 3 }));
     expect(notes(tree)[t("elev.learnCare.receipt.clientDocs")]).toBe(t("elev.learnCare.receipt.placesAll", { n: 5 }));
     expect(byTestId(tree, "delete-receipt-ledger")).toBeUndefined();
+  });
+
+  it("a missing registered store cannot show the finished receipt", async () => {
+    h.lang = lang;
+    const missing = ledger();
+    delete missing["firestore:milestones"];
+    const tree = await eraseWith(receipt(missing));
+    expect(byTestId(tree, "delete-receipt").props["data-receipt-state"]).toBe("unfinished");
+    expect(byTestId(tree, "delete-receipt-retry")).toBeDefined();
+    expect(rows(tree)[t("elev.learnCare.receipt.records")]).toBe(t("elev.learnCare.receipt.notReached"));
   });
 
   it("a forced server failure (500): not finished, the server rows say not reached, Try again and Save are offered", async () => {

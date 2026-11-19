@@ -16,6 +16,7 @@ import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { cardCls } from "../ui/kit";
 import { ageYearsOf } from "../../lib/age/forChild";
+import "./adventuresKid.css";
 
 /** W2-SHELLPLAY critic r1 (law 8): the skill chip is keyed (was English). */
 const SKILL_KEY: Record<string, string> = {
@@ -238,7 +239,7 @@ export default function AdventuresTab() {
           <div className="flex items-center justify-between mb-5 gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-3xl">{scenario.emoji}</span>
-              <p className="text-lg font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenario.title}</p>
+              <p data-testid="adventure-scene-title" className="text-lg font-extrabold truncate" style={{ fontFamily: kidMode ? "var(--studio-font)" : "var(--font-display)", color: kidMode ? "var(--studio-graphite)" : "var(--arbor-ink)" }}>{scenarioTitle(scenario)}</p>
             </div>
             {/* KID-14: this measured 20 px tall — the only way back out of an
                 open adventure, under the touch floor. */}
@@ -260,7 +261,7 @@ export default function AdventuresTab() {
           <AnimatePresence mode="wait">
             <motion.div key={scene.id} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.2 }}>
               <div className="flex items-start gap-2 mb-5">
-                <p className="text-[22px] font-extrabold leading-snug max-w-2xl" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>
+                <p data-adventure-prompt="" className="text-[22px] font-extrabold leading-snug max-w-2xl" style={{ fontFamily: kidMode ? "var(--studio-font)" : "var(--font-display)", color: kidMode ? "var(--studio-graphite)" : "var(--arbor-ink)" }}>
                   {fillTemplate(scene.prompt, vars)}
                 </p>
                 {/* KID-09: every scenario prompt gets the read-aloud control. */}
@@ -273,7 +274,7 @@ export default function AdventuresTab() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div data-adventure-choices="" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 {scene.choices.map((c) => {
                   const isPicked = picked === c.id;
                   const reveal = picked !== null;

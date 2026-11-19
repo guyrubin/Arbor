@@ -1684,8 +1684,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const authoredCover = storyBookArt(kidTheme, activeStory.id)?.cover;
     // B-BOOK-26: no shared picture (B-BOOK-31 dropped the reference family's
     // cover) -> the book's title card with the child's OWN portrait, the shelf
-    // tile's composition scaled up; the card then carries the title, so the
-    // line under it is not repeated. A hero-less child: the complete card.
+    // tile's composition scaled up. On a short landscape screen the title
+    // moves onto the facing page, leaving room for the same own portrait.
+    // The title is visible once. A hero-less child: the complete card.
     const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
     const bookArtBox = (
       <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -1708,7 +1709,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       setSceneIndex(0);
       setOnCover(canShowCover(activeStory.id));
     };
-    const bigButton = { minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer" } as const;
+    const bigButton = { minBlockSize: 56, borderRadius: 16, fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: 20, border: "1px solid var(--studio-line)", cursor: "pointer" } as const;
     // B-KID-128: the page's controls sit under the words - on the wide spread
     // that is the text column beside the picture, never under a giant image.
     const bookNav = (
@@ -1719,7 +1720,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               disabled={atFirstPage}
               aria-label={kidsStoriesText("journey.back", uiLang === "he" ? "he" : "en")}
               className="disabled:opacity-30"
-              style={{ inlineSize: 48, minBlockSize: 48, alignSelf: "center", display: "grid", placeItems: "center", borderRadius: 999, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)", border: "var(--comic-line)", cursor: "pointer", flexShrink: 0 }}
+              style={{ inlineSize: 48, minBlockSize: 48, alignSelf: "center", display: "grid", placeItems: "center", borderRadius: 999, background: "var(--studio-surface)", color: "var(--studio-graphite)", border: "1px solid var(--studio-line)", cursor: "pointer", flexShrink: 0 }}
             >
               <Icon name="chevron_left" size={24} style={uiLang === "he" ? { transform: "scaleX(-1)" } : undefined} />
             </button>
@@ -1731,7 +1732,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
               disabled={!onCover && !canAdvance}
               data-kid-book-next=""
               className="disabled:opacity-40"
-              style={{ ...bigButton, flex: 1, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}
+              style={{ ...bigButton, flex: 1, background: "var(--studio-action)", color: "var(--studio-action-ink)" }}
             >
               {isLastBeat ? kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en") : kidsStoriesText("journey.next", uiLang === "he" ? "he" : "en")}
             </button>}
@@ -1744,7 +1745,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       </>
     );
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" data-story-authored={authoredCover ? activeStory.id : undefined} style={{ marginInline: -20, marginBlockStart: -24 }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-reader="" data-kid-studio="" data-story-authored={authoredCover ? activeStory.id : undefined} dir={langDir(renderLang)} lang={renderLang} style={{ marginInline: -20, marginBlockStart: -24 }}>
         <AnimatePresence mode="wait" initial={false}>
           {atEnd ? (
             <motion.div key="kid-book-end" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-ending="">
@@ -1752,10 +1753,10 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
                   keeps this book's sticker (its cover, die-cut), earned once. */}
               <div className="pt-4" data-kid-book-ending-keepsake=""><KidFinishMoment childId={childProfile.id} kind="book" refId={activeStory.id} lang={uiLang === "he" ? "he" : "en"} /></div>
               <div className="flex flex-col items-center gap-4 px-5 pt-5 text-center" data-kid-book-ending-actions="">
-                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} data-kid-book-end-title="" className="font-black" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 32, color: "var(--arbor-ink)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
+                <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} data-kid-book-end-title="" className="font-black" style={{ margin: 0, fontFamily: "var(--studio-font)", fontSize: 32, color: "var(--studio-graphite)" }}>{kidsStoriesText("journey.end", uiLang === "he" ? "he" : "en")}</p>
                 <div className="flex w-full max-w-md flex-col gap-3">
-                  <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
-                  <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
+                  <button type="button" onClick={readAgain} style={{ ...bigButton, background: "var(--studio-action)", color: "var(--studio-action-ink)" }}>{kidsStoriesText("reader.again", uiLang === "he" ? "he" : "en")}</button>
+                  <button type="button" onClick={exitJourney} style={{ ...bigButton, background: "var(--studio-surface)", color: "var(--studio-graphite)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
                 </div>
               </div>
             </motion.div>
@@ -1763,7 +1764,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="" className={KID_BOOK_SPREAD_CLASS}>
               {bookArtBox}
               <div className={KID_BOOK_SIDE_CLASS}>
-              {bookArt && <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>}
+              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" data-kid-book-fallback-title={!bookArt ? "" : undefined} className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--studio-font)", fontSize: 26, lineHeight: 1.2, color: "var(--studio-graphite)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
               {bookSide}
               </div>
             </motion.div>

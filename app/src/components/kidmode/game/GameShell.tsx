@@ -36,6 +36,8 @@ import { kidSfx } from "../audio/kidAudio";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { useGameSession } from "./GameSessionContext";
 import type { StudioCreation } from '../studioV2/studioCreations';
+import '../studioV2/studioTokens.css';
+import './gameFinish.css';
 
 /** B-KID-94: the world a finish screen belongs to (its souvenir), provided by
  *  the shell so every GameFinish inside it knows without a prop. */
@@ -93,7 +95,7 @@ export function GameProgressDots({ index, total }: { index: number; total: numbe
             inlineSize: i === index ? 14 : 10,
             blockSize: i === index ? 14 : 10,
             borderRadius: 999,
-            background: i < index ? "var(--arbor-green-ink)" : i === index ? "var(--arbor-sky-ink)" : "var(--arbor-rule-strong)",
+            background: i < index ? "var(--studio-teal-ink)" : i === index ? "var(--studio-graphite)" : "var(--studio-line)",
             transition: "inline-size 160ms, block-size 160ms",
           }}
         />
@@ -145,7 +147,7 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
 
   if (fullBleed) {
     return (
-      <div data-game-shell={worldId} data-full-bleed="" className="arbor-play relative" style={{ isolation: "isolate", blockSize: "100%", inlineSize: "100%" }} onPointerDownCapture={onGamePiecePointerDown}>
+      <div data-game-shell={worldId} data-kid-studio="" data-full-bleed="" className="arbor-play relative" style={{ isolation: "isolate", blockSize: "100%", inlineSize: "100%" }} onPointerDownCapture={onGamePiecePointerDown}>
         {children}
       </div>
     );
@@ -155,14 +157,14 @@ export function GameShell({ worldId, title, instruction, hearIt, progress, mood,
     // `.arbor-play`: the kid type scale, also when a surface mounts a game
     // directly (the overlay's feelings view), not only inside the arcade.
     <GameWorldContext.Provider value={tileWorld}>
-    <div data-game-shell={worldId} className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
+    <div data-game-shell={worldId} data-kid-studio="" className="arbor-play relative" style={{ isolation: "isolate" }} onPointerDownCapture={onGamePiecePointerDown}>
       <div className="relative space-y-4 p-1">
         {instruction && (
           <p
             dir="auto"
             data-game-instruction=""
             className="font-extrabold"
-            style={{ margin: 0, fontFamily: "var(--font-sans)", fontWeight: 800, fontSize: "var(--kid-t-say)", lineHeight: 1.3, color: "var(--arbor-ink)", background: "var(--arbor-paper-elevated)", border: "var(--comic-line)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
+            style={{ margin: 0, fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: "var(--kid-t-say)", lineHeight: 1.3, color: "var(--studio-graphite)", background: "var(--studio-frost)", border: "1px solid var(--studio-line)", boxShadow: "0 4px 14px var(--studio-shade)", borderRadius: 18, paddingInline: 16, paddingBlock: 10, display: "flex", alignItems: "center", gap: 10 }}
           >
             <span style={{ flex: "1 1 0%", minInlineSize: 0 }}>{instruction}</span>
             {/* B-KID-73: hear-it beside the words it repeats (its own glyph). */}

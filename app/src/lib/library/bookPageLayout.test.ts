@@ -14,22 +14,20 @@
 import { describe, expect, it } from "vitest";
 import { abramsLongRoad } from "./books/abramsLongRoad";
 import { fiveSmoothStones } from "./books/fiveSmoothStones";
-import { getPlate } from "./books";
+import { bookPlatesFor, getPlate } from "./books";
+import { PLAN_FIXTURE_BOOKS } from "./plans/planBooks";
+import { bookChoices, decisionOf } from "./bookShape";
+import { readPath } from "./bookFlow";
 import { computeBookPageLayout, estimateTextHeight, kidBookTokenPx, overlapArea, phoneWindow, planChoices, plansHeight, platePoint, type Box, type LayoutContent } from "./bookPageLayout";
-import { heroDisplayName, pageParagraphs, paragraphChars } from "./bookText";
+import { heroDisplayName, lineFor, pageParagraphs, paragraphChars } from "./bookText";
 import type { BookLang, Page } from "./types";
+import { DEVICE_VIEWPORTS } from "../../../scripts/capture/release-config.mjs";
 
 const SPREAD_BOXES: Box[] = [
   { width: 1920, height: 1080 - 72 },
   { width: 1280, height: 800 - 72 },
 ];
 const PHONE: Box = { width: 375, height: 812 - 56 };
-/** Manuscript v2 p10 on the EASY path in English (body + echo + frame line,
- *  40 words, three paragraphs) does not fit the 375 x 812 sheet at 18 px
- *  under a 300 px art window: measured in the browser, the echo and the frame
- *  line wrap to two lines each at 18 px (39 px short); the reader's DOM net
- *  sets it at 17 px. Flagged to Fable (BUILD-LOG v2). FROZEN: may only shrink. */
-const PHONE_NO_FIT = new Set(["en p10 b"]);
 const LANGS: BookLang[] = ["en", "he"];
 const NAME = heroDisplayName({ name: "Dylan" });
 
@@ -260,7 +258,7 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
               const slot = done.length && page.repair?.heroAfter ? page.repair.heroAfter : page.hero;
               const l = computeBookPageLayout(page, box, lang, { content, plate, slot });
               const tag = `${box.width} ${lang} ${page.id} done=${done.length}`;
-              if (!(box === PHONE && PHONE_NO_FIT.has(`${lang} ${page.id} ${choiceId}`))) expect(l.fits, tag).toBe(true);
+              expect(l.fits, tag).toBe(true);
               if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
               if (l.pageType === "facing" || l.mode === "stacked") expect(overlapArea(l.textPage, l.art), tag).toBe(0);
               else if (l.heroBody) expect(overlapArea(l.textPage, l.heroBody), tag).toBe(0);
@@ -315,6 +313,32 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
+  it("short landscape covers move the title and Open onto a paper page instead of covering the hero", () => {
+    // Actual844x390 capture: the front title rose above the book and the
+    // centred80px Open toy covered the child's body. Also keep SE sideways.
+    for (const box of [{ width: 844, height: 390 - 56 }, { width: 667, height: 375 - 56 }]) for (const lang of LANGS) {
+      const content = { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + "Alexander".length], title: david.title[lang].length };
+      const plate = getPlate(david.id, david.cover.plateId)!;
+      const l = computeBookPageLayout(david.cover, box, lang, { cover: true, content, plate, anchorOf: () => ({ aspect: .75, footX: .5, footW: .5 }) });
+      expect(l.pageType).toBe("facing");
+      expect(l.fits).toBe(true);
+      expect(l.compactNav).toBe(true);
+      expect(l.typePx).toBeGreaterThanOrEqual(18);
+      expect(l.openRect).toBeUndefined(); // Open uses the title page's nav.
+      expect(l.crop).toEqual({ x0: 0, x1: 1 });
+      expect(l.art.w / l.art.h).toBeCloseTo(plate.width / plate.height, 8);
+      expect(l.hero?.inWindow).toBe(true);
+      expect(overlapArea(l.textPage, l.art)).toBe(0);
+      expect(overlapArea(l.textPage, l.hero!)).toBe(0);
+      for (const rect of [l.art, l.textPage]) {
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.w).toBeLessThanOrEqual(box.width);
+        expect(rect.y + rect.h).toBeLessThanOrEqual(box.height);
+      }
+    }
+  });
+
   it("fix round 2: the decision page is the SAME book as p4/p6 (art, column, type) at 1920 and 1280; its cards fill a second state", () => {
     const at = (id: string, box: Box, lang: BookLang) => {
       const page = dPages.find((p) => p.id === id)!;
@@ -358,14 +382,79 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
           const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId, repaired: [] }), NAME);
           const l = computeBookPageLayout(page, PHONE, lang, { content: { paras, choices: id === "p5" ? 3 : undefined }, plate: getPlate(david.id, page.plateId)! });
           expect(l.art.w, `${lang} ${id}`).toBeGreaterThanOrEqual(300);
-          if (!PHONE_NO_FIT.has(`${lang} ${id} ${choiceId}`)) expect(l.fits, `${lang} ${id}`).toBe(true);
-          else expect(l.typePx, "the smallest allowed type, not the token").toBe(18);
+          expect(l.fits, `${lang} ${id}`).toBe(true);
+          expect(l.typePx).toBeGreaterThanOrEqual(18);
           expect(l.sheetOverlap).toBe(0);
           expect(overlapArea(l.textPage, l.art)).toBe(0);
           if (id === "p5") {
             expect(l.choicePlan?.mode).toBe("second");
             expect(plansHeight(l.choicePlan!)).toBeLessThanOrEqual(l.text.h);
           }
+        }
+      }
+    }
+  });
+
+  it("the English p10 b words, echo and frame fit at 18 px without shrinking the 300 px picture", () => {
+    const page = dPages.find((p) => p.id === "p10")!;
+    for (const name of ["Dylan", "Noa", "Alexander"]) {
+      const paras = paragraphChars(pageParagraphs(page, { lang: "en", gender: "f", choiceId: "b", repaired: [] }), name);
+      const l = computeBookPageLayout(page, PHONE, "en", { content: { paras }, plate: getPlate(david.id, page.plateId)! });
+      expect(l.compactNav).toBe(true);
+      expect(l.typePx).toBeGreaterThanOrEqual(18);
+      expect(l.art.w).toBe(300);
+      expect(estimateTextHeight(paras, l.text.w, l.typePx, l.lineHeight) + l.navPx + 8).toBeLessThanOrEqual(l.text.h);
+      expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(PHONE.height);
+      expect(l.navPx - 10).toBeGreaterThanOrEqual(56);
+    }
+  });
+
+  it("short SE/Safari pages retain the art floor and declare when full readable words require scrolling", () => {
+    const page = dPages.find((p) => p.id === "p10")!;
+    for (const cell of DEVICE_VIEWPORTS.filter(cell => /^(se|safari)-/.test(cell.id))) {
+      const box = { width: cell.w, height: cell.h - 56 };
+      for (const name of ["Noa", "Dylan", "Alexander"]) {
+        const lang = cell.lang as BookLang;
+        const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId: "b", repaired: [] }), name);
+        const l = computeBookPageLayout(page, box, lang, { content: { paras }, plate: getPlate(david.id, page.plateId)! });
+        expect(l.compactNav).toBe(false);
+        expect(l.fits).toBe(false);
+        expect(l.pad.block).toBe(16);
+        expect(l.navPx).toBe(90);
+        expect(l.art.w).toBe(300);
+        expect(l.text.h - l.navPx).toBeGreaterThan(0);
+        expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(box.height);
+        expect(estimateTextHeight(paras, l.text.w, 18, l.lineHeight)).toBeGreaterThan(l.text.h - l.navPx);
+      }
+    }
+  });
+
+  it("the canonical and eight plan manuscripts have room for 18px words and real controls at the release phone and sideways sizes", () => {
+    for (const title of [fiveSmoothStones, ...Object.values(PLAN_FIXTURE_BOOKS)]) {
+      for (const box of [PHONE, { width: 844, height: 390 - 56 }]) for (const lang of LANGS) {
+        for (const choiceId of (bookChoices(title).length ? bookChoices(title).map(c => c.id) : [null])) {
+          for (const page of readPath(title, choiceId)) for (const repaired of page.repair ? [[], page.repair.items.map(item => item.id)] : [[]]) {
+            const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId, repaired }), "Alexander");
+            const l = computeBookPageLayout(page, box, lang, { plate: bookPlatesFor(title)[page.plateId], content: { paras, prompt: !!page.repair && !repaired.length, choices: decisionOf(title)?.pageId === page.id ? 3 : undefined } });
+            const tag = `${title.id}/${page.id}/${choiceId}/${repaired.length}/${lang}/${box.width}`;
+            expect(l.fits, tag).toBe(true);
+            expect(l.typePx, tag).toBeGreaterThanOrEqual(18);
+            expect(estimateTextHeight(paras, l.text.w, l.typePx, l.lineHeight) + l.navPx, tag).toBeLessThanOrEqual(l.text.h);
+            expect(overlapArea(l.art, l.textPage), tag).toBe(0);
+            if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
+            for (const rect of [l.art, l.textPage]) {
+              expect(rect.y, tag).toBeGreaterThanOrEqual(0);
+              expect(rect.y + rect.h, tag).toBeLessThanOrEqual(box.height);
+            }
+          }
+          const last = readPath(title, choiceId).at(-1)!;
+          const paras = paragraphChars([lineFor(last.closing!, lang, "f")], "Alexander");
+          const end = computeBookPageLayout(last, box, lang, { plate: bookPlatesFor(title)[last.plateId], content: { paras, title: lang === "en" ? 7 : 4, ending: true } });
+          expect(end.fits, `${title.id}/${lang}/${box.width}/end`).toBe(true);
+          // Both closing actions, the grown-up toggle, the title and the
+          // complete frame line each have their own space allocation.
+          expect(end.navPx).toBe(box.width === 375 ? 192 : 128);
+          expect(estimateTextHeight(paras, end.text.w, end.typePx, end.lineHeight) + end.titlePx * 1.5 + end.navPx).toBeLessThanOrEqual(end.text.h);
         }
       }
     }

@@ -7,7 +7,7 @@ import {
   type BounceState, type LanternLayout, type PaddleInput,
 } from './makerDeskRules';
 
-/** Bounce, inside the glass. The whole display is the night sky over Horizon
+/** Bounce, inside the glass. The whole display is pearl glass over Horizon
  * Valley, drawn in chunky squares: the playing field sits in the middle of it
  * (taller on a phone), stars and hills run out to the edges, and the cloud the
  * ball can always fall into fills the bottom. Fixed-timestep physics from the
@@ -104,13 +104,13 @@ export function DeskBounce({ w, audio, reduced, firstLayout, controls, onAllLit,
       const showing = show.current >= 0 ? show.current : s.done ? SHOW_S : -1;
       const lift = showing < 0 || still ? 0 : Math.min(1, showing / SHOW_S);
       ctx!.setTransform(1, 0, 0, 1, 0, 0);
-      // The sky: three bands, brighter as the lanterns light and a chain builds.
-      px(0, 0, vw, vh, ink.night);
-      px(0, 0, vw, Math.round(vh * 0.34), ink['indigo-deep'], 0.55 + glow * 0.4);
-      px(0, Math.round(vh * 0.34), vw, Math.round(vh * 0.3), ink.indigo, 0.12 + glow * 0.34);
-      px(0, 0, vw, vh, ink.sea, glow * 0.1);
+      // The same pearl glass as the desktop, dimmed gently for the lanterns.
+      // The toys keep their own colours; the room never becomes a neon wash.
+      px(0, 0, vw, vh, ink.snow);
+      px(0, 0, vw, Math.round(vh * 0.34), ink['snow-shade'], 0.38);
+      px(0, Math.round(vh * 0.34), vw, Math.round(vh * 0.3), ink['snow-shade'], 0.18);
       const stars = Math.round(vw * vh / 420);
-      for (let n = 1; n <= stars; n++) { const [x, y] = starAt(n, vw, vh - 14); px(x, y, 1, 1, n % 5 === 0 ? ink.white : ink.butter, (0.28 + 0.3 * Math.sin(t * (0.8 + (n % 7) * 0.15) + n)) * (1 + lift + glow)); }
+      for (let n = 1; n <= stars; n++) { const [x, y] = starAt(n, vw, vh - 14); px(x, y, 1, 1, ink.slate, (0.28 + 0.3 * Math.sin(t * (0.8 + (n % 7) * 0.15) + n)) * (1 + lift + glow)); }
       // Far hills of the valley along the bottom of the sky, behind the cloud.
       for (let x = 0; x < vw; x += 2) { const top = vh - 20 - Math.round(5 * Math.sin(x * 0.045) + 3 * Math.sin(x * 0.11 + 2)); px(x, top, 2, vh - top, ink['teal-deep'], 0.5 + glow * 0.2); }
       // A shooting star crosses while the lanterns rise.
@@ -166,6 +166,8 @@ export function DeskBounce({ w, audio, reduced, firstLayout, controls, onAllLit,
       const wiggle = show.current >= 0 && !still ? Math.round(Math.sin(show.current * 12) * 2) : 0;
       const pxl = s.paddle - pw / 2 + wiggle, pyt = padY + PADDLE_H - ph + dip;
       const tilt = still ? 0 : Math.max(-1, Math.min(1, Math.round(lean)));
+      // A firm graphite edge keeps the pale paddle legible on pearl glass.
+      px(pxl - 1, pyt - 1, pw + 2, ph + 2, ink.slate);
       px(pxl + 2, pyt + ph + 1, pw - 4, 1, ink.night, 0.5);
       px(pxl - 2, pyt + ph + 3, pw + 4, 1, ink.sea, 0.12 + glow * 0.2);
       const halfW = Math.round(pw / 2);
@@ -178,6 +180,8 @@ export function DeskBounce({ w, audio, reduced, firstLayout, controls, onAllLit,
         if (s.floating === 0 && !still) trail.forEach((p, i) => { const k = (i + 1) / trail.length, size = k > 0.7 ? 3 : k > 0.35 ? 2 : 1; px(p.x - size / 2, p.y - size / 2, size, size, ink[trailInk], k * (0.3 + Math.min(0.35, chain * 0.12))); });
         if (s.floating > 0) for (let i = 0; i < 3; i++) px(b.x - 3 + i * 3, b.y + 4 + ((t * 20 + i * 5) % 8), 1, 1, ink.snow, 0.5);
         px(b.x - BALL / 2 - 1, b.y - BALL / 2 - 1, BALL + 2, BALL + 2, ink[trailInk], 0.22 + Math.min(0.3, chain * 0.1));
+        // The moving ball needs a solid edge, including with trails disabled.
+        px(b.x - BALL / 2 - 1, b.y - BALL / 2 - 1, BALL + 2, BALL + 2, ink.slate);
         px(b.x - BALL / 2, b.y - BALL / 2 + 1, BALL, BALL - 2, ink.white);
         px(b.x - BALL / 2 + 1, b.y - BALL / 2, BALL - 2, BALL, ink.white);
         px(b.x - BALL / 2 + 1, b.y - BALL / 2 + 1, 1, 1, ink.butter);

@@ -7,7 +7,8 @@
   filter: drop-shadow(0 18px 18px color-mix(in srgb, var(--studio-graphite) 26%, transparent)); transform-origin: 50% 100%;
   animation: studio-host-in .7s var(--studio-ease-spring, cubic-bezier(.34,1.56,.64,1)) both, studio-host-breathe 4.8s ease-in-out .7s infinite; }
 .studio-stage__host > img { display: block; inline-size: 100%; block-size: auto; }
-[dir=rtl] .studio-stage__host { transform: scaleX(-1); }
+/* Layout uses logical edges. Never mirror a model: Chock's equipment and the
+   companions' approved anatomy keep their original attachment sides in Hebrew. */
 @keyframes studio-host-in { from { opacity: 0; translate: 0 24px; scale: .92; } to { opacity: 1; translate: 0 0; scale: 1; } }
 @keyframes studio-host-breathe { 0%, 100% { scale: 1 1; } 50% { scale: 1.012 .988; } }
 
@@ -35,12 +36,12 @@
 .studio-v2__world-environment.studio-stage__environment { inset: 0; filter: none; transform: none; }
 .studio-v2--world:has(.studio-stage__environment)::before { background: linear-gradient(90deg, color-mix(in srgb, var(--studio-pearl) 18%, transparent), color-mix(in srgb, var(--studio-pearl) 40%, transparent) 46%, color-mix(in srgb, var(--studio-pearl) 88%, transparent) 62%); }
 [dir=rtl].studio-v2--world:has(.studio-stage__environment)::before { background: linear-gradient(270deg, color-mix(in srgb, var(--studio-pearl) 18%, transparent), color-mix(in srgb, var(--studio-pearl) 40%, transparent) 46%, color-mix(in srgb, var(--studio-pearl) 88%, transparent) 62%); }
-.studio-stage__window-plate { border: 4px solid var(--studio-surface); border-radius: 18px; box-shadow: var(--studio-lift); box-sizing: border-box; }
+.studio-stage__window-plate { border: 4px solid var(--studio-surface); border-radius: 18px; box-shadow: 0 0 0 1px var(--studio-line), 0 3px 0 var(--studio-line), 0 18px 36px var(--studio-shade); box-sizing: border-box; }
 .studio-stage__window-host { inset-block-end: 92px; inset-inline-end: 4%; inline-size: auto; block-size: 62%; }
 .studio-stage__window-host > img { inline-size: auto; block-size: 100%; }
 @media (max-width: 640px) {
   .studio-v2--world:has(.studio-stage__environment)::before, [dir=rtl].studio-v2--world:has(.studio-stage__environment)::before { background: color-mix(in srgb, var(--studio-pearl) 72%, transparent); }
-  .studio-stage__window-host { inset-block-end: 84px; block-size: 56%; }
+  .studio-stage__window-host { inset-block-end: 80px; block-size: 58%; }
 }
 
 /* Game intro and finish: the world's room, sharp, under a light pearl lift. */

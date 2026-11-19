@@ -1177,8 +1177,9 @@ describe("CR-01 white-label source ratchet — future regressions, not legacy co
   });
 
   // Parse every production source to retain escaped-string/template/concat coverage.
-  // This whole-tree AST scan can exceed 5s under host memory/browser pressure;
-  // bound only this audit at 20s, leaving fast controls and global timeouts unchanged.
+  // This whole-tree AST scan takes about 8s on a quiet machine and exceeded
+  // 20s when a busy CI runner was also importing the full suite. Bound only
+  // this audit at 60s, leaving fast controls and global timeouts unchanged.
   it("rejects new/changed unresolved labels and requires stale debt to be retired", () => {
     const files = productionFiles();
     expect(files.length).toBeGreaterThan(100);
@@ -1191,7 +1192,7 @@ describe("CR-01 white-label source ratchet — future regressions, not legacy co
     const report = result.introduced.map(item => item.file + ":" + item.line + " — " + item.reason + " [" + item.fingerprint + "]");
     expect(report, "Prove the fill and ancestor presentation or resolve the consumer; never grow/reset frozen debt.").toEqual([]);
     expect(result.stale, "Resolved/removed case: add its exact key to RETIRED_DEBT.").toEqual([]);
-  }, 20_000);
+  }, 60_000);
 });
 
 describe("CR-01 white-label negative controls", () => {

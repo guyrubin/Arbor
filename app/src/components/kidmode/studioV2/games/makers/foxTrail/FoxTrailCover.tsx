@@ -1,7 +1,7 @@
 import { useId } from 'react';
-import { PEP_SIDE, PLATES, SPRITES } from './foxKit';
+import { PEP_COVER, PLATES, SPRITES } from './foxKit';
 
-/** Pep's Trail cover: Pep, in his scout harness, running the Sky Gardens path
+/** Pep's Trail cover: Pep, in his scout harness, following the Sky Gardens path
  * at dusk past a lamp he has just woken, toward the Dome's sun. A kit
  * picture throughout: the trail's own plates and the kit's own Pep, layered.
  * Fills its box; one clear subject at 80 px. */
@@ -23,6 +23,6 @@ export default function FoxTrailCover({ size = 'tile' }: { size?: 'tile' | 'card
     <circle cx="92" cy="170" r="34" style={{ fill: `url(#${id}glow)` }} />
     <image href={SPRITES.lamp.src} x="66" y="150" width="58" height="71" />
     <ellipse cx="196" cy="246" rx="62" ry="9" style={{ fill: `url(#${id}shade)` }} />
-    <g transform="translate(268 104) scale(-1 1) rotate(5 70 110)"><image href={PEP_SIDE.src} width="146" height={146 * PEP_SIDE.h / PEP_SIDE.w} /></g>
+    <g transform="translate(122 104) rotate(-5 70 110)"><image href={PEP_COVER.src} width="146" height={146 * PEP_COVER.h / PEP_COVER.w} /></g>
   </svg>;
 }

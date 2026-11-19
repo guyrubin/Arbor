@@ -251,6 +251,18 @@ describe("the ending", () => {
     expect(bookFlowReducer(book, end, { type: "next" }).at).toBe(END);
   });
 
+  it.each(["Noa", "Dylan", "Alexander"])("the dense phone closing page retains %s, all three paragraphs and both actions at the reading floor", (name) => {
+    const html = render(toPage("b", "p10"), { box: PHONE, child: { ...BOY, name } });
+    expect(pageOf(html)).toBe("p10");
+    expect(html.match(/data-book-para=/g)).toHaveLength(3);
+    expect(html).toContain("Armour? One day, after a hundred tries.");
+    expect(html).toContain(`And today, <bdi data-book-name="">${name}</bdi> was David, the shepherd.`);
+    expect(html).toContain('class="bk-nav" data-compact=""');
+    expect(html).toContain("data-book-back");
+    expect(html).toContain("data-book-next");
+    expect(Number(/class="bk-words"[^>]*style="font-size:(\d+)px/.exec(html)?.[1])).toBeGreaterThanOrEqual(18);
+  });
+
   it.each([
     ["en", ["What the story knows", "Why it matters at five, this week", "One thing to do tomorrow", "Ask after", "Ask after, optional (5–7)", "Reading together", "Source note"], "Nobody sent him: he volunteered."],
     ["he", ["מה הסיפור יודע", "למה זה חשוב בגיל חמש, השבוע", "דבר אחד לעשות מחר", "שאלה אחרי הקריאה", "שאלה נוספת, לבחירה (5–7)", "כשקוראים יחד", "הערת מקור"], "אף אחד לא שלח אותו: הוא התנדב."],

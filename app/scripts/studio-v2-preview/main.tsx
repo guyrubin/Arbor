@@ -48,7 +48,11 @@ function Preview() {
 }
 // The separate CI-only book fixture mounts the production reader; ordinary
 // Studio preview/home keeps its current loading path and synthetic adapters.
-if (new URLSearchParams(window.location.search).has('josephReview')) {
+if (new URLSearchParams(window.location.search).has('storyCatalogue')) {
+  void import('./storyCatalogue').then(({ mountStoryCatalogueReview }) => mountStoryCatalogueReview(document.getElementById('root')!));
+} else if (new URLSearchParams(window.location.search).has('activityReview')) {
+  void import('./activities').then(({ mountActivityReview }) => mountActivityReview(document.getElementById('root')!));
+} else if (new URLSearchParams(window.location.search).has('josephReview')) {
   void import('./joseph').then(({ mountJosephReview }) => mountJosephReview(document.getElementById('root')!));
 } else if (new URLSearchParams(window.location.search).has('bookReview')) {
   void import('./book').then(({ mountBookReview }) => mountBookReview(document.getElementById('root')!));

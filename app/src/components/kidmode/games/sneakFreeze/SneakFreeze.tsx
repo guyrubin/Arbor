@@ -171,7 +171,9 @@ function GoStopPad({ size, signal, held }: { size: number; signal: SneakSignal; 
       style={{
         width: size,
         height: size,
-        borderRadius: "50%",
+        // The two gestures keep distinct silhouettes even without colour:
+        // a round walking pad and a rounded stop tile with the open hand.
+        borderRadius: go ? "50%" : "24%",
         display: "grid",
         placeItems: "center",
         // B-KID-175: the kit's own leaf green and coral, not traffic-light red and green.

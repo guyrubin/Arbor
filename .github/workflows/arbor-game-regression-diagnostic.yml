@@ -1,0 +1,46 @@
+name: Arbor Game Regression Diagnostic
+
+# Temporary immediate evidence run; the complete sixty-cell gate stays in CI.
+on:
+  push:
+    branches: [codex/kids-production-value-2026-11-19]
+    paths:
+      - .github/workflows/arbor-game-regression-diagnostic.yml
+      - app/scripts/kids-game-regression-diagnostic.mjs
+      - app/scripts/kids-maker-cycle-browser.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  game-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Install normal Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build actual Kids components with synthetic adapters
+        run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
+      - name: Operate Sneak, Maker Desk, Ice Age, Crank Works and Bottle Lab in all four release cells
+        timeout-minutes: 25
+        run: node scripts/kids-game-regression-diagnostic.mjs
+      - name: Retain original records and screenshots on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-game-regression-diagnostic
+          path: app/output/kids-game-regression-diagnostic
+          retention-days: 7
+          if-no-files-found: warn

@@ -6,7 +6,6 @@ import { prefersReducedMotion } from './playJuice';
 
 export const OPENING_MS = 2800;
 export const OPENING_REDUCED_MS = 1400;
-const SKIP = { en: 'Skip', he: 'דלגו' } as const;
 const TAP = { en: 'Tap to begin', he: 'נוגעים ומתחילים' } as const;
 
 export interface PlayOpeningProps {
@@ -35,12 +34,12 @@ export function PlayOpening({ title, place, onDone, holdMs, children }: PlayOpen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdMs]);
   return <div className="play-opening" data-play-opening="">
-    <button type="button" className="play-opening__skip" onClick={finish} aria-label={SKIP[lang]} data-play-skip="" />
+    <button type="button" className="play-opening__skip" onClick={finish} aria-label={TAP[lang]} data-play-skip="" />
     <div className="play-opening__lockup">
       <p className="play-opening__place">{place}</p>
       <h2 className="play-opening__title">{title}</h2>
       {children}
-      <p className="play-opening__hint" aria-hidden="true">{TAP[lang]}</p>
+      <p className="play-opening__hint" aria-hidden="true"><span>{TAP[lang]}</span><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" /></svg></p>
     </div>
   </div>;
 }

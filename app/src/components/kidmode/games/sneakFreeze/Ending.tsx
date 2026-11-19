@@ -162,7 +162,7 @@ export function Ending({ state, art, sheet, childId, ownerId, rtl, caption, pict
       <div
         data-sneak-ending-stack=""
         data-sneak-ending-shape={upright ? "upright" : sideways ? "sideways" : "wide"}
-        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: sideways ? "row" : "column", alignItems: "center", justifyContent: upright ? "flex-start" : "center", gap: sideways ? 24 : "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: upright ? "max(clamp(10px, 2dvh, 20px), env(safe-area-inset-bottom))" : "clamp(10px, 2dvh, 20px)", paddingBlockStart: sideways ? "calc(max(10px, env(safe-area-inset-top)) + 70px)" : "calc(max(10px, env(safe-area-inset-top)) + 80px)" }}
+        style={{ position: "relative", blockSize: "100%", overflowY: "auto", display: "flex", flexDirection: sideways ? "row" : "column", alignItems: "center", justifyContent: upright ? "flex-start" : "center", gap: sideways ? 24 : "clamp(8px, 1.6dvh, 18px)", paddingInline: 16, paddingBlockEnd: upright ? "max(clamp(10px, 2dvh, 20px), env(safe-area-inset-bottom))" : "clamp(10px, 2dvh, 20px)", paddingBlockStart: `calc(max(10px, env(safe-area-inset-top)) + var(--sneak-end-top-controls, ${sideways ? 70 : 80}px))` }}
       >
         <figure
           data-sneak-picture-frame=""

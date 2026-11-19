@@ -1,6 +1,7 @@
 /** Synthetic preview boundary. No real account, profile, telemetry or cloud writes. */
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { translate } from '../../src/lib/i18n';
+import { dayKey, daysPracticed, developmentScore, soundStats, streakDays, weeklyActivity } from '../../src/practice/signals';
 const Language = createContext({ uiLang: 'en' as 'en' | 'he', setUiLang: (_: 'en' | 'he') => {} });
 export function PreviewProvider({ children }: { children: React.ReactNode }) {
   const [uiLang, setUiLang] = useState<'en' | 'he'>(() => new URLSearchParams(location.search).get('lang') === 'he' ? 'he' : 'en');
@@ -32,7 +33,18 @@ export function useChildCollection<T extends {id: string}>(childId: string, name
       remove: (id: string) => persist((rows.get(key) as T[]).filter(row => row.id !== id)), replaceAll: persist };
   }, [key, rows.get(key)]);
 }
-export function usePracticeData(childId: string) { return { events: useChildCollection(childId, 'previewPracticeEvents') }; }
+export function usePracticeData(childId: string) {
+  const events = useChildCollection<any>(childId, 'previewPracticeEvents');
+  const speech = useChildCollection<any>(childId, 'previewSpeechAttempts');
+  const mimic = useChildCollection<any>(childId, 'previewMimicSessions');
+  const missions = useChildCollection<any>(childId, 'previewMissionRecords');
+  const adventures = useChildCollection<any>(childId, 'previewAdventureResults');
+  const today = dayKey(new Date());
+  const week = weeklyActivity(speech.items, mimic.items, missions.items, adventures.items, today, events.items);
+  return { events, speech, mimic, missions, adventures, today, week,
+    stats: soundStats(speech.items), score: developmentScore(week),
+    streak: streakDays(missions.items, today), daysPracticed: daysPracticed(missions.items) };
+}
 export const voiceSupported = () => typeof speechSynthesis !== 'undefined';
 export const stopVoice = () => { if (voiceSupported()) speechSynthesis.cancel(); };
 export const registerVoiceGate = () => () => {};

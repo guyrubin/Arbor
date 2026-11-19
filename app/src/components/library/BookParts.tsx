@@ -103,6 +103,7 @@ export function BookEnd({
   onClose,
   initialGrownUp = false,
   goodnight = false,
+  compact = false,
 }: {
   book: AnyBook;
   lang: BookLang;
@@ -117,6 +118,8 @@ export function BookEnd({
   /** B-BOOK-45: the bedtime ending — "Goodnight", and the only control closes
    *  the book (no Read again, nothing that opens another book). */
   goodnight?: boolean;
+  /** Compact paper pages keep all closing actions at 56px or larger. */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(initialGrownUp);
   const last = book.pages[book.pages.length - 1];
@@ -130,7 +133,7 @@ export function BookEnd({
   if (open) {
     // the parent panel takes over the paper page (it scrolls inside)
     return (
-      <section className="bk-end" data-book-end-screen="" data-grownup="">
+      <section className="bk-end" data-book-end-screen="" data-grownup="" data-compact={compact ? "" : undefined}>
         {toggle}
         <dl className="bk-grownup" data-book-grownup-panel="">
           {parentSections(pp, lang, gender).map(([key, text], i, all) => (
@@ -146,7 +149,7 @@ export function BookEnd({
     );
   }
   return (
-    <section className="bk-end" data-book-end-screen="" data-goodnight={goodnight ? "" : undefined}>
+    <section className="bk-end" data-book-end-screen="" data-goodnight={goodnight ? "" : undefined} data-compact={compact ? "" : undefined}>
       <div className="bk-end-main">
         <h1 className="bk-end-title" style={titlePx ? { fontSize: `${titlePx}px` } : undefined}>
           {bookString(goodnight ? "goodnight" : "theEnd", lang)}

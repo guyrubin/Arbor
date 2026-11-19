@@ -131,7 +131,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
     <StudioSky />
     <header className="studio-v2__header">
       <div className="studio-v2__greeting"><h1><span>{hero.name === HERO_NAME_FALLBACK ? copy.helloNoName : <>{copy.hello} <bdi>{hero.name}</bdi>!</>}</span><Sparkles size={22} aria-hidden="true" /></h1><p>{copy.invitation}</p></div>
-      <div className="studio-v2__header-actions"><button className="studio-v2__glass-button" type="button" onClick={onCollection}><Sticker size={22} aria-hidden="true" /><span>{copy.collection}</span></button><HoldExitButton onExit={onExit} /></div>
+      <div className="studio-v2__header-actions"><button className="studio-v2__glass-button" type="button" data-studio-open-collection="" onClick={onCollection}><Sticker size={22} aria-hidden="true" /><span>{copy.collection}</span></button><HoldExitButton onExit={onExit} /></div>
     </header>
     <nav className="studio-v2__doors" aria-label={copy.invitation}>{STUDIO_DOOR_ORDER.map(worldId => <button className="studio-v2__door" data-world={worldId} key={worldId} type="button" onClick={() => onWorld(worldId)}>
       <StudioPortalArt worldId={worldId} /><span className="studio-v2__door-label"><span><strong>{copy.worlds[worldId].title}</strong><small>{copy.worlds[worldId].description}</small></span><ArrowRight size={20} aria-hidden="true" /></span>
@@ -161,7 +161,7 @@ export default function StudioHome({ onWorld, onCollection, onQuest, onExit, onO
       <section className="studio-v2__quest" aria-label={questCopy.title}>
         <div className="studio-v2__quest-title"><small>{copy.quest}</small><h2>{quest.completed ? questCopy.done : questCopy.title}</h2>{/* T7: no count on a kid surface — the steps' own marks show the way */}{(!quest.loaded || quest.completed) && <p>{quest.loaded ? questCopy.ending : copy.questLoading}</p>}</div>
         <ol className="studio-v2__quest-steps">{QUEST_STEPS.map((step, index) => <li key={step} data-done={quest.steps.includes(step)} data-connected={quest.loaded && index < quest.steps.length - 1} aria-current={quest.loaded && !quest.completed && index === quest.steps.length ? "step" : undefined}><span>{quest.steps.includes(step) ? <Check size={22} aria-hidden="true" /> : <i className="studio-v2__quest-dot" aria-hidden="true" />}</span><small>{questCopy.steps[index]}</small></li>)}</ol>
-        <button type="button" className="studio-v2__action-button" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
+        <button type="button" className="studio-v2__action-button" data-studio-open-quest="" onClick={onQuest}>{quest.completed ? copy.questOpen : copy.questContinue}<ArrowRight size={20} aria-hidden="true" /></button>
       </section>
     )}
   </section>;

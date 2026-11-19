@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen } from "lucide-react";
-import { StudioSky, StudioPortalArt } from "./StudioHome";
+import { StudioSky } from "./StudioHome";
+import { StudioWorldPlate } from "./StudioStage";
 import "./studioV2.css";
 import "./studioKeepsakes.css";
 import { useArbor } from "../../../context/ArborContext";
@@ -21,7 +22,7 @@ export function StudioCollection({ onActivity, onBooks, onQuest }: { onActivity:
   return <section className="studio-v2 studio-keepsakes" data-studio-collection="" dir={uiLang === "he" ? "rtl" : "ltr"}>
     <StudioSky />
     <div className="studio-keepsakes__layout">
-      <div className="studio-keepsakes__scene"><StudioPortalArt worldId="stories" /><header className="studio-keepsakes__heading"><h1>{copy.title}</h1><p>{copy.empty}</p></header></div>
+      <div className="studio-keepsakes__scene"><StudioWorldPlate worldId="stories" sizes="(max-width: 700px) calc(100vw - 32px), 560px" priority /><header className="studio-keepsakes__heading"><h1>{copy.title}</h1><p>{copy.empty}</p></header></div>
       <div className="studio-keepsakes__panel">
     <StudioCreationGallery childId={childProfile.id} onActivity={onActivity} />
     {!ledger.loaded ? <p role="status">{copy.loading}</p> : !items.length ? null : <ul className="studio-keepsakes__collection">{items.map(item => {
@@ -32,7 +33,7 @@ export function StudioCollection({ onActivity, onBooks, onQuest }: { onActivity:
       const content = <><KidSouvenirSticker kind={item.kind} refId={item.refId} /><span>{title}</span></>;
       return <li key={item.id}>{available ? <button type="button" className="studio-v2__glass-button studio-keepsakes__item" onClick={() => { if (!ledger.isCurrent()) return; if (isQuest) onQuest?.(); else if (item.kind === "book") onBooks(); else if (activity) onActivity(activity.id); }}>{content}</button> : <div className="studio-keepsakes__item">{content}</div>}</li>;
     })}</ul>}
-    <button type="button" onClick={onBooks} className="studio-v2__glass-button studio-keepsakes__books"><BookOpen size={24} aria-hidden="true" />{copy.books}</button>
+    <button type="button" onClick={onBooks} className="studio-v2__glass-button studio-keepsakes__books" data-studio-books=""><BookOpen size={24} aria-hidden="true" />{copy.books}</button>
       </div>
     </div>
   </section>;

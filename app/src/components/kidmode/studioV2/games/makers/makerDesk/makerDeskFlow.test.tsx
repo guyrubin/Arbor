@@ -46,7 +46,7 @@ vi.mock('../play', () => ({
 import MakerDesk, { WAIT_MS } from './MakerDesk';
 import { CreationPreview } from '../../../StudioCreationResult';
 import { HudButton, HudCoach, HudQuest, HudToast, PlayOpening, PlaySetPiece, PlayStage } from '../play';
-import { DESK_KIT } from './deskKit';
+import { DESK_KIT, LID_GLASS } from './deskKit';
 import { DeskBounce } from './DeskBounce';
 import { DeskTerminal } from './DeskTerminal';
 import { GameFinish } from '../../../../game/GameShell';
@@ -184,6 +184,30 @@ describe('Maker Desk', () => {
     escape(); tree = render();
     expect(section(tree).props['data-level']).toBe('study'); expect(stage(tree).props.camera).toEqual({ x: 0.5, y: 0.5, zoom: 1 }); expect(has(tree, n => n.props.className === 'md-glass')).toBe(false);
     escape(); expect(section(render()).props['data-level']).toBe('study');
+  });
+  it('the computer target fits its visible glass and keeps the camera aimed at the original bench position', () => {
+    begin(); const tree = wake();
+    const pc = spot(tree, 'pc'), style = pc.props.style;
+    const left = parseFloat(style.left), top = parseFloat(style.top), width = parseFloat(style.width), height = parseFloat(style.height);
+    const points = LID_GLASS.split(',').map(pair => pair.trim().split(' ').map(parseFloat));
+    const local = style.clipPath.slice('polygon('.length, -1).split(',').map((pair: string) => pair.trim().split(' ').map(parseFloat));
+    const centre = [left + width / 2, top + height / 2];
+    // The target centre must be inside all four edges of the convex glass,
+    // while its normalized clip must still cover exactly the original art.
+    points.forEach(([x, y], index) => {
+      const [nextX, nextY] = points[(index + 1) % points.length];
+      expect((nextX - x) * (centre[1] - y) - (nextY - y) * (centre[0] - x)).toBeGreaterThan(0);
+      expect(left + local[index][0] * width / 100).toBeCloseTo(x, 5);
+      expect(top + local[index][1] * height / 100).toBeCloseTo(y, 5);
+    });
+    const bench = find(tree, n => n.props.className === 'md-bench', 'bench');
+    bench.props.ref.current = { getBoundingClientRect: () => ({ left: 220, top: 240, width: 680, height: 485 }) };
+    room(tree).props.ref.current = { getBoundingClientRect: () => ({ left: 100, top: 40, width: 1000, height: 600 }) };
+    pc.props.onClick!();
+    const camera = stage(render()).props.camera;
+    expect(camera.x).toBeCloseTo((220 + 680 * .583 - 100) / 1000);
+    expect(camera.y).toBeCloseTo((240 + 485 * .162 - 40) / 600);
+    expect(camera.zoom).toBe(3);
   });
   it('chapters two and three, then the power-up: every tool lights in turn, the room joins in, ProofLens keeps the picture, and only then the finish', () => {
     begin(); wake(); let tree = dive();

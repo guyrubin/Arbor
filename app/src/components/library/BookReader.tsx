@@ -267,7 +267,7 @@ export function BookReader({
   const [choosingAt, setChoosingAt] = useState<string | null>(() => (initialChoosing || (decision && state.selected) ? state.at : null));
   const endFrame = atEnd && lastPage.closing ? lineFor(lastPage.closing, lang, gender) : "";
   const content: LayoutContent = atEnd
-    ? { paras: [endFrame.length || 1], title: bookString("theEnd", lang).length }
+    ? { paras: paragraphChars([endFrame || " "], name), title: bookString("theEnd", lang).length, ending: true }
     : onCover
     ? {
         paras: [book.coverLine[lang].length, ...(book.coverNameLine ? [book.coverNameLine[lang].length + name.length] : [])],
@@ -466,13 +466,17 @@ export function BookReader({
   // ── the words fit (DOM safety net over the layout's estimate) ──────────────
   const wordsRef = useRef<HTMLDivElement | null>(null);
   const fitKey = `${state.at}|${box.width}x${box.height}|${paras.join("|")}`;
-  const [fit, setFit] = useState({ key: fitKey, shrink: 0 });
+  const [fit, setFit] = useState({ key: fitKey, shrink: 0, scroll: false });
   const shrink = fit.key === fitKey ? fit.shrink : 0;
-  const typePx = Math.max(16, Math.round(layout.typePx * (readMode === "together" ? TOGETHER_TYPE_SCALE : 1)) - shrink);
+  const scrollReading = fit.key === fitKey && fit.scroll;
+  const typePx = Math.max(18, Math.round(layout.typePx * (readMode === "together" ? TOGETHER_TYPE_SCALE : 1)) - shrink);
   useIsoLayoutEffect(() => {
     const el = wordsRef.current;
     if (!el) return;
-    if (el.scrollHeight > el.clientHeight + 1 && typePx > 16) setFit({ key: fitKey, shrink: shrink + 1 });
+    if (el.scrollHeight > el.clientHeight + 1 && !scrollReading) {
+      if (typePx > 18) setFit({ key: fitKey, shrink: shrink + 1, scroll: false });
+      else setFit({ key: fitKey, shrink, scroll: true });
+    }
   });
 
   // ── art inputs ─────────────────────────────────────────────────────────────
@@ -668,11 +672,20 @@ export function BookReader({
                 data-end={atEnd ? "" : undefined}
                 data-kind={layout.pageType === "spread" ? "panel" : layout.mode === "wide" ? "page" : "sheet"}
                 data-choosing={choosing ? "" : undefined}
+                data-reading-scroll={scrollReading ? "" : undefined}
                 data-spine={layout.spine}
                 style={textStyle}
               >
                 {atEnd ? (
-                  <BookEnd book={book} lang={lang} gender={gender} name={name} titlePx={layout.titlePx} typePx={typePx} onReadAgain={() => dispatch({ type: "toCover" })} onClose={onClose} goodnight={readMode === "bedtime"} />
+                  <BookEnd book={book} lang={lang} gender={gender} name={name} titlePx={layout.titlePx} typePx={typePx} compact={layout.mode === "stacked" || box.height < 500} onReadAgain={() => {
+                    // A fresh read begins with its question and first picture
+                    // state, and may speak its repair prompts again.
+                    setChoosingAt(null);
+                    setStageRec({ at: COVER, n: 0 });
+                    setHoldUntil(0);
+                    prompted.current = null;
+                    dispatch({ type: "toCover" });
+                  }} onClose={onClose} goodnight={readMode === "bedtime"} />
                 ) : onCover ? (
                   <div className="bk-cover-words" ref={wordsRef}>
                     <h1 className="bk-title" style={{ fontSize: px(layout.titlePx) }}>
@@ -704,7 +717,7 @@ export function BookReader({
                     <span>{labelFor(repair.promptLabel, lang)}</span>
                   </p>
                 )}
-                {!atEnd && <nav className="bk-nav" style={{ minBlockSize: px(Math.min(layout.navPx, 96) - 8) }}>
+                {!atEnd && <nav className="bk-nav" data-compact={layout.compactNav ? "" : undefined} style={{ minBlockSize: px(layout.compactNav ? 56 : Math.min(layout.navPx, 96) - 8) }}>
                   {!onCover ? <KidToy tone="paper" shape="round" glyph={TURN_GLYPHS.back} data-book-back="" aria-label={bookString("back", lang)} onClick={back} /> : <span />}
                   {forward}
                 </nav>}

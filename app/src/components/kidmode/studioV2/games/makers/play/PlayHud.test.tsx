@@ -8,8 +8,8 @@ vi.mock('../../../../../../context/LanguageContext', () => ({ useLanguage: () =>
 import { HudButton, HudChip, HudCoach, HudDock, HudQuest, HudToast, PlayFx, PlayOpening, PlaySetPiece, PlayStage, coachHead } from './index';
 
 const WORDS = {
-  en: { line: 'Every piece has its place.', quest: 'Three jobs', steps: ['Glaze', 'Fit', 'Gold'], go: 'Lift it up', turn: 'Turn left', toast: 'Whole again', title: 'Mend the Bowl', place: 'Wonderworks · Chock’s table', caption: 'The seams are meant to show.', chip: 'ClearPatch', skip: 'Skip' },
-  he: { line: 'לכל שבר יש מקום משלו.', quest: 'שלוש משימות', steps: ['זיגוג', 'חיבור', 'זהב'], go: 'מרימים', turn: 'לסובב שמאלה', toast: 'שוב שלמה', title: 'מתקנים את הקערה', place: 'וונדרוורקס · השולחן של צ׳וק', caption: 'התפרים נועדו להיראות.', chip: 'גלגלת התיקון', skip: 'דלגו' },
+  en: { line: 'Every piece has its place.', quest: 'Three jobs', steps: ['Glaze', 'Fit', 'Gold'], go: 'Lift it up', turn: 'Turn left', toast: 'Whole again', title: 'Mend the Bowl', place: 'Wonderworks · Chock’s table', caption: 'The seams are meant to show.', chip: 'ClearPatch', skip: 'Tap to begin' },
+  he: { line: 'לכל שבר יש מקום משלו.', quest: 'שלוש משימות', steps: ['זיגוג', 'חיבור', 'זהב'], go: 'מרימים', turn: 'לסובב שמאלה', toast: 'שוב שלמה', title: 'מתקנים את הקערה', place: 'וונדרוורקס · השולחן של צ׳וק', caption: 'התפרים נועדו להיראות.', chip: 'גלגלת התיקון', skip: 'נוגעים ומתחילים' },
 } as const;
 const stage = (lang: 'en' | 'he', opening = false, finale = false) => {
   h.lang = lang; const w = WORDS[lang];

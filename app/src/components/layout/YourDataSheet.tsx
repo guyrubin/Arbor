@@ -6,12 +6,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
-import { downloadDeletionReceipt, downloadJson, exportChildData } from "../../lib/childData";
+import { CHILD_SUBCOLLECTIONS, downloadDeletionReceipt, downloadJson, exportChildData } from "../../lib/childData";
 import { createChildExportRun } from "../../lib/childExportRun";
 import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
 import { fmtDay } from "../../lib/formatDate";
-import { mergeErasureReceipts, RECEIPT_ROWS, receiptTitleKey, receiptView, type ReceiptRowId } from "../../lib/childDataSinks";
+import { childSinkIds, mergeErasureReceipts, RECEIPT_ROWS, receiptTitleKey, receiptView, type ReceiptRowId } from "../../lib/childDataSinks";
 import { readPendingErases, settlePendingErase, type PendingErase } from "../../lib/pendingErase";
 import type { DeletionReceipt } from "../../types";
 
@@ -207,7 +207,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     consultRequests: receipt.counts.consultRequests ?? 0,
     storageFiles: receipt.counts.storageFiles ?? 0,
     clientDocs: receipt.counts.clientDocs ?? 0,
-  }) : null;
+  }, childSinkIds(CHILD_SUBCOLLECTIONS)) : null;
   const title = receipt && view
     ? t(receiptTitleKey(view.finished))
     : deleting

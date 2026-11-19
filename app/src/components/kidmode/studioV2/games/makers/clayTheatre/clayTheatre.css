@@ -123,10 +123,10 @@
 
 /* ---------- the premiere ---------- */
 .ct-premiere { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-.ct-dark { position: absolute; inset: 0; background: radial-gradient(90% 70% at 50% 34%, color-mix(in srgb, var(--mk-night) 62%, transparent), color-mix(in srgb, var(--mk-night) 92%, transparent)); opacity: 1; transition: opacity .9s var(--studio-ease-soft); animation: ct-fade 1.1s var(--studio-ease-soft) both; }
+.ct-dark { position: absolute; inset: 0; background: radial-gradient(90% 70% at 50% 34%, color-mix(in srgb, var(--studio-pearl) 28%, transparent), color-mix(in srgb, var(--studio-graphite) 48%, transparent)); opacity: 1; transition: opacity .9s var(--studio-ease-soft); animation: ct-fade 1.1s var(--studio-ease-soft) both; }
 .ct-premiere[data-lit=true] .ct-dark { opacity: 0; }
 .ct-screen { position: absolute; overflow: visible; border: 3px solid var(--mk-white); border-radius: 4px; background: var(--mk-snow);
-  box-shadow: 0 0 60px 8px color-mix(in srgb, var(--mk-white) 34%, transparent), 0 18px 30px -12px color-mix(in srgb, var(--mk-shadow) 80%, transparent); animation: ct-screen 1s var(--studio-ease-spring) .25s both; transform-origin: 50% 0; transition: translate .7s var(--studio-ease-soft), opacity .6s var(--studio-ease-soft); }
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--studio-surface) 45%, transparent), 0 18px 30px -12px var(--studio-shade); animation: ct-screen 1s var(--studio-ease-spring) .25s both; transform-origin: 50% 0; transition: translate .7s var(--studio-ease-soft), opacity .6s var(--studio-ease-soft); }
 .ct-screen canvas { display: block; inline-size: 100%; block-size: 100%; border-radius: 2px; }
 /* The roller the screen came down from. */
 .ct-screen::before { content: ""; position: absolute; inset-inline: -3%; inset-block-start: -11px; block-size: 12px; border-radius: 6px; background: linear-gradient(var(--mk-steel-light), var(--mk-steel-dark)); box-shadow: 0 3px 6px color-mix(in srgb, var(--mk-shadow) 60%, transparent); }
@@ -138,11 +138,11 @@
 .ct-premiere[data-lit=true] .ct-beam { opacity: 0; }
 .ct-crew { position: absolute; inset: 0; }
 /* The ProofLens is the projector: the beam leaves from it. */
-.ct-projector { position: absolute; translate: -50% -62%; inline-size: clamp(54px, 12cqi, 96px); filter: brightness(.6) drop-shadow(0 0 10px color-mix(in srgb, var(--mk-butter) 70%, transparent)); animation: ct-rise .6s var(--studio-ease-spring) .3s both; }
+.ct-projector { position: absolute; translate: -50% -62%; inline-size: clamp(54px, 12cqi, 96px); filter: brightness(.86) drop-shadow(0 6px 8px var(--studio-shade)); animation: ct-rise .6s var(--studio-ease-spring) .3s both; }
 .ct-projector img { display: block; inline-size: 100%; }
 .ct-premiere[data-lit=true] .ct-projector { filter: none; transition: filter .8s var(--studio-ease-soft); }
 .ct-seat { position: absolute; aspect-ratio: .44; translate: -50% -100%; animation: ct-seat-in .7s var(--studio-ease-spring) both; animation-delay: calc(var(--i) * 110ms + .1s); transform-origin: 50% 100%; transition: transform .3s var(--studio-ease-spring);
-  filter: brightness(.5) saturate(.8) drop-shadow(0 0 5px color-mix(in srgb, var(--mk-butter) 60%, transparent)); }
+  filter: brightness(.84) saturate(.9) drop-shadow(0 6px 5px var(--studio-shade)); }
 .ct-premiere[data-lit=true] .ct-seat { filter: drop-shadow(0 8px 8px color-mix(in srgb, var(--mk-shadow) 40%, transparent)); transition: filter .8s var(--studio-ease-soft), transform .3s var(--studio-ease-spring); }
 .ct .ct-world .ct-seat img { position: absolute; inset-block-end: 0; inset-inline-start: 50%; block-size: 100%; inline-size: auto; max-inline-size: none; translate: -50% 0; opacity: 0; transition: opacity .16s linear; }
 .ct .ct-world .ct-seat[data-view=back] .ct-seat__back, .ct .ct-world .ct-seat[data-view=side] .ct-seat__side, .ct .ct-world .ct-seat[data-view=front] .ct-seat__front { opacity: 1; }

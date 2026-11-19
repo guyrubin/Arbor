@@ -9,7 +9,7 @@ import { withChildExportSession } from "./childExportSession";
 import type { PortableBookAssets } from "./library/bookAssetExportContract";
 import { clearChildLocalState } from "./childLocalState";
 import { familyWayExport } from "./familyWay";
-import { childSinkIds, subcollectionSinkId, type SinkErasure } from "./childDataSinks";
+import { childSinkIds, subcollectionSinkId, validEraseCount, type SinkErasure } from "./childDataSinks";
 import { ChildProfile, DeletionReceipt } from "../types";
 
 /** Per-child subcollections that hold parent-generated data. */
@@ -342,10 +342,10 @@ export async function eraseEverything(uid: string | undefined, childId: string):
 function recordServerSinks(sinks: SinkLedger, res: Awaited<ReturnType<typeof api.privacyErase>> | undefined): void {
   const erased = res?.erased;
   if (!erased) return;
-  const n = (v: unknown): SinkErasure => (typeof v === "number" && Number.isFinite(v) ? v : "not-reached");
+  const n = (v: unknown): SinkErasure => validEraseCount(v) ? v : "not-reached";
   sinks["server:memoryEvents"] = n(erased.memoryEvents);
   // Deleted in the same server call as the ledger (memoryStore.eraseChild).
-  sinks["server:familyChildRef"] = typeof erased.memoryEvents === "number" ? "cleared" : "not-reached";
+  sinks["server:familyChildRef"] = validEraseCount(erased.memoryEvents) ? "cleared" : "not-reached";
   sinks["server:shares"] = n(erased.shares);
   sinks["server:consents"] = n(erased.consents);
   sinks["server:consultRequests"] = n(erased.consultRequests);
