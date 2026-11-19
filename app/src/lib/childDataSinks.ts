@@ -149,11 +149,16 @@ export function childSinkIds(subcollections: readonly string[]): string[] {
 /** What the receipt shows as "Saved records erased": the subcollection
  *  documents and the profile (the server-held categories, consult requests
  *  included, have rows of their own). */
+/** Erasure counts must be actual nonnegative integral record counts. A malformed
+ * server receipt must never make the parent-facing deletion total look valid. */
+export const validEraseCount = (value: unknown): value is number =>
+  typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+
 export function erasedRecordCount(sinks: Readonly<Record<string, SinkErasure>> | undefined): number {
   if (!sinks) return 0;
   let n = 0;
   for (const [id, v] of Object.entries(sinks)) {
-    if ((id === "profile" || id.startsWith("firestore:")) && typeof v === "number") n += v;
+    if ((id === "profile" || id.startsWith("firestore:")) && validEraseCount(v)) n += v;
   }
   return n;
 }
@@ -362,17 +367,38 @@ export interface ReceiptView {
 export function receiptView(
   sinks: Readonly<Record<string, SinkErasure>> | undefined,
   counts: Readonly<Record<Exclude<ReceiptRowId, "records">, number>>,
+  /** Pass the complete registered sink list from the canonical erase flow.
+   *  Earlier or interrupted receipts may lack entries altogether; omission
+   *  is NOT evidence that those places were cleared. */
+  expectedSinkIds: readonly string[] = [],
 ): ReceiptView {
   const unreached = new Set<ReceiptRowId>();
   const places = Object.fromEntries(RECEIPT_ROWS.map((row) => [row, { total: 0, unreached: 0 }])) as ReceiptView["places"];
-  for (const [id, v] of Object.entries(sinks ?? {})) {
+  // Include unknown extra entries, too, rather than hiding unexpected sinks.
+  // The optional fallback keeps historical pure callers compatible; the
+  // parent-facing sheet always supplies childSinkIds(CHILD_SUBCOLLECTIONS).
+  const observedIds = Object.keys(sinks ?? {});
+  const ids = [...new Set([...(expectedSinkIds.length ? expectedSinkIds : observedIds), ...observedIds])];
+  for (const id of ids) {
     const row = receiptRowOf(id);
+    const value = sinks?.[id];
     places[row].total++;
-    if (v === "not-reached") { unreached.add(row); places[row].unreached++; }
+    if (value !== "cleared" && !validEraseCount(value)) {
+      unreached.add(row);
+      places[row].unreached++;
+    }
   }
   const rows = { records: erasedRecordCount(sinks), ...counts } as Record<ReceiptRowId, number | "not-reached">;
+  // A corrupt or incomplete count is not a successful erase receipt even
+  // if its corresponding per-sink status claims success.
+  for (const row of RECEIPT_ROWS) {
+    if (row !== "records" && !validEraseCount(rows[row])) {
+      unreached.add(row);
+      if (places[row].unreached === 0) places[row].unreached = 1;
+    }
+  }
   for (const row of unreached) rows[row] = "not-reached";
-  return { finished: !!sinks && Object.keys(sinks).length > 0 && unreached.size === 0, rows, places };
+  return { finished: !!sinks && ids.length > 0 && unreached.size === 0, rows, places };
 }
 
 /** The title key of the receipt sheet. */

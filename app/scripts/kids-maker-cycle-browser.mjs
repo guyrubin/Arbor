@@ -4,7 +4,7 @@
  * Keyboard alternatives are deliberately exercised on canvas toys, alongside
  * touch/mouse on their visible docks. No engine/React state or completion seam. */
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RELEASE_VIEWPORTS } from './capture/release-config.mjs';
 import { installGameCycleAudioProbe, verifyStudioResultScene } from './kids-game-cycle-browser.mjs';
@@ -26,6 +26,17 @@ const GAMES = [
   { id: 'calm-builder', world: 'feelings', selector: '.studio-corner', creation: 'corner' },
   { id: 'sneak', world: 'playbank', selector: '[data-sneak-stage]' },
 ];
+
+/** Only an explicit diagnostic call may narrow the complete release matrix. */
+export function makerCycleGames(gameIds) {
+  assert.equal(GAMES.length, 15, 'The full maker/activity gate contains fifteen games');
+  assert.equal(RELEASE_VIEWPORTS.length, 4, 'The release gate covers EN/HE phone and desktop');
+  if (gameIds === undefined) return [...GAMES];
+  assert.ok(Array.isArray(gameIds) && gameIds.length > 0, 'An explicit game filter must be a non-empty array');
+  assert.equal(new Set(gameIds).size, gameIds.length, 'An explicit game filter must not repeat a game');
+  for (const id of gameIds) assert.ok(typeof id === 'string' && GAMES.some(game => game.id === id), `Unknown maker-cycle game: ${String(id)}`);
+  return GAMES.filter(game => gameIds.includes(game.id));
+}
 
 const SEASONS = {
   springShower: { season: 0, taps: 2, rain: 5000, blows: 0, wait: 3000 },
@@ -410,174 +421,220 @@ async function playOtherMaker(h, game) {
   throw new Error(`Missing real-input driver for ${game.id}`);
 }
 
-export async function verifyMakerGameCycles({ browser, base, output }) {
+export async function verifyMakerGameCycles({ browser, base, output, gameIds }) {
+  const games = makerCycleGames(gameIds), expectedCells = games.length * RELEASE_VIEWPORTS.length;
+  if (gameIds === undefined) assert.equal(expectedCells, 60, 'The default release gate must operate all sixty cells');
   const folder = path.join(output, 'maker-cycles'); await mkdir(folder, { recursive: true });
   const rows = [], failures = [], origin = new URL(base).origin;
-  for (const viewport of RELEASE_VIEWPORTS) for (const game of GAMES) {
+  const cells = RELEASE_VIEWPORTS.flatMap(viewport => games.map(game => ({ viewport, game })));
+  let summaryWrites = Promise.resolve();
+  const persist = async (index, record) => {
+    await writeFile(path.join(folder, `${record.game}-${record.viewport}.json`), JSON.stringify(record, null, 2));
+    rows[index] = record;
+    const completed = rows.filter(Boolean);
+    const summary = JSON.stringify({ scope: gameIds === undefined ? 'full-release-matrix' : 'explicit-game-filter', gameIds: games.map(game => game.id), complete: completed.length === expectedCells, expected: expectedCells, passed: completed.filter(row => row.passed).length, failed: completed.filter(row => !row.passed).length, rows: completed }, null, 2);
+    // Every cell has its own artifacts. Only this small manifest is shared;
+    // serialize and atomically replace it so partial evidence stays readable.
+    summaryWrites = summaryWrites.then(async () => {
+      await writeFile(path.join(folder, 'summary.json.tmp'), summary);
+      await rename(path.join(folder, 'summary.json.tmp'), path.join(folder, 'summary.json'));
+    });
+    await summaryWrites;
+    console.log(`${record.passed ? 'PASS' : 'FAIL'} maker-cycle ${record.game}-${record.viewport} ${record.wallElapsedMs}ms (${completed.length}/${expectedCells})`);
+  };
+  const runCell = async ({ viewport, game }, index) => {
+    const started = Date.now();
     const phone = viewport.id.startsWith('mobile-');
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
     const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [];
-    await context.route('**/*', route => {
-      const url = new URL(route.request().url());
-      if (url.origin === origin && url.pathname === '/_proof/hero/sheet.json') { fixtureRequests.push('absent hero sheet: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
-      // Synthetic review deliberately has no private proof scene. loadProofArt
-      // treats JSON null as absent and keeps the synthetic fallback scene; the server
-      // continues to refuse every other private proof path.
-      if (url.origin === origin && url.pathname === '/_proof/scene/art.json') { fixtureRequests.push('absent scene art: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
-      if (url.origin === origin && !url.pathname.startsWith('/api/')) return route.continue();
-      unexpectedRequests.push(url.href); return route.abort();
-    });
-    await context.addInitScript(() => { localStorage.setItem('arbor.kid.readAloud.muted.studio-v2-synthetic-review', '1'); Math.random = () => 0; });
-    await context.addInitScript(installGameCycleAudioProbe);
-    const page = await context.newPage(); page.setDefaultTimeout(12000);
-    page.on('pageerror', e => errors.push(e.message));
-    page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text()); });
-    page.on('response', response => { if (response.status() >= 400 && !new URL(response.url()).pathname.endsWith('/favicon.ico')) brokenResources.push({ url: response.url(), status: response.status() }); });
-    const selector = game.selector ?? `[data-adventure="${game.id}"]`, root = page.locator(selector);
     const stem = `${game.id}-${viewport.id}`;
     const record = { case: 'curated-maker-cycle', game: game.id, viewport: viewport.id, lang: viewport.lang,
       input: `${phone ? 'emulated touch' : 'mouse'} plus authored keyboard alternatives`, sound: 'off', motion: 'reduce',
       clock: 'normal lazy loading, controlled game clock; real input only', screenshots: [], trace: [], fixtureRequests, inputs: { pointer: 0, keyboard: 0, held: 0 }, completionCount: 0 };
-    const shots = new Set();
-    const snapshot = async label => {
-      if (shots.has(label)) return; shots.add(label);
-      const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
-      record.screenshots.push(`maker-cycles/${name}`);
-    };
-    let controlledMs = 0, lastState = '';
-    const attrs = () => page.evaluate(sel => ({ ...document.querySelector(sel)?.dataset }), selector);
-    const advance = async ms => {
-      await page.clock.runFor(ms); controlledMs += ms;
-      const state = await attrs(), text = JSON.stringify(state);
-      if (text !== lastState && record.trace.length < 160) { lastState = text; record.trace.push({ at: controlledMs, ...state }); }
-    };
-    const exists = async sel => { const loc = page.locator(sel); return await loc.count() > 0 && await loc.first().isVisible(); };
-    const press = async (loc, options = {}) => { if (phone) await loc.tap(options); else await loc.click(options); record.inputs.pointer++; await advance(32); };
-    const key = async (loc, name) => { await loc.focus(); await loc.press(name); record.inputs.keyboard++; await advance(32); };
-    const until = async (condition, budget, label) => {
-      for (let elapsed = 0; elapsed <= budget; elapsed += 250) { if (await condition()) return; await advance(250); }
-      assert.fail(`${label} did not complete within ${budget}ms of controlled game time`);
-    };
-    const sneakLayout = () => page.evaluate(() => {
-      const box = selector => {
-        const element = document.querySelector(selector);
-        if (!element) return null;
-        const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
-        return { left, right, top, bottom, width, height };
-      };
-      const plate = document.querySelector('[data-sneak-plate]');
-      return { field: box('[data-sneak-stage]'), plate: box('[data-sneak-plate]'), pad: box('[data-sneak-pad]'),
-        imageLoaded: !!plate?.complete && plate.naturalWidth > 0,
-        transform: document.querySelector('[data-sneak-stage] [data-play-art]')?.getAttribute('style') };
-    });
-    const renderedSneakField = async label => {
-      let layout;
-      await until(async () => {
-        layout = await sneakLayout();
-        const { field, plate, pad, imageLoaded } = layout;
-        return field && plate && pad && imageLoaded && field.width >= viewport.w / 2 && field.height >= viewport.h / 2
-          && plate.left <= field.left + 1 && plate.right >= field.right - 1 && plate.top <= field.top + 1 && plate.bottom >= field.bottom - 1
-          && pad.width >= 44 && pad.height >= 44 && pad.left >= field.left - 1 && pad.right <= field.right + 1
-          && pad.top >= field.top - 1 && pad.bottom <= field.bottom + 1;
-      }, 2000, label);
-      return layout;
-    };
-    const hold = async (loc, ms) => {
-      await loc.scrollIntoViewIfNeeded(); const box = await loc.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Held object is rendered');
-      const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }; record.inputs.held++;
-      if (phone) {
-        const cdp = await context.newCDPSession(page);
-        try { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, radiusX: 4, radiusY: 4 }] }); await advance(ms); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); }
-        finally { await cdp.detach(); }
-      } else { await page.mouse.move(point.x, point.y); await page.mouse.down(); try { await advance(ms); } finally { await page.mouse.up(); } }
-    };
     try {
-      await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
-      const url = new URL(base); url.searchParams.set('lang', viewport.lang); url.searchParams.set('studioNext', '1');
-      await page.goto(url.href); await page.locator('[data-studio-home]').waitFor({ state: 'visible' }); await page.evaluate(() => document.fonts.ready);
-      await press(page.locator(`button.studio-v2__door[data-world="${game.world}"]`));
-      const activityTile = page.locator(`[data-studio-activity="${game.id}"]`);
-      if (game.id === 'fox-trail' || game.id === 'windup-race') {
-        const nativePose = game.id === 'fox-trail' ? 'kit-pep-mission-sniffing.webp' : 'pep-idle.webp';
-        const pose = activityTile.locator(`image[href$="${nativePose}"]`);
-        await pose.waitFor({ state: 'attached' });
-        const orientation = await pose.evaluate(async element => {
-          const image = new Image(); image.src = element.getAttribute('href'); await image.decode();
-          const matrix = element.getCTM();
-          return { src: image.src, determinant: matrix.a * matrix.d - matrix.b * matrix.c };
-        });
-        assert.ok(orientation.determinant > 0, 'The static cover retains its approved native pose without an ancestor reflection');
-        record.coverPose = orientation;
+      await context.route('**/*', route => {
+        const url = new URL(route.request().url());
+        if (url.origin === origin && url.pathname === '/_proof/hero/sheet.json') { fixtureRequests.push('absent hero sheet: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
+        // Synthetic review deliberately has no private proof scene. loadProofArt
+        // treats JSON null as absent and keeps the synthetic fallback scene; the server
+        // continues to refuse every other private proof path.
+        if (url.origin === origin && url.pathname === '/_proof/scene/art.json') { fixtureRequests.push('absent scene art: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
+        if (url.origin === origin && !url.pathname.startsWith('/api/')) return route.continue();
+        unexpectedRequests.push(url.href); return route.abort();
+      });
+      await context.addInitScript(() => { localStorage.setItem('arbor.kid.readAloud.muted.studio-v2-synthetic-review', '1'); Math.random = () => 0; });
+      await context.addInitScript(installGameCycleAudioProbe);
+      const page = await context.newPage(); page.setDefaultTimeout(12000);
+      page.on('pageerror', e => errors.push(e.message));
+      page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.text()); });
+      page.on('response', response => { if (response.status() >= 400 && !new URL(response.url()).pathname.endsWith('/favicon.ico')) brokenResources.push({ url: response.url(), status: response.status() }); });
+      const selector = game.selector ?? `[data-adventure="${game.id}"]`, root = page.locator(selector);
+      const shots = new Set();
+      const snapshot = async label => {
+        if (shots.has(label)) return; shots.add(label);
+        const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
+        record.screenshots.push(`maker-cycles/${name}`);
+      };
+      let controlledMs = 0, lastState = '';
+      const attrs = () => page.evaluate(sel => ({ ...document.querySelector(sel)?.dataset }), selector);
+      const advance = async ms => {
+        await page.clock.runFor(ms); controlledMs += ms;
+        const state = await attrs(), text = JSON.stringify(state);
+        if (text !== lastState && record.trace.length < 160) { lastState = text; record.trace.push({ at: controlledMs, ...state }); }
+      };
+      const exists = async sel => { const loc = page.locator(sel); return await loc.count() > 0 && await loc.first().isVisible(); };
+      const press = async (loc, options = {}) => { if (phone) await loc.tap(options); else await loc.click(options); record.inputs.pointer++; await advance(32); };
+      const key = async (loc, name) => { await loc.focus(); await loc.press(name); record.inputs.keyboard++; await advance(32); };
+      const until = async (condition, budget, label) => {
+        for (let elapsed = 0; elapsed <= budget; elapsed += 250) { if (await condition()) return; await advance(250); }
+        assert.fail(`${label} did not complete within ${budget}ms of controlled game time`);
+      };
+      const sneakLayout = () => page.evaluate(() => {
+        const box = selector => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
+          return { left, right, top, bottom, width, height };
+        };
+        const plate = document.querySelector('[data-sneak-plate]');
+        return { field: box('[data-sneak-stage]'), plate: box('[data-sneak-plate]'), pad: box('[data-sneak-pad]'),
+          imageLoaded: !!plate?.complete && plate.naturalWidth > 0,
+          transform: document.querySelector('[data-sneak-stage] [data-play-art]')?.getAttribute('style') };
+      });
+      const renderedSneakField = async label => {
+        let layout;
+        await until(async () => {
+          layout = await sneakLayout();
+          const { field, plate, pad, imageLoaded } = layout;
+          return field && plate && pad && imageLoaded && field.width >= viewport.w / 2 && field.height >= viewport.h / 2
+            && plate.left <= field.left + 1 && plate.right >= field.right - 1 && plate.top <= field.top + 1 && plate.bottom >= field.bottom - 1
+            && pad.width >= 44 && pad.height >= 44 && pad.left >= field.left - 1 && pad.right <= field.right + 1
+            && pad.top >= field.top - 1 && pad.bottom <= field.bottom + 1;
+        }, 2000, label);
+        return layout;
+      };
+      const hold = async (loc, ms) => {
+        await loc.scrollIntoViewIfNeeded(); const box = await loc.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Held object is rendered');
+        const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }; record.inputs.held++;
+        if (phone) {
+          const cdp = await context.newCDPSession(page);
+          try { await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, radiusX: 4, radiusY: 4 }] }); await advance(ms); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); }
+          finally { await cdp.detach(); }
+        } else { await page.mouse.move(point.x, point.y); await page.mouse.down(); try { await advance(ms); } finally { await page.mouse.up(); } }
+      };
+      try {
+        await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
+        const url = new URL(base); url.searchParams.set('lang', viewport.lang); url.searchParams.set('studioNext', '1');
+        await page.goto(url.href); await page.locator('[data-studio-home]').waitFor({ state: 'visible' }); await page.evaluate(() => document.fonts.ready);
+        await press(page.locator(`button.studio-v2__door[data-world="${game.world}"]`));
+        const activityTile = page.locator(`[data-studio-activity="${game.id}"]`);
+        if (game.id === 'fox-trail' || game.id === 'windup-race') {
+          const nativePose = game.id === 'fox-trail' ? 'kit-pep-mission-sniffing.webp' : 'pep-idle.webp';
+          const pose = activityTile.locator(`image[href$="${nativePose}"]`);
+          await pose.waitFor({ state: 'attached' });
+          const orientation = await pose.evaluate(async element => {
+            const image = new Image(); image.src = element.getAttribute('href'); await image.decode();
+            const matrix = element.getCTM();
+            return { src: image.src, determinant: matrix.a * matrix.d - matrix.b * matrix.c };
+          });
+          assert.ok(orientation.determinant > 0, 'The static cover retains its approved native pose without an ancestor reflection');
+          record.coverPose = orientation;
+        }
+        await press(activityTile);
+        const session = page.locator('[data-studio-phase]');
+        await session.waitFor({ state: 'visible' });
+        record.entryPhase = await session.getAttribute('data-studio-phase');
+        // Makers use their own PlayOpening immediately. The other curated
+        // activities have the shared Studio introduction and Start control.
+        if (record.entryPhase === 'intro') { await snapshot('intro'); await press(page.locator('[data-studio-start]')); }
+        else assert.equal(record.entryPhase, 'play', 'The actual maker session opens directly into its authored opening');
+        await root.waitFor({ state: 'visible' });
+        // Keep React's Suspense minimum running until the real mechanic mounts.
+        await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+        assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
+        const box = await root.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Actual game is laid out');
+        if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
+        await snapshot('ready');
+        record.metrics = {};
+        const h = { page, root, lang: viewport.lang, press, key, advance, until, exists, attrs, snapshot, hold, metrics: record.metrics };
+        record.play = await play(h, game); record.completionCount = 1;
+        const resultSelector = game.id === 'sneak' ? '[data-sneak-ending]' : '[data-studio-phase="result"]';
+        await page.locator(resultSelector).waitFor({ state: 'visible' });
+        if (game.creation) {
+          const created = page.locator(`[data-creation="${game.creation}"]`); await created.waitFor({ state: 'visible' });
+          assert.equal(await page.locator('[data-studio-created]').getAttribute('data-studio-created'), game.creation, 'Finish displays the actual created object');
+        }
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow at completion');
+        if (game.id !== 'sneak') record.resultScene = await verifyStudioResultScene(page, game.world);
+        await snapshot('result');
+        if (game.id === 'sneak') { await until(() => exists('[data-kid-finish-again]'), 12000, 'Sneak replay action'); await press(page.locator('[data-kid-finish-again]')); }
+        else await press(page.locator('[data-studio-replay]'));
+        await root.waitFor({ state: 'visible' });
+        assert.equal(await page.locator(resultSelector).count(), 0, 'Replay clears the prior completion');
+        const replayOpening = page.locator('[data-play-skip]');
+        const openingPressed = await replayOpening.count() > 0;
+        if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
+        if (game.id === 'sneak') {
+          record.replayLayout = await renderedSneakField('Replayed Sneak scene covers the field with its control in reach');
+          await until(() => exists('[data-sneak-stage][data-sneak-phase="counting"]'), 6000, 'Replayed Sneak begins its next count');
+          const before = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
+          await root.focus(); await page.keyboard.down('Space'); record.inputs.keyboard++;
+          try { await advance(320); } finally { await page.keyboard.up('Space'); record.inputs.keyboard++; }
+          await advance(32);
+          const after = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
+          assert.ok(after > before, 'The replayed hero moves in response to a real hold and release');
+          record.metrics.replayMovement = { before, after };
+        }
+        await snapshot('replay'); record.replay = { fresh: true, openingPressed, state: await attrs() };
+        // Exit while a new session is active; future callbacks must not finish it.
+        await press(page.locator('.review-bar > button').first());
+        await page.locator(`.studio-v2--world[data-world="${game.world}"]`).waitFor({ state: 'visible' });
+        await press(page.locator('.review-bar > button').first()); await page.locator('[data-studio-home]').waitFor({ state: 'visible' });
+        await advance(20000);
+        assert.equal(await page.locator(selector).count(), 0, 'Exited game stays unmounted');
+        assert.equal(await page.locator('[data-studio-phase="result"], [data-sneak-ending]').count(), 0, 'No late completion after active exit');
+        record.audio = await page.evaluate(() => window.gameCycleAudio); record.audioDetails = await page.evaluate(() => window.gameCycleAudioDetails);
+        const { audibleSources, media, speech, captures } = record.audio;
+        assert.deepEqual({ audibleSources, media, speech, captures }, { audibleSources: 0, media: 0, speech: 0, captures: 0 }, 'Muted play emits no audible sources, media, speech or capture');
+        assert.deepEqual(errors, [], 'No browser or React errors'); assert.deepEqual(brokenResources, [], 'All requested game resources served'); assert.deepEqual(unexpectedRequests, [], 'No API/external requests from synthetic play');
+        await snapshot('home'); record.passed = true;
+      } catch (error) {
+        await snapshot('failed').catch(() => {});
+        record.audio ??= await page.evaluate(() => window.gameCycleAudio).catch(() => null); record.audioDetails ??= await page.evaluate(() => window.gameCycleAudioDetails).catch(() => null);
+        if (game.id === 'sneak') record.failureLayout = await sneakLayout().catch(() => null);
+        record.failureState = await page.evaluate(sel => ({ root: document.querySelector(sel)?.outerHTML.slice(0, 12000) ?? null, studio: document.querySelector('[data-studio-phase]')?.getAttribute('data-studio-phase'), loading: !!document.querySelector('[data-testid="kid-stage-fallback"]') }), selector).catch(() => null);
+        Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests }); failures[index] = new Error(`${stem}: ${error instanceof Error ? error.message : error}`, { cause: error });
       }
-      await press(activityTile);
-      const session = page.locator('[data-studio-phase]');
-      await session.waitFor({ state: 'visible' });
-      record.entryPhase = await session.getAttribute('data-studio-phase');
-      // Makers use their own PlayOpening immediately. The other curated
-      // activities have the shared Studio introduction and Start control.
-      if (record.entryPhase === 'intro') { await snapshot('intro'); await press(page.locator('[data-studio-start]')); }
-      else assert.equal(record.entryPhase, 'play', 'The actual maker session opens directly into its authored opening');
-      await root.waitFor({ state: 'visible' });
-      // Keep React's Suspense minimum running until the real mechanic mounts.
-      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
-      assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
-      const box = await root.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Actual game is laid out');
-      if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
-      await snapshot('ready');
-      record.metrics = {};
-      const h = { page, root, lang: viewport.lang, press, key, advance, until, exists, attrs, snapshot, hold, metrics: record.metrics };
-      record.play = await play(h, game); record.completionCount = 1;
-      const resultSelector = game.id === 'sneak' ? '[data-sneak-ending]' : '[data-studio-phase="result"]';
-      await page.locator(resultSelector).waitFor({ state: 'visible' });
-      if (game.creation) {
-        const created = page.locator(`[data-creation="${game.creation}"]`); await created.waitFor({ state: 'visible' });
-        assert.equal(await page.locator('[data-studio-created]').getAttribute('data-studio-created'), game.creation, 'Finish displays the actual created object');
-      }
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow at completion');
-      if (game.id !== 'sneak') record.resultScene = await verifyStudioResultScene(page, game.world);
-      await snapshot('result');
-      if (game.id === 'sneak') { await until(() => exists('[data-kid-finish-again]'), 12000, 'Sneak replay action'); await press(page.locator('[data-kid-finish-again]')); }
-      else await press(page.locator('[data-studio-replay]'));
-      await root.waitFor({ state: 'visible' });
-      assert.equal(await page.locator(resultSelector).count(), 0, 'Replay clears the prior completion');
-      const replayOpening = page.locator('[data-play-skip]');
-      const openingPressed = await replayOpening.count() > 0;
-      if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
-      if (game.id === 'sneak') {
-        record.replayLayout = await renderedSneakField('Replayed Sneak scene covers the field with its control in reach');
-        await until(() => exists('[data-sneak-stage][data-sneak-phase="counting"]'), 6000, 'Replayed Sneak begins its next count');
-        const before = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
-        await root.focus(); await page.keyboard.down('Space'); record.inputs.keyboard++;
-        try { await advance(320); } finally { await page.keyboard.up('Space'); record.inputs.keyboard++; }
-        await advance(32);
-        const after = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
-        assert.ok(after > before, 'The replayed hero moves in response to a real hold and release');
-        record.metrics.replayMovement = { before, after };
-      }
-      await snapshot('replay'); record.replay = { fresh: true, openingPressed, state: await attrs() };
-      // Exit while a new session is active; future callbacks must not finish it.
-      await press(page.locator('.review-bar > button').first());
-      await page.locator(`.studio-v2--world[data-world="${game.world}"]`).waitFor({ state: 'visible' });
-      await press(page.locator('.review-bar > button').first()); await page.locator('[data-studio-home]').waitFor({ state: 'visible' });
-      await advance(20000);
-      assert.equal(await page.locator(selector).count(), 0, 'Exited game stays unmounted');
-      assert.equal(await page.locator('[data-studio-phase="result"], [data-sneak-ending]').count(), 0, 'No late completion after active exit');
-      record.audio = await page.evaluate(() => window.gameCycleAudio); record.audioDetails = await page.evaluate(() => window.gameCycleAudioDetails);
-      const { audibleSources, media, speech, captures } = record.audio;
-      assert.deepEqual({ audibleSources, media, speech, captures }, { audibleSources: 0, media: 0, speech: 0, captures: 0 }, 'Muted play emits no audible sources, media, speech or capture');
-      assert.deepEqual(errors, [], 'No browser or React errors'); assert.deepEqual(brokenResources, [], 'All requested game resources served'); assert.deepEqual(unexpectedRequests, [], 'No API/external requests from synthetic play');
-      await snapshot('home'); record.passed = true;
+      record.controlledMs = controlledMs;
     } catch (error) {
-      await snapshot('failed').catch(() => {});
-      record.audio ??= await page.evaluate(() => window.gameCycleAudio).catch(() => null); record.audioDetails ??= await page.evaluate(() => window.gameCycleAudioDetails).catch(() => null);
-      if (game.id === 'sneak') record.failureLayout = await sneakLayout().catch(() => null);
-      record.failureState = await page.evaluate(sel => ({ root: document.querySelector(sel)?.outerHTML.slice(0, 12000) ?? null, studio: document.querySelector('[data-studio-phase]')?.getAttribute('data-studio-phase'), loading: !!document.querySelector('[data-testid="kid-stage-fallback"]') }), selector).catch(() => null);
-      Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests }); failures.push(new Error(`${stem}: ${error instanceof Error ? error.message : error}`, { cause: error }));
-    } finally { await context.close(); }
-    record.controlledMs = controlledMs; rows.push(record);
-    await writeFile(path.join(folder, `${stem}.json`), JSON.stringify(record, null, 2));
-    await writeFile(path.join(folder, 'summary.json'), JSON.stringify({ complete: rows.length === GAMES.length * RELEASE_VIEWPORTS.length, expected: GAMES.length * RELEASE_VIEWPORTS.length, passed: rows.filter(r => r.passed).length, failed: rows.filter(r => !r.passed).length, rows }, null, 2));
-  }
-  if (failures.length) throw new AggregateError(failures, `${failures.length}/${rows.length} curated maker cells failed; see maker-cycles/summary.json`);
+      Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests, failureStage: 'cell-setup' });
+      failures[index] = new Error(`${stem}: setup failed`, { cause: error });
+    } finally {
+      try { await context.close(); }
+      catch (error) {
+        record.passed = false; record.teardownError = String(error);
+        failures[index] = new AggregateError([...(failures[index] ? [failures[index]] : []), error], `${stem}: context teardown failed`);
+      }
+      record.wallElapsedMs = Date.now() - started;
+      await persist(index, record);
+    }
+  };
+  let nextCell = 0;
+  const workers = await Promise.allSettled(Array.from({ length: Math.min(3, cells.length) }, async () => {
+    while (nextCell < cells.length) {
+      const index = nextCell++, cell = cells[index], started = Date.now();
+      try { await runCell(cell, index); }
+      catch (error) {
+        // A context/setup failure must not prevent the other cells exporting
+        // their evidence. It is still a hard failed cell, never a skipped pass.
+        failures[index] = error;
+        await persist(index, { case: 'curated-maker-cycle', game: cell.game.id, viewport: cell.viewport.id, lang: cell.viewport.lang, passed: false, error: String(error), failureStage: 'cell-setup-or-artifact', wallElapsedMs: Date.now() - started });
+      }
+    }
+  }));
+  await summaryWrites;
+  const allFailures = [...failures.filter(Boolean), ...workers.filter(worker => worker.status === 'rejected').map(worker => worker.reason)];
+  assert.equal(rows.filter(Boolean).length, expectedCells, 'Every requested game and viewport cell was operated');
+  if (allFailures.length) throw new AggregateError(allFailures, `${failures.filter(Boolean).length}/${rows.length} curated maker cells failed; see maker-cycles/summary.json`);
   return rows;
 }
