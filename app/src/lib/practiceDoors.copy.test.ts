@@ -474,7 +474,7 @@ describe("B-PLAY-05 + W2-SHELLPLAY critic r1 — ONE sentence on the Practice do
     const src = stripComments(studio);
     expect(src).not.toContain("practice.studio.openKidmode");
     expect(src).not.toMatch(/\bopenKidMode\(/);
-    expect(src).toContain('requestKidMode({ view: "arcade", worldId: world.id })');
+    expect(src).toContain("requestKidMode(parentDoorTarget(world.id))");
     // Parity 9 Oct: Together's preview says it before anything opens (v10.1: Play's preview).
     expect(src).toContain('opensInKidMode(preview.world) ? t("companion.together-view.when-you-are-ready-enter-the-child-area-yo")');
     expect(translate("en", "elev.practice.studio.opensWorld", { world: "Sound Lab" })).toBe("Opens Sound Lab in Kid Mode");
@@ -685,7 +685,7 @@ describe("W2-SHELLPLAY r1 · #/speech — the round is scored on the fold, in on
     // always carries exactly one move, in either state
     expect(parent).toMatch(/<div data-primary-move="complete-speech-round">\s*\{roundDone \? \(\s*<div data-testid="speech-round-done"/);
     expect(speech).toContain('else if (result === "got" && level !== "story") setRoundDone(true);');
-    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "speech" })');
+    expect(parent).toContain('requestKidMode(parentDoorTarget("speech"))');
     expect(speech).toContain("appropriate.has(s.id) && s.id !== sound.id");
     for (const lang of ["en", "he"] as const) {
       for (const k of ["elev.practice.speech.roundDone", "elev.practice.speech.roundDone.one", "elev.practice.speech.roundDone.next", "elev.practice.speech.handover", "elev.practice.speech.anotherRound"]) {
@@ -733,7 +733,7 @@ describe("W2-SHELLPLAY r2 · #/feelings — the parent page is the co-play door 
 
   it("ONE door: stamped open-world-door, the page's one gradient, opens Mood Mountain through the seam", () => {
     expect(parent).toContain('data-primary-move="open-world-door"');
-    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "feelings" })');
+    expect(parent).toContain('requestKidMode(parentDoorTarget("feelings"))');
     expect(countOf(parent, /--gradient-cta/g)).toBe(1);
     expect(countOf(FEELINGS, /--gradient-cta/g)).toBe(1);
     expect(contractFor("feelings")!.primaryMove).toBe("open-world-door");
@@ -763,7 +763,7 @@ describe("W2-SHELLPLAY r2 · #/adventures — ONE door into Story Quest (B-PLAY-
     expect(parent).toContain('data-primary-move="open-story-quest"');
     expect(countOf(adv, MOVE)).toBe(1);
     expect(countOf(adv, /--gradient-cta/g)).toBe(1);
-    expect(parent).toContain('requestKidMode({ view: "arcade", worldId: "adventures" })');
+    expect(parent).toContain('requestKidMode(parentDoorTarget("adventures"))');
     expect(contractFor("adventures")!.primaryMove).toBe("open-story-quest");
     expect(contractFor("adventures")!.moduleBudget).toBe(1);
   });

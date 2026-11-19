@@ -148,7 +148,7 @@ describe("B-PROG-13 · the program page", () => {
   it("the door calls the EXISTING Kid Mode entry seam on the named world and renders its step", () => {
     const door = strip(read("components/program/ProgramKidWorldDoor.tsx"));
     expect(door).toContain('import { useKidModeEntry } from "../kidmode/useKidModeEntry";');
-    expect(door).toContain('onClick={() => request({ view: "arcade", worldId })}');
+    expect(door).toContain("onClick={() => request(parentDoorTarget(worldId))}");
     expect(door).toContain("{step}");
     expect(door).not.toMatch(/openKidMode\(/);
   });

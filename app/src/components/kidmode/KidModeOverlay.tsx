@@ -34,7 +34,7 @@ import { KidErrorBoundary } from "./KidErrorBoundary";
 import { ArborMascot } from "../ui/ArborMascot";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
-import { studioActivity, studioActivityFits, STUDIO_V2_WORLDS, type StudioActivityId, type StudioWorldId } from "./studioV2/studioCatalog";
+import { studioActivity, studioActivityFits, studioSurfaceFor, STUDIO_V2_WORLDS, type StudioActivityId, type StudioWorldId } from "./studioV2/studioCatalog";
 import { studioCopy } from "./studioV2/studioCopy";
 import { KidSoundToggle } from "./kidReadAloud";
 import { closeKidAudio, kidAudioVisibility, kidHush, setKidAudioChild } from "./audio/kidAudio";
@@ -75,8 +75,7 @@ export type StudioView = "studio-world" | "studio-game" | "studio-collection" | 
 type View = LegacyView | StudioView;
 const isStudioView = (view: string): view is StudioView => ["studio-world", "studio-game", "studio-collection", "studio-quest"].includes(view);
 export function studioActivityView(id: string): "arcade" | "studio-game" | null {
-  if (!studioActivity(id)) return null;
-  return ["reading", "adventures", "pose", "speech"].includes(id) ? "arcade" : "studio-game";
+  return studioSurfaceFor(id);
 }
 export function restoredKidView(view?: string, worldId?: string | null): View {
   if (view === "studio-world") return STUDIO_V2_WORLDS.includes(worldId as StudioWorldId) ? view : "home";

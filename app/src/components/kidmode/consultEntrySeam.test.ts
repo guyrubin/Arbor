@@ -22,8 +22,8 @@ describe("B-KID-44: Consult's home-practice door goes through the ONE seam", () 
     expect(ask).not.toMatch(/\buseKidMode\(\)/);
     expect(ask).not.toMatch(/import \{[^}]*\buseKidMode\b[^}]*\} from "[^"]*KidModeContext"/);
   });
-  it("the helper opens Kid Mode ON the world (view arcade + worldId)", () => {
-    expect(home).toContain('seams.openKidMode({ view: "arcade", worldId: world.id });');
+  it("the helper opens Kid Mode on the same surface the kid shelf uses", () => {
+    expect(home).toContain("seams.openKidMode(parentDoorTarget(world.id));");
   });
   it("NEGATIVE CONTROL: a raw context opener passed as the value is what this pin rejects", () => {
     const preFix = 'const { openKidMode } = useKidMode();\nopenHomePracticeWorld(w, { setActiveTab, openKidMode })';

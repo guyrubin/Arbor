@@ -20,6 +20,7 @@ import { SpeakButton } from "../ui/SpeakButton";
 import { mediaAlreadyGranted, mediaControlHidden, resolveMediaPermission, type MediaPermission } from "../../practice/mediaPermission";
 import { platformAsrAllowed, speechScoringAllowed, voiceConsentState, VOICE_CONSENT_PURPOSE, type VoiceConsentState } from "./speechConsentGate";
 import EarlyReadingTrack from "./EarlyReadingTrack";
+import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { ageYearsOf } from "../../lib/age/forChild";
 
@@ -467,7 +468,7 @@ export default function SpeechCoachTab() {
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" data-testid="speech-handover" onClick={() => requestKidMode({ view: "arcade", worldId: "speech" })}
+              <button type="button" data-testid="speech-handover" onClick={() => requestKidMode(parentDoorTarget("speech"))}
                 className="inline-flex items-center gap-1.5 t-sm font-extrabold px-4 min-h-[44px] rounded-xl"
                 style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
                 <Icon name="sports_esports" size={16} /> {t("elev.practice.speech.handover")}
