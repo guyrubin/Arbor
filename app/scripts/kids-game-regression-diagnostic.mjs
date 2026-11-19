@@ -1,4 +1,4 @@
-/** Temporary, read-only replay diagnosis through the normal synthetic preview. */
+/** Temporary, read-only regression diagnosis through the normal synthetic preview. */
 import assert from 'node:assert/strict';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -6,9 +6,10 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { verifyMakerGameCycles } from './kids-maker-cycle-browser.mjs';
 
-const output = path.resolve('output/kids-sneak-diagnostic');
+const gameIds = ['sneak', 'maker-desk', 'ice-age-friend'];
+const output = path.resolve('output/kids-game-regression-diagnostic');
 await mkdir(output, { recursive: true });
-const metadata = { sha: process.env.GITHUB_SHA ?? null, fixture: 'synthetic preview; actual Sneak driver; no cloud writes or private proof art', gameIds: ['sneak'], expectedCells: 4 };
+const metadata = { sha: process.env.GITHUB_SHA ?? null, fixture: 'synthetic preview; actual full-cycle drivers; no cloud writes or private proof art', gameIds, expectedCells: 12 };
 await writeFile(path.join(output, 'run.json'), JSON.stringify({ ...metadata, started: new Date().toISOString() }, null, 2));
 // Match the full performance runner: static preview/assets only; API and
 // private proof paths remain unavailable. The driver owns explicit null fixtures.
@@ -29,11 +30,12 @@ try {
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const base = `http://127.0.0.1:${server.address().port}`;
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  const rows = await verifyMakerGameCycles({ browser, base, output, gameIds: ['sneak'] });
-  assert.equal(rows.length, 4, 'The diagnostic operates all four release cells');
-  assert.ok(rows.every(row => row.game === 'sneak' && row.passed), 'Every diagnostic cell passes the unchanged strict driver');
+  const rows = await verifyMakerGameCycles({ browser, base, output, gameIds });
+  assert.equal(rows.length, 12, 'The diagnostic operates all twelve requested release cells');
+  for (const id of gameIds) assert.equal(rows.filter(row => row.game === id).length, 4, `${id} covers EN/HE phone and desktop`);
+  assert.ok(rows.every(row => gameIds.includes(row.game) && row.passed), 'Every diagnostic cell passes the unchanged strict driver');
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ ...metadata, passed: true, rows }, null, 2));
-  console.log('PASS Sneak replay diagnostic: 4/4 cells');
+  console.log('PASS game regression diagnostic: 12/12 cells');
 } catch (error) {
   await writeFile(path.join(output, 'result.json'), JSON.stringify({ ...metadata, passed: false, error: String(error), causes: error instanceof AggregateError ? error.errors.map(String) : [] }, null, 2));
   throw error;

@@ -45,7 +45,16 @@ export const DESK_KIT = {
 /** The lid's glass, as corners in the bench picture (percent of its box):
  * top-left, top-right, bottom-right, bottom-left. The screen overlay is
  * clipped to it, so the sleeping and waking screen sits inside the lid. */
-export const LID_GLASS = '30.3% 4.1%, 87.6% 5.6%, 86.7% 29.8%, 28.7% 25.5%';
+const LID_CORNERS = [[30.3, 4.1], [87.6, 5.6], [86.7, 29.8], [28.7, 25.5]] as const;
+export const LID_GLASS = LID_CORNERS.map(([x, y]) => `${x}% ${y}%`).join(', ');
+const lidLeft = Math.min(...LID_CORNERS.map(([x]) => x)), lidTop = Math.min(...LID_CORNERS.map(([, y]) => y));
+const lidWidth = Math.max(...LID_CORNERS.map(([x]) => x)) - lidLeft, lidHeight = Math.max(...LID_CORNERS.map(([, y]) => y)) - lidTop;
+/** The button's own box fits the visible glass. A whole-bench clipped button
+ * has its centre in the tool trays, outside its interactive polygon. */
+export const LID_TARGET = {
+  left: lidLeft, top: lidTop, width: lidWidth, height: lidHeight,
+  clip: LID_CORNERS.map(([x, y]) => `${((x - lidLeft) / lidWidth * 100).toFixed(6)}% ${((y - lidTop) / lidHeight * 100).toFixed(6)}%`).join(', '),
+};
 /** Where each docked tool sits in the bench picture (percent of its box). */
 export const TRAY_SPOTS: readonly (readonly [number, number])[] = [[19.9, 46.1], [32.7, 47.1], [44.6, 48.8], [57.6, 50.3], [71, 51.9]];
 /** The middle of the lid's glass, and the front light bar, in the bench picture (percent of its box). */

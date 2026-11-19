@@ -17,7 +17,7 @@ import {
 } from '../play';
 import { createDeskAudio, type DeskAudio } from './deskAudio';
 import { DeskBounce, type BounceControls } from './DeskBounce';
-import { DESK_KIT, FRONT_BAR, LID_CENTRE, LID_GLASS, TRAY_SPOTS, WINDOWS_TALL, WINDOWS_WIDE, type KitPicture } from './deskKit';
+import { DESK_KIT, FRONT_BAR, LID_CENTRE, LID_GLASS, LID_TARGET, TRAY_SPOTS, WINDOWS_TALL, WINDOWS_WIDE, type KitPicture } from './deskKit';
 import { ICON_BOUNCE, ICON_TERMINAL, DeskWallpaper, PixelArt, PixelClock } from './DeskPixels';
 import { DeskTerminal } from './DeskTerminal';
 import { DeskThing } from './DeskThing';
@@ -120,7 +120,7 @@ export default function MakerDesk() {
   const moodTimer = useRef<ReturnType<typeof setTimeout> | null>(null), toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null), pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pausedRef = useRef(false);
   const backButton = useRef<HTMLElement | null>(null), lidButton = useRef<HTMLButtonElement>(null), showClose = useRef<HTMLButtonElement>(null);
-  const world = useRef<HTMLDivElement>(null), glass = useRef<HTMLDivElement>(null);
+  const world = useRef<HTMLDivElement>(null), glass = useRef<HTMLDivElement>(null), bench = useRef<HTMLDivElement>(null);
   const fx = useRef<PlayFxHandle>(null), glassFx = useRef<PlayFxHandle>(null);
   const bounce = useRef<BounceControls | null>(null);
   const moved = useRef(false), arrived = useRef(false), dived = useRef(false), touched = useRef(false);
@@ -306,7 +306,7 @@ export default function MakerDesk() {
     busy.current = true; dived.current = true; setDiving(true); setShown(null); say('');
     audio.current?.key(); sound.current?.pick();
     // The lid's glass sits at a known place in the bench picture; the camera aims at its middle.
-    const box = lidButton.current?.getBoundingClientRect?.(), frame = world.current?.getBoundingClientRect?.();
+    const box = bench.current?.getBoundingClientRect?.(), frame = world.current?.getBoundingClientRect?.();
     const at = box && frame && frame.width ? { x: (box.left + box.width * LID_CENTRE[0] / 100 - frame.left) / frame.width, y: (box.top + box.height * LID_CENTRE[1] / 100 - frame.top) / frame.height } : null;
     setCamera({ x: at?.x ?? 0.5, y: at?.y ?? 0.4, zoom: 3 });
     later(prefersReducedMotion() ? DIVE_REDUCED_MS : DIVE_MS, () => { busy.current = false; setDiving(false); setLevel(switchOn(levelRef.current)); });
@@ -436,7 +436,7 @@ export default function MakerDesk() {
     </button>)}
 
     {/* The TrailBench: the desk, its lid screen, the five tools in its trays, the lamp, and Aya behind it. */}
-    <div className="md-bench" data-play-depth="2" data-screen={screen}>
+    <div ref={bench} className="md-bench" data-play-depth="2" data-screen={screen}>
       <span className="md-bench__shadow" aria-hidden="true" />
       <span className="md-aya" data-here={bird} aria-hidden="true"><span key={aya} className="md-aya__hop" data-hello={aya > 0}><img className="md-aya__pose md-aya__pose--idle" {...pic(DESK_KIT.ayaPeek)} /><img className="md-aya__pose md-aya__pose--happy" {...pic(DESK_KIT.ayaGlad)} /></span></span>
       <img className="md-lamp" data-lit={light === 'evening'} {...pic(DESK_KIT.lamp)} />
@@ -461,7 +461,8 @@ export default function MakerDesk() {
         </button>)}
       </div>
       <button type="button" className="md-frontbar" data-spot="powerBar" data-ready={done && !powering} aria-label={w.powerUp} disabled={!done || powering} style={{ insetInlineStart: `${FRONT_BAR[0]}%`, insetBlockStart: `${FRONT_BAR[1]}%` }} onClick={powerUp}><i /><i /><i /></button>
-      <button type="button" ref={lidButton} className="md-lidspot" data-spot="pc" data-awake={awake} aria-label={awake ? w.computer : w.computerWarm} style={lidGlass} onClick={tapLid} />
+      <button type="button" ref={lidButton} className="md-lidspot" data-spot="pc" data-awake={awake} aria-label={awake ? w.computer : w.computerWarm}
+        style={{ left: `${LID_TARGET.left}%`, top: `${LID_TARGET.top}%`, width: `${LID_TARGET.width}%`, height: `${LID_TARGET.height}%`, clipPath: `polygon(${LID_TARGET.clip})` }} onClick={tapLid} />
       <button type="button" className="md-lampspot" data-spot="lamp" aria-pressed={light === 'evening'} aria-label={light === 'day' ? w.lampDay : w.lampEvening} onClick={tapLamp} />
       {bird && <button type="button" className="md-ayaspot" data-spot="aya" aria-label={w.ayaSpot} onClick={tapAya} />}
       {hint && hintFor && <span className="md-ghost" data-for={hintFor} style={hintFor === 'tool' ? { insetInlineStart: `${TRAY_SPOTS[TOOLS.indexOf(round.hint)][0]}%`, insetBlockStart: `${TRAY_SPOTS[TOOLS.indexOf(round.hint)][1]}%` } : undefined} aria-hidden="true"><GhostHand /></span>}

@@ -38,6 +38,15 @@ export function makerCycleGames(gameIds) {
   return GAMES.filter(game => gameIds.includes(game.id));
 }
 
+/** Pause only after lazy content mounts. Freeze wall time for the handshake:
+ * a busy browser can otherwise advance beyond a timestamp read one call ago. */
+export async function pauseMakerClock(page) {
+  const time = new Date(await page.evaluate(() => Date.now()));
+  await page.clock.setFixedTime(time);
+  await page.clock.pauseAt(time);
+  await page.clock.setSystemTime(time);
+}
+
 const SEASONS = {
   springShower: { season: 0, taps: 2, rain: 5000, blows: 0, wait: 3000 },
   summerSun: { season: 1, taps: 3, rain: 3000, blows: 3, wait: 15000 },
@@ -340,7 +349,11 @@ async function playOtherMaker(h, game) {
       if (await exists('[data-iaf-keep]')) { await press(page.locator('[data-iaf-keep]')); prints++; }
       else if (await exists('[data-iaf-through]')) await press(page.locator('[data-iaf-through]'));
       else if (await exists('[data-iaf-snap]')) await press(page.locator('[data-iaf-snap]'));
-      else if (await exists('[data-iaf-night]')) { await snapshot('night'); await press(page.locator('[data-iaf-night]')); }
+      else if (await exists('[data-iaf-night]')) {
+        await snapshot('night'); await press(page.locator('[data-iaf-night]'));
+        await until(done, 8000, 'The kept night scene reaches its Studio result');
+        break;
+      }
       else { await key(page.locator('.iaf-world'), 'Enter'); gestures++; }
       await advance(1000);
       if (i === 20) await snapshot('field');
@@ -396,6 +409,12 @@ async function playOtherMaker(h, game) {
     assert.equal(await page.locator('[data-spot="pc"]').getAttribute('data-awake'), 'true', 'Three distinct tools woke the desk');
     const reflections = await page.locator('.md-chock__pose').evaluateAll(nodes => nodes.map(node => { const m = new DOMMatrix(getComputedStyle(node).transform); return m.a * m.d - m.b * m.c; }));
     assert.ok(reflections.length > 0 && reflections.every(value => value > 0), 'Chock retains approved anatomy and equipment attachment sides');
+    h.metrics.screenTarget = await page.locator('[data-spot="pc"]').evaluate(button => {
+      const { left, top, width, height } = button.getBoundingClientRect();
+      const hit = document.elementFromPoint(left + width / 2, top + height / 2);
+      return { left, top, width, height, centreReceivesPointer: button === hit || button.contains(hit), clip: getComputedStyle(button).clipPath };
+    });
+    assert.ok(h.metrics.screenTarget.width >= 44 && h.metrics.screenTarget.height >= 44 && h.metrics.screenTarget.centreReceivesPointer, 'The visible computer screen has an unobstructed real pointer target');
     await snapshot('awake'); await press(page.locator('[data-spot="pc"]')); await advance(1000);
     await press(page.locator('.md-icon[data-program="bounce"]')); await advance(100);
     // Sweep the actual paddle with its real key controls. Physics is the
@@ -550,7 +569,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         else assert.equal(record.entryPhase, 'play', 'The actual maker session opens directly into its authored opening');
         await root.waitFor({ state: 'visible' });
         // Keep React's Suspense minimum running until the real mechanic mounts.
-        await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+        await pauseMakerClock(page);
         assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
         const box = await root.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Actual game is laid out');
         if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
@@ -563,11 +582,44 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         if (game.creation) {
           const created = page.locator(`[data-creation="${game.creation}"]`); await created.waitFor({ state: 'visible' });
           assert.equal(await page.locator('[data-studio-created]').getAttribute('data-studio-created'), game.creation, 'Finish displays the actual created object');
+          if (['bowl', 'textile', 'bottle'].includes(game.creation)) {
+            // These saved-object previews have their own lazy chunks. Keep
+            // normal time through Suspense, just as at the mechanic's entry;
+            // an outer creation box alone can still be the blank fallback.
+            await page.clock.resume();
+            const picture = created.locator(':scope > [role="img"]');
+            await picture.waitFor({ state: 'visible' });
+            record.creationPreview = await picture.evaluate(async element => {
+              const sources = [...element.querySelectorAll('image, img')].map(node => node.getAttribute('href') || node.getAttribute('src')).filter(Boolean);
+              await Promise.all(sources.map(async src => { const image = new Image(); image.src = src; await image.decode(); }));
+              const { width, height } = element.getBoundingClientRect();
+              return { ...element.dataset, width, height, imageSources: sources.length, marks: element.querySelectorAll('path, rect, circle, ellipse, image').length };
+            });
+            await pauseMakerClock(page);
+            assert.ok(record.creationPreview.width >= 100 && record.creationPreview.height >= 100 && record.creationPreview.marks > 0, 'The actual made object is rendered, not its lazy placeholder');
+            if (game.creation === 'bowl') assert.equal(record.creationPreview.seams.trim().split(/\s+/).length, record.play.sealedSeams, 'The result preserves every repaired seam');
+            if (game.creation === 'textile') assert.ok(Number(record.creationPreview.motifs) >= 4, 'The result retains the sewn flowers');
+            if (game.creation === 'bottle') for (const key of ['shape', 'tint']) assert.equal(record.creationPreview[key], record.play[key], `The result preserves the chosen bottle ${key}`);
+          }
         }
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow at completion');
         if (game.id !== 'sneak') record.resultScene = await verifyStudioResultScene(page, game.world);
+        else {
+          await until(() => exists('[data-kid-finish-again]'), 12000, 'Sneak replay action');
+          record.endingLayout = await page.evaluate(() => {
+            const box = element => { const { left, right, top, bottom, width, height } = element.getBoundingClientRect(); return { left, right, top, bottom, width, height }; };
+            const ending = document.querySelector('[data-sneak-ending]');
+            return { field: box(ending), controls: [...ending.querySelectorAll('[data-kid-finish-again], [data-kid-finish-home]')].map(button => {
+              const bounds = box(button), hit = document.elementFromPoint(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+              return { ...bounds, label: button.textContent.trim(), centreReceivesPointer: button === hit || button.contains(hit) };
+            }) };
+          });
+          const { field, controls } = record.endingLayout;
+          assert.ok(controls.length > 0, 'The finished Sneak sitting has its replay control');
+          for (const button of controls) assert.ok(button.width >= 44 && button.height >= 44 && button.left >= Math.max(0, field.left) - 1 && button.right <= Math.min(viewport.w, field.right) + 1 && button.top >= Math.max(0, field.top) - 1 && button.bottom <= Math.min(viewport.h, field.bottom) + 1 && button.centreReceivesPointer, 'Every Sneak ending control fits the first view completely and receives pointer input');
+        }
         await snapshot('result');
-        if (game.id === 'sneak') { await until(() => exists('[data-kid-finish-again]'), 12000, 'Sneak replay action'); await press(page.locator('[data-kid-finish-again]')); }
+        if (game.id === 'sneak') await press(page.locator('[data-kid-finish-again]'));
         else await press(page.locator('[data-studio-replay]'));
         await root.waitFor({ state: 'visible' });
         assert.equal(await page.locator(resultSelector).count(), 0, 'Replay clears the prior completion');

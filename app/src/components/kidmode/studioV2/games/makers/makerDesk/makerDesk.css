@@ -64,7 +64,7 @@
 .md-lid__seam { position: absolute; inset-inline-start: 70%; inset-block-start: 6%; inline-size: 12%; block-size: 22%; border-inline-start: 2px solid color-mix(in srgb, var(--mk-white) 85%, transparent); border-radius: 40% 0 0 60%; transform: rotate(14deg); background: linear-gradient(90deg, color-mix(in srgb, var(--mk-white) 14%, transparent), transparent); filter: drop-shadow(0 0 2px color-mix(in srgb, var(--mk-sea) 80%, transparent)); animation: md-seam .8s var(--studio-ease-soft) both; }
 .md-lid__stir { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 58% 16%, color-mix(in srgb, var(--mk-sea) 60%, transparent), transparent 60%); }
 .md-lid__stir[data-on=true] { animation: md-stir .9s ease-out both; }
-.md-lidspot { position: absolute; inset: 0; padding: 0; border: 0; background: transparent; z-index: 3; }
+.md-lidspot { position: absolute; padding: 0; border: 0; background: transparent; z-index: 3; }
 .md-lidspot[data-awake=true] { cursor: zoom-in; }
 .md-lidspot:focus-visible { outline: 3px solid var(--studio-teal-ink); outline-offset: 3px; background: color-mix(in srgb, var(--studio-surface) 18%, transparent); }
 .md-lidspot:active { background: color-mix(in srgb, var(--mk-white) 16%, transparent); }

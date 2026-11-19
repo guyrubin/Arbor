@@ -1,19 +1,19 @@
-name: Arbor Sneak Replay Diagnostic
+name: Arbor Game Regression Diagnostic
 
 # Temporary immediate evidence run; the complete sixty-cell gate stays in CI.
 on:
   push:
     branches: [codex/kids-production-value-2026-11-19]
     paths:
-      - .github/workflows/arbor-sneak-diagnostic.yml
-      - app/scripts/kids-sneak-diagnostic.mjs
+      - .github/workflows/arbor-game-regression-diagnostic.yml
+      - app/scripts/kids-game-regression-diagnostic.mjs
       - app/scripts/kids-maker-cycle-browser.mjs
 
 permissions:
   contents: read
 
 jobs:
-  sneak-replay:
+  game-regressions:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -33,13 +33,13 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Build actual Kids components with synthetic adapters
         run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
-      - name: Operate all four Sneak replay cells
-        run: node scripts/kids-sneak-diagnostic.mjs
+      - name: Operate Sneak, Maker Desk and Ice Age in all four release cells
+        run: node scripts/kids-game-regression-diagnostic.mjs
       - name: Retain original records and screenshots on success or failure
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kids-sneak-replay-diagnostic
-          path: app/output/kids-sneak-diagnostic
+          name: kids-game-regression-diagnostic
+          path: app/output/kids-game-regression-diagnostic
           retention-days: 7
           if-no-files-found: warn

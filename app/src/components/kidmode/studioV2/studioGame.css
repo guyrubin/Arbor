@@ -53,7 +53,9 @@
 .studio-game-view--play { align-content: start; padding: 28px clamp(12px, 3vw, 40px) 40px; }
 .studio-game-view__mechanic { inline-size: min(100%, 1040px); min-inline-size: 0; }
 /* Full-bleed Sneak owns its scene, rig and measured viewport. */
-.studio-game-view--full { display: block; block-size: calc(100dvh - 76px); min-block-size: 0; padding: 0; }
+/* Studio's bar already sits above the measured host. The ending must not
+   reserve a second overlay bar inside it and clip its replay control. */
+.studio-game-view--full { --sneak-end-top-controls: 0px; display: block; block-size: calc(100dvh - 76px); min-block-size: 0; padding: 0; }
 .studio-game-view--full > .studio-game-view__mechanic { inline-size: 100%; block-size: 100%; min-block-size: 0; }
 .studio-game-mimic { inline-size: min(100%, 720px); margin-inline: auto; padding: clamp(24px, 5vw, 44px); border: 1px solid var(--studio-surface); border-radius: var(--studio-radius-panel); background: var(--studio-frost); color: var(--studio-game-text); text-align: center; box-shadow: 0 18px 48px var(--studio-shade); }
 .studio-game-mimic .kid-type-say { color: var(--studio-game-soft); }
