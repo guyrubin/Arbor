@@ -51,6 +51,32 @@ describe("child-scoped local state is swept on deletion", () => {
     expect(clearChildLocalState("", { local: fakeStorage({ "arbor.x.": "1" }) })).toBe(0);
   });
 
+  it("a failed key(index) read does not strand other reachable child keys", () => {
+    const local = fakeStorage({
+      "arbor.screen.watch.kid-a": "first",
+      "arbor.screen.draft.kid-a": "unreadable",
+      "arbor.screen.notes.kid-a": "third",
+      "arbor.screen.watch.kid-b": "sibling",
+    });
+    // Emulate a transient browser Storage read error at one slot only.
+    // The old outer try/catch abandoned the whole sweep before removing even
+    // the keys already enumerated. No other child's record may be removed.
+    const flaky = new Proxy(local, {
+      get(target, property) {
+        if (property === "key") return (index: number) => {
+          if (index === 1) throw new Error("Storage key temporarily unavailable");
+          return target.key(index);
+        };
+        return Reflect.get(target, property);
+      },
+    }) as Storage;
+    expect(clearChildLocalState("kid-a", { local: flaky, session: fakeStorage() })).toBe(2);
+    expect(local.getItem("arbor.screen.watch.kid-a")).toBeNull();
+    expect(local.getItem("arbor.screen.notes.kid-a")).toBeNull();
+    expect(local.getItem("arbor.screen.draft.kid-a")).toBe("unreadable");
+    expect(local.getItem("arbor.screen.watch.kid-b")).toBe("sibling");
+  });
+
   it("a non-arbor key carrying the id is NOT swept (we own only our namespace)", () => {
     expect(isChildScopedKey("vendor.thing.kid-a", "kid-a")).toBe(false);
     expect(isChildScopedKey("arbor.screen.watch.kid-a", "kid-a")).toBe(true);

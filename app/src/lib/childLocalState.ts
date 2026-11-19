@@ -44,23 +44,31 @@ export const isChildScopedKey = (key: string, childId: string): boolean =>
 function sweep(storage: Storage | null | undefined, childId: string): number {
   if (!storage) return 0;
   let removed = 0;
+  // Collect before removing: Storage reindexes after removeItem. A denied
+  // length read prevents a sweep, but one failed key(index) must not prevent
+  // removal of the other reachable per-child keys.
+  let length: number;
   try {
-    // Collect first: removing during iteration reindexes the store.
-    const doomed: string[] = [];
-    for (let i = 0; i < storage.length; i++) {
+    length = storage.length;
+  } catch {
+    return 0;
+  }
+  const doomed: string[] = [];
+  for (let i = 0; i < length; i++) {
+    try {
       const key = storage.key(i);
       if (key && isChildScopedKey(key, childId)) doomed.push(key);
+    } catch {
+      /* continue with the remaining indices; this key remains unverified */
     }
-    for (const key of doomed) {
-      try {
-        storage.removeItem(key);
-        removed++;
-      } catch {
-        /* one stubborn key must not abandon the rest */
-      }
+  }
+  for (const key of doomed) {
+    try {
+      storage.removeItem(key);
+      removed++;
+    } catch {
+      /* one stubborn key must not abandon the rest */
     }
-  } catch {
-    /* storage unavailable — nothing to sweep */
   }
   return removed;
 }
