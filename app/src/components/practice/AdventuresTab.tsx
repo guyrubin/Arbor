@@ -12,6 +12,7 @@ import { GameFinish, GameShell } from "../kidmode/game/GameShell";
 import { SpeakButton } from "../ui/SpeakButton";
 import { useKidSafeNav } from "../kidmode/useKidSafeNav";
 import { isKidModeActive, subscribeKidMode } from "../../lib/kidModeGate";
+import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
 import { cardCls } from "../ui/kit";
 import { ageYearsOf } from "../../lib/age/forChild";
@@ -149,7 +150,7 @@ export default function AdventuresTab() {
           <button
             type="button"
             data-primary-move="open-story-quest"
-            onClick={() => requestKidMode({ view: "arcade", worldId: "adventures" })}
+            onClick={() => requestKidMode(parentDoorTarget("adventures"))}
             className="mt-4 inline-flex items-center gap-1.5 t-sm font-extrabold rounded-xl px-4 min-h-[44px] transition active:scale-[0.98] focus:outline-none focus-visible:ring-2"
             style={{ background: "var(--gradient-cta)", color: "var(--arbor-on-accent)" }}
           >

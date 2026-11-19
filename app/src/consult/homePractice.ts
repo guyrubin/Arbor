@@ -18,6 +18,7 @@
  *  - Pure: no React, no i18n runtime.
  */
 import { DOMAINS, DOMAIN_IDS, type DomainId, type Profession } from "../lib/domains/registry";
+import { parentDoorTarget } from "../components/kidmode/studioV2/studioCatalog";
 import { STUDIO_WORLDS, type StudioWorld } from "../components/practice/studioWorlds";
 import type { ExportAudience } from "./packet";
 
@@ -63,11 +64,11 @@ export function homePracticeWorlds(audience: ExportAudience, worlds: readonly St
 }
 
 /** Open a world: its own parent-shell route when it has one, else Kid Mode
- *  ON that world (B-KID-11 carries the world id into the arcade). */
+ *  on the same surface the kid shelf uses for that world. */
 export function openHomePracticeWorld(
   world: StudioWorld,
   seams: { setActiveTab: (tab: NonNullable<StudioWorld["tab"]>) => void; openKidMode: (target?: { view?: string; worldId?: string | null }) => void },
 ): void {
   if (world.tab) seams.setActiveTab(world.tab);
-  else seams.openKidMode({ view: "arcade", worldId: world.id });
+  else seams.openKidMode(parentDoorTarget(world.id));
 }
