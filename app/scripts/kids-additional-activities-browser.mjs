@@ -58,8 +58,22 @@ async function playFeelings({ page, press, trace, lang }) {
   assert.equal(await selfCheck.getAttribute('aria-pressed'), 'true');
   assert.equal(await completeStudio(page).count(), 0);
   for (let step = 0; step < 5; step++) {
+    const labels = await root.locator('.kid-piece-tag').evaluateAll((tags) => tags.map((tag) => {
+      const range = document.createRange();
+      range.selectNodeContents(tag);
+      const lines = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+      const box = tag.getBoundingClientRect();
+      return {
+        label: tag.textContent?.trim(),
+        lines: new Set(lines.map((rect) => Math.round(rect.top))).size,
+        fontSize: Number.parseFloat(getComputedStyle(tag).fontSize),
+        fits: lines.every((rect) => rect.left >= box.left - 1 && rect.right <= box.right + 1)
+          && box.left >= -1 && box.right <= innerWidth + 1,
+      };
+    }));
+    assert.ok(labels.length === 3 && labels.every((label) => label.lines === 1 && label.fits && label.fontSize >= 17), 'Every emotion name stays whole, readable and inside the phone or desktop viewport');
     const choice = root.locator('.kid-piece-grid button').first();
-    trace.push({ step, choice: await textOf(choice) });
+    trace.push({ step, choice: await textOf(choice), labels });
     await press(choice);
     await press(root.getByRole('button', { name: lang === 'he' ? 'לרגש הבא' : 'Next feeling', exact: true }));
   }
@@ -219,10 +233,21 @@ async function playPose({ page, press, advance, shot, trace, lang }) {
 
 async function playAdventure({ page, press, advance, shot, trace }) {
   const root = gameShell(page, 'adventures');
-  await press(root.locator('button.play-pressable').filter({ has: page.locator('p.text-lg') }).first());
+  const card = root.locator('button.play-pressable').filter({ has: page.locator('p.text-lg') }).first();
+  const selectedTitle = await textOf(card.locator('p.text-lg'));
+  await press(card);
+  const title = root.getByTestId('adventure-scene-title');
+  await title.waitFor({ state: 'visible' });
+  assert.equal(await textOf(title), selectedTitle, 'Opening the story preserves its localized catalogue title');
+  await shot('active-scene');
+  const prompt = root.locator('p.text-\\[22px\\]').first();
+  const seenPrompts = new Set();
   let scenes = 0, retries = 0;
   while (!(await root.locator('[data-game-finish]').count())) {
     assert.ok(scenes < 10, 'The authored adventure is bounded');
+    const question = await textOf(prompt);
+    assert.ok(!seenPrompts.has(question), 'Next exposes a fresh authored scene, not the exiting transition panel');
+    seenPrompts.add(question);
     const options = root.locator('button.kid-piece');
     await options.first().waitFor({ state: 'visible' });
     const offered = await options.allTextContents();
@@ -233,16 +258,29 @@ async function playAdventure({ page, press, advance, shot, trace }) {
       retries++;
     }
     assert.equal(found, true, 'The visible feedback allows the child to find a continuing story choice');
-    trace.push({ scene: scenes, offered: offered.map(text => text.trim()) });
+    trace.push({ scene: scenes, prompt: question, offered: offered.map(text => text.trim()) });
     const next = root.locator('button.kid-toy').last();
     await press(next);
-    await advance(400); scenes++;
+    // AnimatePresence retains the outgoing question during its exit. Follow
+    // the visible question before choosing again; a stale correct panel
+    // must not stand in for the next story choice.
+    let changed = false;
+    for (let tick = 0; tick < 24; tick++) {
+      await advance(50);
+      if (await root.locator('[data-game-finish]').count()) { changed = true; break; }
+      if (await prompt.count() && await textOf(prompt) !== question) {
+        await advance(250); // Finish the new panel's authored 200ms entrance.
+        changed = true; break;
+      }
+    }
+    assert.equal(changed, true, 'Next reaches a new visible question or the real ending');
+    scenes++;
   }
   await shot('result');
   await press(root.locator('[data-kid-finish-again]'));
   await root.locator('button.kid-piece').first().waitFor({ state: 'visible' });
   await shot('replay-ready');
-  return { authoredScenes: scenes, visibleRetries: retries, replayed: true, generated: false };
+  return { authoredScenes: scenes, distinctPrompts: seenPrompts.size, localizedTitle: selectedTitle, visibleRetries: retries, replayed: true, generated: false };
 }
 
 async function playReading({ page, press, advance, shot, trace, lang }) {

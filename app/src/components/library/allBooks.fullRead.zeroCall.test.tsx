@@ -52,6 +52,8 @@ vi.mock("../kidmode/audio/kidAudio", async (original) => ({
 
 import { BookReader } from "./BookReader";
 import { BookPage } from "./BookPage";
+import { BookEnd } from "./BookParts";
+import { initialBookFlow } from "../../lib/library/bookFlow";
 import { allBooks } from "../../lib/library/books";
 import { PLAN_FIXTURE_BOOKS } from "../../lib/library/plans/planBooks";
 import { loadPlanPlateUrl, resetPlanPlateSources } from "../../lib/plans/planPlateSource";
@@ -212,6 +214,36 @@ const READERS: { lang: "en" | "he"; child: BookReaderChild }[] = [
   { lang: "he", child: { id: "synthetic-child-he-f", name: "דנה", gender: "girl", heroSheetId: "synthetic-sheet" } },
 ];
 
+describe("the DOM reading floor on a short paper page", () => {
+  it("keeps every word, pose and navigation action when measured text needs the whole sheet to scroll", () => {
+    const book = allBooks().find(book => book.id === "five-smooth-stones")!;
+    const child = { ...READERS[0].child, name: "Alexander" };
+    const reader = harness(BookReader, { book, lang: "en", child, onClose: () => {}, dev: false, narration: "off", sheet: sheetFor(book), assets: noFiles,
+      initialState: { ...initialBookFlow(), at: "p10", choiceId: "b" }, initialBox: { width: 375, height: 667 - 56 },
+    } as Parameters<typeof BookReader>[0]);
+    const words = () => find(reader.tree, el => el.props.className === "bk-words")!;
+    const before = elements(words().props.children).filter(has("data-book-para")).map(el => el.props.children.props.text);
+    const art = find(reader.tree, el => el.type === BookPage)!.props.layout;
+    // A real DOM overflow report after font/line measurement. The hook must
+    // allocate reachable paper at 18px rather than keep shrinking to16px.
+    words().props.ref.current = { scrollHeight: 270, clientHeight: 110 };
+    reader.commit();
+    expect(words().props.style.fontSize).toBe("18px");
+    expect(find(reader.tree, has("data-reading-scroll"))).toBeDefined();
+    expect(elements(words().props.children).filter(has("data-book-para")).map(el => el.props.children.props.text)).toEqual(before);
+    expect(before).toHaveLength(3);
+    expect(find(reader.tree, el => el.type === BookPage)!.props.layout).toEqual(art);
+    expect(find(reader.tree, has("data-book-back"))).toBeDefined();
+    const next = find(reader.tree, has("data-book-next"))!;
+    expect(next.props.disabled).toBe(false);
+    words().props.ref.current = null;
+    next.props.onClick(); reader.commit();
+    expect(find(reader.tree, el => el.type === BookEnd)).toBeDefined();
+    expect(env.requests.filter(request => requestOffence(request.url))).toEqual([]);
+    reader.unmount();
+  });
+});
+
 /** Read one path to The End through the reader's own controls. Returns the pages seen. */
 async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "he", child: BookReaderChild, files: "every" | "none") {
   const reader = harness(BookReader, {
@@ -257,6 +289,47 @@ async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "h
 
 const BOOKS: AnyBook[] = [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS)];
 const offences = () => env.requests.map((r) => [r.via, r.url, requestOffence(r.url)] as const).filter(([via, , why]) => why !== null || via === "speechSynthesis" || via === "sendBeacon" || via === "WebSocket" || via === "EventSource" || via === "XMLHttpRequest");
+
+describe("a fresh read starts the decision with its authored question", () => {
+  it.each(READERS)("$lang/$child.gender: Read again clears the previous cards state", async ({ lang, child }) => {
+    const book = BOOKS.find(book => book.id === "five-smooth-stones")!;
+    const reader = harness(BookReader, { book, lang, child, onClose: () => {}, dev: false, narration: "off", sheet: null, assets: noFiles, initialBox: { width: 390, height: 756 }, initialState: { ...initialBookFlow(), at: "p5" } } as Parameters<typeof BookReader>[0]);
+    const click = (name: string) => {
+      const control = find(reader.tree, has(name));
+      expect(control, name).toBeDefined();
+      expect(control!.props.disabled, name).not.toBe(true);
+      control!.props.onClick();
+      reader.commit();
+    };
+    expect(find(reader.tree, has("data-book-para"))).toBeDefined();
+    click("data-book-choose");
+    find(reader.tree, el => el.props["data-choice-card"] === "a")!.props.onClick(); reader.commit();
+    click("data-book-go");
+    for (let steps = 0; steps < 20 && !find(reader.tree, el => el.type === BookEnd); steps++) {
+      await vi.advanceTimersByTimeAsync(5000); reader.commit();
+      if (find(reader.tree, has("data-book-next"))?.props.disabled) continue;
+      click("data-book-next");
+    }
+    const ending = find(reader.tree, el => el.type === BookEnd);
+    expect(ending).toBeDefined();
+    ending!.props.onReadAgain(); reader.commit();
+    click("data-book-open");
+    for (let steps = 0; steps < 7; steps++) click("data-book-next");
+    expect(find(reader.tree, has("data-book-page"))?.props["data-book-page"]).toBe("p5");
+    expect(find(reader.tree, has("data-book-para"))).toBeDefined();
+    expect(find(reader.tree, has("data-book-choose"))).toBeDefined();
+    expect(find(reader.tree, has("data-choice-card"))).toBeUndefined();
+    click("data-book-choose");
+    find(reader.tree, el => el.props["data-choice-card"] === "a")!.props.onClick(); reader.commit();
+    click("data-book-go");
+    click("data-book-next");
+    click("data-book-next");
+    expect(find(reader.tree, has("data-book-page"))?.props["data-book-page"]).toBe("p9");
+    expect(find(reader.tree, el => el.type === BookPage)?.props.statePlateKey).toBeUndefined();
+    expect(offences()).toEqual([]);
+    reader.unmount();
+  });
+});
 
 describe("a missing book picture can recover without restarting the read", () => {
   it("does not offer an impossible image retry when no plate or print is declared", () => {

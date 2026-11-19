@@ -238,7 +238,7 @@ export default function AdventuresTab() {
           <div className="flex items-center justify-between mb-5 gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-3xl">{scenario.emoji}</span>
-              <p className="text-lg font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenario.title}</p>
+              <p data-testid="adventure-scene-title" className="text-lg font-extrabold truncate" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)" }}>{scenarioTitle(scenario)}</p>
             </div>
             {/* KID-14: this measured 20 px tall — the only way back out of an
                 open adventure, under the touch floor. */}

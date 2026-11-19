@@ -30,7 +30,7 @@
 .studio-game-card__window > img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; }
 /* A soft foot shade so the profile stands on the scene, not in front of it. */
 .studio-game-card__window::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, transparent 58%, color-mix(in srgb, var(--studio-graphite) 16%, transparent)); }
-.studio-game-card__world { position: absolute; z-index: 1; inset-block-start: 14px; inset-inline-start: 14px; max-inline-size: calc(100% - 28px); padding: 6px 10px; border-radius: 8px; background: var(--studio-frost); border: 1px solid var(--studio-surface); color: var(--studio-game-text); font-size: 13px; font-weight: 800; line-height: 1.3; }
+.studio-game-card__world { position: absolute; z-index: 2; inset-block-start: 14px; inset-inline-start: 14px; max-inline-size: calc(100% - 28px); padding: 6px 10px; border-radius: 8px; background: var(--studio-frost); border: 1px solid var(--studio-surface); color: var(--studio-game-text); font-size: 13px; font-weight: 800; line-height: 1.3; }
 .studio-game-card__portrait { position: absolute; z-index: 1; inset-inline-end: 18px; inset-block-end: 16px; display: grid; place-items: center; inline-size: 124px; block-size: 124px; border: 4px solid var(--studio-surface); border-radius: 50%; background: var(--studio-mist); box-shadow: var(--studio-lift); }
 .studio-game-card__body { padding: 20px 6px 0; }
 .arbor-play .studio-game-card :is(h1,h2), .arbor-play .studio-game-mimic h2 { font-family: var(--studio-font) !important; font-weight: 800 !important; color: var(--studio-game-text) !important; }

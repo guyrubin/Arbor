@@ -14,9 +14,12 @@
 import { describe, expect, it } from "vitest";
 import { abramsLongRoad } from "./books/abramsLongRoad";
 import { fiveSmoothStones } from "./books/fiveSmoothStones";
-import { getPlate } from "./books";
+import { bookPlatesFor, getPlate } from "./books";
+import { PLAN_FIXTURE_BOOKS } from "./plans/planBooks";
+import { bookChoices, decisionOf } from "./bookShape";
+import { readPath } from "./bookFlow";
 import { computeBookPageLayout, estimateTextHeight, kidBookTokenPx, overlapArea, phoneWindow, planChoices, plansHeight, platePoint, type Box, type LayoutContent } from "./bookPageLayout";
-import { heroDisplayName, pageParagraphs, paragraphChars } from "./bookText";
+import { heroDisplayName, lineFor, pageParagraphs, paragraphChars } from "./bookText";
 import type { BookLang, Page } from "./types";
 import { DEVICE_VIEWPORTS } from "../../../scripts/capture/release-config.mjs";
 
@@ -380,7 +383,7 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
-  it("short SE/Safari pages keep their existing full-text scrolling geometry when 18 px cannot fit", () => {
+  it("short SE/Safari pages retain the art floor and declare when full readable words require scrolling", () => {
     const page = dPages.find((p) => p.id === "p10")!;
     for (const cell of DEVICE_VIEWPORTS.filter(cell => /^(se|safari)-/.test(cell.id))) {
       const box = { width: cell.w, height: cell.h - 56 };
@@ -391,11 +394,42 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
         expect(l.compactNav).toBe(false);
         expect(l.fits).toBe(false);
         expect(l.pad.block).toBe(16);
-        expect(l.navPx).toBe(84);
+        expect(l.navPx).toBe(90);
         expect(l.art.w).toBe(300);
         expect(l.text.h - l.navPx).toBeGreaterThan(0);
         expect(l.textPage.y + l.textPage.h).toBeLessThanOrEqual(box.height);
         expect(estimateTextHeight(paras, l.text.w, 18, l.lineHeight)).toBeGreaterThan(l.text.h - l.navPx);
+      }
+    }
+  });
+
+  it("the canonical and eight plan manuscripts have room for 18px words and real controls at the release phone and sideways sizes", () => {
+    for (const title of [fiveSmoothStones, ...Object.values(PLAN_FIXTURE_BOOKS)]) {
+      for (const box of [PHONE, { width: 844, height: 390 - 56 }]) for (const lang of LANGS) {
+        for (const choiceId of (bookChoices(title).length ? bookChoices(title).map(c => c.id) : [null])) {
+          for (const page of readPath(title, choiceId)) for (const repaired of page.repair ? [[], page.repair.items.map(item => item.id)] : [[]]) {
+            const paras = paragraphChars(pageParagraphs(page, { lang, gender: "f", choiceId, repaired }), "Alexander");
+            const l = computeBookPageLayout(page, box, lang, { plate: bookPlatesFor(title)[page.plateId], content: { paras, prompt: !!page.repair && !repaired.length, choices: decisionOf(title)?.pageId === page.id ? 3 : undefined } });
+            const tag = `${title.id}/${page.id}/${choiceId}/${repaired.length}/${lang}/${box.width}`;
+            expect(l.fits, tag).toBe(true);
+            expect(l.typePx, tag).toBeGreaterThanOrEqual(18);
+            expect(estimateTextHeight(paras, l.text.w, l.typePx, l.lineHeight) + l.navPx, tag).toBeLessThanOrEqual(l.text.h);
+            expect(overlapArea(l.art, l.textPage), tag).toBe(0);
+            if (l.hero) expect(l.hero.inWindow, tag).toBe(true);
+            for (const rect of [l.art, l.textPage]) {
+              expect(rect.y, tag).toBeGreaterThanOrEqual(0);
+              expect(rect.y + rect.h, tag).toBeLessThanOrEqual(box.height);
+            }
+          }
+          const last = readPath(title, choiceId).at(-1)!;
+          const paras = paragraphChars([lineFor(last.closing!, lang, "f")], "Alexander");
+          const end = computeBookPageLayout(last, box, lang, { plate: bookPlatesFor(title)[last.plateId], content: { paras, title: lang === "en" ? 7 : 4, ending: true } });
+          expect(end.fits, `${title.id}/${lang}/${box.width}/end`).toBe(true);
+          // Both closing actions, the grown-up toggle, the title and the
+          // complete frame line each have their own space allocation.
+          expect(end.navPx).toBe(box.width === 375 ? 192 : 128);
+          expect(estimateTextHeight(paras, end.text.w, end.typePx, end.lineHeight) + end.titlePx * 1.5 + end.navPx).toBeLessThanOrEqual(end.text.h);
+        }
       }
     }
   });

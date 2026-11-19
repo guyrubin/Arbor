@@ -19,6 +19,7 @@ import { isKidModeActive, noteKidActivity, subscribeKidMode } from "../../lib/ki
 import { SpeakButton } from "../ui/SpeakButton";
 import { parentDoorTarget } from "../kidmode/studioV2/studioCatalog";
 import { useKidModeEntry } from "../kidmode/useKidModeEntry";
+import "./feelingsLabKid.css";
 const HEBREW_EMOTION_LABELS: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(EMOTION_SCENARIOS.map((scenario) => [scenario.answer, scenario.answerLabelHe])),
 );

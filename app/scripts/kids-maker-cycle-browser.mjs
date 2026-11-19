@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RELEASE_VIEWPORTS } from './capture/release-config.mjs';
-import { installGameCycleAudioProbe } from './kids-game-cycle-browser.mjs';
+import { installGameCycleAudioProbe, verifyStudioResultScene } from './kids-game-cycle-browser.mjs';
 
 const GAMES = [
   { id: 'mend-bowl', world: 'studio', creation: 'bowl' },
@@ -420,6 +420,10 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
       if (url.origin === origin && url.pathname === '/_proof/hero/sheet.json') { fixtureRequests.push('absent hero sheet: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
+      // Synthetic review deliberately has no private proof scene. loadProofArt
+      // treats JSON null as absent and keeps the synthetic fallback scene; the server
+      // continues to refuse every other private proof path.
+      if (url.origin === origin && url.pathname === '/_proof/scene/art.json') { fixtureRequests.push('absent scene art: null'); return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }); }
       if (url.origin === origin && !url.pathname.startsWith('/api/')) return route.continue();
       unexpectedRequests.push(url.href); return route.abort();
     });
@@ -453,6 +457,30 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
     const until = async (condition, budget, label) => {
       for (let elapsed = 0; elapsed <= budget; elapsed += 250) { if (await condition()) return; await advance(250); }
       assert.fail(`${label} did not complete within ${budget}ms of controlled game time`);
+    };
+    const sneakLayout = () => page.evaluate(() => {
+      const box = selector => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
+        return { left, right, top, bottom, width, height };
+      };
+      const plate = document.querySelector('[data-sneak-plate]');
+      return { field: box('[data-sneak-stage]'), plate: box('[data-sneak-plate]'), pad: box('[data-sneak-pad]'),
+        imageLoaded: !!plate?.complete && plate.naturalWidth > 0,
+        transform: document.querySelector('[data-sneak-stage] [data-play-art]')?.getAttribute('style') };
+    });
+    const renderedSneakField = async label => {
+      let layout;
+      await until(async () => {
+        layout = await sneakLayout();
+        const { field, plate, pad, imageLoaded } = layout;
+        return field && plate && pad && imageLoaded && field.width >= viewport.w / 2 && field.height >= viewport.h / 2
+          && plate.left <= field.left + 1 && plate.right >= field.right - 1 && plate.top <= field.top + 1 && plate.bottom >= field.bottom - 1
+          && pad.width >= 44 && pad.height >= 44 && pad.left >= field.left - 1 && pad.right <= field.right + 1
+          && pad.top >= field.top - 1 && pad.bottom <= field.bottom + 1;
+      }, 2000, label);
+      return layout;
     };
     const hold = async (loc, ms) => {
       await loc.scrollIntoViewIfNeeded(); const box = await loc.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Held object is rendered');
@@ -494,6 +522,7 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
       assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
       const box = await root.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Actual game is laid out');
+      if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
       await snapshot('ready');
       record.metrics = {};
       const h = { page, root, lang: viewport.lang, press, key, advance, until, exists, attrs, snapshot, hold, metrics: record.metrics };
@@ -505,6 +534,7 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
         assert.equal(await page.locator('[data-studio-created]').getAttribute('data-studio-created'), game.creation, 'Finish displays the actual created object');
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow at completion');
+      if (game.id !== 'sneak') record.resultScene = await verifyStudioResultScene(page, game.world);
       await snapshot('result');
       if (game.id === 'sneak') { await until(() => exists('[data-kid-finish-again]'), 12000, 'Sneak replay action'); await press(page.locator('[data-kid-finish-again]')); }
       else await press(page.locator('[data-studio-replay]'));
@@ -513,6 +543,17 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
       const replayOpening = page.locator('[data-play-skip]');
       const openingPressed = await replayOpening.count() > 0;
       if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
+      if (game.id === 'sneak') {
+        record.replayLayout = await renderedSneakField('Replayed Sneak scene covers the field with its control in reach');
+        await until(() => exists('[data-sneak-stage][data-sneak-phase="counting"]'), 6000, 'Replayed Sneak begins its next count');
+        const before = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
+        await root.focus(); await page.keyboard.down('Space'); record.inputs.keyboard++;
+        try { await advance(320); } finally { await page.keyboard.up('Space'); record.inputs.keyboard++; }
+        await advance(32);
+        const after = Number(await page.locator('[data-hero-at]').getAttribute('data-hero-at'));
+        assert.ok(after > before, 'The replayed hero moves in response to a real hold and release');
+        record.metrics.replayMovement = { before, after };
+      }
       await snapshot('replay'); record.replay = { fresh: true, openingPressed, state: await attrs() };
       // Exit while a new session is active; future callbacks must not finish it.
       await press(page.locator('.review-bar > button').first());
@@ -529,6 +570,7 @@ export async function verifyMakerGameCycles({ browser, base, output }) {
     } catch (error) {
       await snapshot('failed').catch(() => {});
       record.audio ??= await page.evaluate(() => window.gameCycleAudio).catch(() => null); record.audioDetails ??= await page.evaluate(() => window.gameCycleAudioDetails).catch(() => null);
+      if (game.id === 'sneak') record.failureLayout = await sneakLayout().catch(() => null);
       record.failureState = await page.evaluate(sel => ({ root: document.querySelector(sel)?.outerHTML.slice(0, 12000) ?? null, studio: document.querySelector('[data-studio-phase]')?.getAttribute('data-studio-phase'), loading: !!document.querySelector('[data-testid="kid-stage-fallback"]') }), selector).catch(() => null);
       Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests }); failures.push(new Error(`${stem}: ${error instanceof Error ? error.message : error}`, { cause: error }));
     } finally { await context.close(); }

@@ -68,7 +68,7 @@ import { studioCopy } from "./studioCopy";
 import * as artManifest from "../../../lib/kidThemeManifest";
 import { StudioPlayHero } from "./StudioPlayHero";
 import { studioActivity, studioLegacyRoute, type StudioActivityId } from "./studioCatalog";
-import { StudioWorldPlate } from "./StudioStage";
+import { StudioCrewCheer, StudioWorldPlate } from "./StudioStage";
 import { KID_WORLDS } from "../kidWorlds";
 import { GameCompletionProvider } from "../game/GameSessionContext";
 import { GameFinish } from "../game/GameShell";
@@ -100,6 +100,17 @@ function cleanup(key: string) { for (const slot of h.stores.get(key) ?? []) slot
 function click(node: ReactElement<Props> | undefined) { expect(node, "actual actionable game node").toBeDefined(); (node!.props.onClick as () => void)(); }
 const isButton = (node: ReactElement<Props>) => node.type === "button" || node.type === ("play-button" as unknown);
 const data = { events: { items: [], upsert: h.upsert } } as unknown as PracticeData;
+
+function expectFinishCast(tree: ReactElement<Props>[], activityId: StudioActivityId) {
+  const window = tree.find(node => node.props.className === "studio-game-card__window");
+  expect(window).toBeDefined();
+  const scene = nodes(window);
+  expect(scene.filter(node => node.type === StudioWorldPlate).map(node => node.props.worldId)).toEqual([studioActivity(activityId)!.worldId]);
+  expect(scene.filter(node => node.type === StudioPlayHero)).toHaveLength(1);
+  expect(scene.filter(node => node.type === StudioCrewCheer)).toHaveLength(1);
+  // Populated covers would duplicate a host behind the separate immutable cast.
+  expect(scene.some(node => node.type === StudioMakerCover || node.type === "img")).toBe(false);
+}
 
 beforeEach(() => {
   vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-13T12:00:00Z"));
@@ -188,6 +199,7 @@ describe("V2 entry, identity and persistent result", () => {
     h.session = { playOnly: true, onComplete: complete };
     expect(render("finish", () => GameFinish({ title: "Done", onPlayAgain: vi.fn(), playAgainLabel: "Again", homeLabel: "Home" }))).toEqual([]);
     let tree = draw(); expect(tree[0].props["data-studio-phase"]).toBe("result");
+    expectFinishCast(tree, "memory");
     expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ childId: "child-a", kind: "world", refId: "memory", hero: false });
     expect(tree.filter(node => node.type === StudioPlayHero)).toHaveLength(1);
     expect(draw().find(node => node.type === KidFinishMoment)).toBeDefined();
@@ -221,6 +233,7 @@ describe("V2 entry, identity and persistent result", () => {
         const made = id === "mend-bowl" ? { kind: "bowl", glaze: "rose", pattern: 0, seams: [3, 2, 1, 0] } : id === "stitch-garden" ? { kind: "textile", cloth: "sage", motifs: [{ flower: "poppy", cell: 5, thread: 2 }] } : id === "bottle-lab" ? { kind: "bottle", shape: "flask", tint: "amber", finish: "frost", stickers: [] } : undefined;
         (tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as (c?: unknown) => void)(made);
         tree = draw(); expect(tree[0].props["data-studio-phase"]).toBe("result");
+        expectFinishCast(tree, id);
         expect(tree.find(node => node.type === KidFinishMoment)?.props).toMatchObject({ kind: "world", refId: id });
         expect(tree.find(node => node.type === StudioCreationResult)?.props.creation).toEqual(made);
         click(tree.find(node => node.props["data-studio-replay"] === "")); expect(draw()[0].props["data-studio-phase"]).toBe("play");

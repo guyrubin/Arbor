@@ -69,6 +69,8 @@ export interface LayoutContent {
   title?: number;
   /** The decision page shows its cards (the second state), not its words. */
   choosing?: boolean;
+  /** The closing page reserves both actions and the grown-up toggle. */
+  ending?: boolean;
 }
 
 export interface LayoutPlate {
@@ -183,8 +185,8 @@ export interface BookPageLayout {
   shadow: (ShadowEllipse & { cast: ShadowEllipse }) | null;
   /** The physical side of a facing text page that touches the spine. */
   spine: "left" | "right";
-  /** False when the words could not be fitted at the floor size (they then
-   *  scroll inside the page — a text defect for the author, never clipped). */
+  /** False when the words could not be fitted at the floor size. The reader
+   *  keeps readable type and lets the complete paper page scroll. */
   fits: boolean;
 }
 
@@ -495,6 +497,46 @@ function layoutFacing(c: Ctx): BookPageLayout {
   return best!;
 }
 
+/** A short, sideways book keeps two paper pages, but the whole illustration
+ *  sits within a narrower art page. This gives the words real horizontal
+ *  room instead of squeezing them below the reading floor. Choice cards
+ *  retain their separate, existing full-book layout. */
+function layoutSideways(c: Ctx): BookPageLayout {
+  const { box, content, dir } = c;
+  const margin = 8;
+  const book: Rect = { x: margin, y: margin, w: box.width - 2 * margin, h: box.height - 2 * margin };
+  const artPageW = Math.floor(book.w * 0.43);
+  const textPageW = book.w - artPageW;
+  const artPage: Rect = { x: dir === "ltr" ? book.x : book.x + textPageW, y: book.y, w: artPageW, h: book.h };
+  const textPage: Rect = { x: dir === "ltr" ? book.x + artPageW : book.x, y: book.y, w: textPageW, h: book.h };
+  const artH = Math.min(artPage.h - 16, (artPage.w - 16) / c.aspect);
+  const art: Rect = { x: artPage.x + (artPage.w - artH * c.aspect) / 2, y: artPage.y + (artPage.h - artH) / 2, w: artH * c.aspect, h: artH };
+  const pad = { inline: 16, block: 12 };
+  const text: Rect = { x: textPage.x + pad.inline, y: textPage.y + pad.block, w: textPage.w - 2 * pad.inline, h: textPage.h - 2 * pad.block };
+  // 56px action + 10px gap. The compact ending has one action row, the
+  // 48px grown-up toggle and two 12px gaps.
+  const navPx = content.ending ? 56 + 48 + 24 : 56 + 10;
+  const promptPx = content.prompt ? 56 + 10 : 0;
+  const titlePx = 32;
+  const fixed = navPx + promptPx + titleHeight(content.title ?? 0, text.w, titlePx) + 8;
+  const typePx = fitType(c, text.w, () => text.h - fixed, Math.ceil(c.tokenPx), 18);
+  const anchor = anchorFor(c, c.slot);
+  const hero = heroRect(c.slot, art, art, anchor);
+  const wordsH = estimateTextHeight(content.paras, text.w, typePx || 18, c.lineHeight);
+  const choicePlan = decisionPlan(content, text.w, text.h, navPx, wordsH, 110, false);
+  return {
+    mode: "wide", pageType: "facing", dir, book, artPage, art, plate: art,
+    crop: { x0: 0, x1: 1 }, textPage, text, pad,
+    typePx: typePx || 18, lineHeight: c.lineHeight, titlePx, navPx,
+    compactNav: true,
+    cardsPx: choicePlan ? plansHeight(choicePlan) : 0,
+    cardW: choicePlan?.cardW ?? 0, cardPicH: choicePlan?.picH ?? 0,
+    sheetOverlap: 0, choicePlan, hero,
+    heroBody: bodyRect(c.slot, art, anchor), shadow: shadowFor(c.slot, art, hero, anchor),
+    spine: dir === "ltr" ? "left" : "right", fits: typePx > 0,
+  };
+}
+
 /** The height a choice plan takes. */
 export function plansHeight(plan: ChoicePlan): number {
   if (plan.arrangement === "threeDown") return 3 * plan.cardH + 2 * plan.gap;
@@ -662,7 +704,10 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const colX = Math.round((W - colW) / 2);
   const padI = 20;
   let padB = 16;
-  let navPx = 84;
+  // The real 80px Next toy plus the sheet's 10px gap. Endings have two
+  // 56px action rows, an 8px row gap, the 48px toggle and two 12px gaps.
+  let navPx = content.ending ? 2 * 56 + 8 + 48 + 24 : 80 + SHEET_GAP;
+  if (content.ending) padB = 12;
   const textW = colW - 2 * padI;
   // the decision page's cards replace the words in a second state: the sheet is
   // sized by the words, never by the cards (they never ride over the hero)
@@ -682,7 +727,7 @@ function layoutStacked(c: Ctx): BookPageLayout {
   const compactNavPx = 56 + SHEET_GAP;
   const wordsAtFloor = estimateTextHeight(content.paras, textW, 18, c.lineHeight);
   const compactNav = !content.title && !content.choices && !content.prompt
-    && H - fixed - wordsAtFloor < floorArtH
+    && H - fixed - wordsAtFloor - compactFontBuffer < floorArtH
     && H - floorArtH - 2 * 8 - compactNavPx >= wordsAtFloor + compactFontBuffer;
   if (compactNav) {
     padB = 8;
@@ -693,15 +738,15 @@ function layoutStacked(c: Ctx): BookPageLayout {
   // that leaves it; else the largest that leaves the floor; else the floor.
   const maxType = W <= 480 ? 22 : 24;
   const targetArtH = Math.min(maxArtH, Math.max(H * 0.52, floorArtH));
-  const artAt = (type: number) => Math.min(maxArtH, H - (fixed + estimateTextHeight(content.paras, textW, type, c.lineHeight) + (compactNav ? compactFontBuffer : 0)));
+  const artAt = (type: number) => Math.min(maxArtH, H - (fixed + estimateTextHeight(content.paras, textW, type, c.lineHeight) + compactFontBuffer));
   const floorType = Math.ceil(c.tokenPx);
   const types: number[] = [];
   for (let type = Math.max(maxType, floorType); type >= floorType; type--) types.push(type);
   // under the floor, a non-decision page may set its words at 18 px rather
   // than shrink the picture under 300 px
   const lowTypes = [floorType - 1, 18].filter((t) => t >= 18 && t < floorType);
-  // nothing fits: the smallest allowed type (the art keeps its 300 px floor;
-  // the reader's DOM net shrinks further only if it must) — never the token
+  // Nothing fits: keep the smallest readable type and the 300px picture.
+  // The reader's DOM safety net makes the complete paper page scrollable.
   const typePx = types.find((t) => artAt(t) >= targetArtH) ?? types.find((t) => artAt(t) >= floorArtH) ?? lowTypes.find((t) => artAt(t) >= floorArtH) ?? lowTypes[lowTypes.length - 1] ?? floorType;
   const natural = artAt(typePx);
   // A compact page gives the spare pixels to real glyph wrapping, rather
@@ -819,6 +864,7 @@ export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts
     sideways: isSidewaysPhone(box),
   };
   if (c.sideways && c.content.choices && c.content.choosing) return sidewaysCards(layoutFacing(c), c.content.choices);
+  if (c.sideways && !c.cover) return layoutSideways(c);
   if ((c.box.width >= SPREAD_MIN_WIDTH && c.box.width >= c.box.height) || c.sideways) {
     if (c.cover) {
       const cover = layoutCover(c);

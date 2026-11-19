@@ -62,6 +62,36 @@ export function installGameCycleAudioProbe() {
   };
 }
 
+/** Finish scenery is the selected world's empty plate, with one separate cast. */
+export async function verifyStudioResultScene(page, world) {
+  const header = page.locator('[data-studio-phase="result"] .studio-game-card__window');
+  await header.locator(':scope > img[data-studio-plate]').evaluate(image => image.decode());
+  const scene = await header.evaluate(element => {
+    const plate = element.querySelector(':scope > img[data-studio-plate]');
+    const label = element.querySelector('.studio-game-card__world');
+    const crew = element.querySelector('[data-studio-cheer]');
+    const bounds = element.getBoundingClientRect(), text = label.getBoundingClientRect();
+    return {
+      world: plate.dataset.studioPlate, src: plate.currentSrc, loaded: plate.complete && plate.naturalWidth > 0,
+      plates: element.querySelectorAll(':scope > img[data-studio-plate]').length,
+      populatedCovers: element.querySelectorAll(':scope > img:not([data-studio-plate]), [data-maker-cover], [data-adventure-scene]').length,
+      heroes: element.querySelectorAll('.studio-game-card__hero [data-game-hero-source]').length,
+      crew: [...element.querySelectorAll('[data-studio-cheer] > img')].map(image => image.dataset.crew),
+      label: label.textContent.trim(),
+      labelFits: text.width > 0 && text.height > 0 && text.left >= bounds.left && text.right <= bounds.right
+        && text.top >= bounds.top && text.bottom <= bounds.bottom && label.scrollWidth <= label.clientWidth + 1,
+      labelAboveCrew: Number(getComputedStyle(label).zIndex) > Number(getComputedStyle(crew).zIndex),
+    };
+  });
+  assert.equal(scene.world, world, 'The finish stays in the selected world');
+  assert.ok(scene.loaded, 'The empty world plate is decoded');
+  assert.equal(scene.plates, 1); assert.equal(scene.populatedCovers, 0, 'No populated cover duplicates a host behind the cast');
+  assert.equal(scene.heroes, 1, 'Exactly one canonical hero stands in the finish header');
+  assert.deepEqual(scene.crew, ['chock', 'aya', 'pep'], 'Each approved companion appears once in the finish header');
+  assert.ok(scene.label && scene.labelFits && scene.labelAboveCrew, 'The world label is complete, in bounds and above the crew');
+  return scene;
+}
+
 /** Watch the same information a child sees; each driver has a finite budget. */
 async function playCycle(page, game, press, trace) {
   const root = page.locator(`[data-adventure="${game.adventure}"]`);
@@ -282,6 +312,7 @@ export async function verifyDefaultGameCycles({ browser, base, output }) {
         const result = page.locator('[data-studio-phase="result"]');
         await result.waitFor({ state: 'visible' });
         assert.ok((await result.innerText()).trim().length > 0, 'The Studio completion card has readable content');
+        (record.resultScenes ??= []).push(await verifyStudioResultScene(page, game.world));
         if (game.adventure === 'hero-band') {
           const creation = result.locator('[data-creation="dance"]');
           await creation.waitFor({ state: 'visible' });

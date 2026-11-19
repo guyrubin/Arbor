@@ -83,10 +83,39 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       const box = element.getBoundingClientRect(), style = getComputedStyle(element);
       const range = document.createRange(); range.selectNodeContents(element);
       const ink = [...range.getClientRects()].filter(r => r.width && r.height);
-      return { text: element.textContent, rect: { x: box.x, y: box.y, width: box.width, height: box.height }, fontSize: parseFloat(style.fontSize), scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fits: ink.length > 0 && ink.every(r => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1) };
+      const clip = window.storyCatalogueClip(element);
+      return { text: element.textContent, rect: { x: box.x, y: box.y, width: box.width, height: box.height }, fontSize: parseFloat(style.fontSize), scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fits: ink.length > 0 && ink.every(r => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1), visible: ink.length > 0 && ink.every(r => r.left >= clip.x - 1 && r.right <= clip.x + clip.width + 1 && r.top >= clip.y - 1 && r.bottom <= clip.y + clip.height + 1) };
     }));
+    // A paragraph can legitimately be taller than its scrollable paper. Check
+    // each real rendered line after actually scrolling it into the visible
+    // clipping bounds; checking the whole DD box cannot prove this contract.
+    const reachableLines = async (locator, scrollSelector) => locator.evaluateAll((elements, selector) => elements.map(element => {
+      const scroll = element.closest(selector);
+      const previous = scroll?.scrollTop ?? 0;
+      if (scroll) scroll.scrollTop = 0;
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const lines = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent.trim()) continue;
+        const range = document.createRange(); range.selectNodeContents(node);
+        [...range.getClientRects()].forEach((rect, index) => { if (rect.width && rect.height) lines.push({ node, index }); });
+      }
+      let reachable = lines.length > 0;
+      for (const line of lines) {
+        const range = document.createRange(); range.selectNodeContents(line.node);
+        let rect = range.getClientRects()[line.index];
+        let clip = window.storyCatalogueClip(element);
+        if (scroll) scroll.scrollTop += rect.top - (clip.y + Math.max(0, (clip.height - rect.height) / 2));
+        rect = range.getClientRects()[line.index];
+        clip = window.storyCatalogueClip(element);
+        reachable &&= rect.left >= clip.x - 1 && rect.right <= clip.x + clip.width + 1 && rect.top >= clip.y - 1 && rect.bottom <= clip.y + clip.height + 1;
+      }
+      if (scroll) scroll.scrollTop = previous;
+      return { text: element.textContent, lines: lines.length, reachable };
+    }), scrollSelector);
     const controls = async selector => page.locator(selector).evaluateAll(elements => elements.map(element => {
-      const box = element.getBoundingClientRect(); return { text: element.textContent, aria: element.getAttribute('aria-label'), disabled: element.disabled, x: box.x, y: box.y, width: box.width, height: box.height };
+      const box = element.getBoundingClientRect(), clip = window.storyCatalogueClip(element);
+      return { text: element.textContent, aria: element.getAttribute('aria-label'), disabled: element.disabled, x: box.x, y: box.y, width: box.width, height: box.height, visible: box.left >= clip.x - 1 && box.right <= clip.x + clip.width + 1 && box.top >= clip.y - 1 && box.bottom <= clip.y + clip.height + 1 };
     }));
     const inspect = async ({ name, expected, legacy = false, capture = true }) => {
       const scroll = legacy ? page.locator('[data-catalogue-scroll]') : null;
@@ -104,14 +133,23 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       const selector = legacy ? '[data-kid-book-reader] button:visible:enabled' : '[data-book-reader] button:visible:enabled';
       const toys = await controls(selector);
       check(toys.every(toy => toy.width >= 44 && toy.height >= 44), `${name}: every active control clears 44px`);
-      const initiallyVisible = toys.every(toy => inside(toy, viewport));
-      for (const paragraph of await paras.all()) {
-        await paragraph.scrollIntoViewIfNeeded();
-        check(inside(await paragraph.boundingBox(), viewport), `${name}: every full paragraph is reachable`);
+      const initiallyVisible = toys.every(toy => toy.visible && inside(toy, viewport));
+      const lines = legacy ? [] : await reachableLines(paras, '[data-reading-scroll]');
+      if (legacy) {
+        for (const paragraph of await paras.all()) {
+          await paragraph.scrollIntoViewIfNeeded();
+          check(inside(await paragraph.boundingBox(), viewport), `${name}: every full paragraph is reachable`);
+        }
+      } else {
+        check(lines.every(line => line.reachable), `${name}: every authored text line is reachable at readable size`);
       }
       for (const button of await page.locator(selector).all()) {
         await button.scrollIntoViewIfNeeded();
         check(inside(await button.boundingBox(), viewport), `${name}: every action is fully reachable`);
+        check(await button.evaluate(element => {
+          const box = element.getBoundingClientRect(), clip = window.storyCatalogueClip(element);
+          return box.left >= clip.x - 1 && box.right <= clip.x + clip.width + 1 && box.top >= clip.y - 1 && box.bottom <= clip.y + clip.height + 1;
+        }), `${name}: action is not hidden behind a paper clipping edge`);
       }
       const images = await page.locator(legacy ? '[data-kid-book-reader] img' : '[data-book-reader] img').evaluateAll(elements => elements.map(img => ({ src: img.currentSrc, loaded: img.complete && img.naturalWidth > 0, width: img.naturalWidth, height: img.naturalHeight, transform: getComputedStyle(img).transform })));
       check(images.every(img => img.loaded), `${name}: visible identity/art image bytes decode`);
@@ -121,7 +159,8 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
         if (await wordBox.count()) check(await wordBox.evaluate(element => element.scrollHeight <= element.clientHeight + 1), `${name}: reading sheet does not hide text in an inner scroller`);
       }
       if (scroll) await scroll.evaluate(element => { element.scrollTop = 0; });
-      const frame = { name, words, controls: toys, controlsInitiallyVisible: initiallyVisible, images };
+      if (!legacy) await page.locator('[data-reading-scroll]').evaluateAll(elements => elements.forEach(element => { element.scrollTop = 0; }));
+      const frame = { name, words, lines, controls: toys, controlsInitiallyVisible: initiallyVisible, images };
       frames.push(frame);
       if (capture) await shot(name);
       await persist();
@@ -138,6 +177,20 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
         if (/\/visuals\/(books|stories)\//.test(url.pathname)) requests.push({ source: 'committed-art', path: url.pathname, status: response.status() });
       });
       await context.addInitScript(() => {
+        // Visible bounds include the actual overflow clips, not a tight text
+        // line box (font ascent can exceed that box without any clipped ink).
+        window.storyCatalogueClip = element => {
+          let left = 0, top = 0, right = innerWidth, bottom = innerHeight;
+          for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+            const style = getComputedStyle(parent), box = parent.getBoundingClientRect();
+            if (style.overflowX !== 'visible') { left = Math.max(left, box.left + parent.clientLeft); right = Math.min(right, box.left + parent.clientLeft + parent.clientWidth); }
+            if (style.overflowY !== 'visible') { top = Math.max(top, box.top + parent.clientTop); bottom = Math.min(bottom, box.top + parent.clientTop + parent.clientHeight); }
+            // The actual reader/fixture shell is fixed to this viewport;
+            // ordinary document wrappers do not clip that fixed surface.
+            if (style.position === 'fixed') break;
+          }
+          return { x: left, y: top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) };
+        };
         window.storyCatalogueMedia = { plays: 0, captures: 0, syntheses: 0 };
         HTMLMediaElement.prototype.play = function () { window.storyCatalogueMedia.plays++; return Promise.resolve(); };
         if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { window.storyCatalogueMedia.captures++; throw new Error('No recording in the synthetic catalogue'); };
@@ -290,16 +343,18 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
           await paint();
           const viewport = { x: 0, y: 0, width: cell.w, height: cell.h };
           const toys = await controls('[data-book-end-screen] button:visible');
-          check(toys.every(toy => inside(toy, viewport) && toy.width >= 44 && toy.height >= 44), `${branch.choice ?? 'linear'}: ending actions fully visible`);
+          check(toys.every(toy => toy.visible && inside(toy, viewport) && toy.width >= 44 && toy.height >= 44), `${branch.choice ?? 'linear'}: ending actions fully visible`);
           const endWords = await glyphs(page.locator('.bk-end-title, .bk-end-frame'));
-          check(endWords.every(word => word.fits && inside(word.rect, viewport)), `${branch.choice ?? 'linear'}: complete ending title and frame line`);
+          check(endWords.length === 2 && endWords.every(word => word.visible && inside(word.rect, viewport)), `${branch.choice ?? 'linear'}: complete ending title and frame line`);
+          frames.push({ name: `${branch.choice ?? 'linear'}-ending`, words: endWords, controls: toys });
           paths.push({ choice: branch.choice, seen, ended: true });
           await shot(`${branch.choice ?? 'linear'}-ending`);
           await page.locator('[data-book-grownup]').click();
           const panel = page.locator('[data-book-grownup-panel]');
           await panel.waitFor({ state: 'visible' });
-          const last = panel.locator('dd').last(); await last.scrollIntoViewIfNeeded();
-          check(inside(await last.boundingBox(), await panel.boundingBox()), 'the complete grown-up panel is reachable');
+          const grownupLines = await reachableLines(panel.locator('dt, dd'), '[data-book-grownup-panel]');
+          check(grownupLines.length > 0 && grownupLines.every(line => line.reachable), 'every line of the complete grown-up panel is reachable');
+          frames.push({ name: `${branch.choice ?? 'linear'}-grownup`, lines: grownupLines });
           await page.locator('[data-book-grownup]').click();
           await persist();
           if (n < spec.paths.length - 1) {
