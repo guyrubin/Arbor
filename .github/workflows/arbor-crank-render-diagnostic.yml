@@ -1,0 +1,44 @@
+name: Arbor Crank Render Comparison
+
+on:
+  push:
+    branches: [diagnostic/crank-render-2026-11-19]
+    paths:
+      - .github/workflows/arbor-crank-render-diagnostic.yml
+      - app/scripts/kids-crank-render-diagnostic.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  crank-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Install normal Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build unchanged c8 Kids components with synthetic adapters
+        run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
+      - name: Compare actual native and controlled Crank paint in all four cells
+        timeout-minutes: 15
+        run: node scripts/kids-crank-render-diagnostic.mjs
+      - name: Retain original comparative records and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-crank-render-diagnostic
+          path: app/output/kids-crank-render-diagnostic
+          retention-days: 7
+          if-no-files-found: warn
