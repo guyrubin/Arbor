@@ -3040,7 +3040,7 @@ Return only JSON matching the schema.`;
         return;
       }
       logger.error("Arbor Explain Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to explain that", details: error.message });
+      res.status(500).json({ error: "Failed to explain that" });
     }
   });
 
@@ -3723,23 +3723,36 @@ RULES:
       },
     };
 
+    // B-AIOPS-07: the same deadline and client-cancel budget as the other
+    // generation routes. A parent who leaves does not keep the call running.
+    const budget = createRouteBudget(res, "coach");
     try {
       const privacy = createRedaction(name);
-      const raw = privacy.restoreDeep(await modelProvider.generateJson({
+      const raw = privacy.restoreDeep(await raceWithAbort(modelProvider.generateJson({
         route: "creative_low_risk",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.8,
         schema,
-      })) as Record<string, unknown>;
+        budget: budget.budget,
+      }), budget.signal)) as Record<string, unknown>;
       const adventure = normalizeAdventure(raw, age);
       if (adventure.scenes.length === 0) {
+        budget.settle();
         res.status(502).json({ error: "Couldn't build a complete adventure — please try again" });
         return;
       }
       await sendScreenedJson(res, adventure);
+      budget.settle();
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Adventure deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Adventure Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Couldn't create that adventure — please try again", details: error.message });
+      res.status(500).json({ error: "Couldn't create that adventure — please try again" });
     }
   });
 
@@ -3870,6 +3883,8 @@ RULES:
       .map((c) => `- ${c.id}: "${c.label}" (cue: ${c.outcomeHint})`)
       .join("\n");
 
+    // B-AIOPS-07: deadline and client-cancel, same as the other generation routes.
+    const budget = createRouteBudget(res, "coach");
     try {
       const prompt = `${NON_DIAGNOSTIC_CONTRACT}
 You are Arbor's gentle children's storyteller. Turn a FIXED story spine into a warm, cinematic story in which the CHILD is the hero.
@@ -3901,10 +3916,11 @@ ${story.parentReflection.questions.map((q) => "- " + q).join("\n")}
 ${languageDirective}`;
 
       const privacy = createRedaction(childName);
-      const render = privacy.restoreDeep(await modelProvider.generateJson({
+      const render = privacy.restoreDeep(await raceWithAbort(modelProvider.generateJson({
         route: "creative_low_risk",
         prompt: privacy.redact(prompt) + REDACTION_DIRECTIVE,
         temperature: 0.7,
+        budget: budget.budget,
         schema: {
           type: Type.OBJECT,
           required: ["scenes", "choices", "reflection"],
@@ -3946,7 +3962,7 @@ ${languageDirective}`;
             }
           }
         }
-      })) as Record<string, unknown>;
+      }), budget.signal)) as Record<string, unknown>;
 
       // AI-2: output-side safety screen. Every other generative route screens its
       // model output; the hero journey emits model-authored narration/dialogue/sfx/
@@ -3955,6 +3971,7 @@ ${languageDirective}`;
       // is also the precondition for ever voicing this span (neural TTS).
       const heroScreenable = assembleHeroJourneyScreenable(render);
       const outputVerdict = await screenModelOutput(modelProvider, heroScreenable);
+      budget.settle();
       if (outputVerdict.flagged) {
         logger.warn("Hero journey output blocked by output safety screen", {
           requestId: requestIdOf(req),
@@ -3973,8 +3990,15 @@ ${languageDirective}`;
         ...render
       });
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Hero Journey deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Hero Journey Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to generate Arbor hero journey", details: error.message });
+      res.status(500).json({ error: "Failed to generate Arbor hero journey" });
     }
   });
 
@@ -4018,6 +4042,8 @@ ${languageDirective}`;
       return;
     }
 
+    // B-AIOPS-07: deadline and client-cancel, same as the other generation routes.
+    const budget = createRouteBudget(res, "coach");
     try {
       // ── SAFETY CONDITION 2: REDACTION AT THE GENERATION SEAM ──
       // createRedaction(childName) must wrap the model call: redact → model → restoreDeep.
@@ -4042,9 +4068,10 @@ ${languageDirective}`;
       const fullPrompt = `${NON_DIAGNOSTIC_CONTRACT}\n\n${PLAIN_PARENT_WORDS_CLAUSE}\n\n${rawPrompt}`;
 
       // Redact child PII, call model, restore PII in output.
-      const result = privacy.restoreDeep(await modelProvider.generateJson({
+      const result = privacy.restoreDeep(await raceWithAbort(modelProvider.generateJson({
         route: "creative_low_risk",
         prompt: privacy.redact(fullPrompt) + REDACTION_DIRECTIVE,
+        budget: budget.budget,
         schema: {
           type: Type.OBJECT,
           required: ["title", "pages", "illustrationPrompt", "discussionQuestions", "summary"],
@@ -4057,7 +4084,7 @@ ${languageDirective}`;
           }
         },
         temperature: 0.7
-      }));
+      }), budget.signal));
 
       // OBJ-STORIES-01: enforce the parent register on the one field the
       // parent reads. An empty result means there is nothing to show, never a
@@ -4072,9 +4099,17 @@ ${languageDirective}`;
       // because generate-and-discard produces no new persistent child-data.
       // ai_training is default-OFF: nothing written to a training pipeline here.
       await sendScreenedJson(res, result);
+      budget.settle();
     } catch (error: any) {
+      budget.settle();
+      if (budget.clientGone()) return;
+      if (budget.timedOut || isAbortError(error)) {
+        logger.warn("Arbor Bedtime Story deadline exceeded", { requestId: requestIdOf(req) });
+        res.status(504).json(DEADLINE_ERROR);
+        return;
+      }
       logger.error("Arbor Bedtime Story Error", error, { requestId: requestIdOf(req) });
-      res.status(500).json({ error: "Failed to generate Arbor bedtime story", details: error.message });
+      res.status(500).json({ error: "Failed to generate Arbor bedtime story" });
     }
   });
 
