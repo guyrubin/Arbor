@@ -1,0 +1,39 @@
+name: Arbor Story Capture Observation
+on:
+  push:
+    branches: ['diagnostic/story-capture-2026-11-19']
+    paths:
+      - .github/workflows/arbor-story-capture-diagnostic.yml
+      - app/scripts/kids-story-capture-diagnostic.mjs
+permissions:
+  contents: read
+jobs:
+  observe-story-capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
+      - name: Observe actual page painting and capture lifecycle
+        timeout-minutes: 10
+        run: node scripts/kids-story-capture-diagnostic.mjs
+      - name: Retain original PNG and before-after observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-capture-observations
+          path: app/output/kids-story-capture-diagnostic
+          retention-days: 7
+          if-no-files-found: warn
