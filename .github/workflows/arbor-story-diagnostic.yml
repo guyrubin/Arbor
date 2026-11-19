@@ -1,0 +1,55 @@
+name: Arbor Complete Story Diagnostic
+
+# Isolated branch only. The release branch retains its whole standard CI gate.
+on:
+  push:
+    branches: ['diagnostic/story-paint-2026-11-19']
+    paths:
+      - .github/workflows/arbor-story-diagnostic.yml
+      - app/scripts/kids-story-diagnostic.mjs
+
+permissions:
+  contents: read
+
+jobs:
+  complete-stories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Install normal Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build actual Kids components with the same synthetic adapters
+        run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
+      - name: Operate every catalogue title and path in all 120 cells
+        timeout-minutes: 25
+        run: node scripts/kids-story-diagnostic.mjs
+      - name: Retain all original JSON records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-diagnostic-records
+          path: |
+            app/output/kids-story-diagnostic
+            !app/output/kids-story-diagnostic/**/*.png
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain both complete canonical landscape picture sequences
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-diagnostic-canonical-landscape
+          path: app/output/kids-story-diagnostic/story-catalogue/book-five-smooth-stones-landscape-*/**
+          retention-days: 7
+          if-no-files-found: warn
