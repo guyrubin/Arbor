@@ -35,9 +35,10 @@ function observe() {
     if (!ids.has(element)) ids.set(element, nextId++);
     return { id: ids.get(element), tag: element.tagName, class: element.className, page: element.getAttribute('data-book-page') };
   };
-  const state = { events: [], raf: 0, dropped: 0 };
-  const log = event => { if (state.events.length < 1500) state.events.push({ time: performance.now(), raf: state.raf, ...event }); else state.dropped++; };
-  const tick = () => { state.raf++; requestAnimationFrame(tick); }; requestAnimationFrame(tick);
+  const state = { events: [], dropped: 0 };
+  const retainedImages = new Map();
+  // No perpetual RAF observer: it would itself keep the compositor active.
+  const log = event => { if (state.events.length < 1500) state.events.push({ time: performance.now(), ...event }); else state.dropped++; };
   for (const type of ['animationstart', 'animationend', 'animationcancel', 'transitionrun', 'transitionend', 'transitioncancel']) {
     document.addEventListener(type, event => log({ type, target: identity(event.target), name: event.animationName ?? event.propertyName, elapsed: event.elapsedTime }), true);
   }
@@ -50,17 +51,31 @@ function observe() {
   }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['style', 'class', 'src', 'hidden'] });
   const rect = element => { const r = element.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
   const styles = ['display', 'visibility', 'opacity', 'position', 'transform', 'transformOrigin', 'filter', 'backfaceVisibility', 'overflow', 'overflowX', 'overflowY', 'clipPath', 'maskImage', 'zIndex', 'isolation', 'mixBlendMode', 'contain', 'contentVisibility', 'pointerEvents'];
-  window.captureObservation = (includeBitmap = false) => {
+  window.captureObservation = () => {
     const image = document.querySelector('[data-book-plate] > img');
     const chain = [];
     for (let element = image; element; element = element.parentElement) {
       const css = getComputedStyle(element);
       chain.push({ ...identity(element), box: rect(element), style: Object.fromEntries(styles.map(key => [key, css[key]])) });
     }
+    if (image) retainedImages.set(identity(image).id, image);
+    const art = document.querySelector('[data-book-art]'); const box = art ? rect(art) : null;
+    const occlusion = box ? [[.1, .1], [.5, .3], [.9, .6]].map(([rx, ry]) => {
+      const x = box.x + box.width * rx, y = box.y + box.height * ry;
+      return { x, y, elements: document.elementsFromPoint(x, y).slice(0, 8).map(identity) };
+    }) : [];
+    return {
+      time: performance.now(), page: document.querySelector('[data-book-page]')?.getAttribute('data-book-page'),
+      image: image ? { ...identity(image), src: image.currentSrc, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight } : null,
+      chain, occlusion,
+      animations: document.getAnimations().map(animation => ({ target: identity(animation.effect?.target), name: animation.animationName, playState: animation.playState, currentTime: animation.currentTime, startTime: animation.startTime, timing: animation.effect?.getComputedTiming() })),
+      events: state.events.splice(0), droppedEvents: state.dropped,
+    };
+  };
+  window.captureSourcePixelsAfterCell = () => [...retainedImages].map(([id, image]) => {
     const pixels = [];
-    // Pixel readback can synchronize raster work. Do it only after the
-    // three original captures, never as a hidden readiness intervention.
-    if (includeBitmap && image?.complete && image.naturalWidth > 0) {
+    // Readback runs only after EVERY original PNG in this fresh cell.
+    if (image.complete && image.naturalWidth > 0) {
       const canvas = document.createElement('canvas'); canvas.width = 1; canvas.height = 1;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       for (const [x, y] of [[96, 96], [96, 800], [192, 96]]) {
@@ -68,19 +83,8 @@ function observe() {
         catch (error) { pixels.push({ x, y, error: String(error) }); }
       }
     }
-    const art = document.querySelector('[data-book-art]'); const box = art ? rect(art) : null;
-    const occlusion = box ? [[.1, .1], [.5, .3], [.9, .6]].map(([rx, ry]) => {
-      const x = box.x + box.width * rx, y = box.y + box.height * ry;
-      return { x, y, elements: document.elementsFromPoint(x, y).slice(0, 8).map(identity) };
-    }) : [];
-    return {
-      time: performance.now(), raf: state.raf, page: document.querySelector('[data-book-page]')?.getAttribute('data-book-page'),
-      image: image ? { ...identity(image), src: image.currentSrc, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight, pixels } : null,
-      chain, occlusion,
-      animations: document.getAnimations().map(animation => ({ target: identity(animation.effect?.target), name: animation.animationName, playState: animation.playState, currentTime: animation.currentTime, startTime: animation.startTime, timing: animation.effect?.getComputedTiming() })),
-      events: state.events.splice(0), droppedEvents: state.dropped,
-    };
-  };
+    return { id, src: image.currentSrc, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight, pixels };
+  });
   HTMLMediaElement.prototype.play = function () { throw new Error('No media playback in this observational fixture'); };
   if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { throw new Error('No capture in this observational fixture'); };
   if (window.speechSynthesis) window.speechSynthesis.speak = () => { throw new Error('No narration synthesis in this observational fixture'); };
@@ -143,8 +147,10 @@ async function runCell(browser, base, cell) {
     for (const button of await page.locator('[data-book-reader] button:visible:enabled').all()) { await button.scrollIntoViewIfNeeded(); await button.boundingBox(); }
     await page.locator('[data-reading-scroll]').evaluateAll(elements => elements.forEach(element => { element.scrollTop = 0; }));
     const frame = { name, captures: [] };
-    for (const animation of cell.order) {
-      const before = await page.evaluate(() => window.captureObservation());
+    for (let index = 0; index < cell.order.length; index++) {
+      const animation = cell.order[index];
+      // Preserve the cold first PNG before any additional DOM introspection.
+      const before = index === 0 ? null : await page.evaluate(() => window.captureObservation());
       const file = `${name}-${animation}.png`;
       await page.screenshot({ path: path.join(directory, file), animations: animation });
       const after = await page.evaluate(() => window.captureObservation());
@@ -155,7 +161,7 @@ async function runCell(browser, base, cell) {
     const file = `${name}-after-raf-allow.png`;
     await page.screenshot({ path: path.join(directory, file), animations: 'allow' });
     frame.afterTwoRafFile = file;
-    frame.decodedAfterCaptures = await page.evaluate(() => window.captureObservation(true));
+    frame.afterThirdCapture = await page.evaluate(() => window.captureObservation());
     result.frames.push(frame); await persist();
   };
   try {
@@ -173,6 +179,7 @@ async function runCell(browser, base, cell) {
       }
     }
     await page.locator('[data-book-page="end"]').waitFor({ state: 'visible' });
+    result.sourcePixelsAfterCell = await page.evaluate(() => window.captureSourcePixelsAfterCell());
     assert.ok(result.requests.every(r => r.method === 'GET' && r.authorization === 'Bearer synthetic-story-catalogue'));
     assert.equal(result.unexpected.length, 0); assert.equal(result.errors.length, 0); result.complete = true;
   } catch (error) { result.failure = String(error); }
