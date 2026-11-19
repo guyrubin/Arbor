@@ -302,7 +302,10 @@
 .arbor-play .bk-name-line bdi,
 .arbor-play .bk-end-frame bdi { font-weight: 800; color: var(--studio-teal-ink); }
 
-.arbor-play .bk-cover-words { display: flex; flex-direction: column; justify-content: center; gap: 0.4em; }
+/* The title's font bounds can exceed its tight line box into the paper's
+   padding. Keep that ink visible; a genuinely long cover already uses the
+   whole-paper overflow fallback, rather than an inner title scroller. */
+.arbor-play .bk-cover-words { display: flex; flex-direction: column; justify-content: center; gap: 0.4em; overflow: visible; }
 .arbor-play .bk-title {
   margin: 0;
   font-family: var(--studio-font) !important;

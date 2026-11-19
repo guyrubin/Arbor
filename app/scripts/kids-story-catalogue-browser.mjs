@@ -79,6 +79,20 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       });
       await page.waitForFunction(() => [...document.querySelectorAll('[data-kid-book-reader], [data-kid-book-reader] > div, [data-kid-book-text]')].every(element => Number(getComputedStyle(element).opacity) >= .995));
+      // A decoded plate may still be in its first transparent fade frame.
+      // Observe the actual final paint, as the dedicated recovery sweep does;
+      // never force a style or accept a gray placeholder as visible artwork.
+      await page.waitForFunction(() => {
+        if (!document.querySelector('[data-book-reader]')) return true;
+        const base = document.querySelector('[data-book-plate] > img');
+        const images = [...document.querySelectorAll('[data-book-plate] > img, [data-book-state-plate] > img')];
+        return base instanceof HTMLImageElement && images.every(img => {
+          if (!(img instanceof HTMLImageElement) || !img.complete || img.naturalWidth <= 0) return false;
+          const style = getComputedStyle(img), rect = img.getBoundingClientRect();
+          return style.visibility === 'visible' && Number(style.opacity) === 1 && rect.width > 0 && rect.height > 0;
+        });
+      }, undefined, { timeout: 12000 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     };
     const glyphs = async locator => locator.evaluateAll(elements => elements.map(element => {
       const box = element.getBoundingClientRect(), style = getComputedStyle(element);
@@ -153,7 +167,7 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
           return box.left >= clip.x - 1 && box.right <= clip.x + clip.width + 1 && box.top >= clip.y - 1 && box.bottom <= clip.y + clip.height + 1;
         }), `${name}: action is not hidden behind a paper clipping edge`);
       }
-      const images = await page.locator(legacy ? '[data-kid-book-reader] img' : '[data-book-reader] img').evaluateAll(elements => elements.map(img => ({ src: img.currentSrc, loaded: img.complete && img.naturalWidth > 0, width: img.naturalWidth, height: img.naturalHeight, transform: getComputedStyle(img).transform })));
+      const images = await page.locator(legacy ? '[data-kid-book-reader] img' : '[data-book-reader] img').evaluateAll(elements => elements.map(img => ({ src: img.currentSrc, loaded: img.complete && img.naturalWidth > 0, width: img.naturalWidth, height: img.naturalHeight, opacity: Number(getComputedStyle(img).opacity), transform: getComputedStyle(img).transform })));
       check(images.every(img => img.loaded), `${name}: visible identity/art image bytes decode`);
       check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${name}: no horizontal page overflow`);
       if (!legacy) {

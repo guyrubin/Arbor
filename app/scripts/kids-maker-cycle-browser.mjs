@@ -8,6 +8,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RELEASE_VIEWPORTS } from './capture/release-config.mjs';
 import { installGameCycleAudioProbe, verifyStudioResultScene } from './kids-game-cycle-browser.mjs';
+import { bounceDragOffset, readPaintedBounceBall } from './kids-maker-bounce-vision.mjs';
 
 const GAMES = [
   { id: 'mend-bowl', world: 'studio', creation: 'bowl' },
@@ -47,6 +48,15 @@ export async function pauseMakerClock(page) {
   await page.clock.setSystemTime(time);
 }
 
+/** Native time can finish a short chapter between loop reads. The caller
+ * supplies only this first cycle's actual DOM observations, before replay. */
+export function iceAgeCycleSteps(loopSteps, trace) {
+  const steps = new Set(loopSteps);
+  for (const state of trace) if (state.adventure === 'ice-age-friend' && state.iafPhase === 'play' && state.iafStep) steps.add(state.iafStep);
+  for (const step of ['frost', 'hello', 'trace', 'brush', 'feed', 'part', 'scout', 'walk', 'low']) assert.ok(steps.has(step), `Played mammoth ${step}`);
+  return [...steps];
+}
+
 const SEASONS = {
   springShower: { season: 0, taps: 2, rain: 5000, blows: 0, wait: 3000 },
   summerSun: { season: 1, taps: 3, rain: 3000, blows: 3, wait: 15000 },
@@ -61,8 +71,19 @@ async function play(h, game) {
   const root = h.root;
   const done = () => exists('[data-studio-phase="result"]');
   const opening = page.locator('[data-play-skip]');
-  h.metrics.openingPressed = await opening.count() > 0;
-  if (h.metrics.openingPressed) await press(opening);
+  h.metrics.openingPressed = false;
+  if (game.id === 'ice-age-friend') {
+    // This is the same native-timer opening as replay. The optional skip can
+    // detach while pointer actionability is checked, so observe its real end.
+    await page.locator('[data-adventure="ice-age-friend"][data-iaf-phase="play"][data-iaf-step="frost"]').waitFor({ state: 'visible', timeout: 6000 });
+    assert.equal(await opening.count(), 0, 'The authored Ice Age opening has ended');
+    assert.equal(await page.locator('.iaf-album li').count(), 0, 'The fresh Ice Age trip has no prior observations');
+    h.metrics.openingMode = 'authored-timer';
+  } else {
+    h.metrics.openingPressed = await opening.count() > 0;
+    if (h.metrics.openingPressed) await press(opening);
+    h.metrics.openingMode = h.metrics.openingPressed ? 'real-button' : 'already-open';
+  }
   await advance(300);
   const currentLabels = await page.locator('.play-quest__step[data-state="now"] .play-quest__label').evaluateAll(nodes => nodes.map(node => { const box = node.getBoundingClientRect(); return { text: node.textContent?.trim(), width: box.width, height: box.height, display: getComputedStyle(node).display }; }));
   for (const label of currentLabels) assert.ok(label.text && label.width > 0 && label.height > 0 && label.display !== 'none', 'The current maker chapter stays readable on this viewport');
@@ -359,9 +380,11 @@ async function playOtherMaker(h, game) {
       if (i === 20) await snapshot('field');
     }
     assert.ok(await done(), 'Mammoth field trip reaches its kept night scene');
-    for (const step of ['frost', 'hello', 'trace', 'brush', 'feed', 'part', 'scout', 'walk', 'low']) assert.ok(steps.has(step), `Played mammoth ${step}`);
+    // Include phases already observed just after real input in advance().
+    // play() has not returned, so no replay samples exist in this cell yet.
+    const playedSteps = iceAgeCycleSteps(steps, h.trace);
     assert.ok(prints >= 3, 'Field observations were actually kept');
-    return { steps: [...steps], prints, gestures };
+    return { steps: playedSteps, prints, gestures };
   }
 
   if (game.id === 'tiny-builders') {
@@ -417,16 +440,53 @@ async function playOtherMaker(h, game) {
     assert.ok(h.metrics.screenTarget.width >= 44 && h.metrics.screenTarget.height >= 44 && h.metrics.screenTarget.centreReceivesPointer, 'The visible computer screen has an unobstructed real pointer target');
     await snapshot('awake'); await press(page.locator('[data-spot="pc"]')); await advance(1000);
     await press(page.locator('.md-icon[data-program="bounce"]')); await advance(100);
-    // Sweep the actual paddle with its real key controls. Physics is the
-    // shipped fixed-timestep loop; no ball coordinates or engine state read.
-    // Bounded input schedule was checked against both authored field heights.
-    let sweeps = 0;
-    for (; sweeps < 420 && !await exists('[data-control="again"]'); sweeps++) {
-      const direction = sweeps % 2 ? 'ArrowLeft' : 'ArrowRight';
-      await page.keyboard.down(direction); await advance(730); await page.keyboard.up(direction);
-      if (sweeps === 40) await snapshot('lanterns');
+    // Follow the ball as it is actually painted, using a real held pointer.
+    // A periodic blind keyboard sweep can circle forever past one lantern.
+    // The same 306.6s budget still requires all fifteen and the real result.
+    const canvas = page.locator('.md-bounce__canvas');
+    await canvas.waitFor({ state: 'visible' });
+    const first = await canvas.evaluate(readPaintedBounceBall);
+    assert.equal(first.balls.length, 1, 'Exactly one complete ball is visible before paddle play');
+    assert.ok(first.box.width >= 100 && first.box.height >= 100, 'The actual Bounce field is laid out');
+    const point = { x: first.box.left + first.box.width / 2, y: first.box.top + first.box.height * 0.65 };
+    assert.equal(await page.evaluate(({ x, y }) => {
+      const field = document.querySelector('.md-bounce'), hit = document.elementFromPoint(x, y);
+      return !!field && !!hit && field.contains(hit);
+    }, point), true, 'The real drag starts on the unobstructed playfield');
+    const touch = h.phone ? await page.context().newCDPSession(page) : null;
+    let samples = 0, elapsed = 0, held = false;
+    try {
+      if (touch) await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, radiusX: 4, radiusY: 4, id: 1 }] });
+      else { await page.mouse.move(point.x, point.y); await page.mouse.down(); }
+      held = true; h.inputs.held++;
+      while (elapsed < 306600 && !await exists('[data-control="again"]')) {
+        let seen = await canvas.evaluate(readPaintedBounceBall), hiddenFor = 0;
+        // A wall can briefly clip the ball's outer pixel. The light show also
+        // removes it. Re-observe either a complete ball or the actual result;
+        // missing pixels alone never count as completion or bypass the cap.
+        while (seen.balls.length === 0 && !await exists('[data-control="again"]') && hiddenFor < 6000 && elapsed < 306600) {
+          await advance(100); elapsed += 100; hiddenFor += 100;
+          seen = await canvas.evaluate(readPaintedBounceBall);
+        }
+        if (await exists('[data-control="again"]')) break;
+        if (elapsed >= 306600) break;
+        assert.equal(seen.balls.length, 1, 'The painted ball is unambiguous throughout real play');
+        const x = seen.box.left + (seen.balls[0].x + bounceDragOffset(elapsed)) / seen.width * seen.box.width;
+        const next = { x: Math.max(seen.box.left + 1, Math.min(seen.box.left + seen.box.width - 1, x)), y: seen.box.top + seen.box.height * 0.65 };
+        if (touch) await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...next, radiusX: 4, radiusY: 4, id: 1 }] });
+        else await page.mouse.move(next.x, next.y);
+        samples++; await advance(100); elapsed += 100;
+        if (samples === 100) await snapshot('lanterns');
+      }
+    } finally {
+      if (held) {
+        if (touch) await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        else await page.mouse.up();
+      }
+      await touch?.detach();
     }
     assert.ok(await exists('[data-control="again"]'), 'All fifteen lanterns lit through real paddle play');
+    h.metrics.paddle = { observation: 'painted canvas pixels only', input: h.phone ? 'real emulated touch drag' : 'real mouse drag', samples, elapsed };
     await snapshot('all-lanterns'); await press(page.locator('[data-back-to]'));
     await until(() => exists('.md-icon[data-program="ask"]'), 6000, 'Return to the desktop');
     await press(page.locator('.md-icon[data-program="ask"]'));
@@ -435,7 +495,7 @@ async function playOtherMaker(h, game) {
     assert.ok(await exists('[data-maker-desk-power]'), 'All three desk chapters done');
     await snapshot('terminal'); await press(page.locator('[data-maker-desk-power]'));
     await until(done, 22000, 'Desk powers up');
-    return { tools: 3, lanterns: 15, sweeps, commands: ['help', 'ls'] };
+    return { tools: 3, lanterns: 15, paddleSamples: samples, commands: ['help', 'ls'] };
   }
   throw new Error(`Missing real-input driver for ${game.id}`);
 }
@@ -579,7 +639,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
         await snapshot('ready');
         record.metrics = {};
-        const h = { page, root, lang: viewport.lang, press, key, advance, until, exists, attrs, snapshot, hold, metrics: record.metrics };
+        const h = { page, root, phone, inputs: record.inputs, lang: viewport.lang, press, key, advance, until, exists, attrs, snapshot, hold, metrics: record.metrics, trace: record.trace };
         record.play = await play(h, game); record.completionCount = 1;
         const resultSelector = game.id === 'sneak' ? '[data-sneak-ending]' : '[data-studio-phase="result"]';
         await page.locator(resultSelector).waitFor({ state: 'visible' });
@@ -628,8 +688,19 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         await root.waitFor({ state: 'visible' });
         assert.equal(await page.locator(resultSelector).count(), 0, 'Replay clears the prior completion');
         const replayOpening = page.locator('[data-play-skip]');
-        const openingPressed = await replayOpening.count() > 0;
-        if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
+        let openingPressed = false;
+        if (nativeClock) {
+          // Ice Age's reduced-motion opening ends naturally after 1400ms.
+          // A count-then-click races that authored timer on a busy renderer.
+          // Observe its real first playable step instead of chasing a skip
+          // button that is already detaching; no gameplay state is changed.
+          await page.locator('[data-adventure="ice-age-friend"][data-iaf-phase="play"][data-iaf-step="frost"]').waitFor({ state: 'visible', timeout: 6000 });
+          assert.equal(await replayOpening.count(), 0, 'The authored Ice Age replay opening has ended');
+          assert.equal(await page.locator('.iaf-album li').count(), 0, 'The fresh Ice Age replay has no observations from the completed trip');
+        } else {
+          openingPressed = await replayOpening.count() > 0;
+          if (openingPressed) { await press(replayOpening); await advance(300); assert.equal(await replayOpening.count(), 0, 'The fresh maker opening begins once through its real button'); }
+        }
         if (game.id === 'sneak') {
           record.replayLayout = await renderedSneakField('Replayed Sneak scene covers the field with its control in reach');
           await until(() => exists('[data-sneak-stage][data-sneak-phase="counting"]'), 6000, 'Replayed Sneak begins its next count');
@@ -641,7 +712,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
           assert.ok(after > before, 'The replayed hero moves in response to a real hold and release');
           record.metrics.replayMovement = { before, after };
         }
-        await snapshot('replay'); record.replay = { fresh: true, openingPressed, state: await attrs() };
+        await snapshot('replay'); record.replay = { fresh: true, openingPressed, openingMode: nativeClock ? 'authored-timer' : openingPressed ? 'real-button' : 'already-open', state: await attrs() };
         // Exit while a new session is active; future callbacks must not finish it.
         await press(page.locator('.review-bar > button').first());
         await page.locator(`.studio-v2--world[data-world="${game.world}"]`).waitFor({ state: 'visible' });
