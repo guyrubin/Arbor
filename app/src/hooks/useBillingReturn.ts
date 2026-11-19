@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useToast } from "../context/ToastContext";
 import { BILLING_PENDING_KEY, refreshEntitlement, startBillingReturnPoll, takeBillingReturn } from "./useEntitlement";
+import { showVisitReceipt } from "../lib/visitReceipt";
 
 /** Own one account's web-checkout verification until it settles or unmounts.
  *  Locale/callback changes update the next message without canceling the poll.
@@ -36,6 +37,7 @@ export function useBillingReturn(): void {
       stop = startBillingReturnPoll({
         refresh: refreshEntitlement,
         t: (key) => callbacks.current.t(key),
+        onConfirmed: (message) => showVisitReceipt(message),
         toast: (message, type) => {
           const current = callbacks.current;
           current.toast(message, type, message === current.t(BILLING_PENDING_KEY)

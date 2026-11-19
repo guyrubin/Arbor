@@ -37,6 +37,7 @@ import { useToast } from "../../context/ToastContext";
 import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
+import { manageFallbackKey } from "../../lib/checkoutActions";
 import { T } from "../../lib/tokens";
 import { ACCENT_THEMES, getSavedTheme, setTheme, type AccentTheme } from "../../lib/theme";
 import { resolveKidTheme, selectableThemes } from "../../lib/kidThemeManifest";
@@ -68,6 +69,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const { toast } = useToast();
   // B-STATUS-01: the saved language answers with ONE receipt line in its own row.
   const langReceipt = useReceiptNote();
+  const manageReceipt = useReceiptNote();
   // MOB-08: `loading` → skeleton row (never "Free" while unsure); `isFallback`
   // → "couldn't verify — showing last known · Retry" line.
   const { entitlement, loading: entitlementLoading, isFallback: entitlementUnverified, retry: retryEntitlement } = useEntitlement();
@@ -494,9 +496,10 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                   {t("set.plan.viaStore", { provider: t(`set.plan.store.${entitlement.provider}`) })}
                 </p>
               )}
-              <button onClick={() => void openPortal()} disabled={busy} className="set-act set-primary mt-2.5 min-h-11 disabled:opacity-50">
+              <button onClick={() => { void openPortal().then((result) => { if (result === "unavailable") manageReceipt.show({ text: t(manageFallbackKey(isNative, entitlement.provider || undefined)) }); }); }} disabled={busy} className="set-act set-primary mt-2.5 min-h-11 disabled:opacity-50">
                 {t("set.plan.manage")}
               </button>
+              <ReceiptNoteLine note={manageReceipt.note} testId="settings-manage-receipt" size="sm" className="mt-2" />
             </>
           )}
 

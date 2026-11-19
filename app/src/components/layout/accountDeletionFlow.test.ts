@@ -144,6 +144,7 @@ function boundaries() {
     "../kidmode/parentGate": { commerceAllowed },
     // B-GA-09 round 7: this account's unfinished child erases (none unless a test adds them).
     "../../lib/pendingErase": { readPendingErases: (uid: string) => pending.filter((p) => p.uid === uid) },
+    "../../lib/accountDeletedNotice": { markAccountDeleted: () => { order.push("account-deleted"); } },
   };
   return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order, pending };
 }
@@ -199,6 +200,7 @@ function settings(source = settingsSource) {
     "../../context/ArborContext": { useArbor: () => ({ setActiveTab: vi.fn() }) },
     "../../hooks/useEntitlement": { useEntitlement: () => ({ entitlement: { plan: "free", limits: { coachMessagesPerDay: 5 }, usage: { coachMessagesToday: 0 } } }) },
     "../../hooks/useCheckout": { useCheckout: () => ({}) },
+    "../../lib/checkoutActions": { manageFallbackKey: () => "set.plan.manageWeb" },
     "../../lib/tokens": { T: {} },
     "../../lib/theme": { ACCENT_THEMES: ["green", "teal", "blue"], getSavedTheme: () => "green", setTheme: vi.fn() },
     // B-KID-70 (R-5): one selectable look → the Kid Mode Look row stays hidden here.
@@ -336,7 +338,7 @@ describe("production account-deletion callbacks", () => {
   it("only a complete receipt invokes the existing local purge, Arbor-key cleanup, close and sign-out sequence", async () => {
     const f = deletion(); f.api.accountDelete.mockResolvedValueOnce(receipt(true));
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
-    expect(f.order).toEqual(["purge", "remove:arbor.child", "remove:arbor.theme", "toast:success", "close", "signOut"]);
+    expect(f.order).toEqual(["purge", "remove:arbor.child", "remove:arbor.theme", "account-deleted", "close", "signOut"]);
     expect(f.storage.unrelated).toBe("keep"); expect(f.signOut).toHaveBeenCalledOnce();
   });
   it("forced close/reopen keeps the pending lock but ignores the old receipt", async () => {
@@ -354,7 +356,8 @@ describe("production account-deletion callbacks", () => {
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); f.setOpen(false);
     wait.resolve(receipt(true)); await f.settle();
     expect(f.purgeAllComicPages).toHaveBeenCalledOnce(); expect(f.signOut).toHaveBeenCalledOnce();
-    expect(f.toast).toHaveBeenCalledWith("set.acctDel.done", "success", undefined, { outlivesVisit: true });
+    expect(f.order).toContain("account-deleted");
+    expect(f.toast).not.toHaveBeenCalledWith("set.acctDel.done", "success", undefined, { outlivesVisit: true });
   });
   it("identity changes invalidate confirmation and a pending completion cannot clean another account", async () => {
     const f = deletion(), wait = deferred<AccountDeletionReceipt>(); f.api.accountDelete.mockReturnValueOnce(wait.promise);

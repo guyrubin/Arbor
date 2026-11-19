@@ -18,6 +18,7 @@ import { explainAnswerText, isEmptyExplainAnswer, type ExplainAnswer } from "../
 // string, no why-line, no provenance, nothing to keep. They now ride the same
 // shared action cluster every other content object uses.
 import { ContentActionBar } from "../ui/ContentActionBar";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { cardCls } from "../ui/kit";
 import { authHeaders, getAiLanguage } from "../../lib/api";
@@ -157,6 +158,8 @@ export default function MilestonesTab() {
   // They used to be glued into a markdown string here and re-parsed by a
   // markdown renderer downstream, which threw the structure away.
   const [explanations, setExplanations] = useState<Record<string, ExplainAnswer>>({});
+  const keptReceipt = useReceiptNote();
+  const [keptExplainId, setKeptExplainId] = useState<string | null>(null);
   const [explaining, setExplaining] = useState<Record<string, boolean>>({});
   // GP-23: a failed explain is a STATE, not a fake answer. It used to be a
   // hard-coded English markdown heading rendered through
@@ -724,9 +727,10 @@ export default function MilestonesTab() {
                     trustLink
                     className="mt-2.5"
                     actions={[
-                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${milestoneText(item, "title", t, msGender)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => explainKeep(item) },
                     ]}
                   />
+                  {keptExplainId === item.id && <ReceiptNoteLine note={keptReceipt.note} testId="milestone-kept-receipt" className="mt-2" />}
                 </>
               )}
             </div>
@@ -917,6 +921,11 @@ export default function MilestonesTab() {
   };
 
   const firstName = (childProfile.name || "").split(" ")[0];
+  const explainKeep = (item: Milestone) => {
+    keepBehaviorInsight(`${milestoneText(item, "title", t, msGender)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`);
+    setKeptExplainId(item.id);
+    keptReceipt.show({ text: t("beh.analysis.kept", { name: firstName }) });
+  };
   /* B-DESIGN-03 (product c2.r3 P2-3): ONE quote pair per locale for the
      family's words on this route — ״…״ in Hebrew, “…” in English. */
   const quoted = (text: string) => t("elev.loop.ms.quoted", { text });

@@ -28,6 +28,7 @@ import type { HardMomentContext } from "../../content/pilotRelease";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { patternEchoFor } from "../../lib/patternEcho";
 import { undoSavedCapture } from "../../lib/savedCaptureUndo";
+import { showVisitReceipt } from "../../lib/visitReceipt";
 import { dayKey } from "../../practice/signals";
 import { SayThis } from "../ui/AiBlock";
 import { hardMomentPilotText } from "../../content/hardMomentPilotText";
@@ -736,7 +737,7 @@ export default function QuickLogModal({
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
       setReviewing(false); setSource("text");
       if (editLogId) {
-        toast(t("capture.edit.saved"), "success");
+        showVisitReceipt(t("capture.edit.saved"));
         closeSheet();
         return;
       }

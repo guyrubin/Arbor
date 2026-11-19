@@ -35,6 +35,8 @@ import PaywallModal from "../billing/PaywallModal";
 import HardMomentNowSheet from "../behaviors/HardMomentNowSheet";
 import QuickLogModal from "../overview/QuickLogModal";
 import { useBillingReturn } from "../../hooks/useBillingReturn";
+import { ReceiptNoteLine } from "../ui/Receipt";
+import { useVisitReceiptNote } from "../../lib/visitReceipt";
 import { selectionHaptic } from "../../lib/native";
 // AP-048: Kid Mode overlay + context provider
 import { KidModeProvider } from "../kidmode/KidModeContext";
@@ -237,6 +239,7 @@ export default function Shell() {
   const { activeTab, setActiveTab, showSandboxBanner, childProfile, captureSheet, closeCaptureSheet, activeFamilyTopic } = useArbor();
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
+  const visitReceipt = useVisitReceiptNote();
   const query = useHashQuery();
   const [topicSheet, setTopicSheet] = useState<{ childId: string; draft?: string; observationIds?: string[]; startNew?: boolean } | null>(null);
   const openTopic = useCallback(() => setTopicSheet({ childId: childProfile.id }), [childProfile.id]);
@@ -485,6 +488,7 @@ export default function Shell() {
           {back && <button data-testid="secondary-place-back" onClick={() => setActiveTab(back.tab)} className="min-h-11 inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "var(--arbor-muted)" }}>
             <Icon name="arrow_back" size={18} className="rtl:-scale-x-100"/>{uiLang === "he" ? back.he : back.en}
           </button>}
+          <ReceiptNoteLine note={visitReceipt} testId="visit-receipt" className="mb-3" />
           {/* v10 (design system v10.1): the home's pill row, the same row on
               every route of that home (lib/navigation HOME_PILLS). A folded
               route lights the pill it belongs to (litPillFor). Desktop wraps

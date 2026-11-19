@@ -51,10 +51,17 @@ describe("CR-09 · toast action slot", () => {
     expect(toastSrc).toContain("setToasts((t) => t.filter((x) => x.outlivesVisit));");
     expect(toastSrc).toContain('const outlivesVisit = options?.outlivesVisit === true && !action;');
     const sites: [string, string][] = [
-      ["components/profile/AddChildModal.tsx", 'toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });'],
-      ["components/layout/DeleteAccountModal.tsx", 'toast(t("set.acctDel.done"), "success", undefined, { outlivesVisit: true });'],
       ["context/ArborContext.tsx", 'toastCtx?.toast(t("elev.nav.linkMoved"), "info", undefined, { outlivesVisit: true });'],
     ];
+    // B-STATUS-01: a child added and an account deleted used to outlive the
+    // visit as success toasts. They are receipts now (the shell, and the
+    // sign-in screen after sign-out).
+    const shell = fs.readFileSync(path.join(SRC, "components/layout/Shell.tsx"), "utf8");
+    const login = fs.readFileSync(path.join(SRC, "components/auth/LoginScreen.tsx"), "utf8");
+    expect(shell).toContain('testId="visit-receipt"');
+    expect(login).toContain('testId="account-deleted-receipt"');
+    expect(fs.readFileSync(path.join(SRC, "components/profile/AddChildModal.tsx"), "utf8")).not.toContain("outlivesVisit");
+    expect(fs.readFileSync(path.join(SRC, "components/layout/DeleteAccountModal.tsx"), "utf8")).toContain("markAccountDeleted()");
     for (const [file, call] of sites) expect(fs.readFileSync(path.join(SRC, file), "utf8")).toContain(call);
     // Every other caller keeps the visit's lifetime: no new opt-in slips in unreviewed.
     const optIns = (dir: string): number => fs.readdirSync(dir, { withFileTypes: true }).reduce((n, e) => {

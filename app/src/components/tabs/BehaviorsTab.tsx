@@ -12,6 +12,7 @@ import { locText, recentBehaviorTypes } from "../../content/hardMomentSurface";
 import { ageMonthsFromProfile } from "../../lib/childAge";
 import { parentWritten } from "../../lib/kept/parentWritten";
 import { ContentActionBar } from "../ui/ContentActionBar";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { fmtDay, fmtDayMonthLongV10, fmtDayShort } from "../../lib/formatDate";
 import { useShellRowEnd } from "../../lib/shellSlots";
 import { patternEchoFor } from "../../lib/patternEcho";
@@ -47,6 +48,7 @@ export default function BehaviorsTab() {
   const hardLogs = useMemo(() => [...behaviorLogs].filter((l) => isIncidentType(l.behaviorType))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [behaviorLogs]);
   const behFirst = (childProfile.name || "").split(" ")[0];
+  const keptReceipt = useReceiptNote();
   // N-Hard-D: the pill row ends with the day and "since you started on <the first hard moment logged>"; nothing logged, no suffix.
   const firstLogged = hardLogs.length ? hardLogs[hardLogs.length - 1].timestamp : null;
   useShellRowEnd(firstLogged ? { suffix: v.hard.sinceStarted(fmtDayMonthLongV10(firstLogged, uiLang)) } : null);
@@ -323,7 +325,7 @@ export default function BehaviorsTab() {
                     trustLink
                     variant="bar"
                     actions={[
-                      { verb: "save", label: t("beh.analysis.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(behaviorAnalysis.actionPlanSuggestion) },
+                      { verb: "save", label: t("beh.analysis.keep"), icon: "bookmark_add", onClick: () => { keepBehaviorInsight(behaviorAnalysis.actionPlanSuggestion); keptReceipt.show({ text: t("beh.analysis.kept", { name: behFirst }) }); } },
                     ]}
                     extras={[
                       {
@@ -337,6 +339,7 @@ export default function BehaviorsTab() {
                       },
                     ]}
                   />
+                  <ReceiptNoteLine note={keptReceipt.note} testId="behavior-kept-receipt" className="mt-2" />
                 </div>
               </motion.div>
             )}
