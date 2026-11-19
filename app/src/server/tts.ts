@@ -2,7 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "../ai/capabilities/policy.js";
-import type { CapabilityAdapter, CapabilityRequest } from "../ai/capabilities/contracts.js";
+import type { AiDataClass, CapabilityAdapter, CapabilityRequest } from "../ai/capabilities/contracts.js";
 import type { CapabilityRegistry } from "../ai/capabilities/registry.js";
 import { screenModelOutput, screenModelOutputLexical, type OutputScreenVerdict } from "../safety/outputScreen.js";
 import { logger } from "./logger.js";
@@ -23,8 +23,9 @@ import { recordTtsUsage } from "../ai/ttsUsage.js";
  * boundary because authenticated clients can submit arbitrary text, so callers
  * must use `screenAndSynthesizeSpeech` to screen immediately before synthesis.
  *
- * COPPA: TTS is OUTPUT-only and transient — no audio is persisted and no child PII
- * is involved (the input is app-rendered, screened output), so it adds no new
+ * COPPA: TTS is OUTPUT-only and transient — no audio is persisted. The text
+ * can name the child (a coach reply or a kid read-aloud line), so the
+ * eligibility request declares `account` and `child_profile`. It adds no new
  * consent purpose. `voice_processing` continues to gate inbound CHILD voice only.
  */
 
@@ -121,33 +122,41 @@ async function synthesizeGoogle(config: ArborConfig, input: TtsInput): Promise<T
   return { audio, mimeType: "audio/mpeg" };
 }
 
+/** What read-aloud can carry. Coach replies and kid lines can name the child,
+ *  so every synthesis is checked as account + child_profile, not as public. */
+export const ttsDataClasses = ["account", "child_profile"] as const satisfies readonly AiDataClass[];
+
 /** COACH-3: the speech_synthesis provider candidate the current config yields.
- *  Its declared residency is the region of the endpoint the call really uses. */
+ *  Its declared residency is the region of the endpoint the call really uses.
+ *  It admits the classes the call really carries. Omitting child_profile makes
+ *  selectProvider deny the request (fail closed) before any audio call. */
 export const ttsCandidateFor = (config: ArborConfig): ProviderCandidate => ({
   ref: { provider: "google", model: "cloud-tts-v1", region: ttsEndpointFor(config).region },
   capabilities: ["speech_synthesis"],
   audiences: ["parent", "child"],
-  // TTS input is app-rendered, already-screened output text — never raw child data.
-  dataClasses: ["public", "account"],
+  dataClasses: ["public", ...ttsDataClasses],
   trainsOnCustomerData: false,
   retentionDays: 0,
   score: { quality: 3, safety: 3, reliability: 3, latencyFitness: 3, costFitness: 3 },
 });
 
+/** The capability request every speech_synthesis dispatch carries. */
+export const ttsCapabilityRequest = (lang: TtsLang): CapabilityRequest<"speech_synthesis"> => ({
+  capability: "speech_synthesis",
+  route: "creative_low_risk",
+  audience: "parent",
+  locale: lang,
+  dataClasses: [...ttsDataClasses],
+  risk: "low",
+});
+
 /** Synthesize already-screened text. Throws NotConfiguredError when disabled/off,
  *  and AiProviderError("policy_denied") when the configured provider violates
- *  the route policy (COACH-3 — fail closed, e.g. a non-EU region in prod). */
+ *  the route policy (COACH-3 — fail closed: a non-EU region in prod, or a
+ *  candidate that does not admit account and child_profile). */
 export async function synthesizeSpeech(config: ArborConfig, input: TtsInput): Promise<TtsResult> {
   if (!ttsConfigured(config)) throw new NotConfiguredError();
-  const request: CapabilityRequest<"speech_synthesis"> = {
-    capability: "speech_synthesis",
-    route: "creative_low_risk",
-    audience: "parent",
-    locale: input.lang,
-    dataClasses: ["public"],
-    risk: "low",
-  };
-  const decision = selectProvider(request, routePolicyFor(config), [ttsCandidateFor(config)]);
+  const decision = selectProvider(ttsCapabilityRequest(input.lang), routePolicyFor(config), [ttsCandidateFor(config)]);
   switch (decision.selected.ref.provider) {
     case "google":
       return synthesizeGoogle(config, input);
@@ -155,16 +164,6 @@ export async function synthesizeSpeech(config: ArborConfig, input: TtsInput): Pr
       throw new NotConfiguredError();
   }
 }
-
-/** The capability request every speech_synthesis dispatch carries. */
-const ttsCapabilityRequest = (lang: TtsLang): CapabilityRequest<"speech_synthesis"> => ({
-  capability: "speech_synthesis",
-  route: "creative_low_risk",
-  audience: "parent",
-  locale: lang,
-  dataClasses: ["public"],
-  risk: "low",
-});
 
 /**
  * AIR-8: the speech_synthesis adapter registered into the boot-time
@@ -180,9 +179,17 @@ const ttsCapabilityRequest = (lang: TtsLang): CapabilityRequest<"speech_synthesi
 export const createTtsCapabilityAdapter = (config: ArborConfig): CapabilityAdapter<"speech_synthesis", TtsInput, TtsResult> => ({
   capability: "speech_synthesis",
   provider: ttsCandidateFor(config).ref,
-  execute: async (input) => {
+  execute: async (input, request) => {
     const lexical = screenModelOutputLexical(input.text);
     if (lexical.flagged) throw new UnsafeTtsOutputError(lexical);
+    const declared = ttsCapabilityRequest(input.lang);
+    // A caller that names fewer classes still carries the declared ones.
+    // A caller that names an extra class is denied unless the candidate admits it.
+    selectProvider(
+      { ...declared, dataClasses: [...new Set<AiDataClass>([...declared.dataClasses, ...request.dataClasses])] },
+      routePolicyFor(config),
+      [ttsCandidateFor(config)],
+    );
     return synthesizeSpeech(config, input);
   },
 });
