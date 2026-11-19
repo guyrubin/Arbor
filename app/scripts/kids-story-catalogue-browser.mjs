@@ -8,6 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RELEASE_VIEWPORTS, DEVICE_VIEWPORTS } from './capture/release-config.mjs';
 import { canonicalBookPaintReady } from './kids-story-paint.mjs';
+import { inspectPlanFixturePng, observePlanFixturePaint } from './kids-story-pixels.mjs';
 
 const LEGACY = ['david-and-goliath', 'moses-and-pharaoh', 'noahs-ark', 'jonah-and-the-great-fish', 'joseph-and-his-brothers', 'jacob-wrestling-the-angel'];
 const BOOKS = ['five-smooth-stones'];
@@ -45,8 +46,8 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
   const runCell = async (title, cell) => {
     const label = `${title.kind}-${title.id}-${cell.label}`;
     const cellFolder = path.join(folder, label);
-    const errors = [], unexpected = [], requests = [], issues = [], screenshots = [], frames = [], paths = [];
-    const evidence = { label, title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames, paths, screenshots, issues, errors, unexpected, requests };
+    const errors = [], unexpected = [], requests = [], issues = [], screenshots = [], frames = [], paths = [], picturePaint = [];
+    const evidence = { label, title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames, paths, screenshots, issues, errors, unexpected, requests, picturePaint };
     let context, page;
     let expectedChoiceIds = [];
     let injectedFailure = false, planRecovery = false;
@@ -54,8 +55,71 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
     const persist = () => writeFile(path.join(cellFolder, 'progress.json'), JSON.stringify(evidence, null, 2));
     const shot = async name => {
       const file = `${name}.png`;
-      await page.screenshot({ path: path.join(cellFolder, file), animations: 'disabled' });
-      screenshots.push(`story-catalogue/${label}/${file}`);
+      const reference = value => `story-catalogue/${label}/${value}`;
+      const expectedFixture = title.kind === 'plan' && name !== 'cover-picture-unavailable' && name !== 'failure';
+      const picture = expectedFixture ? await page.locator('[data-book-plate] > img').elementHandle() : null;
+      if (expectedFixture) assert.ok(picture, `${name}: intended plan plate exists before capture`);
+      const pictureState = async () => picture.evaluate(img => {
+        const current = document.querySelector('[data-book-plate] > img');
+        const sameNode = current === img && img.isConnected;
+        const rect = element => { if (!element) return null; const box = element.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height }; };
+        const image = rect(img), plate = rect(img.closest('[data-book-plate]')), art = rect(img.closest('[data-book-art]'));
+        const viewport = { width: innerWidth, height: innerHeight };
+        const common = { sameNode, source: img.currentSrc, page: document.querySelector('[data-book-page]')?.getAttribute('data-book-page'), image, plate, art, viewport };
+        if (!image || !plate || !art) return { ...common, roi: null };
+        const left = Math.max(0, image.x, plate.x, art.x), top = Math.max(0, image.y, plate.y, art.y);
+        const right = Math.min(innerWidth, image.x + image.width, plate.x + plate.width, art.x + art.width);
+        const bottom = Math.min(innerHeight, image.y + image.height, plate.y + plate.height, art.y + art.height);
+        return { ...common, roi: { x: left, y: top, width: right - left, height: bottom - top } };
+      });
+      const initial = picture ? await pictureState() : null;
+      const captureStarted = performance.now();
+      let buffer = await page.screenshot({ path: path.join(cellFolder, file), animations: 'allow' });
+      const captureMs = performance.now() - captureStarted;
+      const firstAfter = picture ? await pictureState() : null;
+      screenshots.push(reference(file));
+      if (!picture) return;
+      const observation = { name, source: initial.source, page: initial.page, deadlineMs: 4000, firstMiss: false, painted: false, attempts: [], elapsedMs: 0 };
+      picturePaint.push(observation);
+      try {
+        const result = await observePlanFixturePaint({
+          first: { file: reference(file), captureMs, before: initial, after: firstAfter, pixels: inspectPlanFixturePng(buffer, initial) },
+          deadlineMs: observation.deadlineMs,
+          wait: async remaining => {
+            const started = performance.now();
+            await page.waitForTimeout(Math.min(100, remaining));
+            const budget = remaining - (performance.now() - started);
+            if (budget <= 0) return false;
+            return page.evaluate(timeout => new Promise(resolve => {
+              let second;
+              const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => { clearTimeout(timer); resolve(true); }); });
+              const timer = setTimeout(() => { cancelAnimationFrame(first); if (second) cancelAnimationFrame(second); resolve(false); }, timeout);
+            }), budget);
+          },
+          capture: async attempt => {
+            const before = await pictureState();
+            const attemptFile = `${name}-paint-attempt-${attempt}.png`;
+            const started = performance.now();
+            buffer = await page.screenshot({ path: path.join(cellFolder, attemptFile), animations: 'allow' });
+            const duration = performance.now() - started;
+            const after = await pictureState();
+            screenshots.push(reference(attemptFile));
+            return { file: reference(attemptFile), captureMs: duration, before, after, pixels: inspectPlanFixturePng(buffer, before) };
+          },
+          onSample: async sample => {
+            if (sample.attempt === 1 && !sample.pixels.painted) {
+              const original = `${name}-paint-first-miss.png`;
+              await writeFile(path.join(cellFolder, original), buffer); screenshots.push(reference(original)); sample.file = reference(original);
+            }
+            observation.attempts.push(sample);
+          },
+        });
+        Object.assign(observation, result);
+        // Only a same-picture, within-deadline success becomes the canonical
+        // review frame. Late/gray originals and all attempts remain intact.
+        if (result.painted && result.firstMiss) await writeFile(path.join(cellFolder, file), buffer);
+        assert.ok(result.painted, `${name}: actual plan fixture paint failed (${result.reason}) within the native readiness window`);
+      } finally { await picture.dispose(); }
     };
     const readyCanonicalPicture = async name => {
       // A plan's authenticated source resolves after its page mounts. Do not
@@ -77,9 +141,14 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       await page.evaluate(async () => {
         await document.fonts.ready;
         await Promise.all([...document.querySelectorAll('[data-kid-book-reader] img, [data-book-reader] img')].map(img => img.decode().catch(() => {})));
-        document.getAnimations().filter(animation => animation.effect?.getTiming().iterations !== Infinity).forEach(animation => { try { animation.finish(); } catch {} });
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       });
+      // Let the actual finite animations finish. Artificial finish() produced
+      // opacity1 while original captures still had no visible plate pixels.
+      // Infinite decoration is deliberately excluded from this bounded wait.
+      await page.waitForFunction(() => document.getAnimations()
+        .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+        .every(animation => animation.playState === 'finished' || animation.playState === 'idle'), undefined, { timeout: 12000 });
       await page.waitForFunction(() => [...document.querySelectorAll('[data-kid-book-reader], [data-kid-book-reader] > div, [data-kid-book-text]')].every(element => Number(getComputedStyle(element).opacity) >= .995));
       // A decoded plate may still be in its first transparent fade frame.
       // Observe the actual final paint, as the dedicated recovery sweep does;

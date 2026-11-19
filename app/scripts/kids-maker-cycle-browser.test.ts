@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, nativeMakerScene, readMakerCanvasPaint, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
+import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, nativeMakerScene, readMakerCanvasPaint, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
 
 const allSteps = ['frost', 'hello', 'trace', 'brush', 'feed', 'part', 'scout', 'walk', 'low'];
 const withoutBrush = allSteps.filter(step => step !== 'brush');
@@ -34,7 +34,61 @@ describe('Ice Age first-cycle DOM observations', () => {
   });
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+describe('the single Bottle polish action response', () => {
+  it('retains the old finish until a later native frame publishes the actual opposite finish', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const advance = vi.fn(async (ms: number) => { now += ms; });
+    const readState = vi.fn(async () => ({ act: 'colour', finish: now < 200 ? 'gloss' : 'frost' }));
+    const samples: unknown[] = [];
+    expect(await waitForBottleFinish(readState, advance, 'gloss', samples))
+      .toEqual({ waitedMs: 200, elapsedMs: 200, finish: 'frost' });
+    expect(samples).toEqual([
+      { waitedMs: 0, elapsedMs: 0, act: 'colour', finish: 'gloss' },
+      { waitedMs: 100, elapsedMs: 100, act: 'colour', finish: 'gloss' },
+      { waitedMs: 200, elapsedMs: 200, act: 'colour', finish: 'frost' },
+    ]);
+    expect(advance.mock.calls).toEqual([[100], [100]]);
+  });
+
+  it('also recognizes an actual frost-to-gloss response without another input', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(0);
+    const advance = vi.fn();
+    expect(await waitForBottleFinish(async () => ({ act: 'colour', finish: 'gloss' }), advance, 'frost', []))
+      .toEqual({ waitedMs: 0, elapsedMs: 0, finish: 'gloss' });
+    expect(advance).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for unchanged finish, missing state, wrong phase and invalid finish', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    for (const state of [
+      { act: 'colour', finish: 'gloss' }, {},
+      { act: 'dress', finish: 'frost' }, { act: 'colour', finish: 'painted' },
+    ]) {
+      now = 0;
+      const advance = vi.fn(async (ms: number) => { now += ms; }), samples: unknown[] = [];
+      await expect(waitForBottleFinish(async () => state, advance, 'gloss', samples)).rejects.toThrow('within 2000ms');
+      expect(samples).toHaveLength(21);
+      expect(advance).toHaveBeenCalledTimes(20);
+      expect(now).toBe(2000);
+    }
+  });
+
+  it('keeps the real wall deadline and rejects an absent starting finish', async () => {
+    let now = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const advance = vi.fn(), samples: unknown[] = [];
+    await expect(waitForBottleFinish(async () => { now = 2001; return { act: 'colour', finish: 'frost' }; }, advance, 'gloss', samples))
+      .rejects.toThrow('within 2000ms');
+    expect(samples).toEqual([{ waitedMs: 0, elapsedMs: 2001, act: 'colour', finish: 'frost' }]);
+    expect(advance).not.toHaveBeenCalled();
+    await expect(waitForBottleFinish(async () => ({ act: 'colour', finish: 'frost' }), advance, undefined, []))
+      .rejects.toThrow('starts from an actual bottle finish');
+  });
+});
 
 describe('native maker entry and replay', () => {
   it('uses only the three measured native renderers and keeps all fifteen release games', () => {

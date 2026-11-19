@@ -118,6 +118,23 @@ export async function withMakerPreviewTime(page, nativeClock, inspect) {
   finally { await pauseMakerClock(page); }
 }
 
+/** The one polish action arms autoRub; even reduced motion publishes its
+ * finish on a later native RAF. Observe that response without toggling again. */
+export async function waitForBottleFinish(readState, advance, previous, observations) {
+  assert.ok(['gloss', 'frost'].includes(previous), 'Polishing starts from an actual bottle finish');
+  const expected = previous === 'gloss' ? 'frost' : 'gloss', started = Date.now();
+  let waitedMs = 0;
+  while (waitedMs <= 2000) {
+    const state = await readState() ?? {}, elapsedMs = Date.now() - started;
+    observations.push({ waitedMs, elapsedMs, act: state.act ?? null, finish: state.finish ?? null });
+    if (elapsedMs <= 2000 && state.act === 'colour' && state.finish === expected) return { waitedMs, elapsedMs, finish: state.finish };
+    if (elapsedMs >= 2000 || waitedMs === 2000) break;
+    const duration = Math.min(100, 2000 - elapsedMs, 2000 - waitedMs);
+    await advance(duration); waitedMs += duration;
+  }
+  assert.fail('Polishing did not change the actual finish in the colour chapter within 2000ms');
+}
+
 /** Native time can finish a short chapter between loop reads. The caller
  * supplies only this first cycle's actual DOM observations, before replay. */
 export function iceAgeCycleSteps(loopSteps, trace) {
@@ -208,6 +225,9 @@ async function play(h, game) {
           await key(disc, 'Enter');
           assert.equal((await attrs()).tint, tint, 'The chosen tint reaches the actual bottle');
           await key(page.locator('[data-bl-aya]'), 'Enter');
+          const polishing = { previous: state.finish, samples: [] };
+          h.metrics.polishing = polishing;
+          Object.assign(polishing, await waitForBottleFinish(attrs, advance, state.finish, polishing.samples));
           assert.notEqual((await attrs()).finish, state.finish, 'Polishing changes the actual finish');
         }
         if (act === 'dress') {
