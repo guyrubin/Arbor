@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RELEASE_VIEWPORTS, DEVICE_VIEWPORTS } from './capture/release-config.mjs';
+import { canonicalBookPaintReady } from './kids-story-paint.mjs';
 
 const LEGACY = ['david-and-goliath', 'moses-and-pharaoh', 'noahs-ark', 'jonah-and-the-great-fish', 'joseph-and-his-brothers', 'jacob-wrestling-the-angel'];
 const BOOKS = ['five-smooth-stones'];
@@ -47,6 +48,7 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
     const errors = [], unexpected = [], requests = [], issues = [], screenshots = [], frames = [], paths = [];
     const evidence = { label, title: title.id, kind: title.kind, viewport: cell.id, gender: cell.gender, passed: false, frames, paths, screenshots, issues, errors, unexpected, requests };
     let context, page;
+    let expectedChoiceIds = [];
     let injectedFailure = false, planRecovery = false;
     const check = (condition, message) => { if (!condition) issues.push(message); };
     const persist = () => writeFile(path.join(cellFolder, 'progress.json'), JSON.stringify(evidence, null, 2));
@@ -82,24 +84,7 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       // A decoded plate may still be in its first transparent fade frame.
       // Observe the actual final paint, as the dedicated recovery sweep does;
       // never force a style or accept a gray placeholder as visible artwork.
-      await page.waitForFunction(() => {
-        if (!document.querySelector('[data-book-reader]')) return true;
-        const current = document.querySelector('[data-book-reader] .bk-turn[data-book-page]');
-        if (!current) return false;
-        // Only the mounted intended page: an opaque image inside a still
-        // transparent art, text or page container is not a painted book.
-        const surfaces = [current, ...current.querySelectorAll('.bk-art, .bk-text, .bk-cover-title, .bk-state-plate')];
-        const painted = element => {
-          const style = getComputedStyle(element), rect = element.getBoundingClientRect();
-          return style.visibility === 'visible' && Number(style.opacity) === 1 && rect.width > 0 && rect.height > 0;
-        };
-        const base = current.querySelector('[data-book-plate] > img');
-        const images = [...current.querySelectorAll('[data-book-plate] > img, [data-book-state-plate] > img')];
-        return surfaces.every(painted) && base instanceof HTMLImageElement && images.every(img => {
-          if (!(img instanceof HTMLImageElement) || !img.complete || img.naturalWidth <= 0) return false;
-          return painted(img);
-        });
-      }, undefined, { timeout: 12000 });
+      await page.waitForFunction(canonicalBookPaintReady, { expectedChoiceIds }, { timeout: 12000 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     };
     const glyphs = async locator => locator.evaluateAll(elements => elements.map(element => {
@@ -251,6 +236,7 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       await page.goto(`${base}/?storyCatalogue=${title.kind}&id=${title.id}&lang=${cell.lang}&gender=${cell.gender}`);
       await page.waitForFunction(() => Boolean(window.storyCatalogueFixture));
       const spec = await page.evaluate(() => window.storyCatalogueFixture);
+      expectedChoiceIds = spec.paths.map(branch => branch.choice).filter(Boolean);
       evidence.artwork = spec.artwork;
       assert.deepEqual([...spec.catalogue.legacy].sort(), [...LEGACY].sort(), 'every eligible legacy title is operated');
       assert.deepEqual([...spec.catalogue.books].sort(), [...BOOKS].sort(), 'every real canonical title is operated; no engine fixture counted');
