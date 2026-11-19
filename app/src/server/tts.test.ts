@@ -3,7 +3,7 @@ import type { ArborConfig } from "../config/env.js";
 import type { ModelProvider } from "../ai/modelRouter.js";
 import { AiProviderError } from "../ai/capabilities/contracts.js";
 import { CapabilityRegistry } from "../ai/capabilities/registry.js";
-import { createTtsCapabilityAdapter, dispatchSpeechSynthesis, NotConfiguredError, screenAndSynthesizeSpeech, synthesizeSpeech, ttsConfigured, UnsafeTtsOutputError } from "./tts.js";
+import { createTtsCapabilityAdapter, dispatchSpeechSynthesis, NotConfiguredError, screenAndSynthesizeSpeech, synthesizeSpeech, ttsCapabilityRequest, ttsConfigured, UnsafeTtsOutputError } from "./tts.js";
 
 // Stub ADC so no real credentials/network are needed.
 vi.mock("google-auth-library", () => ({
@@ -116,6 +116,7 @@ describe("synthesizeSpeech", () => {
   it("stays eligible for the EU-resident production config (behavior unchanged)", async () => {
     const r = await synthesizeSpeech(cfg({ arborEnv: "prod", vertexLocation: "europe-west4" }), { text: "hi", lang: "en" });
     expect(r.mimeType).toBe("audio/mpeg");
+    expect(ttsCapabilityRequest("en").dataClasses).toEqual(["account", "child_profile"]);
   });
 
   it("blocks unsafe caller-provided text before any audio provider call", async () => {
@@ -190,6 +191,21 @@ describe("dispatchSpeechSynthesis (registry dispatch seam)", () => {
     const result = await screenAndSynthesizeSpeech(config, {} as ModelProvider, { text: "You are doing great.", lang: "en" }, registry);
     expect(result.mimeType).toBe("audio/mpeg");
     expect(executeSpy).toHaveBeenCalledOnce();
+  });
+
+  it("a caller that names child voice is denied before any audio call (fail closed)", async () => {
+    const config = cfg({ arborEnv: "prod", vertexLocation: "europe-west4" });
+    const adapter = registryFor(config).get("speech_synthesis", "google");
+    const attempt = adapter.execute(
+      { text: "Hello.", lang: "en" },
+      { capability: "speech_synthesis", route: "creative_low_risk", audience: "parent", locale: "en", dataClasses: ["child_voice"], risk: "low" },
+    );
+    await expect(attempt).rejects.toBeInstanceOf(AiProviderError);
+    await adapter.execute(
+      { text: "Hello.", lang: "en" },
+      { capability: "speech_synthesis", route: "creative_low_risk", audience: "parent", locale: "en", dataClasses: ["child_voice"], risk: "low" },
+    ).catch((error) => { expect((error as AiProviderError).code).toBe("policy_denied"); });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("adapter still enforces the region policy fail-closed (policy_denied through the registry path)", async () => {
