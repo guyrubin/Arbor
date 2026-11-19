@@ -44,6 +44,7 @@
   text-wrap: pretty;
 }
 .arbor-play [data-kid-book-reader] [data-kid-book-choice-panel]:empty { display: none; }
+.arbor-play [data-kid-book-reader] [data-kid-book-fallback-title] { display: none; }
 .arbor-play [data-kid-book-reader] [data-kid-book-portrait],
 .arbor-play [data-kid-book-reader] .story-artwork-portrait {
   outline: none !important;
@@ -112,6 +113,16 @@
   .arbor-play [data-kid-book-reader] [data-kid-decision] { grid-template-columns: auto minmax(0, 30rem); }
 }
 @media (min-width: 640px) and (max-height: 520px) {
+  /* A short cover is too small for both a large portrait and the title.
+     Keep the same portrait on its paper leaf; name the book on the facing
+     leaf instead. Shelf tiles, portrait phones and authored covers keep
+     their existing composition. No image or layout direction is mirrored. */
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-card-title] { display: none !important; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-fallback-title] { display: block; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-titlecard] > [data-kid-book-own-hero] {
+    inset: 50% auto auto 50% !important;
+    transform: translate(-50%, -50%) scale(.5);
+  }
   .arbor-play [data-kid-book-reader] [data-kid-book-page] {
     grid-template-columns: auto minmax(0, 32rem);
     padding-block: 8px;

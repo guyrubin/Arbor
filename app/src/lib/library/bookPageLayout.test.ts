@@ -313,6 +313,32 @@ describe("Five Smooth Stones (the proof): every page lays out at 1920, 1280 and 
     }
   });
 
+  it("short landscape covers move the title and Open onto a paper page instead of covering the hero", () => {
+    // Actual844x390 capture: the front title rose above the book and the
+    // centred80px Open toy covered the child's body. Also keep SE sideways.
+    for (const box of [{ width: 844, height: 390 - 56 }, { width: 667, height: 375 - 56 }]) for (const lang of LANGS) {
+      const content = { paras: [david.coverLine[lang].length, david.coverNameLine![lang].length + "Alexander".length], title: david.title[lang].length };
+      const plate = getPlate(david.id, david.cover.plateId)!;
+      const l = computeBookPageLayout(david.cover, box, lang, { cover: true, content, plate, anchorOf: () => ({ aspect: .75, footX: .5, footW: .5 }) });
+      expect(l.pageType).toBe("facing");
+      expect(l.fits).toBe(true);
+      expect(l.compactNav).toBe(true);
+      expect(l.typePx).toBeGreaterThanOrEqual(18);
+      expect(l.openRect).toBeUndefined(); // Open uses the title page's nav.
+      expect(l.crop).toEqual({ x0: 0, x1: 1 });
+      expect(l.art.w / l.art.h).toBeCloseTo(plate.width / plate.height, 8);
+      expect(l.hero?.inWindow).toBe(true);
+      expect(overlapArea(l.textPage, l.art)).toBe(0);
+      expect(overlapArea(l.textPage, l.hero!)).toBe(0);
+      for (const rect of [l.art, l.textPage]) {
+        expect(rect.x).toBeGreaterThanOrEqual(0);
+        expect(rect.y).toBeGreaterThanOrEqual(0);
+        expect(rect.x + rect.w).toBeLessThanOrEqual(box.width);
+        expect(rect.y + rect.h).toBeLessThanOrEqual(box.height);
+      }
+    }
+  });
+
   it("fix round 2: the decision page is the SAME book as p4/p6 (art, column, type) at 1920 and 1280; its cards fill a second state", () => {
     const at = (id: string, box: Box, lang: BookLang) => {
       const page = dPages.find((p) => p.id === id)!;

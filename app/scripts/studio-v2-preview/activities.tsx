@@ -33,7 +33,7 @@ function ActivityReview({ initial }: { initial: StudioActivityId }) {
   useEffect(() => { kidHush(); }, [world, activityId]);
   return <main className="arbor-play studio-review" data-kid-studio="" data-activity-review={activityId} dir={uiLang === 'he' ? 'rtl' : 'ltr'} style={{ position: 'relative', isolation: 'isolate' }}>
     {!world && arcade && <KidStage scene={stage ?? kidStageFor('arcade', activityId)} />}
-    <header className="studio-v2-bar review-bar">
+    <header className="studio-v2-bar review-bar" style={{ position: 'relative', zIndex: 1 }}>
       <button type="button" data-review-back="" onClick={() => setWorld(true)} aria-label={uiLang === 'he' ? 'חזרה' : 'Back'}><ArrowLeft /></button>
       <strong data-kid-bar-title="">{world ? copy.worlds[activity.worldId].title : copy.activities[activityId].title}</strong>
       <KidSoundToggle childId={childId} lang={uiLang} />

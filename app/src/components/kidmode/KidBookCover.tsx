@@ -67,7 +67,7 @@ export function KidBookTitleCard({ title, pack, hero, heroSize = 44, titleSize =
     <span aria-hidden="true" data-kid-studio="" data-kid-book-titlecard="" data-pack={pack} style={{ position: "absolute", inset: 0, display: "block", background: "var(--studio-pearl)" }}>
       <span className="kid-book-cover__spine" />
       <span style={{ position: "absolute", insetBlock: 10, insetInlineStart: 18, insetInlineEnd: 8, display: "grid", placeItems: "center", padding: 10, background: "var(--studio-surface)", border: "1px solid var(--studio-line)", borderRadius: 10 }}>
-        <span style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: titleSize, lineHeight: 1.15, color: "var(--studio-graphite)" }}>
+        <span data-kid-book-card-title="" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: titleSize, lineHeight: 1.15, color: "var(--studio-graphite)" }}>
           {title}
         </span>
       </span>

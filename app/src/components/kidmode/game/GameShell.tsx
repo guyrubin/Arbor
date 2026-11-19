@@ -37,6 +37,7 @@ import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { useGameSession } from "./GameSessionContext";
 import type { StudioCreation } from '../studioV2/studioCreations';
 import '../studioV2/studioTokens.css';
+import './gameFinish.css';
 
 /** B-KID-94: the world a finish screen belongs to (its souvenir), provided by
  *  the shell so every GameFinish inside it knows without a prop. */

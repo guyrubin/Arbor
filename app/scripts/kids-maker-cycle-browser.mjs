@@ -464,12 +464,15 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
   const runCell = async ({ viewport, game }, index) => {
     const started = Date.now();
     const phone = viewport.id.startsWith('mobile-');
+    // Ice Age chooses fur detail from actual RAF cost. A controlled 16ms RAF
+    // would incorrectly keep its most expensive tier on a slow CI renderer.
+    const nativeClock = game.id === 'ice-age-friend';
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
     const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [];
     const stem = `${game.id}-${viewport.id}`;
     const record = { case: 'curated-maker-cycle', game: game.id, viewport: viewport.id, lang: viewport.lang,
       input: `${phone ? 'emulated touch' : 'mouse'} plus authored keyboard alternatives`, sound: 'off', motion: 'reduce',
-      clock: 'normal lazy loading, controlled game clock; real input only', screenshots: [], trace: [], fixtureRequests, inputs: { pointer: 0, keyboard: 0, held: 0 }, completionCount: 0 };
+      clock: nativeClock ? 'native browser clock and real waits throughout; adaptive RAF untouched; real input only' : 'normal lazy loading, controlled game clock; real input only', screenshots: [], trace: [], fixtureRequests, inputs: { pointer: 0, keyboard: 0, held: 0 }, completionCount: 0 };
     try {
       await context.route('**/*', route => {
         const url = new URL(route.request().url());
@@ -494,19 +497,20 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
         record.screenshots.push(`maker-cycles/${name}`);
       };
-      let controlledMs = 0, lastState = '';
+      let controlledMs = 0, nativeWaitMs = 0, lastState = '';
       const attrs = () => page.evaluate(sel => ({ ...document.querySelector(sel)?.dataset }), selector);
       const advance = async ms => {
-        await page.clock.runFor(ms); controlledMs += ms;
+        if (nativeClock) { await page.waitForTimeout(ms); nativeWaitMs += ms; }
+        else { await page.clock.runFor(ms); controlledMs += ms; }
         const state = await attrs(), text = JSON.stringify(state);
-        if (text !== lastState && record.trace.length < 160) { lastState = text; record.trace.push({ at: controlledMs, ...state }); }
+        if (text !== lastState && record.trace.length < 160) { lastState = text; record.trace.push({ at: controlledMs + nativeWaitMs, ...state }); }
       };
       const exists = async sel => { const loc = page.locator(sel); return await loc.count() > 0 && await loc.first().isVisible(); };
       const press = async (loc, options = {}) => { if (phone) await loc.tap(options); else await loc.click(options); record.inputs.pointer++; await advance(32); };
       const key = async (loc, name) => { await loc.focus(); await loc.press(name); record.inputs.keyboard++; await advance(32); };
       const until = async (condition, budget, label) => {
         for (let elapsed = 0; elapsed <= budget; elapsed += 250) { if (await condition()) return; await advance(250); }
-        assert.fail(`${label} did not complete within ${budget}ms of controlled game time`);
+        assert.fail(`${label} did not complete within ${budget}ms of ${nativeClock ? 'real waiting' : 'controlled game time'}`);
       };
       const sneakLayout = () => page.evaluate(() => {
         const box = selector => {
@@ -542,7 +546,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         } else { await page.mouse.move(point.x, point.y); await page.mouse.down(); try { await advance(ms); } finally { await page.mouse.up(); } }
       };
       try {
-        await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
+        if (!nativeClock) await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
         const url = new URL(base); url.searchParams.set('lang', viewport.lang); url.searchParams.set('studioNext', '1');
         await page.goto(url.href); await page.locator('[data-studio-home]').waitFor({ state: 'visible' }); await page.evaluate(() => document.fonts.ready);
         await press(page.locator(`button.studio-v2__door[data-world="${game.world}"]`));
@@ -569,7 +573,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         else assert.equal(record.entryPhase, 'play', 'The actual maker session opens directly into its authored opening');
         await root.waitFor({ state: 'visible' });
         // Keep React's Suspense minimum running until the real mechanic mounts.
-        await pauseMakerClock(page);
+        if (!nativeClock) await pauseMakerClock(page);
         assert.equal(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), true);
         const box = await root.boundingBox(); assert.ok(box && box.width > 0 && box.height > 0, 'Actual game is laid out');
         if (game.id === 'sneak') record.initialLayout = await renderedSneakField('Initial Sneak scene covers the field with its control in reach');
@@ -657,7 +661,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
         record.failureState = await page.evaluate(sel => ({ root: document.querySelector(sel)?.outerHTML.slice(0, 12000) ?? null, studio: document.querySelector('[data-studio-phase]')?.getAttribute('data-studio-phase'), loading: !!document.querySelector('[data-testid="kid-stage-fallback"]') }), selector).catch(() => null);
         Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests }); failures[index] = new Error(`${stem}: ${error instanceof Error ? error.message : error}`, { cause: error });
       }
-      record.controlledMs = controlledMs;
+      record.controlledMs = controlledMs; record.nativeWaitMs = nativeWaitMs;
     } catch (error) {
       Object.assign(record, { passed: false, error: String(error), errors, brokenResources, unexpectedRequests, failureStage: 'cell-setup' });
       failures[index] = new Error(`${stem}: setup failed`, { cause: error });

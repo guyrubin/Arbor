@@ -170,7 +170,7 @@ function LetterTrace({ onLog }: { onLog: LogEvent }) {
             {/* Active stroke guide (dashed) */}
             <path d={guidePathD} fill="none" stroke="var(--arbor-lav-ink)" strokeWidth={4} strokeDasharray="2 12" strokeLinecap="round" opacity={0.6} />
             {/* Start dot */}
-            <circle cx={guide[0].x * TRACE_SIZE} cy={guide[0].y * TRACE_SIZE} r={12} fill="var(--arbor-clay)" />
+            <circle data-trace-start="" cx={guide[0].x * TRACE_SIZE} cy={guide[0].y * TRACE_SIZE} r={12} fill={kidMode ? "var(--arbor-green-ink)" : "var(--arbor-clay)"} />
             {/* What the child has drawn */}
             {tracedPathD && (
               <path d={tracedPathD} fill="none" stroke="var(--arbor-clay)" strokeWidth={22} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />

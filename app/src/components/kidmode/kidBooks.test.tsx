@@ -181,8 +181,15 @@ describe("KidBookCover — the one cover", () => {
     const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood=\"wave\" animate={false} ring={false} badge={false} decorative /> : undefined;");
     expect(tab).toMatch(/<KidBookTitleCard title=\{[^}]+\}[^>]*hero=\{coverHero\} heroSize=\{162\} titleSize=\{28\} \/>/);
-    // the title line under the art only when the art is a picture (the card already names the book)
-    expect(tab).toContain("{bookArt && <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title=\"\"");
+    // The fallback title is visible on the card normally, and on the facing
+    // page in short landscape, where the fixed-size portrait hid its words.
+    expect(big).toContain('data-kid-book-card-title=""');
+    expect(tab).toContain('data-kid-book-fallback-title={!bookArt ? "" : undefined}');
+    const css = readFileSync(path.join(__dirname, "..", "stories", "legacyBook.css"), "utf8");
+    expect(css).toContain('[data-kid-book-fallback-title] { display: none; }');
+    const sideways = css.slice(css.indexOf('@media (min-width: 640px) and (max-height: 520px)'));
+    expect(sideways).toContain('[data-kid-book-cover] [data-kid-book-card-title] { display: none !important; }');
+    expect(sideways).toContain('[data-kid-book-cover] [data-kid-book-fallback-title] { display: block; }');
   });
 
   it("B-KID-122: the home row and the library mark their first row eager; Tonight's cover is high priority", () => {

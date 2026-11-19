@@ -26,6 +26,140 @@ const completeStudio = page => page.locator('[data-studio-phase="result"]');
 const gameShell = (page, id) => page.locator(`[data-game-shell="${id}"]`).first();
 const textOf = locator => locator.innerText().then(text => text.trim());
 
+function rgba(value) {
+  const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value.trim());
+  if (hex) {
+    const digits = hex[1].length === 3 ? [...hex[1]].map(digit => digit + digit).join('') : hex[1];
+    return [0, 2, 4].map(start => parseInt(digits.slice(start, start + 2), 16)).concat(1);
+  }
+  assert.match(value, /^rgba?\(/, `The measured color can be checked: ${value}`);
+  const channels = value.match(/[\d.]+/g).map(Number);
+  return [channels[0], channels[1], channels[2], channels[3] ?? 1];
+}
+
+function contrast(foreground, background) {
+  const fg = rgba(foreground), bg = rgba(background);
+  assert.equal(bg[3], 1, 'Reading contrast has an opaque measured background');
+  const luminance = channels => channels.slice(0, 3).map(value => value / 255)
+    .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+    .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+  const front = luminance(fg.slice(0, 3).map((value, index) => value * fg[3] + bg[index] * (1 - fg[3])));
+  const back = luminance(bg);
+  return (Math.max(front, back) + 0.05) / (Math.min(front, back) + 0.05);
+}
+
+async function inspectReviewHeader(page) {
+  const header = await page.locator('[data-activity-review] > .review-bar').evaluate(element => {
+    const style = getComputedStyle(element), box = element.getBoundingClientRect();
+    const title = element.querySelector('[data-kid-bar-title]');
+    const stage = element.parentElement.querySelector(':scope > .kid-stage');
+    let paintsAboveScene = true;
+    if (stage) {
+      const stageBox = stage.getBoundingClientRect(), stageStyle = getComputedStyle(stage);
+      const overlaps = box.left < stageBox.right && box.right > stageBox.left && box.top < stageBox.bottom && box.bottom > stageBox.top;
+      const parentDisplay = getComputedStyle(element.parentElement).display;
+      const hasLayer = style.position !== 'static' || style.transform !== 'none'
+        || (/flex|grid/.test(parentDisplay) && style.zIndex !== 'auto');
+      const headerZ = Number.parseInt(style.zIndex) || 0, stageZ = Number.parseInt(stageStyle.zIndex) || 0;
+      // Pointer-events:none scenery can cover text while click checks still pass.
+      // Check its actual sibling paint order as well as the controls' hit targets.
+      paintsAboveScene = !overlaps || (hasLayer && (headerZ > stageZ
+        || (headerZ === stageZ && !!(stage.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING))));
+    }
+    return {
+      title: title?.textContent?.trim(),
+      titleFits: !!title && title.scrollWidth <= title.clientWidth + 1,
+      paintsAboveScene,
+      controls: [...element.querySelectorAll('button')].map(button => {
+        const rect = button.getBoundingClientRect(), hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return { label: button.getAttribute('aria-label') || button.textContent?.trim(), width: rect.width, height: rect.height,
+          inViewport: rect.left >= -1 && rect.right <= innerWidth + 1 && rect.top >= -1 && rect.bottom <= innerHeight + 1,
+          unobstructed: !!hit && button.contains(hit) };
+      }),
+    };
+  });
+  assert.ok(header.title && header.titleFits && header.paintsAboveScene, 'The retained activity header is readable above its decorative scene');
+  assert.ok(header.controls.length >= 3 && header.controls.every(control => control.inViewport && control.unobstructed && control.width >= 44 && control.height >= 44), 'Back, sound and exit are visible and unobstructed 44px controls');
+  return header;
+}
+
+async function inspectRetainedFinish({ page, root, advance }) {
+  const finish = root.locator('[data-game-finish]');
+  await finish.waitFor({ state: 'visible' });
+  await advance(400);
+  await page.evaluate(() => document.fonts.ready);
+  const reading = await finish.evaluate(element => {
+    const box = element.getBoundingClientRect(), style = getComputedStyle(element);
+    return { background: style.backgroundColor, backgroundImage: style.backgroundImage,
+      text: [...element.querySelectorAll('h2, p')].filter(node => node.getClientRects().length).map(node => {
+        const textStyle = getComputedStyle(node), range = document.createRange();
+        range.selectNodeContents(node);
+        const rects = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+        let opacity = 1;
+        for (let ancestor = node; ancestor; ancestor = ancestor.parentElement) opacity *= Number(getComputedStyle(ancestor).opacity);
+        return { text: node.textContent?.trim(), color: textStyle.color, family: textStyle.fontFamily, fontSize: parseFloat(textStyle.fontSize), opacity,
+          fits: rects.length > 0 && rects.every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1 && rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1) };
+      }) };
+  });
+  assert.equal(rgba(reading.background)[3], 1, 'The ending words sit on opaque paper rather than the scene image');
+  assert.equal(reading.backgroundImage, 'none', 'The ending reading surface has no image behind its words');
+  assert.ok(reading.text.length >= 2, 'The actual ending includes its title and supporting words');
+  for (const text of reading.text) {
+    text.contrast = contrast(text.color, reading.background);
+    assert.ok(text.fits && text.fontSize >= 17 && text.opacity >= 0.99 && text.contrast >= 4.5, `Complete readable ending text: ${text.text}`);
+    assert.ok(/Nunito|Heebo/.test(text.family), 'Retained ending text uses the child reading face');
+  }
+  const controls = [];
+  for (const selector of ['[data-kid-finish-again]', '[data-kid-finish-home]']) {
+    const action = finish.locator(selector);
+    await action.scrollIntoViewIfNeeded();
+    const bounds = await action.evaluate(button => {
+      const box = button.getBoundingClientRect(), panel = button.closest('[data-game-finish]').getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return { label: button.textContent?.trim(), width: box.width, height: box.height,
+        fitsPanel: box.left >= panel.left - 1 && box.right <= panel.right + 1 && box.top >= panel.top - 1 && box.bottom <= panel.bottom + 1,
+        inViewport: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+        unobstructed: !!hit && button.contains(hit) };
+    });
+    assert.ok(bounds.fitsPanel && bounds.inViewport && bounds.unobstructed && bounds.width >= 44 && bounds.height >= 44, 'Each real ending action fits its panel and remains reachable');
+    controls.push(bounds);
+  }
+  return { ...reading, controls };
+}
+
+async function inspectAdventureWords(root) {
+  const labels = await root.locator('[data-adventure-choices] .kid-piece-tag').evaluateAll(tags => tags.map(tag => {
+    const box = tag.getBoundingClientRect(), text = tag.textContent ?? '', nodes = [];
+    const walker = document.createTreeWalker(tag, NodeFilter.SHOW_TEXT);
+    let offset = 0;
+    while (walker.nextNode()) { const node = walker.currentNode; nodes.push({ node, start: offset, end: offset + node.textContent.length }); offset += node.textContent.length; }
+    const words = [...text.matchAll(/\S+/gu)].map(match => {
+      const start = match.index, end = start + match[0].length;
+      const first = nodes.find(entry => entry.start <= start && entry.end > start);
+      const last = nodes.find(entry => entry.start < end && entry.end >= end);
+      const range = document.createRange();
+      range.setStart(first.node, start - first.start); range.setEnd(last.node, end - last.start);
+      const rects = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+      return { word: match[0], lines: new Set(rects.map(rect => Math.round(rect.top))).size,
+        fits: rects.every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1) };
+    });
+    return { label: text.trim(), fontSize: parseFloat(getComputedStyle(tag).fontSize),
+      inViewport: box.left >= -1 && box.right <= innerWidth + 1, words };
+  }));
+  assert.ok(labels.length >= 2 && labels.every(label => label.fontSize >= 17 && label.inViewport && label.words.length > 0 && label.words.every(word => word.lines === 1 && word.fits)), 'Every Adventure answer wraps between whole readable words');
+  const typography = await root.locator('[data-testid="adventure-scene-title"], [data-adventure-prompt]').evaluateAll(nodes => nodes.map(node => ({
+    text: node.textContent?.trim(), family: getComputedStyle(node).fontFamily, color: getComputedStyle(node).color,
+    graphite: getComputedStyle(node).getPropertyValue('--studio-graphite').trim(), fontSize: parseFloat(getComputedStyle(node).fontSize),
+    fits: node.scrollWidth <= node.clientWidth + 1,
+  })));
+  assert.equal(typography.length, 2, 'The real scene title and prompt are present');
+  for (const text of typography) {
+    assert.ok(text.fits && text.fontSize >= 18 && /Nunito/.test(text.family) && /Heebo/.test(text.family), 'Child Adventure title and prompt use readable Studio type');
+    assert.deepEqual(rgba(text.color), rgba(text.graphite), 'Child Adventure words use the approved graphite ink');
+  }
+  return { labels, typography };
+}
+
 async function playMimic({ page, press, shot, trace }) {
   let passed = 0;
   while (await page.locator('[data-mimic-prompt]').count()) {
@@ -224,23 +358,47 @@ async function playPose({ page, press, advance, shot, trace, lang }) {
     await advance(1100); poses++;
   }
   assert.ok(poses >= 5 && poses <= 6, 'The complete pose set reaches its real ending');
+  const finish = await inspectRetainedFinish({ page, root, advance });
   await shot('result');
   await press(root.locator('[data-kid-finish-again]'));
   await root.locator('.studio-practice-stage--pose').waitFor({ state: 'visible' });
   await shot('replay-ready');
-  return { poses, replayed: true, confirmation: 'visible We did it control; no camera or pose grading' };
+  return { poses, finish, replayed: true, confirmation: 'visible We did it control; no camera or pose grading' };
 }
 
 async function playAdventure({ page, press, advance, shot, trace }) {
   const root = gameShell(page, 'adventures');
+  const waitForReadableScene = async previous => {
+    const state = await page.waitForFunction(before => {
+      const shell = document.querySelector('[data-game-shell="adventures"]');
+      const readable = element => {
+        if (!element || !element.getClientRects().length) return false;
+        let opacity = 1;
+        for (let node = element; node; node = node.parentElement) {
+          const style = getComputedStyle(node);
+          if (style.visibility === 'hidden' || style.display === 'none') return false;
+          opacity *= Number(style.opacity);
+        }
+        return opacity >= 0.99;
+      };
+      const finish = shell?.querySelector('[data-game-finish]');
+      if (readable(finish)) return { kind: 'ending' };
+      const prompt = shell?.querySelector('[data-adventure-prompt]');
+      const question = prompt?.innerText.trim();
+      return question && question !== before && readable(prompt) ? { kind: 'scene', prompt: question } : false;
+    }, previous, { polling: 'raf', timeout: 15_000 });
+    try { return await state.jsonValue(); } finally { await state.dispose(); }
+  };
   const card = root.locator('button.play-pressable').filter({ has: page.locator('p.text-lg') }).first();
   const selectedTitle = await textOf(card.locator('p.text-lg'));
   await press(card);
   const title = root.getByTestId('adventure-scene-title');
   await title.waitFor({ state: 'visible' });
   assert.equal(await textOf(title), selectedTitle, 'Opening the story preserves its localized catalogue title');
+  const opening = await waitForReadableScene(null);
+  assert.equal(opening.kind, 'scene', 'The chosen story opens a readable authored question');
   await shot('active-scene');
-  const prompt = root.locator('p.text-\\[22px\\]').first();
+  const prompt = root.locator('[data-adventure-prompt]');
   const seenPrompts = new Set();
   let scenes = 0, retries = 0;
   while (!(await root.locator('[data-game-finish]').count())) {
@@ -250,6 +408,7 @@ async function playAdventure({ page, press, advance, shot, trace }) {
     seenPrompts.add(question);
     const options = root.locator('button.kid-piece');
     await options.first().waitFor({ state: 'visible' });
+    const words = await inspectAdventureWords(root);
     const offered = await options.allTextContents();
     let found = false;
     for (let choice = 0; choice < offered.length; choice++) {
@@ -258,33 +417,40 @@ async function playAdventure({ page, press, advance, shot, trace }) {
       retries++;
     }
     assert.equal(found, true, 'The visible feedback allows the child to find a continuing story choice');
-    trace.push({ scene: scenes, prompt: question, offered: offered.map(text => text.trim()) });
+    trace.push({ scene: scenes, prompt: question, offered: offered.map(text => text.trim()), ...words });
     const next = root.locator('button.kid-toy').last();
     await press(next);
-    // AnimatePresence retains the outgoing question during its exit. Follow
-    // the visible question before choosing again; a stale correct panel
-    // must not stand in for the next story choice.
-    let changed = false;
-    for (let tick = 0; tick < 24; tick++) {
-      await advance(50);
-      if (await root.locator('[data-game-finish]').count()) { changed = true; break; }
-      if (await prompt.count() && await textOf(prompt) !== question) {
-        await advance(250); // Finish the new panel's authored 200ms entrance.
-        changed = true; break;
-      }
-    }
-    assert.equal(changed, true, 'Next reaches a new visible question or the real ending');
+    // Motion's exit waits for native WAAPI completion. Keep Adventures on the
+    // native clock and observe the next readable scene; virtual RAF ticks do
+    // not advance the browser animation timeline or prove a new question.
+    const destination = await waitForReadableScene(question);
+    trace[trace.length - 1].next = destination;
     scenes++;
   }
+  assert.equal(scenes, 4, 'The chosen four-scene adventure reaches its real ending');
+  assert.equal(seenPrompts.size, 4, 'All four authored questions were distinct');
+  const finish = await inspectRetainedFinish({ page, root, advance });
   await shot('result');
   await press(root.locator('[data-kid-finish-again]'));
+  assert.deepEqual(await waitForReadableScene(null), opening, 'Replay restores the first readable question');
   await root.locator('button.kid-piece').first().waitFor({ state: 'visible' });
   await shot('replay-ready');
-  return { authoredScenes: scenes, distinctPrompts: seenPrompts.size, localizedTitle: selectedTitle, visibleRetries: retries, replayed: true, generated: false };
+  return { authoredScenes: scenes, distinctPrompts: seenPrompts.size, localizedTitle: selectedTitle, visibleRetries: retries, finish, replayed: true, generated: false };
 }
 
 async function playReading({ page, press, advance, shot, trace, lang }) {
   const root = gameShell(page, 'reading');
+  const drawing = root.locator('svg[role="img"][viewBox="0 0 280 280"]');
+  const startMarker = await drawing.locator('[data-trace-start]').evaluate(circle => ({
+    fill: getComputedStyle(circle).fill,
+    semanticGreen: getComputedStyle(circle).getPropertyValue('--arbor-green-ink').trim(),
+    background: getComputedStyle(circle.ownerSVGElement).backgroundColor,
+  }));
+  assert.deepEqual(rgba(startMarker.fill), rgba(startMarker.semanticGreen), 'Before any trace input, the start dot matches the green-dot instruction');
+  const [red, green, blue] = rgba(startMarker.fill);
+  assert.ok(green > red && green > blue, 'The initial trace marker is visibly green');
+  startMarker.contrast = contrast(startMarker.fill, startMarker.background);
+  assert.ok(startMarker.contrast >= 3, 'The starting marker is distinct against the visible drawing surface');
   await press(root.getByRole('tab', { name: lang === 'he' ? 'צלילי אותיות' : 'Letter sounds', exact: true }));
   const letter = root.locator('p.text-\\[64px\\]');
   const before = await textOf(letter);
@@ -292,7 +458,6 @@ async function playReading({ page, press, advance, shot, trace, lang }) {
   const after = await textOf(letter);
   assert.notEqual(after, before, 'The actual phonics acknowledgement moves to another letter');
   await shot('phonics-kept');
-  const drawing = root.locator('svg[role="img"][viewBox="0 0 280 280"]');
   await drawing.scrollIntoViewIfNeeded();
   const firstLetter = await drawing.getAttribute('aria-label');
   const next = root.getByRole('button', { name: lang === 'he' ? 'האות הבאה' : 'Next letter', exact: true });
@@ -320,7 +485,7 @@ async function playReading({ page, press, advance, shot, trace, lang }) {
   await press(next);
   const nextLetter = await drawing.getAttribute('aria-label');
   assert.notEqual(nextLetter, firstLetter, 'Next letter exposes a fresh trace');
-  trace.push({ phonics: { before, after }, firstLetter, nextLetter, strokes });
+  trace.push({ phonics: { before, after }, firstLetter, nextLetter, strokes, startMarker });
   return { boundary: 'bounded phonics and one complete trace; this practice route has no finite game ending', phonicsSteps: 1, tracedLetters: 1, strokes, traceInput: 'real mouse pointer over the visible guide, including emulated phone cells' };
 }
 
@@ -356,6 +521,7 @@ export async function verifyAdditionalActivities({ browser, base, output }) {
   const cells = RELEASE_VIEWPORTS.flatMap(viewport => [...STUDIO.map(activity => ({ ...activity, studio: true })), ...ARCADE].filter(activity => !activity.language || activity.language === viewport.lang).map(activity => ({ viewport, activity })));
   for (const { viewport, activity } of cells) {
     const phone = viewport.id.startsWith('mobile-');
+    const nativeClock = activity.id === 'adventures';
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
     const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [], trace = [], targets = [];
     await context.route('**/*', route => {
@@ -378,8 +544,8 @@ export async function verifyAdditionalActivities({ browser, base, output }) {
     page.on('console', message => { if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text()); });
     page.on('response', response => { if (response.status() >= 400 && !new URL(response.url()).pathname.endsWith('/favicon.ico')) brokenResources.push({ url: response.url(), status: response.status() }); });
     const stem = `${activity.id}-${viewport.id}`;
-    const record = { case: 'additional-activity', activity: activity.id, host: activity.studio ? 'StudioGame' : 'HeroArcade', viewport: viewport.id, lang: viewport.lang, sound: 'off', motion: 'reduce', input: phone ? 'emulated touch; tracing uses an explicit mouse pointer' : 'mouse', screenshots: [], fixtureRequests, trace, targets, errors, brokenResources, unexpectedRequests };
-    const advance = ms => page.clock.runFor(ms);
+    const record = { case: 'additional-activity', activity: activity.id, host: activity.studio ? 'StudioGame' : 'HeroArcade', viewport: viewport.id, lang: viewport.lang, sound: 'off', motion: 'reduce', input: phone ? 'emulated touch; tracing uses an explicit mouse pointer' : 'mouse', clock: nativeClock ? 'native browser clock; real scene transitions and waits' : 'controlled game clock', screenshots: [], fixtureRequests, trace, targets, errors, brokenResources, unexpectedRequests };
+    const advance = ms => nativeClock ? page.waitForTimeout(ms) : page.clock.runFor(ms);
     const press = async locator => {
       await locator.waitFor({ state: 'visible' }); await locator.scrollIntoViewIfNeeded();
       const box = await locator.boundingBox();
@@ -400,7 +566,7 @@ export async function verifyAdditionalActivities({ browser, base, output }) {
       record.screenshots.push(`additional-activities/${name}`);
     };
     try {
-      await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
+      if (!nativeClock) await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
       const url = new URL(base); url.searchParams.set('activityReview', activity.id); url.searchParams.set('lang', viewport.lang); url.searchParams.set('studioNext', '0');
       await page.goto(url.href);
       await page.locator(`[data-activity-review="${activity.id}"]`).waitFor({ state: 'visible' });
@@ -412,9 +578,10 @@ export async function verifyAdditionalActivities({ browser, base, output }) {
       await page.locator(activity.ready).first().waitFor({ state: 'visible' });
       // Let actual lazy imports mount before freezing gameplay time. React's
       // Suspense fallback minimum must not be frozen while code is loading.
-      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1_000));
+      if (!nativeClock) await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1_000));
       assert.equal(await page.locator('[data-activity-review]').getAttribute('dir'), viewport.lang === 'he' ? 'rtl' : 'ltr');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'No horizontal overflow on entry');
+      record.header = await inspectReviewHeader(page);
       await shot('ready');
       record.play = await DRIVERS[activity.id]({ page, press, advance, shot, trace, lang: viewport.lang });
       if (activity.studio) {

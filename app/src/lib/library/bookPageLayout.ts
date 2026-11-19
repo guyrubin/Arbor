@@ -622,8 +622,9 @@ function layoutSpread(c: Ctx): BookPageLayout | null {
  *  large as the inside pages' book (no row reserved under it); the title, the
  *  name line and the cover line set in the plate's calm band (the cover line
  *  >= 26 px at 1920); ONE Open toy over the plate's lower margin, on the side
- *  away from the hero. Only a missing band falls back to a facing title page;
- *  at >= 900 px the front is always used (the title scales to fit).
+ *  away from the hero. A short sideways front falls back to a facing title
+ *  page when its words or Open toy cannot fit without covering the hero.
+ *  Desktop fronts keep their existing composition.
  *  `content.paras` = [cover line, name line]. */
 function layoutCover(c: Ctx): BookPageLayout | null {
   const r = c.page.textRect;
@@ -662,6 +663,7 @@ function layoutCover(c: Ctx): BookPageLayout | null {
       break;
     }
   }
+  if (c.sideways && (!fitsAt(titlePx) || !openRect || (hero && overlapArea(openRect, hero) > 0))) return null;
   openRect ??= { x: Math.round(art.x + (art.w - openW) / 2), y: art.y + art.h - inset - openH, w: openW, h: openH };
   return {
     mode: "wide",
@@ -869,6 +871,9 @@ export function computeBookPageLayout(page: Page, box: Box, lang: BookLang, opts
     if (c.cover) {
       const cover = layoutCover(c);
       if (cover) return cover;
+      // Only an attempted front cover needs this short-screen fallback.
+      // Plan covers without a calm band retain their existing title page.
+      if (c.sideways && c.page.textRect) return layoutSideways(c);
     } else if (page.type === "spread") {
       const spread = layoutSpread(c);
       if (spread) return spread;

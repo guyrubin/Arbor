@@ -14,6 +14,7 @@ const PLANS = ['plan-poo-sit', 'plan-sleep-alone', 'plan-dropoff', 'plan-big-fee
 const CHILD = 'catalogue-synthetic-review';
 const normalize = value => String(value ?? '').replace(/[\u202a-\u202e\u2066-\u2069]/g, '').replace(/\s+/g, ' ').trim();
 const inside = (a, b) => a && b && a.x >= b.x - 1 && a.y >= b.y - 1 && a.x + a.width <= b.x + b.width + 1 && a.y + a.height <= b.y + b.height + 1;
+const separate = (a, b) => a && b && (a.x + a.width <= b.x + 1 || b.x + b.width <= a.x + 1 || a.y + a.height <= b.y + 1 || b.y + b.height <= a.y + 1);
 
 export async function verifyStoryCatalogue({ browser, base, output }) {
   const folder = path.join(output, 'story-catalogue');
@@ -84,7 +85,8 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       const range = document.createRange(); range.selectNodeContents(element);
       const ink = [...range.getClientRects()].filter(r => r.width && r.height);
       const clip = window.storyCatalogueClip(element);
-      return { text: element.textContent, rect: { x: box.x, y: box.y, width: box.width, height: box.height }, fontSize: parseFloat(style.fontSize), scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fits: ink.length > 0 && ink.every(r => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1), visible: ink.length > 0 && ink.every(r => r.left >= clip.x - 1 && r.right <= clip.x + clip.width + 1 && r.top >= clip.y - 1 && r.bottom <= clip.y + clip.height + 1) };
+      const inkRect = ink.length ? { x: Math.min(...ink.map(r => r.left)), y: Math.min(...ink.map(r => r.top)), width: Math.max(...ink.map(r => r.right)) - Math.min(...ink.map(r => r.left)), height: Math.max(...ink.map(r => r.bottom)) - Math.min(...ink.map(r => r.top)) } : null;
+      return { text: element.textContent, rect: { x: box.x, y: box.y, width: box.width, height: box.height }, inkRect, fontSize: parseFloat(style.fontSize), scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, fits: ink.length > 0 && ink.every(r => r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1), visible: ink.length > 0 && ink.every(r => r.left >= clip.x - 1 && r.right <= clip.x + clip.width + 1 && r.top >= clip.y - 1 && r.bottom <= clip.y + clip.height + 1) };
     }));
     // A paragraph can legitimately be taller than its scrollable paper. Check
     // each real rendered line after actually scrolling it into the visible
@@ -234,6 +236,23 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
       if (title.kind === 'legacy') {
         await page.locator('[data-kid-book-cover]').waitFor({ state: 'visible' });
         await inspect({ name: 'cover', legacy: true });
+        const cover = page.locator('[data-kid-book-cover]');
+        const visibleTitles = cover.locator('[data-kid-book-card-title]:visible, [data-kid-book-title]:visible');
+        const coverWords = await glyphs(visibleTitles);
+        const paper = await visibleTitles.evaluateAll(elements => elements.map(element => {
+          const box = element.closest('.kid-page-plate, [data-kid-book-art]')?.getBoundingClientRect();
+          return box ? { x: box.x, y: box.y, width: box.width, height: box.height } : null;
+        }));
+        const ownHero = cover.locator('[data-kid-book-own-hero], [data-story-own-hero="approved"]');
+        const heroCount = await ownHero.count();
+        const hero = heroCount === 1 ? await ownHero.boundingBox() : null;
+        const art = await cover.locator('[data-kid-book-art]').boundingBox();
+        check(coverWords.length === 1 && normalize(coverWords[0].text) === normalize(spec.title), 'cover shows its complete authored title exactly once');
+        check(coverWords.length === 1 && coverWords.every((word, index) => word.visible && inside(word.inkRect, paper[index])), 'all legacy cover title glyphs stay visible on their paper leaf');
+        check(heroCount === 1 && inside(hero, art), 'cover keeps exactly one own synthetic portrait fully inside its art leaf');
+        check(coverWords.length === 1 && separate(coverWords[0].inkRect, hero), 'cover title is not hidden behind the own portrait');
+        frames.push({ name: 'cover-geometry', paper, words: coverWords, hero, art });
+        await persist();
         assert.equal(spec.paths.length, 3);
         for (let n = 0; n < spec.paths.length; n++) {
           const branch = spec.paths[n], seen = [];
@@ -292,6 +311,17 @@ export async function verifyStoryCatalogue({ browser, base, output }) {
           planRecovery = true;
         }
         await inspect({ name: 'cover' });
+        const coverFront = await page.locator('[data-book-reader]').getAttribute('data-page-type') === 'cover';
+        const paper = await page.locator(coverFront ? '.bk-frame' : '[data-book-text]').boundingBox();
+        const coverWords = await glyphs(page.locator('.bk-title, .bk-name-line, .bk-cover-line'));
+        const open = await page.locator('[data-book-open]').boundingBox();
+        const ownHero = page.locator('[data-book-hero]');
+        const hero = await ownHero.boundingBox();
+        check(coverWords.length >= 2 && coverWords.every(word => word.visible && inside(word.inkRect, paper)), 'all cover title/name/line glyphs stay on the physical cover or title page');
+        check(await ownHero.count() === 1, 'cover retains exactly one approved synthetic identity');
+        check(separate(open, hero), 'cover Open control does not cover the own hero');
+        frames.push({ name: 'cover-geometry', paper, words: coverWords, open, hero });
+        await persist();
         const advance = async (at, branch) => {
           const states = [];
           for (let click = 0; click < 12; click++) {

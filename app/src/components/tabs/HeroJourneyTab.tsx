@@ -1684,8 +1684,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
     const authoredCover = storyBookArt(kidTheme, activeStory.id)?.cover;
     // B-BOOK-26: no shared picture (B-BOOK-31 dropped the reference family's
     // cover) -> the book's title card with the child's OWN portrait, the shelf
-    // tile's composition scaled up; the card then carries the title, so the
-    // line under it is not repeated. A hero-less child: the complete card.
+    // tile's composition scaled up. On a short landscape screen the title
+    // moves onto the facing page, leaving room for the same own portrait.
+    // The title is visible once. A hero-less child: the complete card.
     const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood="wave" animate={false} ring={false} badge={false} decorative /> : undefined;
     const bookArtBox = (
       <div className={KID_BOOK_ART_CLASS} data-kid-book-art="" style={{ background: "var(--arbor-paper-deep)" }}>
@@ -1763,7 +1764,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             <motion.div key="kid-book-cover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} data-kid-book-cover="" className={KID_BOOK_SPREAD_CLASS}>
               {bookArtBox}
               <div className={KID_BOOK_SIDE_CLASS}>
-              {bookArt && <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--studio-font)", fontSize: 26, lineHeight: 1.2, color: "var(--studio-graphite)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>}
+              <p lang={renderLang} dir={langDir(renderLang)} data-kid-book-title="" data-kid-book-fallback-title={!bookArt ? "" : undefined} className="font-black px-5 pt-4 text-center" style={{ margin: 0, fontFamily: "var(--studio-font)", fontSize: 26, lineHeight: 1.2, color: "var(--studio-graphite)" }}>{isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)}</p>
               {bookSide}
               </div>
             </motion.div>

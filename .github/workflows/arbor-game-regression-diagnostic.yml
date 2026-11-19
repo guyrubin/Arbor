@@ -15,7 +15,7 @@ permissions:
 jobs:
   game-regressions:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: app
@@ -34,6 +34,7 @@ jobs:
       - name: Build actual Kids components with synthetic adapters
         run: npx vite build --config scripts/studio-v2-preview/vite.config.ts
       - name: Operate Sneak, Maker Desk and Ice Age in all four release cells
+        timeout-minutes: 25
         run: node scripts/kids-game-regression-diagnostic.mjs
       - name: Retain original records and screenshots on success or failure
         if: always()
