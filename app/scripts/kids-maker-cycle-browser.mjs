@@ -71,6 +71,14 @@ export function nativeMakerScene(gameId) {
   }[gameId] ?? null;
 }
 
+/** Wind-up Racer draws to a live 2D canvas while the other controlled-clock
+ * maker flows are fast-forwarded. A paused RAF plus Chromium's full-page
+ * capture can produce an empty picture even as inputs and completion pass.
+ * Run RAF only around its visible snapshots; keep all game actions genuine. */
+export function controlledCanvasCapture(gameId) {
+  return gameId === 'windup-race' ? '.wr-canvas' : null;
+}
+
 export async function waitForNativeMakerOpening(page, gameId) {
   const scene = nativeMakerScene(gameId); assert.ok(scene, 'This maker uses an authored native opening');
   // The reduced-motion opening ends naturally after 1400ms. Do not chase a
@@ -701,18 +709,29 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds, vi
       const shots = new Set();
       const snapshot = async label => {
         if (shots.has(label)) return; shots.add(label);
-        const inspectPaint = nativeScene?.canvas && !['intro', 'result', 'home', 'failed'].includes(label);
+        const controlledCanvas = !nativeClock ? controlledCanvasCapture(game.id) : null;
+        const canvasSelector = nativeScene?.canvas ?? controlledCanvas;
+        const inspectPaint = canvasSelector && !['intro', 'result', 'home', 'failed'].includes(label);
+        const resumeForCapture = !!(controlledCanvas && inspectPaint);
         let paint;
-        if (inspectPaint) {
-          paint = { snapshot: label, selector: nativeScene.canvas, before: [] };
-          (record.canvasPaint ??= []).push(paint);
-          nativeWaitMs += await waitForMakerCanvasPaint(page, nativeScene.canvas, paint.before);
-        }
-        const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
-        record.screenshots.push(`maker-cycles/${name}`);
-        if (paint) {
-          paint.after = await page.evaluate(readMakerCanvasPaint, nativeScene.canvas);
-          assert.ok(hasMakerCanvasPaint(paint.after), 'Native capture preserves the actually painted scene; the original PNG and pixel statistics are retained');
+        if (resumeForCapture) await page.clock.resume();
+        try {
+          if (inspectPaint) {
+            paint = { snapshot: label, selector: canvasSelector, before: [] };
+            (record.canvasPaint ??= []).push(paint);
+            nativeWaitMs += await waitForMakerCanvasPaint(page, canvasSelector, paint.before);
+          }
+          const name = `${stem}-${label}.png`;
+          // A viewport capture does not resize/clear this canvas's backing store.
+          // The ordinary full-page evidence remains unchanged for other games.
+          await page.screenshot({ path: path.join(folder, name), fullPage: !resumeForCapture, animations: 'disabled' });
+          record.screenshots.push(`maker-cycles/${name}`);
+          if (paint) {
+            paint.after = await page.evaluate(readMakerCanvasPaint, canvasSelector);
+            assert.ok(hasMakerCanvasPaint(paint.after), 'The captured maker scene remains painted, not an empty canvas');
+          }
+        } finally {
+          if (resumeForCapture) await pauseMakerClock(page);
         }
       };
       let controlledMs = 0, nativeWaitMs = 0, lastState = '';
