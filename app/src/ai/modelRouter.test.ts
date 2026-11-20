@@ -105,6 +105,32 @@ describe("model route decisions", () => {
     expect(modelForGeminiRequest(config, "coach_high_stakes", [{ data: "QUJD", mimeType: "image/png" }]))
       .toBe("gemini-2.5-pro");
   });
+
+  it("the Claude-to-Gemini image fallback is a new eligibility decision (B-AIOPS-08 gap 5)", () => {
+    const image = [{ data: "QUJD", mimeType: "image/png" }];
+    const eu = createTestConfig({
+      arborEnv: "prod",
+      vertexModelChat: "claude-sonnet-5@anthropic",
+      vertexModelAnalysis: "gemini-2.5-pro",
+      vertexLocation: "europe-west3",
+    });
+    expect(modelForGeminiRequest(eu, "coach_high_stakes", image)).toBe("gemini-2.5-pro");
+    // No image: the route model, and no second decision.
+    expect(modelForGeminiRequest(eu, "coach_high_stakes")).toBe("claude-sonnet-5@anthropic");
+    // Claude stays in EU; the Gemini model follows VERTEX_LOCATION and is denied.
+    const us = createTestConfig({
+      arborEnv: "prod",
+      vertexModelChat: "claude-sonnet-5@anthropic",
+      vertexModelAnalysis: "gemini-2.5-pro",
+      vertexLocation: "us-central1",
+    });
+    expect(() => modelForGeminiRequest(us, "coach_high_stakes", image)).toThrow(AiProviderError);
+    try {
+      modelForGeminiRequest(us, "coach_high_stakes", image);
+    } catch (error) {
+      expect((error as AiProviderError).code).toBe("policy_denied");
+    }
+  });
 });
 
 // B-PROV-07: the candidate list + entitlement weights never move production:

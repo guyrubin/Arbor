@@ -16,8 +16,9 @@
  *   EN  BOOK_TTS_MODEL_EN (default gemini-2.5-pro-tts)
  *   HE  BOOK_TTS_MODEL_HE (default gemini-3.1-flash-tts-preview)
  *   voice BOOK_TTS_VOICE (default Sulafat); endpoint BOOK_TTS_ENDPOINT
- *   (default the global Cloud TTS endpoint; an `eu-` host declares EU
- *   residency — prod's route policy admits EU only, so prod needs it).
+ *   when set, otherwise the same host as read-aloud (an EU VERTEX_LOCATION
+ *   calls https://eu-texttospeech.googleapis.com and the candidate declares
+ *   EU; an unset location keeps the global host, which prod denies).
  * The provider's data class includes child data (the name): the candidate
  * declares child_profile and the route policy decides (fails closed).
  * Each take (60 s timeout) is checked by the server's ASR when one is usable
@@ -44,6 +45,7 @@ import { heroAvatarHash } from "../lib/heroSheetContract.js";
 import { heroFirstName } from "../lib/heroJourneyRender.js";
 import { storyName } from "../lib/storyName.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "../ai/capabilities/policy.js";
+import { ttsEndpointFor } from "./tts.js";
 import type { BookAssetBucket } from "./bookAssets.js";
 import type { BookAssetsDocStore } from "./bookSheet.js";
 import type { EntitlementStore } from "./entitlements.js";
@@ -64,12 +66,22 @@ export const bookTtsLimits = () => ({ perChild30d: envNum("BOOK_TTS_PER_CHILD_30
 export const BOOK_TTS_TAKES = 3;
 export const BOOK_TTS_TIMEOUT_MS = 60_000;
 
+/** The host book and plan narration call.
+ *  B-AIOPS-08 gap 4: an explicit BOOK_TTS_ENDPOINT wins. Otherwise the call
+ *  follows read-aloud (`ttsEndpointFor`), so production's EU VERTEX_LOCATION
+ *  is eligible without a second variable set outside the deploy file. */
+export const bookTtsEndpoint = (vertexLocation: string | undefined): string => {
+  const explicit = (process.env.BOOK_TTS_ENDPOINT ?? "").trim().replace(/\/+$/, "");
+  if (explicit) return explicit;
+  return ttsEndpointFor({ vertexLocation: vertexLocation ?? "" }).host;
+};
+
 /** The models and voice (env-configurable; G13 defaults). */
-export const bookTtsSettings = () => ({
+export const bookTtsSettings = (vertexLocation?: string) => ({
   en: process.env.BOOK_TTS_MODEL_EN || NARRATION_VOICE.en.model,
   he: process.env.BOOK_TTS_MODEL_HE || NARRATION_VOICE.he.model,
   voice: process.env.BOOK_TTS_VOICE || NARRATION_VOICE.voice,
-  endpoint: (process.env.BOOK_TTS_ENDPOINT || "https://texttospeech.googleapis.com").replace(/\/+$/, ""),
+  endpoint: bookTtsEndpoint(vertexLocation),
 });
 
 /** The narration set of a first name: `n-<hash>` (a new name is a new set).
@@ -130,7 +142,7 @@ export const bookTtsCandidate = (endpoint: string): ProviderCandidate => ({
 
 let auth: GoogleAuth | null = null;
 export const googleBookTts = (config: ArborConfig): BookTtsProvider => ({
-  candidate: () => bookTtsCandidate(bookTtsSettings().endpoint),
+  candidate: () => bookTtsCandidate(bookTtsEndpoint(config.vertexLocation)),
   async synthesize(req) {
     if (!auth) auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
     const client = await auth.getClient();
@@ -138,7 +150,8 @@ export const googleBookTts = (config: ArborConfig): BookTtsProvider => ({
     const token = typeof t === "string" ? t : t?.token;
     if (!token) throw new Error("no ADC token for Cloud Text-to-Speech");
     const startedAt = Date.now();
-    const res = await fetch(`${bookTtsSettings().endpoint}/v1/text:synthesize`, {
+    const endpoint = bookTtsEndpoint(config.vertexLocation);
+    const res = await fetch(`${endpoint}/v1/text:synthesize`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=utf-8", ...(config.gcpProjectId ? { "x-goog-user-project": config.gcpProjectId } : {}) },
       signal: AbortSignal.timeout(BOOK_TTS_TIMEOUT_MS),

@@ -26,7 +26,7 @@ import { AiProviderError, type AiAudience, type AiCapability, type AiDataClass, 
 import type { ModelRoute } from "./modelRouter";
 import { liveCandidatesFor, realtimePolicyFor } from "./liveResidency";
 import { ttsCandidateFor, ttsCapabilityRequest, ttsEndpointFor } from "../server/tts";
-import { bookTtsCandidate } from "../server/bookNarration";
+import { bookTtsCandidate, bookTtsEndpoint } from "../server/bookNarration";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..");
@@ -291,6 +291,37 @@ describe("B-AIOPS-08 — AI caller inventory matches the source and the policy",
     try { selectProvider(declared, routePolicyFor(PROD), [stripped]); } catch (error) { expect((error as AiProviderError).code).toBe("policy_denied"); }
     expect(selectProvider(declared, routePolicyFor(PROD), [candidate]).selected.ref.region).toBe("eu");
     expect(read("server/bookNarration.ts")).toMatch(/audience: "child", locale: [^,]+, dataClasses: \["child_profile"\]/);
+  });
+
+  it("book narration calls the EU endpoint when BOOK_TTS_ENDPOINT is unset (gap 4, closed 19 Nov 2026)", () => {
+    const saved = process.env.BOOK_TTS_ENDPOINT;
+    const yaml = readFileSync(path.join(REPO, "cloudbuild.prod.yaml"), "utf8");
+    const envLine = yaml.split("\n").map((l) => l.trim()).find((l) => l.startsWith("- ^|^")) ?? "";
+    delete process.env.BOOK_TTS_ENDPOINT;
+    try {
+      const request = {
+        capability: "speech_synthesis" as const,
+        route: "creative_low_risk" as const,
+        audience: "child" as const,
+        locale: "he" as const,
+        dataClasses: ["child_profile"] as const,
+        risk: "low" as const,
+      };
+      expect(bookTtsEndpoint(PROD.vertexLocation)).toBe("https://eu-texttospeech.googleapis.com");
+      expect(bookTtsCandidate(bookTtsEndpoint(PROD.vertexLocation)).ref.region).toBe("eu");
+      expect(selectProvider(request, routePolicyFor(PROD), [bookTtsCandidate(bookTtsEndpoint(PROD.vertexLocation))]).selected.ref.region).toBe("eu");
+      expect(bookTtsEndpoint("")).toBe("https://texttospeech.googleapis.com");
+      expect(() => selectProvider(request, routePolicyFor(PROD), [bookTtsCandidate(bookTtsEndpoint(""))])).toThrow(AiProviderError);
+      process.env.BOOK_TTS_ENDPOINT = "https://texttospeech.googleapis.com/";
+      expect(bookTtsEndpoint(PROD.vertexLocation)).toBe("https://texttospeech.googleapis.com");
+      const narration = read("server/bookNarration.ts");
+      expect(narration).toMatch(/bookTtsEndpoint\(config\.vertexLocation\)/);
+      expect(narration).toContain("fetch(`${endpoint}/v1/text:synthesize`");
+      expect(envLine.split("|").filter((entry) => entry.startsWith("BOOK_TTS_ENDPOINT="))).toEqual(["BOOK_TTS_ENDPOINT=https://eu-texttospeech.googleapis.com"]);
+    } finally {
+      if (saved === undefined) delete process.env.BOOK_TTS_ENDPOINT;
+      else process.env.BOOK_TTS_ENDPOINT = saved;
+    }
   });
 
   it("read-aloud calls the endpoint of the region it declares (gap 6, closed 15 Nov 2026)", () => {
