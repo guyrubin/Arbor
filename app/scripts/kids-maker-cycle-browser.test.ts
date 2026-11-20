@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, makerStage390Scope, nativeMakerScene, readCrankJointState, readMakerCanvasPaint, testCrankJointOnce, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
+import { controlledCanvasCapture, hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, makerStage390Scope, nativeMakerScene, readCrankJointState, readMakerCanvasPaint, testCrankJointOnce, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
 
 describe('B-KID-174 canonical 390px stage evidence', () => {
   it('keeps the seven named maker scenes and both EN/HE Safari phone cells', () => {
@@ -9,6 +9,8 @@ describe('B-KID-174 canonical 390px stage evidence', () => {
     expect(viewports.every(viewport => viewport.w === 390 && viewport.h === 664)).toBe(true);
     expect(new Set(gameIds).size).toBe(7);
     expect(makerCycleGames(gameIds).map(game => game.id).sort()).toEqual([...gameIds].sort());
+    expect(controlledCanvasCapture('windup-race')).toBe('.wr-canvas');
+    expect(controlledCanvasCapture('ice-age-friend')).toBeNull();
   });
 });
 
