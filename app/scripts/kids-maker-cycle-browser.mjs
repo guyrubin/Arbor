@@ -725,7 +725,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds, vi
           // A viewport capture does not resize/clear this canvas's backing store.
           // The ordinary full-page evidence remains unchanged for other games.
           await page.screenshot({ path: path.join(folder, name), fullPage: !resumeForCapture, animations: 'disabled' });
-          record.screenshots.push(`maker-cycles/${name}`);
+          record.screenshots.push(`${evidenceSubdirectory}/${name}`);
           if (paint) {
             paint.after = await page.evaluate(readMakerCanvasPaint, canvasSelector);
             assert.ok(hasMakerCanvasPaint(paint.after), 'The captured maker scene remains painted, not an empty canvas');
