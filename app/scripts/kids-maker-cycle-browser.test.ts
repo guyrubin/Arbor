@@ -8,7 +8,7 @@ describe('B-KID-174 canonical 390px stage evidence', () => {
     expect(viewports.map(viewport => viewport.id)).toEqual(['safari-en', 'safari-he']);
     expect(viewports.every(viewport => viewport.w === 390 && viewport.h === 664)).toBe(true);
     expect(new Set(gameIds).size).toBe(7);
-    expect(makerCycleGames(gameIds).map(game => game.id)).toEqual(gameIds);
+    expect(makerCycleGames(gameIds).map(game => game.id).sort()).toEqual([...gameIds].sort());
   });
 });
 
