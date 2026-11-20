@@ -9,6 +9,7 @@ import { purgeAllComicPages } from "../../lib/comicPageStore";
 import { purgeAllHeroRenders } from "../../lib/heroRenderStore";
 import { readPendingErases } from "../../lib/pendingErase";
 import { commerceAllowed } from "../kidmode/parentGate";
+import { markAccountDeleted } from "../../lib/accountDeletedNotice";
 
 /**
  * STORE-4 — full account deletion. Only a complete server receipt wipes the
@@ -123,7 +124,8 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       if (receipt.complete) {
         await wipeDeviceData(ownsAccount);
         if (!ownsAccount()) return;
-        toast(t("set.acctDel.done"), "success", undefined, { outlivesVisit: true });
+        // The shell unmounts on sign-out, so the line is said on the sign-in screen.
+        markAccountDeleted();
         onClose();
         await signOut();
       } else if (isCurrent()) {

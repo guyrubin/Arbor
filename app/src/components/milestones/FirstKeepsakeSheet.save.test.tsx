@@ -2,6 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "../../lib/i18n";
+import { clearVisitReceipt, currentVisitReceipt } from "../../lib/visitReceipt";
 
 /* v3 F-CHILD-1 — a keepsake's receipt follows the write. "Kept" (or
    "removed") toasts, and the sheet closes, only after onSave / onRemove
@@ -83,7 +84,7 @@ const render = (onSave: (draft: unknown) => Promise<unknown>, onRemove: () => Pr
   );
 };
 
-beforeEach(() => { vi.clearAllMocks(); h.buttons = {}; h.note = null; h.uid = "account-a"; h.keepState = false; h.hooks = []; h.cursor = 0; });
+beforeEach(() => { vi.clearAllMocks(); clearVisitReceipt(); h.buttons = {}; h.note = null; h.uid = "account-a"; h.keepState = false; h.hooks = []; h.cursor = 0; });
 
 describe("v3 F-CHILD-1 — the keepsake receipt waits for the write", () => {
   it("Save: no 'Kept' and no close while the write is in flight; both after it resolved", async () => {
@@ -99,8 +100,8 @@ describe("v3 F-CHILD-1 — the keepsake receipt waits for the write", () => {
     expect(onClose).not.toHaveBeenCalled();
     write.resolve();
     await tick();
-    expect(h.toast).toHaveBeenCalledOnce();
-    expect(h.toast).toHaveBeenCalledWith(en("elev.waveR.keepsake.saved"), "success");
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(currentVisitReceipt()?.text).toBe(en("elev.waveR.keepsake.saved"));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -113,7 +114,7 @@ describe("v3 F-CHILD-1 — the keepsake receipt waits for the write", () => {
     await tick();
     expect(h.toast).toHaveBeenCalledOnce();
     expect(h.toast).toHaveBeenCalledWith(en("elev.waveR.keepsake.saveFailed"), "error");
-    expect(h.toast).not.toHaveBeenCalledWith(en("elev.waveR.keepsake.saved"), expect.anything());
+    expect(currentVisitReceipt()).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });
 

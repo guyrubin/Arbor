@@ -158,14 +158,15 @@ if (process.env.TOAST_BASELINE_WRITE === "1") {
 
 describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink-only ratchet", () => {
   it("the scan reads the real corpus (non-vacuity)", () => {
-    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines; 80 call
-    // sites remain (errors and Undo included). The bar holds at 80 (critic r1:
-    // a non-vacuity floor is never lowered to fit a conversion).
-    expect(SITES.length).toBeGreaterThanOrEqual(80);
+    // The last literal success toasts (plan woven, insight kept, and the six
+    // other success calls) became receipts. 73 call sites remain: errors,
+    // info, Undo, and forwarding wrappers. The floor is that remaining count.
+    expect(SITES.length).toBeGreaterThanOrEqual(73);
     const kinds = new Set(SITES.map((s) => s.kind));
-    for (const k of ["error", "action", "success", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
-    // a known file, counted by hand: ArborContext's two success toasts (plan woven, analysis kept)
-    expect(CURRENT["context/ArborContext.tsx"]?.success).toBe(2);
+    for (const k of ["error", "action", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
+    expect(kinds.has("success"), "a success toast came back").toBe(false);
+    expect(totals(CURRENT).success).toBe(0);
+    expect(CURRENT["context/ArborContext.tsx"]?.success).toBeUndefined();
     // the capture tray's keep toast carries its Undo: an action, never a success
     expect(SITES.filter((s) => s.file === "components/capture/CaptureProposalsTray.tsx" && s.kind === "action")).toHaveLength(1);
   });

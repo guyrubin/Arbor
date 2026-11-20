@@ -7,9 +7,9 @@ import { commerceAllowed } from "../components/kidmode/parentGate";
 import { trackCheckoutStart, type CheckoutSurface } from "../lib/kpiEvents";
 import { checkoutCurrency } from "../lib/pricing";
 import { cachedEntitlement } from "./useEntitlement";
+import { showVisitReceipt } from "../lib/visitReceipt";
 import {
   defaultDeps,
-  manageFallbackKey,
   performCheckout,
   performOpenPortal,
   performRestore,
@@ -79,7 +79,10 @@ export function useCheckout() {
 
   const applyEffects = (fx: OutcomeEffects) => {
     if (fx.close) arbor?.closePaywall();
-    if (fx.toastKey) toast(t(fx.toastKey), fx.tone);
+    if (!fx.toastKey) return;
+    // A purchase or a restore closes the paywall. The line stays on the shell.
+    if (fx.tone === "success") { showVisitReceipt(t(fx.toastKey)); return; }
+    toast(t(fx.toastKey), fx.tone);
   };
 
   const startCheckout = async (plan: PaidPlan, cadence: Cadence, surface: CheckoutSurface) => {
@@ -115,19 +118,21 @@ export function useCheckout() {
     }
   };
 
-  const openPortal = async () => {
-    if (busy) return;
+  const openPortal = async (): Promise<"unavailable" | "opened" | "blocked" | "busy"> => {
+    if (busy) return "busy";
     // STORE-3: subscription management is commerce — same math-exit gate.
     if (!commerceAllowed()) {
       toast(t("elev.gate.blocked"), "info");
-      return;
+      return "blocked";
     }
     setBusy(true);
     try {
       const result = await performOpenPortal(defaultDeps());
       // B-GA-13: a web purchase is cancelled in RevenueCat's portal, never in a
-      // store, so a parent without a link is told where else to cancel.
-      if (result === "unavailable") toast(t(manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider)), "success");
+      // store. The caller says where else to cancel, on the settings row that
+      // stayed open — a toast here used to answer from the corner.
+      if (result === "unavailable") return "unavailable";
+      return "opened";
     } finally {
       setBusy(false);
     }

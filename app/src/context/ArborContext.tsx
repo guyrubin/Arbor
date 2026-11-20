@@ -1786,7 +1786,8 @@ function useArborState() {
       const planProps = trackPlanGenerated({ steps: planSteps, source: "plans" });
       trackFirstPlan(planProps); // activation: only the family's first plan
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
-      toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
+      // B-STATUS-01: PlansTab already draws the started receipt where the plan
+      // landed. A second success toast said the same thing off to the side.
     } catch (err: any) {
       // B-ASKJB-49 r2: a 409 renders the crisis card and logs nothing.
       if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");
@@ -1825,7 +1826,8 @@ function useArborState() {
     };
     void insightsCol.upsert(row);
     try { track("insight_kept", { source: "behavior-analysis" }); } catch { /* noop */ }
-    toast(t("beh.analysis.kept", { name: (childProfile.name || "").split(" ")[0] }), "success");
+    // B-STATUS-01: the surface that offered Keep draws the receipt under its
+    // own action bar. This write stays here; the line does not.
   };
   const keptInsights = useMemo(() => insightsCol.items.filter((r) => r.kind === "kept-insight"), [insightsCol.items]);
 
