@@ -71,12 +71,12 @@ export function nativeMakerScene(gameId) {
   }[gameId] ?? null;
 }
 
-/** Wind-up Racer draws to a live 2D canvas while the other controlled-clock
- * maker flows are fast-forwarded. A paused RAF plus Chromium's full-page
- * capture can produce an empty picture even as inputs and completion pass.
- * Run RAF only around its visible snapshots; keep all game actions genuine. */
+/** Wind-up Racer and Tiny Structures draw live 2D canvases while the other
+ * controlled-clock maker flows fast-forward. A paused RAF and Chromium's
+ * full-page resize can produce an empty PNG even when input/completion pass.
+ * Require actual painted pixels with RAF running for visible screenshots. */
 export function controlledCanvasCapture(gameId) {
-  return gameId === 'windup-race' ? '.wr-canvas' : null;
+  return { 'windup-race': '.wr-canvas', 'tiny-builders': '[data-tiny-canvas]' }[gameId] ?? null;
 }
 
 export async function waitForNativeMakerOpening(page, gameId) {

@@ -10,6 +10,7 @@ describe('B-KID-174 canonical 390px stage evidence', () => {
     expect(new Set(gameIds).size).toBe(7);
     expect(makerCycleGames(gameIds).map(game => game.id).sort()).toEqual([...gameIds].sort());
     expect(controlledCanvasCapture('windup-race')).toBe('.wr-canvas');
+    expect(controlledCanvasCapture('tiny-builders')).toBe('[data-tiny-canvas]');
     expect(controlledCanvasCapture('ice-age-friend')).toBeNull();
   });
 });
