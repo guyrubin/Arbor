@@ -108,6 +108,13 @@ jobs:
           name: kids-maker-cycle-evidence
           path: app/output/kids-performance/maker-cycles
           retention-days: 7
+      - name: Retain B-KID-174 390px maker stage evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kids-maker-stage-390-evidence
+          path: app/output/kids-performance/maker-stage-390
+          retention-days: 7
       - name: Retain additional activity browser evidence
         if: always()
         uses: actions/upload-artifact@v4
