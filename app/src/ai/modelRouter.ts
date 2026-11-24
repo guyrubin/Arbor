@@ -5,8 +5,8 @@ import { ClaudeVertexProvider } from "./claudeVertexProvider.js";
 import { abortableIterate, isAbortError, isTransientModelError, newRetryAccounting, raceWithAbort, usageFromError, withModelRetry, type ModelCallBudget } from "./modelRetry.js";
 import { recordChargedFailures, recordUsage, startCallTimer, type UsageMeta } from "./usage.js";
 import { providerRegion, routePolicyFor, selectProvider, type ProviderCandidate } from "./capabilities/policy.js";
-import type { AiEntitlement, CapabilityRequest } from "./capabilities/contracts.js";
-import { candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
+import { AiProviderError, type AiEntitlement, type CapabilityRequest } from "./capabilities/contracts.js";
+import { buildCandidate, candidatesFor, defaultCandidateFor } from "./capabilities/candidates.js";
 import { MockModelProvider } from "./mockProvider.js";
 import { vertexApiEndpoint } from "./vertexEndpoint.js";
 
@@ -194,7 +194,26 @@ export const modelForGeminiRequest = (config: ArborConfig, route: ModelRoute, im
   if (!multimodalModel) {
     throw new Error("No Gemini model is configured for multimodal image requests.");
   }
-  return multimodalModel;
+  // B-AIOPS-08 gap 5: the swap is a new provider choice. It runs the same
+  // fixed request as routeDecisionFor (gap 1 still owns the true image
+  // request) and fails closed. Production chat is Gemini, so this does not
+  // run until a Claude route carries an image.
+  if (config.modelProvider !== "vertex") {
+    throw new AiProviderError("policy_denied", "Multimodal fallback is only eligible on the Vertex Gemini provider", false);
+  }
+  const decision = selectProvider(
+    {
+      capability: "structured_text",
+      route,
+      audience: "parent",
+      locale: "en",
+      dataClasses: ["child_profile"],
+      risk: route === "coach_high_stakes" ? "high" : "moderate",
+    },
+    routePolicyFor(config),
+    [buildCandidate(config, "vertex_gemini", multimodalModel)],
+  );
+  return decision.selected.ref.model;
 };
 
 /** B-PROV-07: policy-enforced decision over the route's candidate list;

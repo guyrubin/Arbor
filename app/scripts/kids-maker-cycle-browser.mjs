@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { RELEASE_VIEWPORTS } from './capture/release-config.mjs';
+import { RELEASE_VIEWPORTS, DEVICE_VIEWPORTS } from './capture/release-config.mjs';
 import { installGameCycleAudioProbe, verifyStudioResultScene } from './kids-game-cycle-browser.mjs';
 import { bounceDragOffset, readPaintedBounceBall } from './kids-maker-bounce-vision.mjs';
 
@@ -27,6 +27,19 @@ const GAMES = [
   { id: 'calm-builder', world: 'feelings', selector: '.studio-corner', creation: 'corner' },
   { id: 'sneak', world: 'playbank', selector: '[data-sneak-stage]' },
 ];
+
+/** B-KID-174: the seven named maker stages need real 390px phone evidence,
+ * not inference from the 375px release cell. Uses the canonical device boxes,
+ * synthetic profiles and the same genuine complete-play/replay/exit driver.
+ * No child likeness, physical iPhone, editorial or live-family proof. */
+export function makerStage390Scope() {
+  const gameIds = ['ice-age-friend', 'fox-trail', 'windup-race', 'tiny-builders', 'stitch-garden', 'paper-boat', 'season-dial'];
+  const viewports = DEVICE_VIEWPORTS.filter(viewport => viewport.id.startsWith('safari-'));
+  assert.equal(viewports.length, 2, 'B-KID-174 requires both canonical Safari EN/HE cells');
+  assert.deepEqual(viewports.map(viewport => viewport.lang), ['en', 'he'], 'Both approved languages are operated');
+  assert.equal(makerCycleGames(gameIds).length, 7, 'All seven source-listed stages have a real-input driver');
+  return { gameIds, viewports };
+}
 
 /** Only an explicit diagnostic call may narrow the complete release matrix. */
 export function makerCycleGames(gameIds) {
@@ -56,6 +69,14 @@ export function nativeMakerScene(gameId) {
     'crank-works': { opening: '.ck-world[data-crank-phase="playing"]', canvas: '.ck-canvas' },
     'bottle-lab': { opening: '[data-adventure="bottle-lab"][data-act="shape"]', canvas: '[data-bl-canvas]' },
   }[gameId] ?? null;
+}
+
+/** Wind-up Racer and Tiny Structures draw live 2D canvases while the other
+ * controlled-clock maker flows fast-forward. A paused RAF and Chromium's
+ * full-page resize can produce an empty PNG even when input/completion pass.
+ * Require actual painted pixels with RAF running for visible screenshots. */
+export function controlledCanvasCapture(gameId) {
+  return { 'windup-race': '.wr-canvas', 'tiny-builders': '[data-tiny-canvas]' }[gameId] ?? null;
 }
 
 export async function waitForNativeMakerOpening(page, gameId) {
@@ -631,18 +652,23 @@ async function playOtherMaker(h, game) {
   throw new Error(`Missing real-input driver for ${game.id}`);
 }
 
-export async function verifyMakerGameCycles({ browser, base, output, gameIds }) {
-  const games = makerCycleGames(gameIds), expectedCells = games.length * RELEASE_VIEWPORTS.length;
-  if (gameIds === undefined) assert.equal(expectedCells, 60, 'The default release gate must operate all sixty cells');
-  const folder = path.join(output, 'maker-cycles'); await mkdir(folder, { recursive: true });
+export async function verifyMakerGameCycles({ browser, base, output, gameIds, viewports = RELEASE_VIEWPORTS, evidenceSubdirectory = 'maker-cycles' }) {
+  const games = makerCycleGames(gameIds);
+  assert.ok(Array.isArray(viewports) && viewports.length > 0, 'Maker acceptance requires actual canonical device cells');
+  assert.equal(new Set(viewports.map(viewport => viewport.id)).size, viewports.length, 'Device cells cannot be repeated');
+  for (const viewport of viewports) assert.ok(DEVICE_VIEWPORTS.includes(viewport), 'Unregistered maker acceptance viewport');
+  assert.match(evidenceSubdirectory, /^maker-[a-z0-9-]+$/, 'Evidence folder must be a single safe component');
+  const expectedCells = games.length * viewports.length;
+  if (gameIds === undefined && viewports === RELEASE_VIEWPORTS) assert.equal(expectedCells, 60, 'The default release gate must operate all sixty cells');
+  const folder = path.join(output, evidenceSubdirectory); await mkdir(folder, { recursive: true });
   const rows = [], failures = [], origin = new URL(base).origin;
-  const cells = RELEASE_VIEWPORTS.flatMap(viewport => games.map(game => ({ viewport, game })));
+  const cells = viewports.flatMap(viewport => games.map(game => ({ viewport, game })));
   let summaryWrites = Promise.resolve();
   const persist = async (index, record) => {
     await writeFile(path.join(folder, `${record.game}-${record.viewport}.json`), JSON.stringify(record, null, 2));
     rows[index] = record;
     const completed = rows.filter(Boolean);
-    const summary = JSON.stringify({ scope: gameIds === undefined ? 'full-release-matrix' : 'explicit-game-filter', gameIds: games.map(game => game.id), complete: completed.length === expectedCells, expected: expectedCells, passed: completed.filter(row => row.passed).length, failed: completed.filter(row => !row.passed).length, rows: completed }, null, 2);
+    const summary = JSON.stringify({ scope: gameIds === undefined && viewports === RELEASE_VIEWPORTS ? 'full-release-matrix' : evidenceSubdirectory === 'maker-stage-390' ? 'B-KID-174-safari-390-synthetic' : 'explicit-filter', gameIds: games.map(game => game.id), complete: completed.length === expectedCells, expected: expectedCells, passed: completed.filter(row => row.passed).length, failed: completed.filter(row => !row.passed).length, rows: completed }, null, 2);
     // Every cell has its own artifacts. Only this small manifest is shared;
     // serialize and atomically replace it so partial evidence stays readable.
     summaryWrites = summaryWrites.then(async () => {
@@ -654,7 +680,7 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
   };
   const runCell = async ({ viewport, game }, index) => {
     const started = Date.now();
-    const phone = viewport.id.startsWith('mobile-');
+    const phone = viewport.id.startsWith('mobile-') || viewport.id.startsWith('safari-');
     const nativeScene = nativeMakerScene(game.id), nativeClock = !!nativeScene;
     const context = await browser.newContext({ viewport: { width: viewport.w, height: viewport.h }, reducedMotion: 'reduce', hasTouch: phone, isMobile: phone });
     const errors = [], brokenResources = [], unexpectedRequests = [], fixtureRequests = [];
@@ -683,18 +709,29 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
       const shots = new Set();
       const snapshot = async label => {
         if (shots.has(label)) return; shots.add(label);
-        const inspectPaint = nativeScene?.canvas && !['intro', 'result', 'home', 'failed'].includes(label);
+        const controlledCanvas = !nativeClock ? controlledCanvasCapture(game.id) : null;
+        const canvasSelector = nativeScene?.canvas ?? controlledCanvas;
+        const inspectPaint = canvasSelector && !['intro', 'result', 'home', 'failed'].includes(label);
+        const resumeForCapture = !!(controlledCanvas && inspectPaint);
         let paint;
-        if (inspectPaint) {
-          paint = { snapshot: label, selector: nativeScene.canvas, before: [] };
-          (record.canvasPaint ??= []).push(paint);
-          nativeWaitMs += await waitForMakerCanvasPaint(page, nativeScene.canvas, paint.before);
-        }
-        const name = `${stem}-${label}.png`; await page.screenshot({ path: path.join(folder, name), fullPage: true, animations: 'disabled' });
-        record.screenshots.push(`maker-cycles/${name}`);
-        if (paint) {
-          paint.after = await page.evaluate(readMakerCanvasPaint, nativeScene.canvas);
-          assert.ok(hasMakerCanvasPaint(paint.after), 'Native capture preserves the actually painted scene; the original PNG and pixel statistics are retained');
+        if (resumeForCapture) await page.clock.resume();
+        try {
+          if (inspectPaint) {
+            paint = { snapshot: label, selector: canvasSelector, before: [] };
+            (record.canvasPaint ??= []).push(paint);
+            nativeWaitMs += await waitForMakerCanvasPaint(page, canvasSelector, paint.before);
+          }
+          const name = `${stem}-${label}.png`;
+          // A viewport capture does not resize/clear this canvas's backing store.
+          // The ordinary full-page evidence remains unchanged for other games.
+          await page.screenshot({ path: path.join(folder, name), fullPage: !resumeForCapture, animations: 'disabled' });
+          record.screenshots.push(`${evidenceSubdirectory}/${name}`);
+          if (paint) {
+            paint.after = await page.evaluate(readMakerCanvasPaint, canvasSelector);
+            assert.ok(hasMakerCanvasPaint(paint.after), 'The captured maker scene remains painted, not an empty canvas');
+          }
+        } finally {
+          if (resumeForCapture) await pauseMakerClock(page);
         }
       };
       let controlledMs = 0, nativeWaitMs = 0, lastState = '';
@@ -896,6 +933,6 @@ export async function verifyMakerGameCycles({ browser, base, output, gameIds }) 
   await summaryWrites;
   const allFailures = [...failures.filter(Boolean), ...workers.filter(worker => worker.status === 'rejected').map(worker => worker.reason)];
   assert.equal(rows.filter(Boolean).length, expectedCells, 'Every requested game and viewport cell was operated');
-  if (allFailures.length) throw new AggregateError(allFailures, `${failures.filter(Boolean).length}/${rows.length} curated maker cells failed; see maker-cycles/summary.json`);
+  if (allFailures.length) throw new AggregateError(allFailures, `${failures.filter(Boolean).length}/${rows.length} curated maker cells failed; see ${evidenceSubdirectory}/summary.json`);
   return rows;
 }

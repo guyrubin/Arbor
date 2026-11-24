@@ -1,5 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, nativeMakerScene, readCrankJointState, readMakerCanvasPaint, testCrankJointOnce, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
+import { controlledCanvasCapture, hasMakerCanvasPaint, iceAgeCycleSteps, makerCycleGames, makerStage390Scope, nativeMakerScene, readCrankJointState, readMakerCanvasPaint, testCrankJointOnce, waitForBottleFinish, waitForMakerCanvasPaint, waitForNativeMakerOpening, withMakerPreviewTime } from './kids-maker-cycle-browser.mjs';
+
+describe('B-KID-174 canonical 390px stage evidence', () => {
+  it('keeps the seven named maker scenes and both EN/HE Safari phone cells', () => {
+    const { gameIds, viewports } = makerStage390Scope();
+    expect(gameIds).toEqual(['ice-age-friend', 'fox-trail', 'windup-race', 'tiny-builders', 'stitch-garden', 'paper-boat', 'season-dial']);
+    expect(viewports.map(viewport => viewport.id)).toEqual(['safari-en', 'safari-he']);
+    expect(viewports.every(viewport => viewport.w === 390 && viewport.h === 664)).toBe(true);
+    expect(new Set(gameIds).size).toBe(7);
+    expect(makerCycleGames(gameIds).map(game => game.id).sort()).toEqual([...gameIds].sort());
+    expect(controlledCanvasCapture('windup-race')).toBe('.wr-canvas');
+    expect(controlledCanvasCapture('tiny-builders')).toBe('[data-tiny-canvas]');
+    expect(controlledCanvasCapture('ice-age-friend')).toBeNull();
+  });
+});
 
 const allSteps = ['frost', 'hello', 'trace', 'brush', 'feed', 'part', 'scout', 'walk', 'low'];
 const withoutBrush = allSteps.filter(step => step !== 'brush');

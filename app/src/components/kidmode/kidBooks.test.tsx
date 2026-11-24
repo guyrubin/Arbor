@@ -95,6 +95,32 @@ describe("kidBooks — the one list", () => {
     expect(books.find(b => b.story.id === "jonah-and-the-great-fish")?.state).toBe("new");
   });
 
+  it("B-BOOK-51: impossible civil dates cannot invent completion or displace valid history", () => {
+    const books = kidBooks({
+      lang: "en", ageMonths: null, showAllAges: true, hasCover: () => true,
+      nowMs: Date.parse("2026-11-17T08:00:00Z"),
+      runs: [
+        // JavaScript Date.parse normalizes these to March 2 and May 1.
+        { storyId: "noahs-ark", completedAt: "2026-02-30T12:00:00Z" },
+        { storyId: "jonah-and-the-great-fish", completedAt: "2026-04-31T12:00:00+02:00" },
+        // 2026 is not a leap year; a valid opening remains just started.
+        { storyId: "joseph-and-his-brothers", startedAt: "2026-02-28T12:00:00Z", completedAt: "2026-02-29T12:00:00Z" },
+        // 2024 is a leap year, and offset conversion must still work.
+        { storyId: "moses-and-pharaoh", completedAt: "2024-02-29T12:00:00+02:00" },
+        { storyId: "jacob-wrestling-the-angel", startedAt: "2026-11-16T15:00:00-02:00" },
+        { storyId: "david-and-goliath", completedAt: "2026-11-16T24:00:00Z" },
+      ],
+    });
+    expect(books.slice(0, 3).map(b => [b.story.id, b.state])).toEqual([
+      ["jacob-wrestling-the-angel", "started"],
+      ["joseph-and-his-brothers", "started"],
+      ["moses-and-pharaoh", "finished"],
+    ]);
+    for (const id of ["noahs-ark", "jonah-and-the-great-fish", "david-and-goliath"]) {
+      expect(books.find(b => b.story.id === id)?.state, id).toBe("new");
+    }
+  });
+
   it("B-BOOK-51: later rereading never removes genuine prior completion", () => {
     const books = kidBooks({
       lang: "en", ageMonths: null, showAllAges: true, hasCover: () => true,
