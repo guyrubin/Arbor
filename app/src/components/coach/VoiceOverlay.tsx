@@ -1,3 +1,4 @@
+import type { VoicePhase } from "../../lib/voiceChipAction";
 import React from "react";
 import { createPortal } from "react-dom";
 import { useDialog } from "../../hooks/useDialog";
@@ -27,13 +28,13 @@ import { translate, type UiLang } from "../../lib/i18n";
  * usePrefersReducedMotion) renders static phase states — no keyframes, no
  * mic-driven motion — while keeping the phases distinct by shape.
  *
- * Tap-orb = barge-in (AI-V2(a), browser fallback loop only), X = end voice.
+ * The browser turn can be finished or interrupted with the orb. X ends the conversation.
  */
 
 // S5: "connecting" joins the phase set — the sheet opens the instant the
 // parent taps Talk, BEFORE the token mint / mic prompt / socket connect, so
 // the start window is a visible (and cancellable via X) state, never silence.
-export type VoiceOverlayPhase = "connecting" | "listening" | "thinking" | "speaking";
+export type VoiceOverlayPhase = Exclude<VoicePhase, "off">;
 
 export type OrbMode = "pulse" | "shimmer" | "wave" | "static";
 
@@ -43,7 +44,7 @@ export type OrbMode = "pulse" | "shimmer" | "wave" | "static";
 export function orbMode(phase: VoiceOverlayPhase, reducedMotion: boolean): OrbMode {
   if (reducedMotion) return "static";
   if (phase === "listening") return "pulse";
-  if (phase === "thinking" || phase === "connecting") return "shimmer";
+  if (phase === "thinking" || phase === "connecting" || phase === "transcribing") return "shimmer";
   return "wave";
 }
 
@@ -65,6 +66,7 @@ export default function VoiceOverlay({
   canInterrupt,
   reducedMotion,
   recording = false,
+  onFinishTurn,
   onOrbTap,
   onClose,
 }: {
@@ -80,6 +82,7 @@ export default function VoiceOverlay({
   /** True only on the browser fallback loop while speaking (AI-V2(a)). */
   canInterrupt: boolean;
   reducedMotion: boolean;
+  onFinishTurn?: () => void;
   onOrbTap: () => void;
   onClose: () => void;
 }) {
@@ -165,9 +168,9 @@ export default function VoiceOverlay({
           )}
           <button
             type="button"
-            onClick={onOrbTap}
-            disabled={!canInterrupt}
-            aria-label={canInterrupt ? t("coach.voice.interrupt") : phaseLabel}
+            onClick={onFinishTurn ?? onOrbTap}
+            disabled={!onFinishTurn && !canInterrupt}
+            aria-label={onFinishTurn ? t("coach.voice.finishTurn") : canInterrupt ? t("coach.voice.interrupt") : phaseLabel}
             className="relative flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-default"
             style={{
               background: "var(--arbor-green-soft)",
@@ -198,7 +201,7 @@ export default function VoiceOverlay({
                 ))}
               </span>
             ) : (
-              <Icon name={phase === "listening" ? "mic" : phase === "connecting" ? "progress_activity" : "more_horiz"} size={34} fill={1} />
+              <Icon name={onFinishTurn ? "stop" : phase === "listening" ? "mic" : phase === "connecting" ? "progress_activity" : "more_horiz"} size={34} fill={1} />
             )}
           </button>
         </div>
@@ -210,6 +213,7 @@ export default function VoiceOverlay({
             <RecordingLine label={t("elev.rec.on")} testId="voice-recording-line" />
           </div>
         )}
+        {onFinishTurn && <p className="mt-2 text-[12px] font-bold">{t("coach.voice.finishTurn")}</p>}
         {canInterrupt && (
           <p className="mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
             {t("coach.voice.interrupt")}

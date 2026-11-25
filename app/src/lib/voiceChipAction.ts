@@ -16,7 +16,7 @@
  *    state is painted synchronously, so the tap-to-cancel affordance is real).
  */
 
-export type VoicePhase = "off" | "connecting" | "listening" | "thinking" | "speaking";
+export type VoicePhase = "off" | "connecting" | "transcribing" | "listening" | "thinking" | "speaking";
 
 export type VoiceChipAction = "start" | "interrupt" | "stop";
 

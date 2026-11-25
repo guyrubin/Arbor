@@ -65,7 +65,7 @@ describe("AI-CAP-6 — live interim transcript in the capture area", () => {
 
   it("dictation runs continuous with the silence-finalize window (a pause never truncates the moment)", () => {
     expect(modal).toMatch(/\{ continuous: true \}/);
-    expect(stripComments(read("lib/speech.ts"))).toContain("opts.silenceFinalizeMs ?? 4500");
+    expect(stripComments(read("lib/speech.ts"))).toContain("opts.continuous ? 4500 : undefined");
   });
 
   it("the interim caption resets when the session ends (no stale words on the next capture)", () => {
@@ -74,7 +74,7 @@ describe("AI-CAP-6 — live interim transcript in the capture area", () => {
   });
 
   it("CoachTab opts out intentionally — its dictation loop stays single-shot per cycle (no continuous opts)", () => {
-    expect(coach).not.toMatch(/silenceFinalizeMs/);
+    expect(coach).toContain("maxEmptyRestarts: 0, silenceFinalizeMs: 2000");
     expect(coach).not.toMatch(/continuous: true/);
   });
 });
