@@ -115,7 +115,7 @@ describe("B-VOICE-02 · the card's words are spoken BEFORE the microphone opens,
 describe("B-VOICE-08 · the voice sheet names itself as AI", () => {
   it.each(["en", "he"] as const)("%s: the approved Talk identity rides beside the phase", lang => {
     const html = renderToStaticMarkup(React.createElement(VoiceOverlay, {
-      phase: "connecting", lang, interimText: "", answerText: "", canInterrupt: false, reducedMotion: true, onOrbTap: () => {}, onClose: () => {},
+      phase: "connecting", lang, interimText: "", answerText: "", canInterrupt: false, reducedMotion: true, onStopRecording: () => {}, onResume: () => {}, onOrbTap: () => {}, onClose: () => {},
     }));
     expect(html).toContain('data-testid="voice-ai-identity"');
     expect(html).toContain(translate(lang, "elev.aihonesty.coachStatus"));

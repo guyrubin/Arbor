@@ -28,8 +28,8 @@ import { translate, type UiLang } from "../../lib/i18n";
  * usePrefersReducedMotion) renders static phase states — no keyframes, no
  * mic-driven motion — while keeping the phases distinct by shape.
  *
- * During capture the primary button finishes browser dictation or ends Live.
- * The X ends the conversation in every phase.
+ * The primary control stops capture or starts it again. Back to chat exits
+ * the voice sheet from any phase.
  */
 
 // S5: "connecting" joins the phase set — the sheet opens the instant the
@@ -43,7 +43,7 @@ export type OrbMode = "pulse" | "shimmer" | "wave" | "static";
  *  connecting shares the shimmer animation with thinking but keeps its own
  *  icon + label, so the phases stay distinguishable without reading text. */
 export function orbMode(phase: VoiceOverlayPhase, reducedMotion: boolean): OrbMode {
-  if (reducedMotion) return "static";
+  if (reducedMotion || phase === "paused") return "static";
   if (phase === "listening") return "pulse";
   if (phase === "thinking" || phase === "connecting" || phase === "transcribing") return "shimmer";
   return "wave";
@@ -67,7 +67,8 @@ export default function VoiceOverlay({
   canInterrupt,
   reducedMotion,
   recording = false,
-  onFinishTurn,
+  onStopRecording,
+  onResume,
   onOrbTap,
   onClose,
 }: {
@@ -83,7 +84,8 @@ export default function VoiceOverlay({
   /** True only on the browser fallback loop while speaking (AI-V2(a)). */
   canInterrupt: boolean;
   reducedMotion: boolean;
-  onFinishTurn?: () => void;
+  onStopRecording: () => void;
+  onResume: () => void;
   onOrbTap: () => void;
   onClose: () => void;
 }) {
@@ -91,7 +93,7 @@ export default function VoiceOverlay({
   const mode = orbMode(phase, reducedMotion);
   const { ref: dialogRef, requestClose } = useDialog<HTMLElement>({ open: true, onClose });
   const phaseLabel = t(`coach.voice.${phase}`);
-  const stopLabel = onFinishTurn ? t("coach.voice.finishTurn") : t("elev.rec.stopAria");
+  const paused = phase === "paused";
   // F-TALK-1: beside a wide page (>= 1280 px) the conversation is a docked
   // panel, so the sheet rises inside that panel, never over the page beside
   // it. Below 1280 px the panel is full-screen and the sheet stays fixed.
@@ -133,8 +135,8 @@ export default function VoiceOverlay({
         `}</style>
       )}
 
-      <div className="flex items-center gap-2">
-        <span className="text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span role="status" className="text-[12px] font-extrabold uppercase tracking-[0.14em]" style={{ color: "var(--arbor-green-ink)" }}>
           {phaseLabel}
         </span>
         {/* B-VOICE-08: a door outside the panel can start this sheet in one
@@ -146,24 +148,28 @@ export default function VoiceOverlay({
         <button
           type="button"
           onClick={requestClose}
-          aria-label={t("coach.voice.end")}
-          className="touch-target ms-auto flex h-11 w-11 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          aria-label={t("coach.voice.backToChat")}
+          className="touch-target ms-auto inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full px-3 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           style={{ minWidth: "var(--touch-min)", minHeight: "var(--touch-min)", background: "var(--arbor-paper-deep)", color: "var(--arbor-muted)" }}
         >
           <Icon name="close" size={18} />
+          {t("coach.voice.backToChat")}
         </button>
       </div>
 
       <div className="mt-2 flex flex-col items-center">
-        {recording || onFinishTurn ? (
+        {recording || paused ? (
           <button
             type="button"
-            onClick={onFinishTurn ?? requestClose}
+            onClick={event => {
+              if (!paused) onStopRecording();
+              else if (event.detail <= 1) onResume();
+            }}
             className="my-3 inline-flex min-h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full px-6 py-3 text-base font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
             style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-on-accent)", outlineColor: "var(--arbor-green-ink)" }}
           >
-            <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-sm bg-current" />
-            {stopLabel}
+            {paused ? <Icon name="mic" size={22} /> : <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-sm bg-current" />}
+            {t(paused ? "coach.voice.resume" : "elev.rec.stopAria")}
           </button>
         ) : (
           <div className="relative flex items-center justify-center" style={{ width: 112, height: 112 }}>
@@ -230,6 +236,9 @@ export default function VoiceOverlay({
         )}
       </div>
 
+      {paused && interimText.trim() && (
+        <p className="mt-2 text-center text-sm" style={{ color: "var(--arbor-muted)" }}>{t("coach.voice.reviewDictation")}</p>
+      )}
       {notice && <MicrophoneNotice message={notice} lang={lang} />}
 
       {/* Live captions — always mounted so aria-live announces reliably.

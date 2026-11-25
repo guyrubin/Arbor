@@ -114,12 +114,13 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
     expect(overlay).toContain("answerText={liveVoiceText || openingCaption}");
   });
 
-  it("orb tap can only barge in on the fallback loop; X is stopVoice; nothing starts voice", () => {
+  it("the interrupt, stop, resume and back actions have distinct owners", () => {
     expect(overlay).toContain("canInterrupt={voicePhase === \"speaking\" && !liveSession}");
     // B-VOICE-02: a tap during a card's words skips them (the talk then starts); otherwise the barge-in rule is unchanged.
     expect(overlay).toMatch(/onOrbTap=\{\(\) => \{ if \(openingRunRef\.current\?\.skip\(\)\) return; if \(voicePhase === "speaking" && !liveCtlRef\.current && voiceOnRef\.current\) bargeInVoice\(\); \}\}/);
-    expect(overlay).toContain("onClose={stopVoice}");
-    expect(overlay).not.toContain("toggleVoice");
+    expect(overlay).toContain("onClose={backToChat}");
+    expect(overlay).toContain("onStopRecording={stopRecording}");
+    expect(overlay).toContain("onResume={() => void toggleVoice()}");
     expect(overlay).not.toContain("startBrowserVoice");
     expect(overlay).not.toContain("liveToken");
   });
@@ -127,9 +128,9 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
   it("the dictation loop feeds interim partials into the overlay caption", () => {
     expect(coach).toContain("onInterim: (text) => { if (attempt.isCurrent()) setVoiceInterim(text); }");
     // Live path: input transcription (the parent's own words) accumulates too.
-    expect(coach).toContain("setVoiceInterim((prev) => attempt.isCurrent() && !liveClosed ? (prev + delta).trimStart() : prev)");
+    expect(coach).toContain("setVoiceInterim((partialVoiceText.current + delta).trimStart())");
     // The settled transcript clears the interim caption before the turn sends.
-    expect(coach).toMatch(/onTranscript: \(text\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*setVoiceInterim\(""\);/);
+    expect(coach).toMatch(/onTranscript: \(text\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*if \(stoppingDictation\.current === attempt\) \{ pauseRecording\(text\); return; \}\s*setVoiceInterim\(""\);/);
   });
 });
 
@@ -209,7 +210,7 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     // unsupported-browser branch ends visible (toast + off), never silent.
     expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ setVoiceNotice\(microphoneRecovery\("unsupported", uiLang\)\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("connecting"\);/);
     // Fatal dictation outcomes stop voice AND toast (mic denied / retries out).
-    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(false\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
+    expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;[\s\S]*?stopVoice\(false\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
     expect(startListeningFn).toContain("microphoneRecovery(reason, uiLang)");
   });
 
@@ -244,7 +245,7 @@ describe("voice attempt wiring rejects stale callbacks BEFORE mutations", () => 
     expect(coach).toContain("if (voiceAbortRef.current === controller) voiceAbortRef.current = null");
     expect(coach).toContain("mayReview() ? [...current, ...checked].slice(-8) : current");
     expect(coach).toContain("sessionId === voiceSessionIdRef.current");
-    expect(coach).toContain("attempt.isCurrent() || reviewAttemptRef.current === attempt");
+    expect(coach).toContain("attempt.isCurrent() || reviewableAttempts.current.has(attempt)");
     expect(coach).toMatch(/speak\(next, \(\) => \{ if \(!attempt\.isCurrent\(\)\) return;/);
     expect(coach).toMatch(/const startBrowserVoice = \(\) => \{\s*voiceLifetimeRef\.current\.begin\(\);/);
   });

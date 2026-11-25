@@ -33,7 +33,7 @@ function render(over: Partial<React.ComponentProps<typeof VoiceOverlay>> = {}): 
       answerText: "",
       canInterrupt: false,
       reducedMotion: false,
-      onOrbTap: noop,
+      onStopRecording: noop, onResume: noop, onOrbTap: noop,
       onClose: noop,
       ...over,
     }),
@@ -140,13 +140,15 @@ describe("controls — tap-orb barge-in + X = end", () => {
       expect(html).toContain('data-testid="voice-recording-line"');
       expect(html).not.toContain('disabled=""');
     }
-    const dictation = render({ lang, recording: true, onFinishTurn: noop });
-    expect(dictation).toContain(`</span>${lang === "he" ? "סיימתי לדבר" : "Done speaking"}</button>`);
+    const paused = render({ phase: "paused", lang });
+    expect(paused).toContain(lang === "he" ? "המיקרופון כבוי" : "Microphone off");
+    expect(paused).toContain(lang === "he" ? "הקלטה נוספת" : "Record again");
+    expect(paused).not.toContain("voice-recording-line");
   });
 
-  it("the close button is labeled End voice conversation (X = end)", () => {
-    expect(render()).toContain('aria-label="End voice conversation"');
-    expect(render({ lang: "he" as UiLang })).toContain("סיום השיחה הקולית");
+  it("the exit is visibly labeled Back to chat in both languages", () => {
+    expect(render()).toContain("</span>Back to chat</button>");
+    expect(render({ lang: "he" as UiLang })).toContain("</span>חזרה לצ׳אט</button>");
   });
 });
 

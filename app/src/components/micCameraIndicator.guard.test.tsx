@@ -124,7 +124,7 @@ describe("B-STATUS-02 · one rule for the microphone and camera", () => {
 describe("B-STATUS-02 · Ask's overlay keeps its orb and gains 'Recording · m:ss'", () => {
   const overlay = (recording: boolean, lang: "en" | "he" = "en") =>
     renderToStaticMarkup(
-      <VoiceOverlay phase="listening" lang={lang} interimText="" answerText="" canInterrupt={false} reducedMotion={false} recording={recording} onOrbTap={() => {}} onClose={() => {}} />,
+      <VoiceOverlay phase="listening" lang={lang} interimText="" answerText="" canInterrupt={false} reducedMotion={false} recording={recording} onStopRecording={() => {}} onResume={() => {}} onOrbTap={() => {}} onClose={() => {}} />,
     );
 
   it("while the microphone is open: the orb is still there, plus the Recording line with m:ss", () => {
