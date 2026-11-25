@@ -65,7 +65,7 @@ import { speakText } from "../../lib/voice";
 // AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
 // tested decision function — while Arbor speaks on the fallback loop a tap
 // INTERRUPTS (voice stays on); a second tap during listening turns voice off.
-import { voiceChipAction } from "../../lib/voiceChipAction";
+import { type VoicePhase, voiceChipAction } from "../../lib/voiceChipAction";
 import { createVoiceLifetime, type VoiceAttempt } from "../../lib/voiceLifetime";
 // AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
 // voicePhase !== "off". The chip below stays the ONLY entry point.
@@ -515,7 +515,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // S5: "connecting" is a first-class phase — it paints SYNCHRONOUSLY on the
   // chip tap (before any await), so the token mint / SDK chunk fetch / mic
   // prompt / socket connect window is never a silent 10s+ hole.
-  const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>("off");
   const [liveAvail, setLiveAvail] = useState(false);
   // B-VOICE-06: the Live probe has answered (either way), so a spoken
   // conversation asked for from elsewhere starts on the right path (HD or not).
@@ -790,21 +790,25 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     const attempt = voiceLifetimeRef.current.current;
     if (!attempt?.isCurrent() || !voiceOnRef.current) return;
     if (!speechSupported()) { setVoiceNotice(microphoneRecovery("unsupported", uiLang)); voiceOnRef.current = false; setVoicePhase("off"); return; }
-    setVoicePhase("listening");
-    // AI-V3: the dictation loop owns recognition restarts — recoverable errors
-    // ('no-speech', transient network) restart with backoff behind a max-retry
-    // circuit breaker, silent ends auto-cycle the mic, and fatal errors stop
-    // voice with a truthful phase + toast. The "listening" label is only ever
-    // shown while the loop is actually cycling.
+    setVoicePhase("connecting");
     dictationLoopRef.current?.stop();
     const loop = createDictationLoop({
-      start: (handlers, lang) => startDictation(handlers, lang, { maxEmptyRestarts: 0 }),
+      start: (handlers, lang) => startDictation(handlers, lang, { maxEmptyRestarts: 0, silenceFinalizeMs: 2000 }),
       lang: aiLang === "he" ? "he-IL" : "en-US",
       isActive: () => attempt.isCurrent() && voiceOnRef.current,
       // AI-V7: surface interim partials as the overlay's live caption of the
       // parent's own words (<500ms after speech starts — straight from the
       // recognizer, no model round-trip).
       onInterim: (text) => { if (attempt.isCurrent()) setVoiceInterim(text); },
+      onPhase: phase => {
+        if (attempt.isCurrent()) setVoicePhase(phase === "recording" ? "listening" : phase === "finishing" ? "transcribing" : "connecting");
+      },
+      onUnconfirmed: text => {
+        if (!attempt.isCurrent()) return;
+        stopVoice(false);
+        setChatInput(current => [current.trim(), text].filter(Boolean).join(" "));
+        setVoiceNotice(t("coach.voice.reviewDictation"));
+      },
       onTranscript: (text) => {
         if (!attempt.isCurrent()) return;
         setVoiceInterim("");
@@ -1340,7 +1344,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     return registerConversationVoiceStarter((opening) => startFromDoorRef.current(opening));
   }, [liveProbed]);
 
-  const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  const voiceLabel = voicePhase === "off" ? t(liveAvail ? "coach.voice.talkHd" : "coach.voice.talk") : t(`coach.voice.${voicePhase}`);
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
   const liveVoiceText =
@@ -2201,6 +2205,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           // the fallback loop listens only in its listening turn; a Live call
           // streams the microphone for the whole session.
           recording={voicePhase === "listening" || liveSession}
+          onFinishTurn={voicePhase === "listening" && !liveSession ? () => dictationLoopRef.current?.finishTurn() : undefined}
           onOrbTap={() => { if (openingRunRef.current?.skip()) return; if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
           onClose={stopVoice}
         />

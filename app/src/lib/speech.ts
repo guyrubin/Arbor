@@ -1,117 +1,187 @@
-/** Shared browser dictation lifecycle. Empty startup ends recover before a
- * capture is settled; every terminal failure reports its reason and ends once. */
-type Handlers = {
+/** One browser dictation session, including any empty-start retries. */
+export type DictationPhase = "starting" | "recording" | "finishing";
+export type DictationHandlers = {
   onResult: (text: string) => void;
   /** Full finalized + interim text, never an isolated fragment. */
   onInterim?: (text: string) => void;
+  /** A conversation can return an unconfirmed caption to the editable draft. */
+  onUnconfirmed?: (text: string) => void;
+  onPhase?: (phase: DictationPhase) => void;
   onError?: (err: string) => void;
   onEnd?: () => void;
 };
 
+type RecognitionResult = { isFinal: boolean; 0: { transcript: string } };
+function transcript(results: RecognitionResult[]): string {
+  return results.map(result => result[0].transcript.trim()).filter(Boolean)
+    .join(" ").replace(/\s+([.,!?;:])/g, "$1");
+}
+type Recognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onaudiostart: (() => void) | null;
+  onaudioend: (() => void) | null;
+  onresult: ((event: { results: ArrayLike<RecognitionResult> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+};
+type RecognitionConstructor = new () => Recognition;
+function recognizer() {
+  if (typeof window === "undefined") return undefined;
+  const browser = window as Window & {
+    SpeechRecognition?: RecognitionConstructor;
+    webkitSpeechRecognition?: RecognitionConstructor;
+  };
+  return browser.SpeechRecognition || browser.webkitSpeechRecognition;
+}
 export function speechSupported(): boolean {
-  return typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  return typeof recognizer() === "function";
 }
 
 export type DictationOpts = {
   continuous?: boolean;
-  /** Applied after the first result, never while permission/startup is pending. */
+  /** Natural pause after the latest words. Defaults to 4.5s for continuous drafts. */
   silenceFinalizeMs?: number;
   /** Owners with their own recovery loop set this to zero. */
   maxEmptyRestarts?: number;
 };
 
-export function startDictation(handlers: Handlers, lang = "en-US", opts: DictationOpts = {}): () => void {
-  const Ctor = typeof window === "undefined" ? null : (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  let rec: any = null;
+const STARTUP_MS = 30_000;
+const STOP_GRACE_MS = 1200;
+
+export function startDictation(handlers: DictationHandlers, lang = "en-US", opts: DictationOpts = {}): () => void {
+  const Ctor = recognizer();
+  const pauseMs = opts.silenceFinalizeMs ?? (opts.continuous ? 4500 : undefined);
+  let active: Recognition | null = null;
   let done = false;
   let stopping = false;
-  let generation = 0;
   let retries = 0;
+  let caption = "";
   let finalText = "";
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const clearTimer = () => { if (timer !== null) clearTimeout(timer); timer = null; };
-  const finish = (error?: string) => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let phase: DictationPhase | undefined;
+
+  const report = (next: DictationPhase) => {
+    if (phase === next) return;
+    phase = next;
+    handlers.onPhase?.(next);
+  };
+  const finish = (error?: string, release = false) => {
     if (done) return;
     done = true;
-    generation++;
-    clearTimer();
+    clearTimeout(timer);
+    const rec = active;
+    active = null;
+    if (release) {
+      try { rec?.abort(); } catch { /* already disconnected */ }
+    }
+    // A draft may keep the last visible words when the browser omits a final.
+    // An unattended conversation turn or a failed recognition uses finals only.
+    const text = opts.continuous && !error ? caption : finalText;
     if (error) handlers.onError?.(error);
-    if (finalText.trim()) handlers.onResult(finalText.trim());
+    if (!error && handlers.onUnconfirmed && caption && caption !== finalText) {
+      handlers.onUnconfirmed(caption);
+    } else if (text) {
+      handlers.onResult(text);
+    }
     handlers.onEnd?.();
+  };
+  const awaitEnd = () => {
+    stopping = true;
+    clearTimeout(timer);
+    report("finishing");
+    // Arm before stop(): some engines synchronously send their last results.
+    timer = setTimeout(() => finish(undefined, true), STOP_GRACE_MS);
   };
   const stop = () => {
     if (done || stopping) return;
-    stopping = true;
-    clearTimer();
-    try { rec?.stop(); } catch { finish(); }
-    // A recognizer between sessions or a Chrome stop that omits onend must
-    // still settle. Keep the normal final-result event a chance to arrive.
-    if (!done) timer = setTimeout(() => finish(), 1200);
-  };
-  const retryEmpty = () => {
-    if (done || stopping) return;
-    if (retries >= (opts.maxEmptyRestarts ?? 2)) { finish("no-speech"); return; }
-    retries++;
-    clearTimer();
-    timer = setTimeout(begin, 250 * retries);
+    if (!active) { finish(); return; } // between empty-start attempts
+    if (phase === "starting" && typeof active.abort === "function") {
+      finish(undefined, true);
+      return;
+    }
+    awaitEnd();
+    try { active.stop(); } catch { finish(undefined, true); }
   };
   const begin = () => {
-    if (done || stopping) return;
-    const current = ++generation;
-    const owns = () => !done && generation === current;
-    let ended = false;
+    if (done || stopping || !Ctor) return;
     try {
-      rec = new Ctor();
+      const rec = new Ctor();
+      active = rec;
+      let heardAudio = false;
+      const recording = () => {
+        if (active !== rec || stopping || phase === "finishing") return;
+        heardAudio = true;
+        report("recording");
+      };
+      const emptyEnd = () => {
+        active = null; // Ignore paired error/end and any late results on this instance.
+        clearTimeout(timer);
+        if (stopping) { finish(); return; }
+        if (retries >= (opts.maxEmptyRestarts ?? 2)) { finish("no-speech"); return; }
+        report("starting");
+        timer = setTimeout(begin, 250 * ++retries);
+      };
       rec.lang = lang;
       rec.interimResults = Boolean(handlers.onInterim);
       rec.maxAlternatives = 1;
       rec.continuous = Boolean(opts.continuous);
-      rec.onresult = (e: any) => {
-        if (!owns() || ended) return;
-        let interim = "";
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-          else interim += e.results[i][0].transcript;
-        }
-        handlers.onInterim?.((finalText + interim).trim());
-        if (opts.continuous) {
-          clearTimer();
-          timer = setTimeout(stop, opts.silenceFinalizeMs ?? 4500);
+      rec.onaudiostart = recording;
+      rec.onaudioend = () => {
+        if (active !== rec || stopping || phase === "finishing") return;
+        // Audio has stopped. Give the service time for its final transcript
+        // and end event. An empty natural end can still retry.
+        clearTimeout(timer);
+        report("finishing");
+        timer = setTimeout(() => finish(caption ? undefined : "no-speech", true), STOP_GRACE_MS);
+      };
+      rec.onresult = ({ results }) => {
+        if (active !== rec) return;
+        recording();
+        // The browser supplies the whole list, including revised/removed
+        // interim words. Rebuilding it avoids duplicating replayed finals.
+        const segments = Array.from(results);
+        finalText = transcript(segments.filter(r => r.isFinal));
+        const next = transcript(segments);
+        if (next === caption) return;
+        caption = next;
+        handlers.onInterim?.(caption);
+        // A late result updates the draft, never the pending Stop deadline.
+        if (phase !== "finishing" && pauseMs !== undefined) {
+          clearTimeout(timer);
+          timer = setTimeout(stop, pauseMs);
         }
       };
-      rec.onerror = (e: any) => {
-        if (!owns() || ended) return;
-        ended = true;
-        clearTimer();
-        const error = e?.error || "error";
+      rec.onerror = ({ error }) => {
+        if (active !== rec) return;
         if (stopping) { finish(); return; }
-        // These often accompany Chrome's premature onend. Their paired end
-        // belongs to this retired recognizer, not the replacement.
-        if (!finalText.trim() && (error === "no-speech" || error === "aborted")) retryEmpty();
-        else finish(error);
+        if (error === "no-speech" || error === "aborted") {
+          if (caption) finish();
+          else emptyEnd();
+        } else finish(error || "error");
       };
       rec.onend = () => {
-        if (!owns() || ended) return;
-        ended = true;
-        clearTimer();
-        if (stopping || finalText.trim()) finish();
-        else retryEmpty();
+        if (active !== rec) return;
+        if (stopping || caption) finish();
+        else emptyEnd();
       };
+      report("starting");
+      if (pauseMs !== undefined) {
+        timer = setTimeout(() => finish(heardAudio ? "no-speech" : "audio-capture", true), STARTUP_MS);
+      }
       rec.start();
-      // Give a parent time to grant permission and start a thought. The
-      // shorter natural-pause window is armed only by recognized speech.
-      if (opts.continuous && owns() && !ended) timer = setTimeout(() => {
-        try { rec.abort?.(); } catch { /* release what remains */ }
-        finish("no-speech");
-      }, 30_000);
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
       finish(name === "NotAllowedError" || name === "SecurityError" ? "not-allowed"
-        : name === "NotFoundError" || name === "NotReadableError" ? "audio-capture" : "start-failed");
+        : name === "NotFoundError" || name === "NotReadableError" ? "audio-capture" : "start-failed", true);
     }
   };
-  if (!Ctor) finish("unsupported");
+  if (typeof Ctor !== "function") finish("unsupported");
   else begin();
   return stop;
 }

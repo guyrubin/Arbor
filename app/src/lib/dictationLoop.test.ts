@@ -202,3 +202,27 @@ describe("AI-V7 — onInterim passthrough", () => {
     loop.stop();
   });
 });
+
+describe("finishing the browser conversation turn", () => {
+  it("lets one final result through after Done speaking, while repeated taps cannot stop twice", () => {
+    const loop = makeLoop();
+    loop.start();
+    loop.finishTurn(); loop.finishTurn();
+    expect(sessions[0].stop).toHaveBeenCalledOnce();
+    sessions[0].handlers.onResult("one whole thought");
+    sessions[0].handlers.onEnd?.();
+    vi.runAllTimers();
+    expect(transcripts).toEqual(["one whole thought"]);
+    expect(sessions).toHaveLength(1);
+  });
+
+  it("does not reopen an empty microphone after an explicit finish", () => {
+    const loop = makeLoop();
+    loop.start();
+    loop.finishTurn();
+    sessions[0].handlers.onEnd?.();
+    vi.runAllTimers();
+    expect(fatals).toEqual(["no-speech"]);
+    expect(sessions).toHaveLength(1);
+  });
+});

@@ -121,6 +121,10 @@ export const en: Record<string, string> = {
   "elev.ql.voice.stop": "Stop",
   // REC-01 · the one recording indicator (capture sheet + Behaviours).
   "elev.rec.on": "Recording",
+  "elev.rec.starting": "Opening microphone…",
+  "elev.rec.cancel": "Cancel",
+  "elev.rec.permissionHint": "Allow microphone access if prompted.",
+  "elev.rec.finishing": "Finishing dictation…",
   "elev.rec.stopAria": "Stop recording",
 
   // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────
@@ -286,6 +290,10 @@ export const he: Record<string, string> = {
   "elev.ql.voice.stop": "עצירה",
   // REC-01 — gender-neutral; native review owed.
   "elev.rec.on": "מקליטים",
+  "elev.rec.starting": "פותחים את המיקרופון…",
+  "elev.rec.cancel": "ביטול",
+  "elev.rec.permissionHint": "אם תופיע בקשת גישה למיקרופון, אשרו אותה.",
+  "elev.rec.finishing": "מסיימים את ההכתבה…",
   "elev.rec.stopAria": "עצירת ההקלטה",
 
   // ── Builder I · shell chrome (object backlog, 2026-09-07) ────────────────

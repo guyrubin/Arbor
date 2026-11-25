@@ -20,7 +20,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { useLanguage } from "../../context/LanguageContext";
-import { speechSupported, startDictation } from "../../lib/speech";
+import { type DictationPhase, speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { markVoiceDoorNoticeSeen, voiceDoorNoticeSeen } from "../../lib/voiceDoor";
 import { ASPECT_ICONS, ASPECT_IDS, type AspectId } from "../../lib/aboutAspects";
@@ -43,7 +43,8 @@ export function DictateButton({ lang, value, onChange, disabled, label, aria, te
 }) {
   const { t } = useLanguage();
   const [supported] = useState(() => speechSupported());
-  const [listening, setListening] = useState(false);
+  const [capturePhase, setCapturePhase] = useState<DictationPhase | null>(null);
+  const listening = capturePhase !== null;
   const [interim, setInterim] = useState("");
   const [error, setError] = useState("");
   const [firstUse, setFirstUse] = useState(() => !voiceDoorNoticeSeen());
@@ -58,13 +59,14 @@ export function DictateButton({ lang, value, onChange, disabled, label, aria, te
     if (listening) { stopRef.current?.(); return; }
     const turn = ++scope.current;
     onListen?.();
-    setError(""); setListening(true);
+    setError(""); setCapturePhase("starting");
     if (firstUse) { markVoiceDoorNoticeSeen(); }
     stopRef.current = startDictation({
       onResult: (text) => { if (turn === scope.current && text.trim()) { onChange([valueRef.current.trim(), text.trim()].filter(Boolean).join(" ").slice(0, DESCRIBE_TEXT_MAX)); onVoiceText?.(); } },
+      onPhase: phase => { if (turn === scope.current) setCapturePhase(phase); },
       onInterim: (text) => { if (turn === scope.current) setInterim(text); },
       onError: (reason) => { if (turn === scope.current) setError(microphoneRecovery(reason, lang)); },
-      onEnd: () => { if (turn === scope.current) { setListening(false); setInterim(""); stopRef.current = null; setFirstUse(false); } },
+      onEnd: () => { if (turn === scope.current) { setCapturePhase(null); setInterim(""); stopRef.current = null; setFirstUse(false); } },
     }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
   };
   return <div className="describe-mic">
@@ -74,7 +76,7 @@ export function DictateButton({ lang, value, onChange, disabled, label, aria, te
     {!listening && <button type="button" className="describe-secondary" onClick={toggle} disabled={disabled} aria-label={aria} data-testid={testId} autoFocus={autoFocus}>
       <Icon name="mic" size={20} /><span>{label}</span>
     </button>}
-    {listening && <RecordingIndicator interim={interim} hint={t("elev.describe.listening")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
+    {listening && <RecordingIndicator phase={capturePhase} language={lang} interim={interim} hint={t("elev.describe.listening")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
       stopAria={t("elev.rec.stopAria")} onStop={() => stopRef.current?.()} testId={`${testId}-recording`} captionTestId={`${testId}-caption`} />}
     {error && <p className="describe-note" role="alert">{error}</p>}
   </div>;

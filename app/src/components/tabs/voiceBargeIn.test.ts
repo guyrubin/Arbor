@@ -162,7 +162,7 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
     expect(paintAt).toBeLessThan(firstAwait);
     // The overlay is owned by voicePhase !== "off", so "connecting" mounts it
     // (pinned above in AI-V7); the chip label paints the same state.
-    expect(coach).toMatch(/voicePhase === "connecting" \? t\("coach\.voice\.connecting"\)/);
+    expect(coach).toContain('t(`coach.voice.${voicePhase}`)');
   });
 
   it("getUserMedia is deadline-bounded, and a late grant can't leave a hot mic", () => {
@@ -205,9 +205,9 @@ describe("S5 — every Talk tap paints a visible outcome", () => {
   });
 
   it("fallback loop paints on its own surfaces: listening phase or an persistent recovery notice", () => {
-    // (d) startListening paints the listening state synchronously, and the
+    // (d) startListening paints the connecting state synchronously, and the
     // unsupported-browser branch ends visible (toast + off), never silent.
-    expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ setVoiceNotice\(microphoneRecovery\("unsupported", uiLang\)\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("listening"\);/);
+    expect(startListeningFn).toMatch(/if \(!speechSupported\(\)\) \{ setVoiceNotice\(microphoneRecovery\("unsupported", uiLang\)\); voiceOnRef\.current = false; setVoicePhase\("off"\); return; \}\s*setVoicePhase\("connecting"\);/);
     // Fatal dictation outcomes stop voice AND toast (mic denied / retries out).
     expect(startListeningFn).toMatch(/onFatal: \(reason\) => \{\s*if \(!attempt\.isCurrent\(\)\) return;\s*stopVoice\(false\);\s*setVoiceNotice\(microphoneRecovery\(reason, uiLang\)/);
     expect(startListeningFn).toContain("microphoneRecovery(reason, uiLang)");

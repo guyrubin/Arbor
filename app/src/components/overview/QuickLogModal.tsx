@@ -17,6 +17,7 @@ import { api, EscalationRequiredError, getAiLanguage } from "../../lib/api";
 import { escalationCategories, renderEscalationMarkdown } from "../../safety/escalation";
 import { BEHAVIOR_TYPES, DEFAULT_BEHAVIOR_TYPE, EXTRACT_CONTEXTS, behaviorTypeLabel, extractionNeedsIncidentType, extractionOpensIncidentReview, isIncidentType, normalizeExtractedLog, validateLogDraft } from "../../content/behaviorTaxonomy";
 import type { BehaviorContext } from "../../types";
+import type { DictationPhase } from "../../lib/speech";
 import { speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import MicrophoneNotice from "../ui/MicrophoneNotice";
@@ -206,7 +207,8 @@ export default function QuickLogModal({
   // continuous with generous endpointing (AI-CAP-6), live interim caption
   // (AI-V7), and the parent's UI language (AI-CAP-2), so a Hebrew parent's
   // speech is never transcribed as English garbage.
-  const [listening, setListening] = useState(false);
+  const [capturePhase, setCapturePhase] = useState<DictationPhase | null>(null);
+  const listening = capturePhase !== null;
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const [voiceInterim, setVoiceInterim] = useState("");
   const stopRef = useRef<(() => void) | null>(null);
@@ -277,7 +279,7 @@ export default function QuickLogModal({
       setSaveError(null);
       setPhotoPreparing(false);
       setDetailsOpen(false);
-      setListening(false);
+      setCapturePhase(null);
       setVoiceInterim("");
       setSource("text");
       setKeepDraft(freshCaptureKeep());
@@ -587,7 +589,7 @@ export default function QuickLogModal({
     }
     const isCurrent = sessionRef.current.lease("voice");
     setVoiceNotice(null);
-    setListening(true);
+    setCapturePhase("starting");
     setVoiceInterim("");
     stopRef.current = startDictation(
       {
@@ -600,11 +602,12 @@ export default function QuickLogModal({
           setSource(current => current === "ai-draft" ? current : "voice");
           if (said.length >= TYPED_EXTRACT_MIN_CHARS) void extractFromTyped(said, hardMomentRef.current ? "incident" : "moment");
         },
+        onPhase: phase => { if (isCurrent()) setCapturePhase(phase); },
         onInterim: (text) => { if (isCurrent()) setVoiceInterim(text); },
         onError: (reason) => { if (isCurrent()) setVoiceNotice(microphoneRecovery(reason, uiLang)); },
         onEnd: () => {
           if (!isCurrent()) return;
-          setListening(false);
+          setCapturePhase(null);
           setVoiceInterim("");
           stopRef.current = null;
         },
@@ -624,8 +627,15 @@ export default function QuickLogModal({
       return;
     }
     if (mode !== "voice" || armedRef.current) return;
-    armedRef.current = true;
-    startVoice();
+    // StrictMode can dispose and replay a freshly opened sheet. Only its
+    // surviving effect may claim the microphone.
+    let current = true;
+    queueMicrotask(() => {
+      if (!current) return;
+      armedRef.current = true;
+      startVoice();
+    });
+    return () => { current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mode]);
 
@@ -638,7 +648,7 @@ export default function QuickLogModal({
     sessionRef.current.retire("voice");
     sessionRef.current.retire("extract");
     stopRef.current?.(); stopRef.current = null;
-    setListening(false); setVoiceInterim("");
+    setCapturePhase(null); setVoiceInterim("");
   };
   const changeTrigger = (text: string) => {
     stopCaptureWork();
@@ -918,6 +928,7 @@ export default function QuickLogModal({
       {listening && (
         <div className="mb-4">
           <RecordingIndicator
+            phase={capturePhase} language={uiLang}
             interim={voiceInterim}
             hint={t("beh.capture.listening")}
             label={t("elev.rec.on")}

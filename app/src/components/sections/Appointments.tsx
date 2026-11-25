@@ -2,7 +2,7 @@ import { appointmentRoleLabel, PROFESSION_KEY } from "../../lib/appointmentLabel
 import { useHashQuery } from "../../hooks/useHashQuery";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import RecordingIndicator from "../ui/RecordingIndicator";
-import { speechSupported, startDictation } from "../../lib/speech";
+import { type DictationPhase, speechSupported, startDictation } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { numberedQuestions, rehearsalRows, rehearsalQuestions, REHEARSAL_MAX_QUESTIONS } from "../../consult/rehearsalQuestions";
 import { parentWords } from "../../lib/recordCounts";
@@ -620,7 +620,8 @@ export function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep:
   const { t } = useLanguage();
   const kept = useReceiptNote();
   const [supported] = useState(() => speechSupported());
-  const [listening, setListening] = useState(false);
+  const [capturePhase, setCapturePhase] = useState<DictationPhase | null>(null);
+  const listening = capturePhase !== null;
   const [interim, setInterim] = useState("");
   const [draft, setDraft] = useState<string[] | null>(null);
   const [error, setError] = useState("");
@@ -630,12 +631,13 @@ export function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep:
   if (!supported) return null;
   const start = () => {
     const turn = ++scope.current;
-    setError(""); setDraft(null); setListening(true); kept.clear();
+    setError(""); setDraft(null); setCapturePhase("starting"); kept.clear();
     stopRef.current = startDictation({
       onResult: (text) => { if (turn === scope.current) setDraft(rehearsalQuestions(text)); },
+      onPhase: phase => { if (turn === scope.current) setCapturePhase(phase); },
       onInterim: (text) => { if (turn === scope.current) setInterim(text); },
       onError: (reason) => { if (turn === scope.current) setError(microphoneRecovery(reason, lang)); },
-      onEnd: () => { if (turn === scope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
+      onEnd: () => { if (turn === scope.current) { setCapturePhase(null); setInterim(""); stopRef.current = null; } },
     }, lang === "he" ? "he-IL" : "en-US", { continuous: true });
   };
   const keep = () => { if (draft) { const said = onKeep(draft); setDraft(null); if (said) kept.show({ text: said }); } };
@@ -651,7 +653,7 @@ export function RehearseQuestions({ lang, onKeep }: { lang: "en" | "he"; onKeep:
         </>
       )}
       {listening && (
-        <RecordingIndicator interim={interim} hint={t("elev.learnCare.appt.rehearse.hint")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
+        <RecordingIndicator phase={capturePhase} language={lang} interim={interim} hint={t("elev.learnCare.appt.rehearse.hint")} label={t("elev.rec.on")} stopLabel={t("elev.describe.done")}
           stopAria={t("elev.rec.stopAria")} onStop={() => stopRef.current?.()} testId="appt-rehearse-recording" captionTestId="appt-rehearse-caption" />
       )}
       {draft && draft.length === 0 && (

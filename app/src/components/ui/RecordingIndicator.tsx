@@ -22,9 +22,13 @@
  *    a system state — never a statement about the child (firewall unaffected).
  */
 import { useEffect, useState } from "react";
+import type { DictationPhase } from "../../lib/speech";
+import { translate, type UiLang } from "../../lib/i18n";
 import { Icon } from "./Icon";
 
 export interface RecordingIndicatorProps {
+  phase?: DictationPhase;
+  language?: UiLang;
   /** The parent's live words (interim transcript); empty until they speak. */
   interim: string;
   /** Shown in the caption until the first words arrive. */
@@ -48,13 +52,15 @@ export function formatElapsed(totalSeconds: number): string {
 
 /** Seconds since the caller mounted — the indicator is mounted only while the
  *  microphone is open, so this is the recording's own time. */
-function useElapsedSeconds(): number {
+function useElapsedSeconds(running = true): number {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
+    setElapsed(0);
+    if (!running) return;
     const startedAt = Date.now();
     const timer = window.setInterval(() => setElapsed((Date.now() - startedAt) / 1000), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [running]);
   return elapsed;
 }
 
@@ -89,6 +95,8 @@ export function RecordingLine({ label, testId = "recording-line" }: { label: str
 }
 
 export default function RecordingIndicator({
+  phase = "recording",
+  language = "en",
   interim,
   hint,
   label,
@@ -98,7 +106,10 @@ export default function RecordingIndicator({
   testId = "recording-indicator",
   captionTestId = "recording-caption",
 }: RecordingIndicatorProps) {
-  const elapsed = useElapsedSeconds();
+  const recording = phase === "recording";
+  const elapsed = useElapsedSeconds(recording);
+  const cancelLabel = translate(language, "elev.rec.cancel");
+  const status = recording ? label : translate(language, `elev.rec.${phase}`);
 
   return (
     <div
@@ -112,7 +123,7 @@ export default function RecordingIndicator({
       }}
     >
       <div className="flex items-center gap-3">
-        <RecordingDot />
+        {recording && <RecordingDot />}
         {/* Layout as inline styles: the app's unlayered CSS outranks Tailwind's
             layered utilities here (white-space measured 'normal' with the class).
             The label never breaks; the timer wraps under it on a narrow phone
@@ -121,21 +132,22 @@ export default function RecordingIndicator({
           className="t-base min-w-0 flex-1 font-semibold"
           style={{ color: "var(--arbor-ink)", display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 8 }}
         >
-          <span style={{ whiteSpace: "nowrap" }}>{label}</span>
-          <span aria-hidden="true" data-testid={`${testId}-time`} className="font-normal tabular-nums" style={{ color: "var(--arbor-muted)" }}>
+          <span style={{ whiteSpace: "nowrap" }}>{status}</span>
+          {recording && <span aria-hidden="true" data-testid={`${testId}-time`} className="font-normal tabular-nums" style={{ color: "var(--arbor-muted)" }}>
             {formatElapsed(elapsed)}
-          </span>
+          </span>}
         </p>
         <button
           type="button"
+          disabled={phase === "finishing"}
           onClick={onStop}
-          aria-label={stopAria}
+          aria-label={phase === "starting" ? cancelLabel : stopAria}
           data-testid={`${testId}-stop`}
           className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 t-sm font-semibold"
           style={{ border: "1px solid var(--arbor-rule-strong)", color: "var(--arbor-ink)", background: "var(--arbor-paper)" }}
         >
           <Icon name="stop" size={16} fill={1} />
-          {stopLabel}
+          {phase === "starting" ? cancelLabel : stopLabel}
         </button>
       </div>
       <p
@@ -145,7 +157,7 @@ export default function RecordingIndicator({
         className="t-sm mt-2 leading-relaxed"
         style={{ color: "var(--arbor-muted)" }}
       >
-        {interim || hint}
+        {interim || (phase === "starting" ? translate(language, "elev.rec.permissionHint") : recording ? hint : "")}
       </p>
     </div>
   );
