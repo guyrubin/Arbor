@@ -15,6 +15,10 @@ describe("voiceChipAction", () => {
     expect(voiceChipAction("off", true)).toBe("start");
   });
 
+  it("paused → start a new capture after the explicit resume tap", () => {
+    expect(voiceChipAction("paused", false)).toBe("start");
+  });
+
   it("speaking on the browser fallback loop → INTERRUPT, not off", () => {
     expect(voiceChipAction("speaking", false)).toBe("interrupt");
   });

@@ -502,6 +502,10 @@ export const en: Dict = {
   "coach.voice.overlay.aria": "Voice conversation with Arbor",
   "coach.voice.interrupt": "Tap to interrupt",
   "coach.voice.end": "End voice conversation",
+  "coach.voice.paused": "Microphone off",
+  "coach.voice.resume": "Record again",
+  "coach.voice.backToChat": "Back to chat",
+  "coach.voice.reviewNotes": "Review voice notes",
   "coach.voice.proposalSaved": "Saved after your confirmation",
   "coach.voice.proposalSaveError": "Could not save. The proposal is still a draft.",
   // F-03 — read-aloud playback failure is surfaced, never silent.
@@ -3167,6 +3171,10 @@ export const he: Dict = {
   "coach.voice.overlay.aria": "שיחה קולית עם ארבור",
   "coach.voice.interrupt": "הקישו כדי לקטוע",
   "coach.voice.end": "סיום השיחה הקולית",
+  "coach.voice.paused": "המיקרופון כבוי",
+  "coach.voice.resume": "הקלטה נוספת",
+  "coach.voice.backToChat": "חזרה לצ׳אט",
+  "coach.voice.reviewNotes": "בדיקת ההערות מהשיחה",
   "coach.voice.proposalSaved": "נשמר לאחר האישור שלכם",
   "coach.voice.proposalSaveError": "לא הצלחנו לשמור. המידע נשאר בטיוטה.",
   // F-03 — read-aloud playback failure is surfaced, never silent.

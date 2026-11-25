@@ -24,7 +24,7 @@ describe("B-PROV-12 · CoachTab gates every voice start on the runtime notice", 
     expect(gate).toBeLessThan(toggle.indexOf("await mintLive()"));
     expect(gate).toBeLessThan(toggle.indexOf("startBrowserVoice()"));
     expect(toggle).toMatch(/runtimeVoiceNoticeId\(liveAvail \? liveNoticeId : null\)/);
-    expect(toggle).toMatch(/if \(tap === "show"\) \{ setVoiceNotice\(null\); setNoticePending\(noticeId\); return; \}\s*if \(tap === "acknowledge_and_start"\) acknowledgeVoiceNotice\(noticeId\);/);
+    expect(toggle).toMatch(/if \(tap === "show"\) \{\s*setVoicePhase\("off"\);\s*setVoiceNotice\(null\);\s*setNoticePending\(noticeId\);\s*return;\s*\}\s*if \(tap === "acknowledge_and_start"\) acknowledgeVoiceNotice\(noticeId\);/);
   });
 
   it("cancel and decline clear a showing notice: stopping/leaving (stopVoice) and typing instead (handleChatSend)", () => {

@@ -565,7 +565,7 @@ function productionCoachHarness() {
   const attempt = lifetime.begin();
   const extraction = deferred<{ proposals: unknown[] }>();
   let proposals: unknown[] = [];
-  const reviewAttemptRef = { current: null as VoiceAttempt | null };
+  const reviewableAttempts = { current: new WeakSet<VoiceAttempt>() };
   const voiceSessionIdRef = { current: "synthetic-session" };
   let proposalPending = 0;
   const phases: { phase: string; current: boolean; released: boolean }[] = [];
@@ -582,7 +582,7 @@ function productionCoachHarness() {
   const speak = vi.fn();
   const handlers = bindProductionCoachCallbacks({
     attempt, api, voiceLifetimeRef: { current: lifetime },
-    voiceSessionIdRef, voiceTurnRef: { current: 0 }, reviewAttemptRef,
+    voiceSessionIdRef, voiceTurnRef: { current: 0 }, reviewableAttempts, partialVoiceText: {current: ""},
     setProposalPending: (update: (count: number) => number) => { proposalPending = update(proposalPending); },
     setProposalFailed: vi.fn(),
     setVoiceReviewOpen: vi.fn(),
@@ -603,7 +603,7 @@ function productionCoachHarness() {
     lifetime, attempt, handlers, extraction, api, phases, normalizeConversationProposals,
     appendVoiceUserTurn, appendVoiceAiDelta, finalizeVoiceAiTurn, clearLiveRefs, setVoiceInterim, speak,
     get proposals() { return proposals; },
-    reviewAttemptRef, voiceSessionIdRef,
+    reviewableAttempts, voiceSessionIdRef,
     get proposalPending() { return proposalPending; },
   };
 }
@@ -614,7 +614,7 @@ describe("ordinary remote close versus safety halt — real client + production 
     coach.handlers.onUserTurn!("We played with blocks.");
     expect(coach.proposalPending).toBe(1);
     coach.lifetime.cancel();
-    coach.reviewAttemptRef.current = coach.attempt;
+    coach.reviewableAttempts.current.add(coach.attempt);
     coach.extraction.resolve({ proposals: [{ id: "draft-to-review" }] });
     await flushMicrotasks();
     expect(coach.proposals).toEqual([{ id: "draft-to-review" }]);
@@ -627,8 +627,8 @@ describe("ordinary remote close versus safety halt — real client + production 
     const coach = productionCoachHarness();
     coach.handlers.onUserTurn!("We played with blocks.");
     coach.lifetime.cancel();
-    coach.reviewAttemptRef.current = coach.attempt;
-    if (reason === "discard") coach.reviewAttemptRef.current = null;
+    coach.reviewableAttempts.current.add(coach.attempt);
+    if (reason === "discard") coach.reviewableAttempts.current = new WeakSet();
     else coach.voiceSessionIdRef.current = "different-thread";
     coach.extraction.resolve({ proposals: [{ id: "must-not-return" }] });
     await flushMicrotasks();
