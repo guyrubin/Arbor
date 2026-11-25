@@ -7,7 +7,7 @@ import { purgeBookAssets } from "./bookAssetStore";
 import { exportPrivateBookAssets } from "./bookAssetExport";
 import { withChildExportSession } from "./childExportSession";
 import type { PortableBookAssets } from "./library/bookAssetExportContract";
-import { clearChildLocalState } from "./childLocalState";
+import { sweepChildLocalState } from "./childLocalState";
 import { familyWayExport } from "./familyWay";
 import { childSinkIds, subcollectionSinkId, validEraseCount, type SinkErasure } from "./childDataSinks";
 import { ChildProfile, DeletionReceipt } from "../types";
@@ -298,7 +298,9 @@ async function wipeClientChildData(uid: string | undefined, childId: string, sin
   // (lib/childLocalState.ts, guarded by childLocalStateSweep.guard.test.ts):
   // it walks BOTH localStorage and sessionStorage for `arbor.*.<childId>`.
   // It runs in the remote branch too — those keys are device-local either way.
-  return clearChildLocalState(childId);
+  const localSweep = sweepChildLocalState(childId);
+  sinks["device:webStorage"] = localSweep.complete ? localSweep.removed : "not-reached";
+  return localSweep.removed;
 }
 
 /** Permanently delete one child's data (all subcollections) and the child doc. */
@@ -332,7 +334,6 @@ export async function eraseEverything(uid: string | undefined, childId: string):
   // what the server erased — the device the parent is holding was absent from
   // it. `clientDocs` is what the local sweep actually removed.
   const clientDocs = await wipeClientChildData(uid, childId, sinks);
-  sinks["device:webStorage"] = clientDocs;
   const ordered: SinkLedger = {};
   for (const id of childSinkIds(CHILD_SUBCOLLECTIONS)) ordered[id] = sinks[id] ?? "not-reached";
   return { childId, erasedAt: new Date().toISOString(), counts: { ...counts, clientDocs }, sinks: ordered };
