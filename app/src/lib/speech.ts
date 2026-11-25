@@ -21,6 +21,7 @@ type Recognition = {
   interimResults: boolean;
   continuous: boolean;
   maxAlternatives: number;
+  onstart: (() => void) | null;
   onaudiostart: (() => void) | null;
   onaudioend: (() => void) | null;
   onresult: ((event: { results: ArrayLike<RecognitionResult> }) => void) | null;
@@ -131,6 +132,7 @@ export function startDictation(handlers: DictationHandlers, lang = "en-US", opts
       rec.interimResults = Boolean(handlers.onInterim);
       rec.maxAlternatives = 1;
       rec.continuous = Boolean(opts.continuous);
+      rec.onstart = recording;
       rec.onaudiostart = recording;
       rec.onaudioend = () => {
         if (active !== rec || stopping || phase === "finishing") return;

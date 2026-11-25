@@ -4,6 +4,7 @@ import { startDictation } from "./speech";
 class Recognition {
   static all: Recognition[] = [];
   static failure: Error | null = null;
+  onstart?: () => void;
   onaudiostart?: () => void;
   onaudioend?: () => void;
   onend?: () => void;
@@ -136,12 +137,12 @@ describe("dictation completion across browser event orderings", () => {
 });
 
 describe("microphone readiness and conversational turns", () => {
-  it("shows recording only after audio starts, then finishes on audio end without a service end", () => {
+  it.each(["onstart", "onaudiostart"] as const)("shows recording on %s, then finishes on audio end without a service end", event => {
     const onPhase = vi.fn(), onResult = vi.fn(), onEnd = vi.fn();
     startDictation({ onResult, onPhase, onEnd }, "en-US", { continuous: true });
     const rec = Recognition.all[0];
     expect(onPhase.mock.calls.flat()).toEqual(["starting"]);
-    rec.onaudiostart?.();
+    rec[event]?.();
     rec.onresult?.(results(words("one thought", true)));
     rec.onaudioend?.();
     vi.advanceTimersByTime(800);
