@@ -462,3 +462,32 @@ describe("B-BOOK-20 — every child store and owned Storage prefix is registered
     expect(REGISTERED_PREFIXES.includes("children/{id}/dayBooks/")).toBe(false);
   });
 });
+
+describe("B-BOOK-20 — device-local erase receipt integrity", () => {
+  it("counts reachable deletions but reports an incomplete webStorage sink when a key remains", async () => {
+    const retained = "arbor.extra.fixture-child";
+    const reachable = "arbor.other.fixture-child";
+    const sibling = "arbor.extra.fixture-sibling";
+    const map = new Map([[retained, "private fixture"], [reachable, "fixture"], [sibling, "sibling fixture"]]);
+    const storage = {
+      get length() { return map.size; },
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => { map.set(k, v); },
+      removeItem: (k: string) => { if (k === retained) throw new Error("denied"); map.delete(k); },
+      clear: () => map.clear(),
+    } as Storage;
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("sessionStorage", { length: 0, key: () => null } as unknown as Storage);
+    try {
+      const receipt = await eraseEverything(undefined, "fixture-child");
+      expect(receipt.counts.clientDocs).toBe(1);
+      expect(receipt.sinks?.["device:webStorage"]).toBe("not-reached");
+      expect(map.has(retained)).toBe(true);
+      expect(map.has(reachable)).toBe(false);
+      expect(map.has(sibling)).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
