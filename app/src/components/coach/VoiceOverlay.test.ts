@@ -132,6 +132,18 @@ describe("controls — tap-orb barge-in + X = end", () => {
     expect(listening).toContain('disabled="" aria-label="Listening…"');
   });
 
+  it.each(["en", "he"] as const)("keeps a visible stop action for the entire Live recording in %s", (lang) => {
+    for (const phase of ["listening", "speaking"] as const) {
+      const html = render({ phase, lang, recording: true });
+      const label = lang === "he" ? "עצירת ההקלטה" : "Stop recording";
+      expect(html).toContain(`</span>${label}</button>`);
+      expect(html).toContain('data-testid="voice-recording-line"');
+      expect(html).not.toContain('disabled=""');
+    }
+    const dictation = render({ lang, recording: true, onFinishTurn: noop });
+    expect(dictation).toContain(`</span>${lang === "he" ? "סיימתי לדבר" : "Done speaking"}</button>`);
+  });
+
   it("the close button is labeled End voice conversation (X = end)", () => {
     expect(render()).toContain('aria-label="End voice conversation"');
     expect(render({ lang: "he" as UiLang })).toContain("סיום השיחה הקולית");

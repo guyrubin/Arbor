@@ -28,7 +28,8 @@ import { translate, type UiLang } from "../../lib/i18n";
  * usePrefersReducedMotion) renders static phase states — no keyframes, no
  * mic-driven motion — while keeping the phases distinct by shape.
  *
- * The browser turn can be finished or interrupted with the orb. X ends the conversation.
+ * During capture the primary button finishes browser dictation or ends Live.
+ * The X ends the conversation in every phase.
  */
 
 // S5: "connecting" joins the phase set — the sheet opens the instant the
@@ -90,6 +91,7 @@ export default function VoiceOverlay({
   const mode = orbMode(phase, reducedMotion);
   const { ref: dialogRef, requestClose } = useDialog<HTMLElement>({ open: true, onClose });
   const phaseLabel = t(`coach.voice.${phase}`);
+  const stopLabel = onFinishTurn ? t("coach.voice.finishTurn") : t("elev.rec.stopAria");
   // F-TALK-1: beside a wide page (>= 1280 px) the conversation is a docked
   // panel, so the sheet rises inside that panel, never over the page beside
   // it. Below 1280 px the panel is full-screen and the sheet stays fixed.
@@ -153,67 +155,74 @@ export default function VoiceOverlay({
       </div>
 
       <div className="mt-2 flex flex-col items-center">
-        {/* Listening halo follows the phase without opening another microphone. */}
-        <div className="relative flex items-center justify-center" style={{ width: 112, height: 112 }}>
-          {mode === "pulse" && (
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: "var(--arbor-green-soft)",
-                transform: "scale(1.08)",
-                transition: "transform 90ms linear",
-              }}
-            />
-          )}
+        {recording || onFinishTurn ? (
           <button
             type="button"
-            onClick={onFinishTurn ?? onOrbTap}
-            disabled={!onFinishTurn && !canInterrupt}
-            aria-label={onFinishTurn ? t("coach.voice.finishTurn") : canInterrupt ? t("coach.voice.interrupt") : phaseLabel}
-            className="relative flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-default"
-            style={{
-              background: "var(--arbor-green-soft)",
-              color: "var(--arbor-green-ink)",
-              border: "1px solid var(--arbor-rule-strong)",
-              animation:
-                mode === "pulse"
-                  ? "vo-pulse 1.8s ease-in-out infinite"
-                  : mode === "shimmer"
-                    ? "vo-shimmer 2.4s ease-in-out infinite"
-                    : undefined,
-            }}
+            onClick={onFinishTurn ?? requestClose}
+            className="my-3 inline-flex min-h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full px-6 py-3 text-base font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+            style={{ background: "var(--arbor-green-ink)", color: "var(--arbor-on-accent)", outlineColor: "var(--arbor-green-ink)" }}
           >
-            {phase === "speaking" ? (
-              <span className="flex items-end gap-1" aria-hidden>
-                {WAVE_BARS.map((h, i) => (
-                  <span
-                    key={i}
-                    className="w-1.5 rounded-full"
-                    style={{
-                      height: h,
-                      background: "var(--arbor-sage)",
-                      ...(mode === "wave"
-                        ? { animation: `vo-wave 1.1s ease-in-out ${i * 0.12}s infinite`, transformOrigin: "center bottom" }
-                        : {}),
-                    }}
-                  />
-                ))}
-              </span>
-            ) : (
-              <Icon name={onFinishTurn ? "stop" : phase === "listening" ? "mic" : phase === "connecting" ? "progress_activity" : "more_horiz"} size={34} fill={1} />
-            )}
+            <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-sm bg-current" />
+            {stopLabel}
           </button>
-        </div>
-        {/* B-STATUS-02: the REC-01 signal as one line while the microphone is
-            open (the owner passes `recording`: the fallback loop's listening
-            turn, or a whole Live call). The orb, X and captions are unchanged. */}
+        ) : (
+          <div className="relative flex items-center justify-center" style={{ width: 112, height: 112 }}>
+            {mode === "pulse" && (
+              <div
+                aria-hidden
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: "var(--arbor-green-soft)",
+                  transform: "scale(1.08)",
+                  transition: "transform 90ms linear",
+                }}
+              />
+            )}
+            <button
+              type="button"
+              onClick={onOrbTap}
+              disabled={!canInterrupt}
+              aria-label={canInterrupt ? t("coach.voice.interrupt") : phaseLabel}
+              className="relative flex h-24 w-24 items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-default"
+              style={{
+                background: "var(--arbor-green-soft)",
+                color: "var(--arbor-green-ink)",
+                border: "1px solid var(--arbor-rule-strong)",
+                animation:
+                  mode === "pulse"
+                    ? "vo-pulse 1.8s ease-in-out infinite"
+                    : mode === "shimmer"
+                      ? "vo-shimmer 2.4s ease-in-out infinite"
+                      : undefined,
+              }}
+            >
+              {phase === "speaking" ? (
+                <span className="flex items-end gap-1" aria-hidden>
+                  {WAVE_BARS.map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-1.5 rounded-full"
+                      style={{
+                        height: h,
+                        background: "var(--arbor-sage)",
+                        ...(mode === "wave"
+                          ? { animation: `vo-wave 1.1s ease-in-out ${i * 0.12}s infinite`, transformOrigin: "center bottom" }
+                          : {}),
+                      }}
+                    />
+                  ))}
+                </span>
+              ) : (
+                <Icon name={phase === "listening" ? "mic" : phase === "connecting" ? "progress_activity" : "more_horiz"} size={34} fill={1} />
+              )}
+            </button>
+          </div>
+        )}
         {recording && (
           <div className="mt-2">
             <RecordingLine label={t("elev.rec.on")} testId="voice-recording-line" />
           </div>
         )}
-        {onFinishTurn && <p className="mt-2 text-[12px] font-bold">{t("coach.voice.finishTurn")}</p>}
         {canInterrupt && (
           <p className="mt-2 text-[12px] font-bold" style={{ color: "var(--arbor-muted)" }}>
             {t("coach.voice.interrupt")}

@@ -2205,7 +2205,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           // the fallback loop listens only in its listening turn; a Live call
           // streams the microphone for the whole session.
           recording={voicePhase === "listening" || liveSession}
-          onFinishTurn={voicePhase === "listening" && !liveSession ? () => dictationLoopRef.current?.finishTurn() : undefined}
+          onFinishTurn={voicePhase === "listening" && !liveSession ? dictationLoopRef.current?.finishTurn : undefined}
           onOrbTap={() => { if (openingRunRef.current?.skip()) return; if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
           onClose={stopVoice}
         />
