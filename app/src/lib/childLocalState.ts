@@ -41,48 +41,67 @@ export const isChildScopedKey = (key: string, childId: string): boolean =>
   childId.length > 0 &&
   (key.endsWith(`.${childId}`) || key.includes(`.${childId}.`));
 
-function sweep(storage: Storage | null | undefined, childId: string): number {
-  if (!storage) return 0;
-  let removed = 0;
-  // Collect before removing: Storage reindexes after removeItem. A denied
-  // length read prevents a sweep, but one failed key(index) must not prevent
-  // removal of the other reachable per-child keys.
+/** The count is useful even if another key could not be checked or removed. */
+export type ChildLocalSweep = { removed: number; complete: boolean };
+
+function sweep(storage: Storage | null | undefined, childId: string): ChildLocalSweep {
+  const result: ChildLocalSweep = { removed: 0, complete: true };
+  if (!storage) return result;
+  // Collect before removing: Storage reindexes after removeItem. A failed
+  // enumeration must not strand reachable keys or be reported as complete.
   let length: number;
   try {
     length = storage.length;
+    if (!Number.isSafeInteger(length) || length < 0) throw new Error("Invalid storage length");
   } catch {
-    return 0;
+    return { removed: 0, complete: false };
   }
   const doomed: string[] = [];
   for (let i = 0; i < length; i++) {
     try {
       const key = storage.key(i);
-      if (key && isChildScopedKey(key, childId)) doomed.push(key);
+      if (key === null) result.complete = false;
+      else if (isChildScopedKey(key, childId)) doomed.push(key);
     } catch {
-      /* continue with the remaining indices; this key remains unverified */
+      result.complete = false;
     }
   }
   for (const key of doomed) {
     try {
       storage.removeItem(key);
-      removed++;
+      if (storage.getItem(key) === null) result.removed++;
+      else result.complete = false;
     } catch {
-      /* one stubborn key must not abandon the rest */
+      result.complete = false;
     }
   }
-  return removed;
+  return result;
 }
 
-/**
- * Remove every device-local record scoped to one child. Returns how many keys
- * were removed, for the deletion receipt. Never throws.
- */
+/** Detailed, best-effort sweep for the deletion receipt. Accessing a browser's
+ * Storage property can itself throw (e.g. denied access); the other store
+ * must still be swept and the receipt must say the first was not reached. */
+export function sweepChildLocalState(
+  childId: string,
+  stores?: { local?: Storage | null; session?: Storage | null },
+): ChildLocalSweep {
+  if (!childId) return { removed: 0, complete: false };
+  const run = (provided: Storage | null | undefined, name: "localStorage" | "sessionStorage"): ChildLocalSweep => {
+    try {
+      return sweep(provided === undefined ? globalThis[name] : provided, childId);
+    } catch {
+      return { removed: 0, complete: false };
+    }
+  };
+  const local = run(stores?.local, "localStorage");
+  const session = run(stores?.session, "sessionStorage");
+  return { removed: local.removed + session.removed, complete: local.complete && session.complete };
+}
+
+/** Retain the count-only, never-throw contract for existing callers. */
 export function clearChildLocalState(
   childId: string,
   stores?: { local?: Storage | null; session?: Storage | null },
 ): number {
-  if (!childId) return 0;
-  const local = stores?.local ?? (typeof localStorage === "undefined" ? null : localStorage);
-  const session = stores?.session ?? (typeof sessionStorage === "undefined" ? null : sessionStorage);
-  return sweep(local, childId) + sweep(session, childId);
+  return sweepChildLocalState(childId, stores).removed;
 }
