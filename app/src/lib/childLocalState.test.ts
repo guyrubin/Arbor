@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { childScopedKey, clearChildLocalState, isChildScopedKey } from "./childLocalState";
+import { childScopedKey, clearChildLocalState, isChildScopedKey, sweepChildLocalState } from "./childLocalState";
 import { watchFocusKey } from "./screeningWatch";
 
 /**
@@ -75,6 +75,32 @@ describe("child-scoped local state is swept on deletion", () => {
     expect(local.getItem("arbor.screen.notes.kid-a")).toBeNull();
     expect(local.getItem("arbor.screen.draft.kid-a")).toBe("unreadable");
     expect(local.getItem("arbor.screen.watch.kid-b")).toBe("sibling");
+  });
+
+  it("B-BOOK-20: an unreadable slot cannot certify the whole device sweep", () => {
+    const local = fakeStorage({ "arbor.x.kid-a": "unreadable", "arbor.y.kid-a": "reachable", "arbor.x.kid-b": "sibling" });
+    const key = local.key;
+    local.key = (index) => { if (index === 0) throw new Error("blocked"); return key(index); };
+    const session = fakeStorage({ "arbor.x.kid-a": "session" });
+    expect(sweepChildLocalState("kid-a", { local, session })).toEqual({ removed: 2, complete: false });
+    expect(local.getItem("arbor.x.kid-a")).toBe("unreadable");
+    expect(local.getItem("arbor.y.kid-a")).toBeNull();
+    expect(session.length).toBe(0);
+    expect(local.getItem("arbor.x.kid-b")).toBe("sibling");
+  });
+
+  it("B-BOOK-20: a denied length or a silently retained key is not a completed sweep", () => {
+    const denied = { get length() { throw new Error("blocked"); } } as unknown as Storage;
+    const local = fakeStorage({ "arbor.x.kid-a": "retained" });
+    local.removeItem = () => {};
+    expect(sweepChildLocalState("kid-a", { local: denied, session: local })).toEqual({ removed: 0, complete: false });
+    expect(local.getItem("arbor.x.kid-a")).toBe("retained");
+  });
+
+  it("B-BOOK-20: a clean sweep certifies only the selected child's device keys", () => {
+    const local = fakeStorage({ "arbor.x.kid-a": "remove", "arbor.x.kid-b": "retain" });
+    expect(sweepChildLocalState("kid-a", { local, session: fakeStorage() })).toEqual({ removed: 1, complete: true });
+    expect(local.getItem("arbor.x.kid-b")).toBe("retain");
   });
 
   it("a non-arbor key carrying the id is NOT swept (we own only our namespace)", () => {
