@@ -975,7 +975,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // device and per notice id — a new provider, region or purpose asks again.
     const noticeId = runtimeVoiceNoticeId(liveAvail ? liveNoticeId : null);
     const tap = voiceNoticeTap(noticeId, noticePending, voiceNoticeAcknowledged(noticeId));
-    if (tap === "show") { if (voicePhase === "paused") setVoicePhase("off"); setVoiceNotice(null); setNoticePending(noticeId); return; }
+    if (tap === "show") {
+      setVoicePhase("off");
+      setVoiceNotice(null);
+      setNoticePending(noticeId);
+      return;
+    }
     if (tap === "acknowledge_and_start") acknowledgeVoiceNotice(noticeId);
     setNoticePending(null);
     setVoiceResting(false);

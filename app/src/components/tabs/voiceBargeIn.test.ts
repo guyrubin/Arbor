@@ -15,7 +15,7 @@
  *    already did) — only genuine failures recover in the catch;
  *  - the overlay is OWNED by voicePhase !== "off", its captions carry only
  *    voiceInterim (parent's words) + liveVoiceText (screened output), and it
- *    opens no new entry point (orb tap can only barge in, X only stops).
+ *    offers distinct Stop recording, Record again and Back to chat actions.
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
@@ -123,6 +123,16 @@ describe("AI-V7 — the overlay is a surface, never an entry point", () => {
     expect(overlay).toContain("onResume={() => void toggleVoice()}");
     expect(overlay).not.toContain("startBrowserVoice");
     expect(overlay).not.toContain("liveToken");
+  });
+
+  it("Stop waits for final device words or pauses Live, while Back leaves in one tap", () => {
+    const controls = coach.slice(coach.indexOf("const pauseRecording ="), coach.indexOf("const bargeInVoice ="));
+    const [pause, exit] = controls.split("const backToChat =");
+    expect(pause).toMatch(/stopVoice\(false\);\s*keepVoiceDraft\(words\);\s*setVoiceInterim\(words\);\s*setVoicePhase\("paused"\)/);
+    expect(pause).toContain("dictationLoopRef.current.finishTurn()");
+    expect(pause).toContain("pauseRecording(partialVoiceText.current)");
+    expect(exit).toMatch(/if \(attempt\) \{[\s\S]*?keepVoiceDraft\(partialVoiceText.current\);\s*\}\s*stopVoice\(false\);\s*setReviewInChat\(true\);/);
+    expect(controls).not.toMatch(/startListening\(|toggleVoice\(|setVoiceReviewOpen\(true\)/);
   });
 
   it("the dictation loop feeds interim partials into the overlay caption", () => {
