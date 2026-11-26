@@ -77,7 +77,8 @@ describe("GP-23 — the inline explainer is structured, sourced and keepable", (
 
   it("offers ONE-tap Keep through the canonical save verb, into the insights record", () => {
     expect(bar).toMatch(/verb: "save"/);
-    expect(bar).toMatch(/keepBehaviorInsight\(/);
+    expect(bar).toMatch(/explainKeep\(item\)/);
+    expect(SRC).toMatch(/keepBehaviorInsight\(/);
     expect(SRC).toMatch(/keepBehaviorInsight,/); // destructured from the context
   });
 

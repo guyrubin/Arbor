@@ -19,6 +19,7 @@ import {
   type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import type { ShareCardOpts } from "../../lib/shareCard";
+import { showVisitReceipt } from "../../lib/visitReceipt";
 
 /**
  * GP-31 — the keepsake editor for one first.
@@ -150,7 +151,7 @@ export default function FirstKeepsakeSheet({
     if (!isCurrent()) return;
     owner.busy = false;
     setWriting(false);
-    toast(t("elev.waveR.keepsake.saved"), "success");
+    showVisitReceipt(t("elev.waveR.keepsake.saved"));
     onClose();
   };
 

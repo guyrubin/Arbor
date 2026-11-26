@@ -178,7 +178,9 @@ export function takeBillingReturn(storage: FlagStorage | null = sessionStore()):
 }
 
 export type BillingReturnDeps = {
-  toast: (message: string, type?: "info" | "success" | "error") => void;
+  toast: (message: string, type?: "info" | "error") => void;
+  /** The confirmed purchase is a receipt on the shell, not a success toast. */
+  onConfirmed: (message: string) => void;
   t: (key: string) => string;
   refresh: () => Promise<EntitlementInfo>;
   schedule?: (fn: () => void, ms: number) => unknown;
@@ -221,7 +223,7 @@ function confirmsWebPurchase(entitlement: EntitlementInfo): boolean {
  * MON-2 activation sequence: ONE "activating" toast, then poll the
  * entitlement until a web purchase is confirmed (the RevenueCat webhook writes
  * it async; an app trial can already have the same Plus plan),
- * then ONE "activated" toast. Returns a cancel function for the effect cleanup.
+ * then ONE receipt on the shell (onConfirmed). Returns a cancel function for the effect cleanup.
  *
  * MOB-07 / IA-15: the sequence used to have no LOSING branch. `refresh()`
  * rejecting produced an unhandled rejection and stopped the poll dead, and a
@@ -263,7 +265,7 @@ export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
       // A failed read is an unconfirmed try, never a reason to stop silently.
       if (!alive || settled) return;
     }
-    if (confirmed) { settled = true; clearTimeout(deadline); deps.toast(deps.t("pw.activated"), "success"); return; }
+    if (confirmed) { settled = true; clearTimeout(deadline); deps.onConfirmed(deps.t("pw.activated")); return; }
     if (tries < maxTries) handle = schedule(() => void poll(), intervalMs);
     else giveUp();
   };

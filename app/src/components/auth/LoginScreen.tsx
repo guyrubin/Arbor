@@ -8,6 +8,8 @@ import { LegalLinks } from "../billing/LegalLinks";
 import { appleSignInOffered } from "../../lib/nativeSignIn";
 import { readTrialEntry } from "../../lib/trialEntry";
 import { SignInSituation } from "./SituationFirst";
+import { Receipt } from "../ui/Receipt";
+import { useAccountDeletedReceipt } from "../../lib/accountDeletedNotice";
 
 function ArborMark() {
   return <ArborMarkIcon size={56} />;
@@ -27,6 +29,7 @@ export default function LoginScreen() {
   const [mode, setMode] = useState<"signin" | "signup">(trialEntry ? "signup" : "signin");
   const [busy, setBusy] = useState<"google" | "apple" | "email" | null>(null);
   const [resetMsg, setResetMsg] = useState("");
+  const accountDeleted = useAccountDeletedReceipt();
 
   const handleReset = async () => {
     if (!email.trim()) {
@@ -132,6 +135,10 @@ export default function LoginScreen() {
         </div>
 
         {trialEntry?.moment && <SignInSituation moment={trialEntry.moment} kept={trialEntry.kept} />}
+
+        {accountDeleted && (
+          <Receipt testId="account-deleted-receipt" size="sm">{t("set.acctDel.done")}</Receipt>
+        )}
 
         {error && (
           <div role="alert" className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>

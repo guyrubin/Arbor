@@ -9,23 +9,17 @@
       "info": 1
     },
     "components/layout/DeleteAccountModal.tsx": {
-      "info": 1,
-      "success": 1
+      "info": 1
     },
     "components/layout/Shell.tsx": {
       "info": 1
     },
     "components/milestones/FirstKeepsakeSheet.tsx": {
       "dynamic": 1,
-      "success": 1,
       "info": 1
     },
     "components/overview/QuickLogModal.tsx": {
-      "info": 2,
-      "success": 1
-    },
-    "components/profile/AddChildModal.tsx": {
-      "success": 1
+      "info": 2
     },
     "components/sections/Screening.tsx": {
       "info": 1
@@ -35,17 +29,14 @@
     },
     "context/ArborContext.tsx": {
       "dynamic": 1,
-      "info": 1,
-      "success": 2
+      "info": 1
     },
     "hooks/useCheckout.ts": {
       "dynamic": 1,
-      "info": 2,
-      "success": 1
+      "info": 2
     },
     "hooks/useEntitlement.ts": {
-      "info": 2,
-      "success": 1
+      "info": 2
     }
   }
 }

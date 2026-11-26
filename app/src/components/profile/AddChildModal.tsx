@@ -8,6 +8,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useEntitlement, childLimitReached, PAID_PLAN_LIMITS } from "../../hooks/useEntitlement";
 import { buildNewChildInput } from "../../lib/childProfileInput";
+import { showVisitReceipt } from "../../lib/visitReceipt";
 import { PlanBadge } from "../ui/PlanBadge";
 // B-SHELL-17: Add child IS onboarding steps 2–3 — the SAME StepChild (one age
 // field: years + months, the controller-consent affirmation, LegalLinks) and
@@ -69,7 +70,7 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
       });
       const childName = input.name;
       await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
-      toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });
+      showVisitReceipt(t("ac.addedToast", { name: childName }));
       close();
     } catch {
       // B-DATA-15: a new child's id comes from the server; offline (or a

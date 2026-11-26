@@ -36,7 +36,7 @@ async function mountedReturnProof() {
   Date.now = () => Date.parse("2026-11-08T00:00:00.000Z") + now;
   const React = require("react"), { createRoot } = require("react-dom/client"), { flushSync } = require("react-dom");
   const state = { uid: "synthetic-owner-a", lang: "en" };
-  const requests = [], messages = [];
+  const requests = [], messages = [], receipts = [];
   const api = { entitlement: signal => new Promise(resolve => requests.push({ signal, resolve, uid: state.uid })) };
   const load = (file, modules) => {
     const code = ts.transpileModule(fs.readFileSync(file, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -53,6 +53,7 @@ async function mountedReturnProof() {
     "../context/AuthContext": { useAuth: () => ({ user: { uid: state.uid } }) },
     "../context/LanguageContext": { useLanguage: () => { const lang = state.lang; return { t: key => `${lang}:${key}` }; } },
     "../context/ToastContext": { useToast: () => ({ toast: (message, type, action) => messages.push({ message, type, action }) }) },
+    "../lib/visitReceipt": { showVisitReceipt: (text) => receipts.push(text) },
     "./useEntitlement": entitlement,
   });
   const trial = { ...entitlement.FALLBACK_FREE, plan: "plus", source: "trial", provider: "none", status: "in_trial" };
@@ -76,11 +77,11 @@ async function mountedReturnProof() {
     render(); await flush();
     proof.queryIsOnlyTrigger = requests.length === 1 && requests[0].uid === "synthetic-owner-a" && location.search === "?keep=1" && location.hash === "#/overview";
     requests[0].resolve(trial); await flush();
-    proof.trialDoesNotConfirm = !messages.some(message => message.type === "success");
+    proof.trialDoesNotConfirm = receipts.length === 0 && !messages.some(message => message.type === "success");
     await advance(2500);
     state.lang = "he"; render(); await flush();
     requests[1].resolve(paid); await flush();
-    proof.localePreservesPoll = requests.length === 2 && messages.filter(message => message.type === "success").length === 1 && messages.at(-1).message === "he:pw.activated";
+    proof.localePreservesPoll = requests.length === 2 && receipts.length === 1 && receipts[0] === "he:pw.activated" && !messages.some(message => message.type === "success");
 
     // A fresh return stays pending through six trial answers, then Retry must
     // keep polling until the delayed webhook's paid answer appears.
@@ -96,7 +97,7 @@ async function mountedReturnProof() {
     pending.action.onClick(); await flush();
     requests.at(-1).resolve(trial); await flush(); await advance(2500);
     requests.at(-1).resolve(paid); await flush();
-    proof.retryKeepsPolling = requests.length === beforeRetry + 2 && messages.at(-1).message === "he:pw.activated";
+    proof.retryKeepsPolling = requests.length === beforeRetry + 2 && receipts.at(-1) === "he:pw.activated";
 
     // The old account's retained Retry must be inert after the auth owner moves.
     state.uid = "synthetic-owner-b"; entitlement.setEntitlementOwner(state.uid); render(); await flush();
@@ -108,15 +109,15 @@ async function mountedReturnProof() {
     flushSync(() => root.render(null));
     state.uid = "synthetic-owner-a"; entitlement.setEntitlementOwner(state.uid);
     entitlement.markBillingReturn(); render(); await flush();
-    const old = requests.at(-1), successes = messages.filter(message => message.type === "success").length;
+    const old = requests.at(-1), successes = receipts.length;
     state.uid = "synthetic-owner-b"; entitlement.setEntitlementOwner(state.uid); render(); await flush();
     old.resolve(paid); await flush(); await advance(15_000);
-    proof.ownerChangeCancelsConfirmation = old.signal.aborted && messages.filter(message => message.type === "success").length === successes && entitlement.cachedEntitlement() === null;
+    proof.ownerChangeCancelsConfirmation = old.signal.aborted && receipts.length === successes && entitlement.cachedEntitlement() === null;
 
     flushSync(() => root.render(null)); location.search = "?billing=cancel";
-    const beforeCancel = requests.length, beforeCancelMessages = messages.length;
+    const beforeCancel = requests.length, beforeCancelMessages = messages.length, beforeCancelReceipts = receipts.length;
     render(); await flush();
-    proof.cancelDoesNotClaimSuccess = requests.length === beforeCancel && messages.length === beforeCancelMessages;
+    proof.cancelDoesNotClaimSuccess = requests.length === beforeCancel && messages.length === beforeCancelMessages && receipts.length === beforeCancelReceipts;
     process.stdout.write(JSON.stringify({ ok: true, ...proof }));
   } catch (error) {
     process.stdout.write(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error), ...proof }));
