@@ -132,7 +132,7 @@ import { DOMAIN_IDS } from "../lib/domains/registry.js";
 import { SHELF_IDS } from "../lib/shelves/registry.js";
 import { isAdmin } from "../server/admin.js";
 import type { AdminMetricsStore } from "../server/adminMetrics.js";
-import type { UsageCounterStore } from "../server/quotaStore.js";
+import { isQuotaStoreUnavailable, type UsageCounterStore } from "../server/quotaStore.js";
 import { buildWaitlistEntry, isValidEmail, notifyWaitlistSafely, type WaitlistNotifier, type WaitlistStore } from "../server/waitlist.js";
 import { createSharedChildRecordSource, resolveSharedPacket, type SharedChildRecordSource } from "../server/sharedPacket.js";
 import { programWeekScript } from "../lib/programs/weekScript.js";
@@ -4329,15 +4329,24 @@ Return JSON with title, date, overview, keyStrengths, classroomChallenges, langu
       const actor = actorOf(req);
       const entitlement = await resolveEntitlement(entitlementStore, actor);
       const DAY_MS = 24 * 60 * 60 * 1000;
-      const usage = entitlement.limits.coachMessagesPerDay !== null
-        ? await counters.peek(COACH_METER, actor.uid, DAY_MS)
-        : null;
+      // B-AIOPS-01: a display read. A counter-store error degrades to "unknown"
+      // (null), never to 0 used as fact; the plan itself still answers.
+      let usage: { count: number } | null = null;
+      let usageUnknown = false;
+      if (entitlement.limits.coachMessagesPerDay !== null) {
+        try {
+          usage = await counters.peek(COACH_METER, actor.uid, DAY_MS);
+        } catch (error) {
+          if (!isQuotaStoreUnavailable(error)) throw error;
+          usageUnknown = true;
+        }
+      }
       res.json({
         plan: entitlement.plan,
         limits: entitlement.limits,
         source: entitlement.source,
         enforced: entitlement.enforced,
-        usage: { coachMessagesToday: usage?.count ?? 0 },
+        usage: { coachMessagesToday: usageUnknown ? null : usage?.count ?? 0 },
         status: entitlement.status ?? null,
         provider: entitlement.provider ?? null,
         currentPeriodEnd: entitlement.currentPeriodEnd ?? null,

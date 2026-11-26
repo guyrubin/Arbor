@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import type { UsageCounterStore } from "./quotaStore.js";
+import { QUOTA_UNAVAILABLE_BODY, isQuotaStoreUnavailable, sendQuotaUnavailable, type UsageCounterStore } from "./quotaStore.js";
 import { accessEnded, entitlementForRequest, entitlementsEnforced, type EntitlementStore, type Plan } from "./entitlements.js";
 import { HERO_BOOK_POSE_IDS, HERO_PLAN_POSE_IDS } from "../lib/heroSheetContract.js";
 
@@ -134,37 +134,48 @@ export const createImageQuota = (counters: UsageCounterStore, entitlements?: Ent
     return;
   }
 
-  // Global circuit breaker — a cheap backstop against distributed abuse.
-  const global = await counters.increment(IMAGE_COUNTERS.global, "all", DAY_MS);
-  if (global.count > IMAGE_GLOBAL_DAILY) { resting("day", global.resetAt); return; }
-
   const reserved: { name: string; windowMs: number }[] = [];
-  const release = async () => { for (const r of reserved.splice(0)) await counters.add(r.name, key, -1, r.windowMs); };
+  // Best effort: a lost refund over-counts (the safe direction) and must not
+  // turn a true "resting" answer into an error.
+  const release = async () => { for (const r of reserved.splice(0)) await counters.add(r.name, key, -1, r.windowMs).catch(() => undefined); };
 
-  if (isHero) {
-    const hero = await counters.increment(IMAGE_COUNTERS.hero, key, MONTH_MS, { limit: a.heroPer30Days });
-    reserved.push({ name: IMAGE_COUNTERS.hero, windowMs: MONTH_MS });
-    res.setHeader("X-Image-Quota-Limit", String(a.heroPer30Days));
-    res.setHeader("X-Image-Quota-Remaining", String(Math.max(0, a.heroPer30Days - hero.count)));
-    if (hero.count > a.heroPer30Days) { await release(); resting("month", hero.resetAt); return; }
-  } else {
-    const day = await counters.increment(IMAGE_COUNTERS.day, key, DAY_MS, { limit: a.perDay });
-    reserved.push({ name: IMAGE_COUNTERS.day, windowMs: DAY_MS });
-    res.setHeader("X-Image-Quota-Limit", String(a.perDay));
-    res.setHeader("X-Image-Quota-Remaining", String(Math.max(0, a.perDay - day.count)));
-    if (day.count > a.perDay) { await release(); resting("day", day.resetAt); return; }
-    const month = await counters.increment(IMAGE_COUNTERS.month, key, MONTH_MS, { limit: a.perMonth });
-    reserved.push({ name: IMAGE_COUNTERS.month, windowMs: MONTH_MS });
-    res.setHeader("X-Image-Quota-Month-Limit", String(a.perMonth));
-    res.setHeader("X-Image-Quota-Month-Remaining", String(Math.max(0, a.perMonth - month.count)));
-    res.setHeader("X-Image-Quota-Month-Reset", new Date(month.resetAt).toISOString());
-    if (month.count > a.perMonth) { await release(); resting("month", month.resetAt); return; }
+  // B-AIOPS-01: a counter-store error fails CLOSED (calm retryable 503, not the
+  // "resting" 429): give back what this request already reserved, best effort.
+  try {
+    // Global circuit breaker — a cheap backstop against distributed abuse.
+    const global = await counters.increment(IMAGE_COUNTERS.global, "all", DAY_MS);
+    if (global.count > IMAGE_GLOBAL_DAILY) { resting("day", global.resetAt); return; }
+
+    if (isHero) {
+      const hero = await counters.increment(IMAGE_COUNTERS.hero, key, MONTH_MS, { limit: a.heroPer30Days });
+      reserved.push({ name: IMAGE_COUNTERS.hero, windowMs: MONTH_MS });
+      res.setHeader("X-Image-Quota-Limit", String(a.heroPer30Days));
+      res.setHeader("X-Image-Quota-Remaining", String(Math.max(0, a.heroPer30Days - hero.count)));
+      if (hero.count > a.heroPer30Days) { await release(); resting("month", hero.resetAt); return; }
+    } else {
+      const day = await counters.increment(IMAGE_COUNTERS.day, key, DAY_MS, { limit: a.perDay });
+      reserved.push({ name: IMAGE_COUNTERS.day, windowMs: DAY_MS });
+      res.setHeader("X-Image-Quota-Limit", String(a.perDay));
+      res.setHeader("X-Image-Quota-Remaining", String(Math.max(0, a.perDay - day.count)));
+      if (day.count > a.perDay) { await release(); resting("day", day.resetAt); return; }
+      const month = await counters.increment(IMAGE_COUNTERS.month, key, MONTH_MS, { limit: a.perMonth });
+      reserved.push({ name: IMAGE_COUNTERS.month, windowMs: MONTH_MS });
+      res.setHeader("X-Image-Quota-Month-Limit", String(a.perMonth));
+      res.setHeader("X-Image-Quota-Month-Remaining", String(Math.max(0, a.perMonth - month.count)));
+      res.setHeader("X-Image-Quota-Month-Reset", new Date(month.resetAt).toISOString());
+      if (month.count > a.perMonth) { await release(); resting("month", month.resetAt); return; }
+    }
+  } catch (error) {
+    if (!isQuotaStoreUnavailable(error)) throw error;
+    await release();
+    if (!res.headersSent) sendQuotaUnavailable(res);
+    return;
   }
 
   // Delivered images only: a failed response gives the reservation back.
   if (typeof (res as any).on === "function") {
     res.on("finish", () => {
-      if (res.statusCode < 200 || res.statusCode >= 300) void release().catch(() => { /* fail open, like the store */ });
+      if (res.statusCode < 200 || res.statusCode >= 300) void release();
     });
   }
   next();
@@ -248,30 +259,42 @@ export const chargeHeroSheetCall = async (
   });
   const limit = sheetsPer30Days(input.plan);
   if (limit <= 0) return { ok: false, status: 403, body: { error: "Hero poses are part of Plus and Family", code: "hero_sheet_plan", plan: input.plan } };
-  const global = await counters.increment(IMAGE_SHEET_COUNTERS.global, "all", DAY_MS, { limit: IMAGE_SHEET_GLOBAL_DAILY });
-  if (global.count > IMAGE_SHEET_GLOBAL_DAILY) return refused("day", global.resetAt);
+  // B-AIOPS-01: a counter-store error fails CLOSED with a calm retryable 503
+  // (the pose builders back off and retry); never "resting", never a free call.
+  const refunds: (() => Promise<unknown>)[] = [];
+  const refund = (name: string, k: string) => counters.add(name, k, -1, MONTH_MS).catch(() => undefined);
   const childKey = `${input.uid}:${input.childId}`;
   const sheetKey = `${childKey}:${input.avatarHash}`;
-  let newSheet = false;
-  const charged = await counters.peek(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
-  if (charged.count === 0) {
-    const sheet = await counters.increment(IMAGE_SHEET_COUNTERS.sheet, childKey, MONTH_MS, { limit });
-    if (sheet.count > limit) {
-      await counters.add(IMAGE_SHEET_COUNTERS.sheet, childKey, -1, MONTH_MS);
-      return refused("month", sheet.resetAt);
-    }
-    await counters.increment(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
-    newSheet = true;
-  }
   // K2: a book pose counts on its own per-sheet counter; the game's is untouched.
   const book = input.kind === "book";
   const planSheet = input.kind === "plan";
   const callsName = planSheet ? IMAGE_SHEET_COUNTERS.planCalls : book ? IMAGE_SHEET_COUNTERS.bookCalls : IMAGE_SHEET_COUNTERS.calls;
   const callsCap = planSheet ? IMAGE_SHEET_PLAN_CALLS_PER_SHEET : book ? IMAGE_SHEET_BOOK_CALLS_PER_SHEET : IMAGE_SHEET_CALLS_PER_SHEET;
-  const calls = await counters.increment(callsName, sheetKey, MONTH_MS, { limit: callsCap });
-  if (calls.count > callsCap) {
-    await counters.add(callsName, sheetKey, -1, MONTH_MS);
-    return refused(planSheet ? "plan-sheet" : book ? "book-sheet" : "sheet", calls.resetAt);
+  let newSheet = false;
+  try {
+    const global = await counters.increment(IMAGE_SHEET_COUNTERS.global, "all", DAY_MS, { limit: IMAGE_SHEET_GLOBAL_DAILY });
+    if (global.count > IMAGE_SHEET_GLOBAL_DAILY) return refused("day", global.resetAt);
+    const charged = await counters.peek(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
+    if (charged.count === 0) {
+      const sheet = await counters.increment(IMAGE_SHEET_COUNTERS.sheet, childKey, MONTH_MS, { limit });
+      if (sheet.count > limit) {
+        await refund(IMAGE_SHEET_COUNTERS.sheet, childKey);
+        return refused("month", sheet.resetAt);
+      }
+      refunds.push(() => refund(IMAGE_SHEET_COUNTERS.sheet, childKey));
+      await counters.increment(IMAGE_SHEET_COUNTERS.charged, sheetKey, MONTH_MS);
+      newSheet = true;
+    }
+    const calls = await counters.increment(callsName, sheetKey, MONTH_MS, { limit: callsCap });
+    if (calls.count > callsCap) {
+      await refund(callsName, sheetKey);
+      return refused(planSheet ? "plan-sheet" : book ? "book-sheet" : "sheet", calls.resetAt);
+    }
+  } catch (error) {
+    if (!isQuotaStoreUnavailable(error)) throw error;
+    // An unmarked sheet would be charged again on the retry: give it back.
+    if (!newSheet) for (const r of refunds) await r();
+    return { ok: false, status: 503, body: { ...QUOTA_UNAVAILABLE_BODY } };
   }
   let released = false;
   return {

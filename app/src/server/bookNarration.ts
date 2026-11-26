@@ -49,7 +49,7 @@ import { ttsEndpointFor } from "./tts.js";
 import type { BookAssetBucket } from "./bookAssets.js";
 import type { BookAssetsDocStore } from "./bookSheet.js";
 import type { EntitlementStore } from "./entitlements.js";
-import type { UsageCounterStore } from "./quotaStore.js";
+import { QUOTA_UNAVAILABLE_BODY, isQuotaStoreUnavailable, type UsageCounterStore } from "./quotaStore.js";
 import { HERO_BOOK_POSES_BY_PLAN, imagePlanFor } from "./imageQuota.js";
 import { bookAssetLimiter } from "./apiRateLimits.js";
 import { recordBookNarrationUsage } from "../ai/ttsUsage.js";
@@ -198,13 +198,20 @@ export type BookTtsCharge = { ok: true; release: () => Promise<void> } | { ok: f
 export async function chargeBookTts(counters: UsageCounterStore, input: { uid: string; childId: string }): Promise<BookTtsCharge> {
   const lim = bookTtsLimits();
   const resting = (window: string, resetAt: number): BookTtsCharge => ({ ok: false, status: 429, body: { error: "The book's voice is resting today", code: "book_narration_resting", window, retryable: false, resetAt: new Date(resetAt).toISOString() } });
-  const global = await counters.increment(BOOK_TTS_COUNTERS.global, "all", DAY_MS, { limit: lim.globalDaily });
-  if (global.count > lim.globalDaily) return resting("day", global.resetAt);
   const key = `${input.uid}:${input.childId}`;
-  const child = await counters.increment(BOOK_TTS_COUNTERS.child, key, MONTH_MS, { limit: lim.perChild30d });
-  if (child.count > lim.perChild30d) {
-    await counters.add(BOOK_TTS_COUNTERS.child, key, -1, MONTH_MS);
-    return resting("month", child.resetAt);
+  // B-AIOPS-01: a counter-store error fails CLOSED — a calm retryable 503 the
+  // narration builders back off on; never "resting", never an uncounted take.
+  try {
+    const global = await counters.increment(BOOK_TTS_COUNTERS.global, "all", DAY_MS, { limit: lim.globalDaily });
+    if (global.count > lim.globalDaily) return resting("day", global.resetAt);
+    const child = await counters.increment(BOOK_TTS_COUNTERS.child, key, MONTH_MS, { limit: lim.perChild30d });
+    if (child.count > lim.perChild30d) {
+      await counters.add(BOOK_TTS_COUNTERS.child, key, -1, MONTH_MS).catch(() => undefined);
+      return resting("month", child.resetAt);
+    }
+  } catch (error) {
+    if (!isQuotaStoreUnavailable(error)) throw error;
+    return { ok: false, status: 503, body: { ...QUOTA_UNAVAILABLE_BODY } };
   }
   let released = false;
   return { ok: true, release: async () => { if (!released) { released = true; await counters.add(BOOK_TTS_COUNTERS.child, key, -1, MONTH_MS); } } };

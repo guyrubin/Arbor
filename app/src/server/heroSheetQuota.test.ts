@@ -135,3 +135,41 @@ describe("B-GAME-13b: the hero sheet allowance", () => {
     expect((await c.peek("img_sheet_global_daily", "all", DAY)).count).toBe(0);
   });
 });
+
+describe("B-AIOPS-01: the hero sheet allowance fails closed on a counter-store error", () => {
+  const failingOn = (inner: MemoryCounterStore, names: string[], ops: ("increment" | "add" | "peek")[] = ["increment", "add", "peek"]) => {
+    const boom = async (name: string) => { const { QuotaStoreUnavailableError } = await import("./quotaStore.js"); throw new QuotaStoreUnavailableError(name); };
+    return {
+      increment: (name: string, key: string, w: number) => (ops.includes("increment") && names.includes(name) ? boom(name) : inner.increment(name, key, w)) as any,
+      add: (name: string, key: string, amt: number, w: number) => (ops.includes("add") && names.includes(name) ? boom(name) : inner.add(name, key, amt, w)) as any,
+      peek: (name: string, key: string, w: number) => (ops.includes("peek") && names.includes(name) ? boom(name) : inner.peek(name, key, w)) as any,
+    };
+  };
+  const at = { plan: "plus" as const, uid: "u9", childId: "c9", avatarHash: "h9" };
+  const unavailable = { ok: false, status: 503, body: { error: "quota_unavailable", code: "quota_unavailable", retryable: true } };
+
+  it("a failed 'charged' read is a retryable 503, not a free (uncharged) call", async () => {
+    const q = await load();
+    const inner = new MemoryCounterStore();
+    expect(await q.chargeHeroSheetCall(failingOn(inner, ["img_sheet_charged_30d"]) as any, at)).toEqual(unavailable);
+    expect((await inner.peek("img_sheet_calls_30d", "u9:c9:h9", MONTH)).count).toBe(0);
+  });
+
+  it("a failed sheet mark gives the sheet back, so the retry is not charged twice", async () => {
+    const q = await load();
+    const inner = new MemoryCounterStore();
+    const res = await q.chargeHeroSheetCall(failingOn(inner, ["img_sheet_charged_30d"], ["increment"]) as any, at);
+    expect(res).toEqual(unavailable);
+    expect((await inner.peek("img_sheet_30d", "u9:c9", MONTH)).count).toBe(0);
+  });
+
+  it("a failed per-sheet call counter is a 503 too", async () => {
+    const q = await load();
+    expect(await q.chargeHeroSheetCall(failingOn(new MemoryCounterStore(), ["img_sheet_calls_30d"]) as any, at)).toEqual(unavailable);
+  });
+
+  it("normal path unchanged: a healthy store charges the call", async () => {
+    const q = await load();
+    expect(await q.chargeHeroSheetCall(new MemoryCounterStore(), at)).toMatchObject({ ok: true, newSheet: true });
+  });
+});

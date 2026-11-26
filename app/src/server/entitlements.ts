@@ -27,7 +27,7 @@ import { getApps, initializeApp, applicationDefault } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import type { ArborConfig } from "../config/env.js";
-import type { UsageCounterStore } from "./quotaStore.js";
+import { isQuotaStoreUnavailable, sendQuotaUnavailable, type UsageCounterStore } from "./quotaStore.js";
 import { logger } from "./logger.js";
 
 export type Plan = "free" | "plus" | "family";
@@ -472,7 +472,16 @@ export const createCoachMeter = (
   const limit = entitlement.limits.coachMessagesPerDay;
   if (limit === null) { next(); return; }
 
-  const { count, resetAt } = await counters.increment(COACH_METER, actor.uid, DAY_MS);
+  // B-AIOPS-01: a counter-store error is not "0 used" — calm retryable 503, never the 402 upsell.
+  let meter: { count: number; resetAt: number };
+  try {
+    meter = await counters.increment(COACH_METER, actor.uid, DAY_MS);
+  } catch (error) {
+    if (!isQuotaStoreUnavailable(error)) throw error;
+    sendQuotaUnavailable(res);
+    return;
+  }
+  const { count, resetAt } = meter;
   res.setHeader("X-Coach-Limit", String(limit));
   res.setHeader("X-Coach-Remaining", String(Math.max(0, limit - count)));
   if (count > limit) {

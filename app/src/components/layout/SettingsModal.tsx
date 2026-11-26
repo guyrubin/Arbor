@@ -510,7 +510,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           )}
           {!isPaid && !entitlementUnverified && (
             <>
-              {coachLimit !== null && !isTrial && !trialEnded && (
+              {coachLimit !== null && !isTrial && !trialEnded && typeof entitlement.usage.coachMessagesToday === "number" && (
                 <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
                   {t("set.plan.coachToday", { used: entitlement.usage.coachMessagesToday, limit: coachLimit })}
                 </p>

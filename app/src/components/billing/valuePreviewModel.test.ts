@@ -150,6 +150,12 @@ describe("it never appears mid-task, mid-crisis, or after the wall", () => {
     expect(decideValuePreview(showing({ entitlement: over }))).toEqual({ show: false, reason: "already-at-limit" });
   });
 
+  it("B-AIOPS-01: an unknown meter (server could not read it) renders nothing and quotes no number", () => {
+    const unknown = freeEntitlement({ usage: { coachMessagesToday: null } });
+    expect(decideValuePreview(showing({ entitlement: unknown }))).toEqual({ show: false, reason: "usage-unknown" });
+    expect(coachRemaining(unknown)).toBeNull();
+  });
+
   it("negative control — one message left is BEFORE the wall and does show", () => {
     const one = freeEntitlement({ usage: { coachMessagesToday: 9 } });
     expect(decideValuePreview(showing({ entitlement: one }))).toEqual({ show: true, reason: "shown", used: 9, limit: 10, remaining: 1 });

@@ -743,7 +743,8 @@ export type EntitlementInfo = {
   limits: { coachMessagesPerDay: number | null; maxChildren: number; professionalReports: boolean; advancedPlans: boolean; coParentSeats: number };
   source: string;
   enforced: boolean;
-  usage: { coachMessagesToday: number };
+  /** null = the server could not read today's meter (B-AIOPS-01): unknown, never 0. */
+  usage: { coachMessagesToday: number | null };
   status?: "active" | "in_trial" | "grace_period" | "canceled" | "expired" | null;
   provider?: "stripe" | "app_store" | "play_store" | "comp" | "none" | null;
   currentPeriodEnd?: string | null;

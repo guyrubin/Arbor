@@ -4,8 +4,15 @@
  * The previous hourly AI cap lived in a per-instance Map, so it reset on every
  * Cloud Run scale-out. This store keeps fixed-window counters in Firestore
  * (collection `aiQuota`, doc per key+window) so caps hold across instances.
- * Local/sandbox keeps the in-memory implementation. Firestore failures fail
- * OPEN (availability over enforcement) and are logged.
+ * Local/sandbox keeps the in-memory implementation.
+ *
+ * B-AIOPS-01 (2026-11-26): Firestore failures fail CLOSED. They used to return
+ * `{ count: 0 }`, so a datastore error read as "zero usage" and every metered
+ * paid call (requests, images, narration, hero poses, plan plates) was granted
+ * spare capacity it could not prove. The store now throws
+ * `QuotaStoreUnavailableError`; the gates answer a calm, retryable 503
+ * (`QUOTA_UNAVAILABLE_BODY`, never the "you hit your limit" copy) and display
+ * reads degrade to "unknown", never to 0 used.
  *
  * AIR-7 (2026-07-25): `increment`/`add` used to cost TWO Firestore round-trips
  * (set THEN get) on every call — dead pre-model latency on every /chat. When
@@ -37,6 +44,32 @@ export interface UsageCounterStore {
   /** Read without incrementing (for usage displays). */
   peek(name: string, key: string, windowMs: number): Promise<{ count: number; resetAt: number }>;
 }
+
+export const QUOTA_UNAVAILABLE = "quota_unavailable";
+/** Seconds; the same short wait the image route's transient 503 asks for. */
+export const QUOTA_UNAVAILABLE_RETRY_AFTER = "15";
+/** The 503 body every metered gate answers on a store error. The client maps
+ *  503 to its existing calm, retryable copy (lib/aiErrorCopy generic), so no
+ *  new user-facing string is carried here. */
+export const QUOTA_UNAVAILABLE_BODY = Object.freeze({ error: QUOTA_UNAVAILABLE, code: QUOTA_UNAVAILABLE, retryable: true });
+
+/** B-AIOPS-01: the counter store could not be read or written. Never "0 used". */
+export class QuotaStoreUnavailableError extends Error {
+  readonly code = QUOTA_UNAVAILABLE;
+  constructor(readonly counter: string, options?: { cause?: unknown }) {
+    super(`Usage counter store unavailable (${counter})`, options);
+    this.name = "QuotaStoreUnavailableError";
+  }
+}
+
+export const isQuotaStoreUnavailable = (err: unknown): err is QuotaStoreUnavailableError =>
+  err instanceof QuotaStoreUnavailableError || (err as { code?: unknown } | null)?.code === QUOTA_UNAVAILABLE;
+
+/** Answer the store-error 503 on an Express-like response. */
+export const sendQuotaUnavailable = (res: { setHeader(name: string, value: string): unknown; status(code: number): { json(body: unknown): unknown } }) => {
+  res.setHeader("Retry-After", QUOTA_UNAVAILABLE_RETRY_AFTER);
+  res.status(503).json({ ...QUOTA_UNAVAILABLE_BODY });
+};
 
 const windowStart = (windowMs: number, now = Date.now()) => now - (now % windowMs);
 
@@ -135,8 +168,8 @@ export class FirestoreCounterStore implements UsageCounterStore {
       this.pruneEstimates(now);
       return { count, resetAt };
     } catch (error) {
-      logger.error("Quota store increment failed — failing open", error, { name });
-      return { count: 0, resetAt };
+      logger.error("Quota store increment failed — failing closed", error, { name });
+      throw new QuotaStoreUnavailableError(name, { cause: error });
     }
   }
 
@@ -153,8 +186,9 @@ export class FirestoreCounterStore implements UsageCounterStore {
     try {
       const snap = await this.ref(name, key, start).get();
       return { count: (snap.data()?.count as number) || 0, resetAt };
-    } catch {
-      return { count: 0, resetAt };
+    } catch (error) {
+      logger.error("Quota store read failed — usage unknown", error, { name });
+      throw new QuotaStoreUnavailableError(name, { cause: error });
     }
   }
 }
