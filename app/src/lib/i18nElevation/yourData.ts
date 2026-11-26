@@ -15,6 +15,17 @@ export const en: Record<string, string> = {
   "elev.yourData.exportComplete": "Export prepared. The download includes a completeness receipt and private book files.",
   "elev.yourData.exportPartial": "Partial export prepared. Some data or book files could not be included. Check the download's receipt, then try again when signed in and online. Files over the stated limits remain excluded.",
   "elev.yourData.link": "Export or delete {name}'s data",
+  // B-CAREPRO-50: a partial export names what it left out, book by book.
+  "elev.yourData.gap.title": "Not in this download:",
+  "elev.yourData.gap.book": "{book}: {parts}. Try again later to add them.",
+  "elev.yourData.gap.bookTooLarge": "{book}: {parts}. The library is too large to include them all in one download.",
+  "elev.yourData.gap.pictures": "{n} picture{plural}",
+  "elev.yourData.gap.voices": "{n} voice recording{plural}",
+  "elev.yourData.gap.details": "{n} book detail{plural}",
+  "elev.yourData.gap.join": ", ",
+  "elev.yourData.gap.ownBook": "A book made for {name}",
+  "elev.yourData.gap.unlisted": "Some of {name}'s book files could not be checked this time.",
+  "elev.yourData.gap.records": "Some of {name}'s saved notes and history could not be included.",
 };
 
 export const he: Record<string, string> = {
@@ -28,4 +39,14 @@ export const he: Record<string, string> = {
   "elev.yourData.exportComplete": "הייצוא הוכן. ההורדה כוללת דוח שלמות וקובצי ספר פרטיים.",
   "elev.yourData.exportPartial": "הוכן ייצוא חלקי. חלק מהנתונים או מקובצי הספר לא נכללו. בדקו את הדוח בהורדה ונסו שוב כשאתם מחוברים לחשבון ולרשת. קבצים שחורגים מהמגבלות שצוינו יישארו מחוץ לייצוא.",
   "elev.yourData.link": "ייצוא או מחיקה של הנתונים של {name}",
+  "elev.yourData.gap.title": "לא נכלל בהורדה הזאת:",
+  "elev.yourData.gap.book": "{book}: {parts}. אפשר לנסות שוב מאוחר יותר כדי להוסיף אותם.",
+  "elev.yourData.gap.bookTooLarge": "{book}: {parts}. הספרייה גדולה מכדי לכלול את כולם בהורדה אחת.",
+  "elev.yourData.gap.pictures": "תמונות: {n}",
+  "elev.yourData.gap.voices": "הקלטות קול: {n}",
+  "elev.yourData.gap.details": "פרטי ספר: {n}",
+  "elev.yourData.gap.join": ", ",
+  "elev.yourData.gap.ownBook": "ספר שנוצר בשביל {name}",
+  "elev.yourData.gap.unlisted": "חלק מקובצי הספרים של {name} לא נבדקו הפעם.",
+  "elev.yourData.gap.records": "חלק מההערות וההיסטוריה השמורות של {name} לא נכללו.",
 };

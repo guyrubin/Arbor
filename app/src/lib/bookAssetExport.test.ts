@@ -131,13 +131,17 @@ describe("B-BOOK-20 bounded portable bytes", () => {
   });
 
   it("caps every file and the total, with explicit receipts; unknown sizes do not allow reads", async () => {
-    const size = BOOK_EXPORT_LIMITS.fileBytes;
+    // B-CAREPRO-50: the shipped budget is a ten-book library; a narrowed one
+    // proves the same caps without reading 128 MB in a unit test.
+    const size = 1024;
+    const limits = { fileBytes: size, totalBytes: 4 * size };
     const files = Array.from({ length: 5 }, (_, i) => file(`hero-sheets/s/p${i}.png`, size));
     files.push(file(audio, size + 1), file(print, null));
     const calls = install(files, (url) => served(new Uint8Array(size), url));
-    const out = await exportPrivateBookAssets("owner", childId, []);
+    const out = await exportPrivateBookAssets("owner", childId, [], { limits });
+    expect(out.limits).toMatchObject(limits);
     expect(out.includedFiles).toBe(4);
-    expect(out.includedBytes).toBe(BOOK_EXPORT_LIMITS.totalBytes);
+    expect(out.includedBytes).toBe(limits.totalBytes);
     expect(out.files.map((f) => f.status)).toEqual(["included", "included", "included", "included", "byte_limit", "byte_limit", "unknown_size"]);
     expect(calls).toHaveLength(5);
     expect(out.status).toBe("incomplete");
@@ -170,7 +174,7 @@ describe("B-BOOK-20 bounded portable bytes", () => {
   it("keeps successful bytes in a partial receipt and reports missing/offline files honestly", async () => {
     let n = 0;
     install([file(sprite), file(print), file(audio)], (url) => ++n === 1 ? served("DATA", url) : new Response(null, { status: n === 2 ? 404 : 503 }));
-    const out = await exportPrivateBookAssets("owner", childId, docs([sprite, print, audio]));
+    const out = await exportPrivateBookAssets("owner", childId, docs([sprite, print, audio]), { transientRetryMs: [0, 0] });
     expect(out.status).toBe("incomplete");
     expect(out.files.map((f) => f.status)).toEqual(["included", "missing", "unavailable"]);
     expect(out.includedFiles).toBe(1);
@@ -319,40 +323,109 @@ describe("B-CAREPRO-50 · the export matches what the server sent", () => {
     await expect(pauseWithin(0, undefined, Date.now() + 1_000)).resolves.toBeUndefined();
   });
 
-  /** A synthetic ten-book library: ~96 files a book (sheet, choices, prints, three narration voices). */
-  const library = (bytes: number): BookExportFile[] => Array.from({ length: 10 }, (_, b) => [
+  /** A synthetic ten-book library: ~96 files a book (sheet, choices, prints,
+   *  three narration voices), each file `size(path)` bytes. */
+  const library = (size: number | ((path: string) => number)): BookExportFile[] => Array.from({ length: 10 }, (_, b) => [
     ...Array.from({ length: 6 }, (_, i) => `hero-sheets/s${b}/pose${i}.webp`),
     ...Array.from({ length: 4 }, (_, i) => `hero-sheets/s${b}/choices/c${i}.webp`),
     ...Array.from({ length: 12 }, (_, i) => `hero-sheets/s${b}/prints/p${i}.webp`),
     `hero-sheets/s${b}/manifest.json`,
     ...["en", "he-m", "he-f"].flatMap((v) => Array.from({ length: 12 }, (_, i) => [`narration/n${b}/${v}/p${i}.mp3`, `narration/n${b}/${v}/p${i}.cues.json`]).flat()),
     "manifest.json",
-  ].map((path) => ({ bookId: `book-${b}`, path, bytes }))).flat();
+  ].map((path) => ({ bookId: `book-${b}`, path, bytes: typeof size === "number" ? size : size(path) }))).flat();
+  /** Ordinary sizes: a picture ~200 KB, a narration clip ~64 KB (the public
+   *  plates and narration average 280 KB / 64 KB), a sidecar ~2 KB. */
+  const ordinary = (path: string) => /\.webp$/.test(path) ? 200 * 1024 : /\.mp3$/.test(path) ? 64 * 1024 : 2 * 1024;
+  const total = (files: BookExportFile[]) => files.reduce((n, f) => n + (f.bytes ?? 0), 0);
 
-  it("a ten-book library inside the byte budget exports complete", async () => {
-    const files = library(2048);
-    expect(files.length).toBeGreaterThan(900);
+  it("ROOT CAUSE: the old 32 MB / 120 s budget could not hold an ordinary ten-book library; the new one does", () => {
+    const files = library(ordinary);
+    expect(total(files)).toBeGreaterThan(32 * 1024 * 1024); // why every big library ended byte_limit
+    expect(total(files)).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.totalBytes);
+    // …even at the write path's own 300 KB WebP cap
+    expect(total(library((p) => /\.webp$/.test(p) ? 300 * 1024 : ordinary(p)))).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.totalBytes);
+    // one read at a time at ~150 ms each, plus one full wait on the per-minute pace
+    const sequentialMs = files.length * 150 + 60_000;
+    expect(sequentialMs).toBeGreaterThan(120_000); // why the tail ended timeout
+    expect(sequentialMs).toBeLessThan(BOOK_EXPORT_LIMITS.totalMs);
     expect(files.length).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.files);
-    const body = new Uint8Array(2048).fill(7);
-    install(files, (url) => served(body, url));
+  });
+
+  it("an ordinary ten-book library exports complete, every file checked against the server's hash", async () => {
+    const files = library(ordinary);
+    expect(files.length).toBeGreaterThan(900);
+    const bodies = new Map<number, Uint8Array>();
+    const bodyOf = (n: number) => bodies.get(n) ?? bodies.set(n, new Uint8Array(n).fill(n % 251)).get(n)!;
+    const sizes = new Map(files.map((f) => [`${f.bookId}/${f.path}`, f.bytes!]));
+    install(files, (url) => {
+      const bookId = decodeURIComponent(url.split("/book-assets/")[1].split("/")[0]);
+      return served(bodyOf(sizes.get(`${bookId}/${pathOf(url)}`)!), url);
+    });
     const out = await exportPrivateBookAssets("owner", childId, []);
+    expect(out.issues).toEqual([]);
+    expect(out.status).toBe("complete");
+    expect(out.includedFiles).toBe(files.length);
+    expect(out.includedBytes).toBe(total(files));
+    expect(new Set(out.files.map((f) => f.status === "included" && f.mediaType))).toEqual(new Set(["image/webp", "audio/mpeg", "application/json"]));
+  }, 120_000);
+
+  it("one passing failure is read again and the rest of the library is still read", async () => {
+    const files = library(64);
+    let failures = 0;
+    install(files, (url) => {
+      // the third file fails twice (a 503, then a cut connection) before it is served
+      if (pathOf(url) === files[2].path && url.includes("/book-0/") && failures < 2) {
+        failures++;
+        if (failures === 1) return new Response(null, { status: 503 });
+        throw new TypeError("network");
+      }
+      return served(new Uint8Array(64), url);
+    });
+    const out = await exportPrivateBookAssets("owner", childId, [], { transientRetryMs: [0, 0] });
+    expect(failures).toBe(2);
     expect(out.status).toBe("complete");
     expect(out.includedFiles).toBe(files.length);
   }, 60_000);
+
+  it("a file that keeps failing is named alone; only a run of failures stops the export", async () => {
+    const files = library(64).slice(0, 20);
+    install(files, (url) => pathOf(url) === files[1].path ? new Response(null, { status: 503 }) : served(new Uint8Array(64), url));
+    const one = await exportPrivateBookAssets("owner", childId, [], { transientRetryMs: [0, 0] });
+    expect(one.status).toBe("incomplete");
+    expect(one.files.filter((f) => f.status !== "included").map((f) => [f.path, f.status])).toEqual([[files[1].path, "unavailable"]]);
+    expect(one.includedFiles).toBe(files.length - 1);
+    const calls = install(files, () => new Response(null, { status: 503 }));
+    const down = await exportPrivateBookAssets("owner", childId, [], { transientRetryMs: [0, 0] });
+    expect(down.files.every((f) => f.status === "unavailable")).toBe(true);
+    // three files, each read once and retried twice; the other seventeen are named, never read
+    expect(calls.filter((c) => !c.url.endsWith("export-manifest"))).toHaveLength(3 * 3);
+  });
 
   it("a ten-book library over the byte budget names exactly what is missing", async () => {
     const files = library(40 * 1024);
     const body = new Uint8Array(40 * 1024).fill(3);
     install(files, (url) => served(body, url));
-    const out = await exportPrivateBookAssets("owner", childId, []);
+    const limits = { totalBytes: 8 * 1024 * 1024 };
+    const out = await exportPrivateBookAssets("owner", childId, [], { limits });
     expect(out.status).toBe("incomplete");
     // every inventoried file is named — included, or with its reason
     expect(out.files.map((f) => `${f.bookId}/${f.path}`).sort()).toEqual(files.map((f) => `${f.bookId}/${f.path}`).sort());
     const missing = out.files.filter((f) => f.status !== "included");
     expect(missing.length).toBe(files.length - out.includedFiles);
     expect(new Set(missing.map((f) => f.status))).toEqual(new Set(["byte_limit"]));
-    expect(out.includedBytes).toBeLessThanOrEqual(BOOK_EXPORT_LIMITS.totalBytes);
+    expect(out.includedBytes).toBeLessThanOrEqual(limits.totalBytes);
   }, 60_000);
+
+  it("a corrupted file (hash mismatch) is named integrity, not retried into a pass, and the rest still export", async () => {
+    const files = library(64).slice(0, 5);
+    const calls = install(files, (url) => pathOf(url) === files[0].path
+      ? served(new Uint8Array(64), url, { [BOOK_EXPORT_DIGEST_HEADER]: createHash("sha256").update("something else").digest("hex") })
+      : served(new Uint8Array(64), url));
+    const out = await exportPrivateBookAssets("owner", childId, []);
+    expect(out.files.map((f) => f.status)).toEqual(["integrity", "included", "included", "included", "included"]);
+    expect(out.files[0]).not.toHaveProperty("data");
+    expect(calls.filter((c) => pathOf(c.url) === files[0].path)).toHaveLength(1);
+  });
 });
 
 describe("Settings export interruptions and repeat clicks", () => {
