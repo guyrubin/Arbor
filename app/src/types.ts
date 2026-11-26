@@ -303,8 +303,16 @@ export interface CoachContract {
    *  languageDirective; zod-capped server-side and screened via
    *  renderCoachResponse). Client falls back to the static trio when absent. */
   followUps?: string[];
-  /** Knowledge-card IDs used to ground this answer (populated by the server). */
+  /** B-AI-11: the knowledge-card IDs this answer CITED that were also supplied
+   *  in its prompt (server-verified intersection; empty when the model cited
+   *  none). Never the whole supplied set. */
   sourceCardsUsed?: string[];
+  /** B-AI-11: the model's raw cited ids (may include unknown ids) — eval and
+   *  logging only, never rendered. */
+  citedCardIds?: string[];
+  /** B-AI-11: every card id supplied as prompt context — context, not
+   *  support; eval and logging only, never rendered. */
+  suppliedCardIds?: string[];
   /** COACH-6: resolved source-card metadata (real title + card type from the
    *  server knowledge registry) for the citation drawer. Parallel to
    *  sourceCardsUsed, which stays for compatibility; ids missing here fall

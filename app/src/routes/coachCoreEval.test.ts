@@ -331,8 +331,10 @@ describe("coach-core-v1 deterministic tier (real /api/chat, scripted model)", ()
     // were not offered, making citation hallucination measurable.
     expect(resolved.every((card) => !String(card.id).startsWith("made-up"))).toBe(true);
     expect(resolved).toHaveLength(0);
-    // The raw cited ids survive on sourceCardsUsed for the eval trend line.
-    expect(done?.contract?.sourceCardsUsed).toEqual(sc.input.citedCardIds);
+    // B-AI-11: the shown ids are cited ∩ supplied (none here); the raw cited
+    // ids survive on citedCardIds for the eval trend line.
+    expect(done?.contract?.sourceCardsUsed).toEqual([]);
+    expect(done?.contract?.citedCardIds).toEqual(sc.input.citedCardIds);
   });
 
   it("coach-no-verdict-strings: riskLevel is contract-internal ONLY — never text in any parent-facing field", async () => {
