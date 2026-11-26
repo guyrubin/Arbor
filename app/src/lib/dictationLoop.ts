@@ -22,17 +22,11 @@
  * so the restart/breaker contract is unit-testable without React or a browser.
  */
 
-type DictationHandlers = {
-  onResult: (text: string) => void;
-  /** AI-V7: live partial transcript (full text so far) while still speaking. */
-  onInterim?: (text: string) => void;
-  onError?: (err: string) => void;
-  onEnd?: () => void;
-};
+import type { DictationHandlers, DictationPhase } from "./speech";
 
 export type StartDictationFn = (handlers: DictationHandlers, lang?: string) => () => void;
 
-export type DictationFatalReason = "permission" | "unsupported" | "retry-exhausted" | "audio-capture" | "network";
+export type DictationFatalReason = "permission" | "unsupported" | "no-speech" | "retry-exhausted" | "audio-capture" | "network";
 
 export type DictationLoopOptions = {
   /** The recognition seam — lib/speech.startDictation in production. */
@@ -44,6 +38,8 @@ export type DictationLoopOptions = {
   /** A non-empty final transcript arrived; the loop settles (no auto-restart —
    *  the caller resumes after the spoken answer drains). */
   onTranscript: (text: string) => void;
+  onPhase?: (phase: DictationPhase) => void;
+  onUnconfirmed?: (text: string) => void;
   /** The loop stopped itself; the caller must reflect a truthful "off" state. */
   onFatal: (reason: DictationFatalReason) => void;
   /** AI-V7: live interim transcript of the CURRENT session (parent's own
@@ -56,7 +52,7 @@ export type DictationLoopOptions = {
   baseBackoffMs?: number;
 };
 
-export type DictationLoop = { start: () => void; stop: () => void };
+export type DictationLoop = { start: () => void; finishTurn: () => void; stop: () => void };
 
 const FATAL_BY_ERROR: Record<string, DictationFatalReason> = {
   "not-allowed": "permission",
@@ -76,6 +72,7 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
   let restarts = 0;
   let stopped = false;
   let lastError = "";
+  let finishingTurn = false;
 
   const clearTimer = () => {
     if (timer) {
@@ -86,12 +83,18 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
 
   const scheduleRestart = () => {
     if (stopped || !opts.isActive()) return;
+    if (finishingTurn) {
+      stopped = true;
+      opts.onFatal("no-speech");
+      return;
+    }
     restarts += 1;
     if (restarts > maxRestarts) {
       stopped = true;
       opts.onFatal(lastError === "network" ? "network" : "retry-exhausted");
       return;
     }
+    opts.onPhase?.("starting");
     const delay = Math.min(baseBackoffMs * 2 ** (restarts - 1), MAX_BACKOFF_MS);
     timer = setTimeout(() => {
       timer = null;
@@ -105,6 +108,14 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
     let settled = false;
     stopRecognition = opts.start(
       {
+        onPhase: phase => {
+          if (!settled && !stopped && opts.isActive()) opts.onPhase?.(phase);
+        },
+        onUnconfirmed: opts.onUnconfirmed ? text => {
+          if (settled || stopped || !opts.isActive()) return;
+          settled = true;
+          opts.onUnconfirmed?.(text);
+        } : undefined,
         onInterim: opts.onInterim
           ? (text) => {
               if (settled || stopped) return;
@@ -145,6 +156,11 @@ export function createDictationLoop(opts: DictationLoopOptions): DictationLoop {
     start: () => {
       if (stopped) return; // single-use: a stopped loop stays stopped
       beginSession();
+    },
+    finishTurn: () => {
+      if (stopped || finishingTurn || !opts.isActive()) return;
+      finishingTurn = true;
+      stopRecognition?.(); // keep callbacks alive to collect the last words
     },
     stop: () => {
       stopped = true;

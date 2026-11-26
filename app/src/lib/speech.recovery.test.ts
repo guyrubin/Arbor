@@ -4,6 +4,9 @@ import { startDictation } from "./speech";
 class Recognition {
   static all: Recognition[] = [];
   static failure: Error | null = null;
+  onstart?: () => void;
+  onaudiostart?: () => void;
+  onaudioend?: () => void;
   onend?: () => void;
   onerror?: (e: { error: string }) => void;
   onresult?: (e: unknown) => void;
@@ -84,5 +87,103 @@ describe("shared capture startup recovery", () => {
     expect(Recognition.all).toHaveLength(1);
     expect(onError).not.toHaveBeenCalled();
     expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+});
+
+const words = (transcript: string, isFinal = false) =>
+  Object.assign([{ transcript }], { isFinal });
+const results = (...items: ReturnType<typeof words>[]) => ({ resultIndex: 0, results: items });
+
+describe("dictation completion across browser event orderings", () => {
+  it("releases a stalled microphone after Stop even when a late result arrives", () => {
+    const onResult = vi.fn(), onEnd = vi.fn();
+    const stop = startDictation({ onResult, onInterim: vi.fn(), onEnd }, "en-US", { continuous: true });
+    const rec = Recognition.all[0];
+    rec.stop.mockImplementation(() => {});
+    rec.onresult?.(results(words("a short note")));
+    stop();
+    rec.onresult?.(results(words("a short note today", true)));
+    vi.advanceTimersByTime(1500);
+    expect(rec.abort).toHaveBeenCalledOnce();
+    expect(onResult).toHaveBeenCalledExactlyOnceWith("a short note today");
+    expect(onEnd).toHaveBeenCalledOnce();
+    rec.onend?.();
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the visible caption once, including a revised interim tail on a natural end", () => {
+    const onResult = vi.fn(), onEnd = vi.fn();
+    startDictation({ onResult, onInterim: vi.fn(), onEnd }, "he-IL", { continuous: true });
+    const rec = Recognition.all[0];
+    rec.onresult?.(results(words("שלום", true), words("לכולם")));
+    rec.onresult?.(results(words("שלום", true), words("לעולם")));
+    rec.onend?.(); rec.onend?.();
+    expect(onResult).toHaveBeenCalledExactlyOnceWith("שלום לעולם");
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("ends after a pause even when the service repeats an identical interim result", () => {
+    const onResult = vi.fn(), onEnd = vi.fn();
+    startDictation({ onResult, onInterim: vi.fn(), onEnd }, "en-US", { continuous: true });
+    const rec = Recognition.all[0];
+    for (let i = 0; i < 6; i++) {
+      rec.onresult?.(results(words("keep these words")));
+      vi.advanceTimersByTime(1000);
+    }
+    expect(rec.stop).toHaveBeenCalledOnce();
+    expect(onResult).toHaveBeenCalledExactlyOnceWith("keep these words");
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+});
+
+describe("microphone readiness and conversational turns", () => {
+  it.each(["onstart", "onaudiostart"] as const)("shows recording on %s, then finishes on audio end without a service end", event => {
+    const onPhase = vi.fn(), onResult = vi.fn(), onEnd = vi.fn();
+    startDictation({ onResult, onPhase, onEnd }, "en-US", { continuous: true });
+    const rec = Recognition.all[0];
+    expect(onPhase.mock.calls.flat()).toEqual(["starting"]);
+    rec[event]?.();
+    rec.onresult?.(results(words("one thought", true)));
+    rec.onaudioend?.();
+    vi.advanceTimersByTime(800);
+    rec.onaudioend?.();
+    rec.onaudiostart?.();
+    vi.advanceTimersByTime(400);
+    expect(onPhase.mock.calls.flat()).toEqual(["starting", "recording", "finishing"]);
+    expect(rec.abort).toHaveBeenCalledOnce();
+    expect(onResult).toHaveBeenCalledExactlyOnceWith("one thought");
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending microphone immediately and ignores a late grant and transcript", () => {
+    const onPhase = vi.fn(), onEnd = vi.fn(), onResult = vi.fn();
+    const stop = startDictation({ onPhase, onEnd, onResult }, "en-US", { continuous: true });
+    const rec = Recognition.all[0];
+    stop(); rec.onaudiostart?.(); rec.onresult?.(results(words("too late", true))); rec.onend?.();
+    vi.runAllTimers();
+    expect(rec.abort).toHaveBeenCalledOnce();
+    expect(onPhase.mock.calls.flat()).toEqual(["starting"]);
+    expect(onEnd).toHaveBeenCalledOnce();
+    expect(onResult).not.toHaveBeenCalled();
+    expect(Recognition.all).toHaveLength(1);
+  });
+
+  it("ends a stalled startup without claiming the microphone opened", () => {
+    const onError = vi.fn(), onPhase = vi.fn(), onEnd = vi.fn();
+    startDictation({ onError, onPhase, onEnd, onResult: vi.fn() }, "en-US", { silenceFinalizeMs: 2000 });
+    vi.advanceTimersByTime(30_000);
+    expect(onPhase.mock.calls.flat()).toEqual(["starting"]);
+    expect(onError).toHaveBeenCalledExactlyOnceWith("audio-capture");
+    expect(Recognition.all[0].abort).toHaveBeenCalledOnce();
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("returns an unconfirmed conversational turn for editing instead of sending a truncated prefix", () => {
+    const onUnconfirmed = vi.fn(), onResult = vi.fn();
+    startDictation({ onUnconfirmed, onResult, onInterim: vi.fn() }, "en-US", { silenceFinalizeMs: 2000 });
+    Recognition.all[0].onresult?.(results(words("please", true), words("keep the rest")));
+    vi.advanceTimersByTime(2000);
+    expect(onUnconfirmed).toHaveBeenCalledExactlyOnceWith("please keep the rest");
+    expect(onResult).not.toHaveBeenCalled();
   });
 });

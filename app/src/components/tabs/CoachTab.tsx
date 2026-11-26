@@ -65,7 +65,7 @@ import { speakText } from "../../lib/voice";
 // AI-V2(a): the chip/orb tap contract (start / interrupt / stop) is a pure
 // tested decision function — while Arbor speaks on the fallback loop a tap
 // INTERRUPTS (voice stays on); a second tap during listening turns voice off.
-import { voiceChipAction } from "../../lib/voiceChipAction";
+import { type VoicePhase, voiceChipAction } from "../../lib/voiceChipAction";
 import { createVoiceLifetime, type VoiceAttempt } from "../../lib/voiceLifetime";
 // AI-V7: the calm bottom-sheet voice surface (orb + live captions), owned by
 // voicePhase !== "off". The chip below stays the ONLY entry point.
@@ -515,7 +515,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // S5: "connecting" is a first-class phase — it paints SYNCHRONOUSLY on the
   // chip tap (before any await), so the token mint / SDK chunk fetch / mic
   // prompt / socket connect window is never a silent 10s+ hole.
-  const [voicePhase, setVoicePhase] = useState<"off" | "connecting" | "listening" | "thinking" | "speaking">("off");
+  const [voicePhase, setVoicePhase] = useState<VoicePhase>("off");
   const [liveAvail, setLiveAvail] = useState(false);
   // B-VOICE-06: the Live probe has answered (either way), so a spoken
   // conversation asked for from elsewhere starts on the right path (HD or not).
@@ -535,7 +535,13 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [noticePending, setNoticePending] = useState<string | null>(null);
   // AI-V7: live caption of the PARENT'S OWN words while they speak (interim
   // browser-STT partials / Live input transcription — never model output).
-  const [voiceInterim, setVoiceInterim] = useState("");
+  const [voiceInterim, setVoiceInterimState] = useState("");
+  const partialVoiceText = useRef("");
+  const setVoiceInterim = (text: string) => {
+    partialVoiceText.current = text;
+    setVoiceInterimState(text);
+  };
+  const stoppingDictation = useRef<VoiceAttempt | null>(null);
   // Render-tracked mirror of liveCtlRef: true while a Gemini Live session is
   // active (the overlay orb only offers tap-to-interrupt on the fallback loop;
   // Live barge-in is voice-driven via the server VAD).
@@ -566,8 +572,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const [conversationProposals, setConversationProposals] = useState<ConversationProposal[]>([]);
   const [proposalBusyId, setProposalBusyId] = useState<string | null>(null);
   const proposalCommitRef = useRef(false);
-  const reviewAttemptRef = useRef<VoiceAttempt | null>(null);
+  const reviewableAttempts = useRef(new WeakSet<VoiceAttempt>());
   const [voiceReviewOpen, setVoiceReviewOpen] = useState(false);
+  const [reviewInChat, setReviewInChat] = useState(false);
   const [proposalPending, setProposalPending] = useState(0);
   const [proposalFailed, setProposalFailed] = useState(false);
   // B-ASKJB-49: the proposals route's crisis screen answered 409 on the talk's
@@ -575,7 +582,8 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // the microphone stays off: the card renders only with voice off).
   const [proposalCrisis, setProposalCrisis] = useState(false);
   const clearVoiceReview = () => {
-    reviewAttemptRef.current = null;
+    setReviewInChat(false);
+    reviewableAttempts.current = new WeakSet();
     voiceSessionIdRef.current = "discarded-" + Date.now();
     setConversationProposals([]);
     setProposalPending(0);
@@ -607,7 +615,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // Only an explicit Stop carries an in-flight draft into review. A safety
     // halt, child/thread change, new session or discard never adopts it.
     const mayReview = () => sessionId === voiceSessionIdRef.current
-      && (attempt.isCurrent() || reviewAttemptRef.current === attempt);
+      && (attempt.isCurrent() || reviewableAttempts.current.has(attempt));
     setProposalPending(count => count + 1);
     try {
       const result = await api.extractConversationProposals({
@@ -790,23 +798,29 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     const attempt = voiceLifetimeRef.current.current;
     if (!attempt?.isCurrent() || !voiceOnRef.current) return;
     if (!speechSupported()) { setVoiceNotice(microphoneRecovery("unsupported", uiLang)); voiceOnRef.current = false; setVoicePhase("off"); return; }
-    setVoicePhase("listening");
-    // AI-V3: the dictation loop owns recognition restarts — recoverable errors
-    // ('no-speech', transient network) restart with backoff behind a max-retry
-    // circuit breaker, silent ends auto-cycle the mic, and fatal errors stop
-    // voice with a truthful phase + toast. The "listening" label is only ever
-    // shown while the loop is actually cycling.
+    setVoicePhase("connecting");
     dictationLoopRef.current?.stop();
     const loop = createDictationLoop({
-      start: (handlers, lang) => startDictation(handlers, lang, { maxEmptyRestarts: 0 }),
+      start: (handlers, lang) => startDictation(handlers, lang, { maxEmptyRestarts: 0, silenceFinalizeMs: 2000 }),
       lang: aiLang === "he" ? "he-IL" : "en-US",
       isActive: () => attempt.isCurrent() && voiceOnRef.current,
       // AI-V7: surface interim partials as the overlay's live caption of the
       // parent's own words (<500ms after speech starts — straight from the
       // recognizer, no model round-trip).
       onInterim: (text) => { if (attempt.isCurrent()) setVoiceInterim(text); },
+      onPhase: phase => {
+        if (attempt.isCurrent()) setVoicePhase(phase === "recording" ? "listening" : phase === "finishing" ? "transcribing" : "connecting");
+      },
+      onUnconfirmed: text => {
+        if (!attempt.isCurrent()) return;
+        if (stoppingDictation.current === attempt) { pauseRecording(text); return; }
+        stopVoice(false);
+        setChatInput(current => [current.trim(), text].filter(Boolean).join(" "));
+        setVoiceNotice(t("coach.voice.reviewDictation"));
+      },
       onTranscript: (text) => {
         if (!attempt.isCurrent()) return;
+        if (stoppingDictation.current === attempt) { pauseRecording(text); return; }
         setVoiceInterim("");
         if (!text.trim()) { if (voiceOnRef.current) startListening(); return; }
         // COACH-2: persist the dictated turn through the existing
@@ -817,6 +831,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
       },
       onFatal: (reason) => {
         if (!attempt.isCurrent()) return;
+        if (stoppingDictation.current === attempt) { pauseRecording(partialVoiceText.current); return; }
         stopVoice(false);
         setVoiceNotice(microphoneRecovery(reason, uiLang));
       },
@@ -859,11 +874,12 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   const stopVoice = (review = true) => {
     const reviewAttempt = voiceLifetimeRef.current.current;
     voiceLifetimeRef.current.cancel();
+    stoppingDictation.current = null;
     // B-PROV-12: leaving (stop, a new thread, the panel hidden) cancels a
     // notice that was showing; nothing was acknowledged.
     setNoticePending(null);
     if (review && reviewAttempt && voicePhase !== "off") {
-      reviewAttemptRef.current = reviewAttempt;
+      reviewableAttempts.current.add(reviewAttempt);
       setVoiceReviewOpen(true);
     }
     // B-VOICE-02: the card's words end here, before the engine is stopped below.
@@ -882,6 +898,41 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // COACH-2: settle (and keep) any partial caption when the parent stops.
     finalizeVoiceAiTurn();
     setVoicePhase("off");
+  };
+
+  // Stopping keeps the voice sheet open with the microphone released. Keep
+  // unsubmitted words in the editable composer, without sending a turn.
+  const keepVoiceDraft = (words: string) => {
+    if (words.trim()) setChatInput(current => [current.trim(), words.trim()].filter(Boolean).join(" "));
+  };
+  const pauseRecording = (words: string) => {
+    const attempt = voiceLifetimeRef.current.current;
+    if (!attempt?.isCurrent()) return;
+    reviewableAttempts.current.add(attempt);
+    stopVoice(false);
+    keepVoiceDraft(words);
+    setVoiceInterim(words);
+    setVoicePhase("paused");
+  };
+  const stopRecording = () => {
+    const attempt = voiceLifetimeRef.current.current;
+    if (!attempt || stoppingDictation.current === attempt) return;
+    if (dictationLoopRef.current && !liveCtlRef.current) {
+      // Give device recognition its bounded final-result window.
+      stoppingDictation.current = attempt;
+      dictationLoopRef.current.finishTurn();
+    } else {
+      pauseRecording(partialVoiceText.current);
+    }
+  };
+  const backToChat = () => {
+    const attempt = voiceLifetimeRef.current.current;
+    if (attempt) {
+      reviewableAttempts.current.add(attempt);
+      keepVoiceDraft(partialVoiceText.current);
+    }
+    stopVoice(false);
+    setReviewInChat(true);
   };
 
   // AI-V2(a): barge-in on the browser fallback loop — interrupt, don't kill.
@@ -924,19 +975,28 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     // device and per notice id — a new provider, region or purpose asks again.
     const noticeId = runtimeVoiceNoticeId(liveAvail ? liveNoticeId : null);
     const tap = voiceNoticeTap(noticeId, noticePending, voiceNoticeAcknowledged(noticeId));
-    if (tap === "show") { setVoiceNotice(null); setNoticePending(noticeId); return; }
+    if (tap === "show") {
+      setVoicePhase("off");
+      setVoiceNotice(null);
+      setNoticePending(noticeId);
+      return;
+    }
     if (tap === "acknowledge_and_start") acknowledgeVoiceNotice(noticeId);
     setNoticePending(null);
     setVoiceResting(false);
     setVoiceTalkEnded(false);
-    reviewAttemptRef.current = null;
-    voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
-    voiceStartIndexRef.current = voiceMessagesRef.current.length;
-    setNextStepFailed(false);
-    setConversationProposals([]);
-    setProposalPending(0);
-    setProposalFailed(false);
-    setProposalCrisis(false);
+    setReviewInChat(false);
+    setVoiceInterim("");
+    if (voicePhase !== "paused") {
+      reviewableAttempts.current = new WeakSet();
+      voiceSessionIdRef.current = "voice-session-" + Date.now() + "-" + (++voiceTurnRef.current);
+      voiceStartIndexRef.current = voiceMessagesRef.current.length;
+      setNextStepFailed(false);
+      setConversationProposals([]);
+      setProposalPending(0);
+      setProposalFailed(false);
+      setProposalCrisis(false);
+    }
     if (voiceOnRef.current || liveCtlRef.current) stopVoice(false);
     setVoiceNotice(null);
     // Paint before the token/import/mic/socket awaits; X owns cancellation
@@ -1088,7 +1148,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
               },
               onUserInterim: (delta) => {
                 if (!attempt.isCurrent() || liveClosed) return;
-                setVoiceInterim((prev) => attempt.isCurrent() && !liveClosed ? (prev + delta).trimStart() : prev);
+                setVoiceInterim((partialVoiceText.current + delta).trimStart());
               },
               onModelTurn: (text) => {
                 if (!attempt.isCurrent() || liveClosed) return;
@@ -1203,7 +1263,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
   // No state writes on unmount; late grants/verdicts cannot adopt or render.
   useEffect(() => () => {
     voiceLifetimeRef.current.cancel();
-    reviewAttemptRef.current = null;
+    reviewableAttempts.current = new WeakSet();
     voiceSessionIdRef.current = "unmounted";
     voiceOnRef.current = false;
     dictationLoopRef.current?.stop();
@@ -1340,7 +1400,7 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
     return registerConversationVoiceStarter((opening) => startFromDoorRef.current(opening));
   }, [liveProbed]);
 
-  const voiceLabel = voicePhase === "connecting" ? t("coach.voice.connecting") : voicePhase === "listening" ? t("coach.voice.listening") : voicePhase === "thinking" ? t("coach.voice.thinking") : voicePhase === "speaking" ? t("coach.voice.speaking") : liveAvail ? t("coach.voice.talkHd") : t("coach.voice.talk");
+  const voiceLabel = voicePhase === "off" ? t(liveAvail ? "coach.voice.talkHd" : "coach.voice.talk") : t(`coach.voice.${voicePhase}`);
   // COACH-2: live caption text on the voicePhase chip while the answer streams
   // in / is spoken (the same screened text that fills the thread bubble).
   const liveVoiceText =
@@ -1510,6 +1570,11 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
             <p className="companion-voice-invite" dir="auto">{voiceNoticeShortLine(t, noticePending)}</p>
             <p className="companion-voice-invite" dir="auto">{t("elev.wave2Daily.capture.voice.tapAgain")}</p>
           </div>}
+          {reviewInChat && !voiceReviewOpen && voicePhase === "off" && (proposalPending > 0 || conversationProposals.length > 0 || proposalCrisis || proposalFailed || voiceNextStep(chatMessages, voiceStartIndexRef.current)) && (
+            <button type="button" className="min-h-11 rounded-full px-3 text-sm font-semibold" onClick={() => setVoiceReviewOpen(true)}>
+              {t("coach.voice.reviewNotes")}
+            </button>
+          )}
           {voiceInvite && !noticePending && voicePhase === "off" && !voiceNotice && <p role="status" data-testid="voice-door-invite" className="companion-voice-invite" dir="auto">{inputText(uiLang, "companion.input.tap-talk-to-start")}</p>}
           {voiceNotice && voicePhase === "off" && <MicrophoneNotice message={voiceNotice} lang={uiLang} onRetry={() => void toggleVoice()} onDismiss={() => setVoiceNotice(null)} />}
         </section>
@@ -2202,7 +2267,9 @@ export default function CoachTab({ embedded = false, visible = true }: { embedde
           // streams the microphone for the whole session.
           recording={voicePhase === "listening" || liveSession}
           onOrbTap={() => { if (openingRunRef.current?.skip()) return; if (voicePhase === "speaking" && !liveCtlRef.current && voiceOnRef.current) bargeInVoice(); }}
-          onClose={stopVoice}
+          onStopRecording={stopRecording}
+          onResume={() => void toggleVoice()}
+          onClose={backToChat}
         />
       )}
 

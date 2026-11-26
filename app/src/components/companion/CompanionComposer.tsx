@@ -3,7 +3,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import Icon from "../ui/Icon";
 import RecordingIndicator from "../ui/RecordingIndicator";
 import { fileToThumbnail } from "../../lib/image";
-import { startDictation, speechSupported } from "../../lib/speech";
+import { type DictationPhase, startDictation, speechSupported } from "../../lib/speech";
 import { microphoneRecovery } from "../../lib/microphoneRecovery";
 import { MAX_COMPANION_ATTACHMENTS, parseCompanionAttachments, prepareCompanionAttachment, type ComposerAttachment } from "../../lib/companionAttachments";
 import { screenForImmediateEscalation } from "../../safety/escalation";
@@ -37,7 +37,8 @@ export default function CompanionComposer({ childId, conversationRevision, langu
   useEffect(() => { onAttachmentsChange?.(attachments.length); }, [attachments.length, onAttachmentsChange]);
   const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState("");
-  const [listening, setListening] = useState(false);
+  const [capturePhase, setCapturePhase] = useState<DictationPhase | null>(null);
+  const listening = capturePhase !== null;
   const [interim, setInterim] = useState("");
   const [sending, setSending] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -75,14 +76,14 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     if (accountRef.current !== consent.accountId) {
       accountRef.current = consent.accountId;
       scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null;
-      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
+      setAttachments([]); setPreparing(false); setError(""); setCapturePhase(null); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
     }
   }, [consent.accountId]);
   useEffect(() => {
-    if (!visible) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); setToolsOpen(false); }
+    if (!visible) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setCapturePhase(null); setInterim(""); setToolsOpen(false); }
   }, [visible]);
   useEffect(() => {
-    if (consent.reviewing) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setListening(false); setInterim(""); setToolsOpen(false); }
+    if (consent.reviewing) { speechScope.current++; stopRef.current?.(); stopRef.current = null; setCapturePhase(null); setInterim(""); setToolsOpen(false); }
   }, [consent.reviewing]);
   useEffect(() => {
     // The revision changes on explicit New/history/topic actions, never first persistence.
@@ -90,7 +91,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     previousConversation.current = conversationRevision;
     if (switched) {
       scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null;
-      setAttachments([]); setPreparing(false); setError(""); setListening(false); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
+      setAttachments([]); setPreparing(false); setError(""); setCapturePhase(null); setInterim(""); setSending(false); setToolsOpen(false); sendLock.current = false;
     }
   }, [conversationRevision]);
   useEffect(() => () => { scope.current++; speechScope.current++; stopRef.current?.(); stopRef.current = null; }, []);
@@ -123,12 +124,13 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     if (listening) { stopRef.current?.(); return; }
     if (!speechSupported()) { setError(microphoneRecovery("unsupported", language)); return; }
     const turn = speechScope.current;
-    setError(""); setListening(true);
+    setError(""); setCapturePhase("starting");
     stopRef.current = startDictation({
       onResult: text => { if (turn === speechScope.current && text.trim()) onChange([textRef.current.trim(), text.trim()].filter(Boolean).join(" ")); },
+      onPhase: phase => { if (turn === speechScope.current) setCapturePhase(phase); },
       onInterim: text => { if (turn === speechScope.current) setInterim(text); },
       onError: reason => { if (turn === speechScope.current) setError(microphoneRecovery(reason, language)); },
-      onEnd: () => { if (turn === speechScope.current) { setListening(false); setInterim(""); stopRef.current = null; } },
+      onEnd: () => { if (turn === speechScope.current) { setCapturePhase(null); setInterim(""); stopRef.current = null; } },
     }, he ? "he-IL" : "en-US", { continuous: true });
   };
   const send = async () => {
@@ -175,7 +177,7 @@ export default function CompanionComposer({ childId, conversationRevision, langu
     {/* B-STATUS-02: dictation into the draft shows the ONE REC-01 indicator
         (dot, "Recording", m:ss, a 44 px Stop, the parent's own words live).
         F-TALK-2: it reads above the row, like the attachment strip (mock L420-421). */}
-    {listening && <RecordingIndicator interim={interim} hint={inputText(language, "companion.input.listening-your-words-will-appear-in-the-draft")}
+    {listening && <RecordingIndicator phase={capturePhase} language={language} interim={interim} hint={inputText(language, "companion.input.listening-your-words-will-appear-in-the-draft")}
       label={inputText(language, "elev.rec.on")} stopLabel={inputText(language, "companion.input.done")} stopAria={inputText(language, "elev.rec.stopAria")}
       onStop={() => stopRef.current?.()} testId="composer-listening" captionTestId="composer-listening-caption" />}
     {error && <p className="companion-composer-error" role="alert">{error}</p>}

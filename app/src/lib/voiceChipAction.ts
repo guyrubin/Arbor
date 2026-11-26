@@ -16,12 +16,12 @@
  *    state is painted synchronously, so the tap-to-cancel affordance is real).
  */
 
-export type VoicePhase = "off" | "connecting" | "listening" | "thinking" | "speaking";
+export type VoicePhase = "off" | "paused" | "connecting" | "transcribing" | "listening" | "thinking" | "speaking";
 
 export type VoiceChipAction = "start" | "interrupt" | "stop";
 
 export function voiceChipAction(phase: VoicePhase, liveSessionActive: boolean): VoiceChipAction {
-  if (phase === "off") return "start";
+  if (phase === "off" || phase === "paused") return "start";
   if (phase === "speaking" && !liveSessionActive) return "interrupt";
   return "stop";
 }
