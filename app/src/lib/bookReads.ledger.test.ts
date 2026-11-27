@@ -110,7 +110,7 @@ describe("V2 true-ending semantics (trueEndingGate)", () => {
     expect(gate(book, back, bookFlowReducer(book, back, { type: "next" }))).toBe(false);
   });
 
-  it("replay: END → back → END and Read again inside one opening are the same sitting", () => {
+  it("replay: END → back → END is the same sitting; Read again (back to the cover) and a full re-read is a new finish", () => {
     const first = readThrough(book, initialBookFlow());
     expect(first.finishes).toBe(1);
     const back = bookFlowReducer(book, first.state, { type: "back" });
@@ -118,7 +118,9 @@ describe("V2 true-ending semantics (trueEndingGate)", () => {
     expect(first.gate(book, back, bookFlowReducer(book, back, { type: "next" }))).toBe(false);
     const cover = bookFlowReducer(book, first.state, { type: "toCover" });
     expect(first.gate(book, first.state, cover)).toBe(false);
-    expect(readThrough(book, cover, first.gate).finishes).toBe(0);
+    // The kids story-catalogue browser check reads every authored path in one
+    // opening through Read again and counts each true ending (B-BOOK-51 fixup).
+    expect(readThrough(book, cover, first.gate).finishes).toBe(1);
   });
 
   it("replay in a new opening is a new finish; a full re-read from a saved END finishes once", () => {

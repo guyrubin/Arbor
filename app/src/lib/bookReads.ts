@@ -61,9 +61,10 @@ export function bookReadRow(bookId: string, lang: string, now: Date): BookRead |
  *      a finished book already counted — paging back off it and forward again
  *      is not a new finish. "Read again" (back to the cover) arms it, so a
  *      full re-read from a saved END is a finish;
- *   3. this opening has not finished already: END → back → END, or Read
- *      again inside the same opening, is the same sitting. Replays count as
- *      new finishes only in a new opening (close the book and open it again).
+ *   3. this read has not finished already: END → back → END is the same
+ *      read. "Read again" back to the cover starts a new read, so a full
+ *      re-read to a true ending is a new finish (the kids story-catalogue
+ *      browser check reads every authored path this way).
  * A resumed mid-book bookmark is armed: reaching the end from it is the first
  * true ending of that read.
  */
@@ -71,7 +72,9 @@ export function trueEndingGate(initial: Pick<BookFlowState, "at">): (book: AnyBo
   let armed = initial.at !== END;
   let done = false;
   return (book, before, after) => {
-    if (after.at === COVER) armed = true;
+    // Back to the cover (Read again) starts a fresh read: a full re-read to a
+    // true ending is a real finish. END -> back -> END never passes the cover.
+    if (after.at === COVER) { armed = true; done = false; }
     if (done || !armed || after.at !== END || before.at === END || !isEnding(book, before)) return false;
     done = true;
     return true;
