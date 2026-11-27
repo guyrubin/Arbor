@@ -54,7 +54,7 @@ async function mountedReturnProof() {
     "../context/LanguageContext": { useLanguage: () => { const lang = state.lang; return { t: key => `${lang}:${key}` }; } },
     "../context/ToastContext": { useToast: () => ({ toast: (message, type, action) => messages.push({ message, type, action }) }) },
     // B-STATUS-01: the confirmation is carried as the receipt line, not a toast.
-    "../components/ui/Receipt": { carryReceipt: (note, place) => messages.push({ message: note.text, type: place === "app" ? "receipt" : "misplaced" }) },
+    "../components/ui/Receipt": { carryReceipt: (note, place) => messages.push({ message: note.text, type: place === "app" ? "carried" : "misplaced" }) },
     "./useEntitlement": entitlement,
   });
   const trial = { ...entitlement.FALLBACK_FREE, plan: "plus", source: "trial", provider: "none", status: "in_trial" };
@@ -78,11 +78,11 @@ async function mountedReturnProof() {
     render(); await flush();
     proof.queryIsOnlyTrigger = requests.length === 1 && requests[0].uid === "synthetic-owner-a" && location.search === "?keep=1" && location.hash === "#/overview";
     requests[0].resolve(trial); await flush();
-    proof.trialDoesNotConfirm = !messages.some(message => message.type === "receipt");
+    proof.trialDoesNotConfirm = !messages.some(message => message.type === "carried");
     await advance(2500);
     state.lang = "he"; render(); await flush();
     requests[1].resolve(paid); await flush();
-    proof.localePreservesPoll = requests.length === 2 && messages.filter(message => message.type === "receipt").length === 1 && messages.at(-1).message === "he:pw.activated he:elev.loop.receipt.planWhere";
+    proof.localePreservesPoll = requests.length === 2 && messages.filter(message => message.type === "carried").length === 1 && messages.at(-1).message === "he:pw.activated he:elev.loop.receipt.planWhere";
 
     // A fresh return stays pending through six trial answers, then Retry must
     // keep polling until the delayed webhook's paid answer appears.
@@ -110,10 +110,10 @@ async function mountedReturnProof() {
     flushSync(() => root.render(null));
     state.uid = "synthetic-owner-a"; entitlement.setEntitlementOwner(state.uid);
     entitlement.markBillingReturn(); render(); await flush();
-    const old = requests.at(-1), successes = messages.filter(message => message.type === "receipt").length;
+    const old = requests.at(-1), successes = messages.filter(message => message.type === "carried").length;
     state.uid = "synthetic-owner-b"; entitlement.setEntitlementOwner(state.uid); render(); await flush();
     old.resolve(paid); await flush(); await advance(15_000);
-    proof.ownerChangeCancelsConfirmation = old.signal.aborted && messages.filter(message => message.type === "receipt").length === successes && entitlement.cachedEntitlement() === null;
+    proof.ownerChangeCancelsConfirmation = old.signal.aborted && messages.filter(message => message.type === "carried").length === successes && entitlement.cachedEntitlement() === null;
 
     flushSync(() => root.render(null)); location.search = "?billing=cancel";
     const beforeCancel = requests.length, beforeCancelMessages = messages.length;

@@ -69,7 +69,7 @@ export function resolveRestoreOutcome(result: NativeRestoreOutcome): OutcomeEffe
  * fails the build on any other caller of the billing checkout/portal API.
  */
 /** B-STATUS-01 — where a billing success answers. "here": the surface stays
- *  open (Settings › Your plan) and draws `receipt` itself. "carry": the surface
+ *  open (Settings › Your plan) and draws the receipt line itself. "carry": the surface
  *  closes on success (the paywall), so the line is carried to Shell's receipt
  *  slot and names where the plan lives. A purchase has no Undo: it is managed
  *  or cancelled in Settings › Your plan. */
