@@ -11,7 +11,7 @@ import { appointmentRoleLabel } from "../../lib/appointmentLabel";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { fmtDayV10 } from "../../lib/formatDate";
 import { Icon } from "../ui/Icon";
@@ -212,12 +212,11 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       undo: {
         label: t("elev.loop.notice.undo"),
         testId: "consult-receipt-undo",
-        onUndo: () => {
-          receipt.clear();
-          void followUpsCol.remove(record.id);
-          if (!wasDone) void apptsCol.upsert(before);
-          setOutcome(note);
-        },
+        // B-STATUS-01: the line clears (and the note returns) only once the writes went through.
+        onUndo: undoThen(async () => {
+          await followUpsCol.remove(record.id);
+          if (!wasDone) await apptsCol.upsert(before);
+        }, () => { receipt.clear(); setOutcome(note); }),
       },
     });
   };
@@ -258,14 +257,15 @@ function ConsultContent({ query, isOwnerCurrent }: { query: URLSearchParams; isO
       undo: {
         label: t("elev.loop.notice.undo"),
         testId: "home-program-receipt-undo",
-        onUndo: () => {
-          receipt.clear();
-          void programsCol.remove(w.enrolment.id);
-          for (const prev of before.programs) void programsCol.upsert(prev);
-          for (const goal of w.goals) void familyGoalsCol.remove(goal.id);
-          if (record) void followUpsCol.remove(record.id);
-          if (before.visit && !before.visitWasDone) void apptsCol.upsert(before.visit);
-        },
+        // B-STATUS-01: every write is awaited; a refused one keeps the line
+        // (Try again re-runs them all — each is idempotent).
+        onUndo: undoThen(async () => {
+          await programsCol.remove(w.enrolment.id);
+          for (const prev of before.programs) await programsCol.upsert(prev);
+          for (const goal of w.goals) await familyGoalsCol.remove(goal.id);
+          if (record) await followUpsCol.remove(record.id);
+          if (before.visit && !before.visitWasDone) await apptsCol.upsert(before.visit);
+        }, receipt.clear),
       },
     });
   };

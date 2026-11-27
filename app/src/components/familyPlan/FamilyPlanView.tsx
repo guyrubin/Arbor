@@ -8,7 +8,7 @@ import { track } from "../../lib/analytics";
 import { defaultIcsEgressDeps, saveIcsFile } from "../../lib/careTrack";
 import { familyPlanToIcs } from "../../lib/familyPlan/ics";
 import type { FamilyPlanDate } from "../../lib/familyPlan/model";
-import { Receipt } from "../ui/Receipt";
+import { Receipt, undoThen } from "../ui/Receipt";
 import { Icon } from "../ui/Icon";
 import { familyPlanCopy } from "./familyPlanCopy";
 import { PlanStage } from "./PlanStage";
@@ -134,7 +134,7 @@ export default function FamilyPlanView() {
     <div className="fp-receipt" key={plan.receipt.id}>
       <Receipt
         testId="family-plan-receipt"
-        undo={plan.receipt.undo ? { label: c.undo, onUndo: () => void plan.receipt?.undo?.(), testId: "family-plan-undo", disabled: plan.busy } : null}
+        undo={plan.receipt.undo ? { label: c.undo, onUndo: undoThen(() => plan.receipt?.undo?.(), () => undefined), testId: "family-plan-undo", disabled: plan.busy } : null}
       >
         {c.receipt[plan.receipt.kind](plan.receipt.count)}
       </Receipt>

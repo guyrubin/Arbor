@@ -64,7 +64,12 @@ vi.mock("../../practice/usePracticeData", () => ({
   usePracticeData: () => ({ speech: { items: [], loaded: true }, mimic: { items: [], loaded: true }, adventures: { items: [], loaded: true }, events: { items: [], loaded: true }, missions: { items: [], loaded: true } }),
 }));
 vi.mock("../../context/ToastContext", () => ({ useToast: () => ({ toast }) }));
-vi.mock("../ui/Receipt", () => ({ useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }), ReceiptNoteLine: () => null }));
+vi.mock("../ui/Receipt", async () => ({
+  useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }),
+  ReceiptNoteLine: () => null,
+  // B-STATUS-01: the real undo plumbing (the tap's state returns only after the write)
+  undoThen: (await vi.importActual<typeof import("../ui/Receipt")>("../ui/Receipt")).undoThen,
+}));
 vi.mock("../../context/LanguageContext", async () => {
   const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
   return {
@@ -219,7 +224,7 @@ describe("B-GROWTH-19 — all four 'did it' paths write the playLogs record", ()
 });
 
 describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", () => {
-  type Shown = { undo?: { label: string; testId: string; onUndo: () => void } };
+  type Shown = { undo?: { label: string; testId: string; onUndo: () => unknown } };
   const lastUndo = () => (receiptShow.mock.calls.at(-1)?.[0] as Shown).undo!;
 
   it("library pick: Undo removes the day's log this tap wrote and un-marks the pick on this device", async () => {
@@ -230,7 +235,7 @@ describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", ()
     const undo = lastUndo();
     expect(undo.testId).toBe("play-receipt-undo");
     expect(undo.label).not.toMatch(/[A-Za-z]/);
-    undo.onUndo();
+    await undo.onUndo();
     expect(undoPlayCompletion).toHaveBeenCalledWith({ id: `${pick.activity.id}.2026-10-08`, created: true });
     expect(JSON.parse(localStorage.getItem("arbor.play.done.c1") || "[]")).not.toContain(pick.activity.id);
   });
@@ -239,12 +244,12 @@ describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", ()
     await render();
     const { course, onToggle } = captured.courses[0];
     onToggle(course.activityIds[0]);
-    lastUndo().onUndo();
+    await lastUndo().onUndo();
     expect(undoPlayCompletion).toHaveBeenCalledTimes(1);
     expect(JSON.parse(localStorage.getItem("arbor.course.c1") || "{}")[course.id] ?? []).not.toContain(course.activityIds[0]);
     captured.plan!.onDid(captured.plan!.plan!);
     expect(localStorage.getItem("arbor.plan.done.c1")).not.toBeNull();
-    lastUndo().onUndo();
+    await lastUndo().onUndo();
     expect(undoPlayCompletion).toHaveBeenCalledTimes(2);
     expect(localStorage.getItem("arbor.plan.done.c1")).toBeNull();
   });
@@ -252,7 +257,8 @@ describe("critic r1 (B-STATUS-01) — the reversible play save carries Undo", ()
   it("ArborContext removes the log only when that tap created it", () => {
     const ctx = readFileSync(new URL("../../context/ArborContext.tsx", import.meta.url), "utf8");
     expect(ctx).toContain("return { id, created: !alreadyDone };");
-    expect(ctx).toContain("if (done.created) void playLogCol.remove(done.id);");
+    // B-STATUS-01: returned, so a failed undo keeps the receipt (Receipt.undo.test.tsx)
+    expect(ctx).toContain("done.created ? playLogCol.remove(done.id) : Promise.resolve();");
   });
 });
 

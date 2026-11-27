@@ -11,7 +11,7 @@ import Icon from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { PageHeader, SectionCard, cardCls, Chip } from "../ui/kit";
 import { fmtDay } from "../../lib/formatDate";
@@ -226,11 +226,11 @@ export default function Appointments() {
       undo: {
         label: t("elev.loop.notice.undo"),
         testId: "appt-receipt-undo",
-        onUndo: () => {
-          receipt.clear();
-          void followUpsCol.remove(record.id);
-          if (!wasDone) void apptsCol.upsert(a);
-        },
+        // B-STATUS-01: the line clears only once both writes went through.
+        onUndo: undoThen(async () => {
+          await followUpsCol.remove(record.id);
+          if (!wasDone) await apptsCol.upsert(a);
+        }, receipt.clear),
       },
     });
     return true;

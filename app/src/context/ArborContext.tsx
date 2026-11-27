@@ -647,9 +647,9 @@ function useArborState() {
   /** B-STATUS-01 (critic r1): the play receipt's Undo. Removes the day's log
    *  only when that tap created it — Undo after a repeat tap leaves the
    *  earlier record alone. */
-  const undoPlayCompletion = (done: { id: string; created: boolean }) => {
-    if (done.created) void playLogCol.remove(done.id);
-  };
+  // B-STATUS-01: returns the write, so the play receipt's Undo can tell a failure.
+  const undoPlayCompletion = (done: { id: string; created: boolean }): Promise<void> =>
+    done.created ? playLogCol.remove(done.id) : Promise.resolve();
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
