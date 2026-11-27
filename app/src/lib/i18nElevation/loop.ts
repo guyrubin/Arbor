@@ -171,6 +171,8 @@ export const en: Record<string, string> = {
   "elev.loop.receipt.planWhere": "Your plan is in Settings, under Your plan.",
   "elev.loop.receipt.keepsakeKept": "Kept on “{title}”, with the day you gave it.",
   "elev.loop.receipt.momentEdited": "Saved your changes to this moment in the Journal.",
+  // B-STATUS-01 · an Undo whose write failed: the thing is still kept, try again
+  "elev.loop.receipt.undoFailed": "Undo didn't go through — it's still kept. You can try again.",
   "elev.loop.pending.practice": "Arbor is choosing today's practice…",
 };
 
@@ -328,5 +330,7 @@ export const he: Record<string, string> = {
   "elev.loop.receipt.planWhere": "התוכנית מופיעה בהגדרות, תחת „התוכנית שלכם”.",
   "elev.loop.receipt.keepsakeKept": "נשמר באבן הדרך „{title}”, עם היום שנתתם.",
   "elev.loop.receipt.momentEdited": "השינויים ברגע הזה נשמרו ביומן.",
+  // B-STATUS-01 · an Undo whose write failed: the thing is still kept, try again
+  "elev.loop.receipt.undoFailed": "הביטול לא עבר — זה עדיין שמור. אפשר לנסות שוב.",
   "elev.loop.pending.practice": "ארבור בוחר את התרגול של היום…",
 };

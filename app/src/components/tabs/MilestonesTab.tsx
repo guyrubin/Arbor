@@ -45,7 +45,7 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 // (beside lib/firsts, which owns the CELEBRATION of a first).
 // B-GROWTH-10 — persistence is the registered `keepsakes` subcollection.
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import MilestoneKeptNote, { MilestoneKeptStatus } from "../milestones/MilestoneKeptNote";
 import { useMilestoneKeptNotes } from "../../hooks/useMilestoneKeptNotes";
 import {
@@ -212,7 +212,7 @@ export default function MilestonesTab() {
   const [msReceiptFor, setMsReceiptFor] = useState<{ kind: "keepsake" | "explain"; id: string } | null>(null);
   const answerUnder = (kind: "keepsake" | "explain", id: string, text: string, onUndo: () => unknown) => {
     setMsReceiptFor({ kind, id });
-    msReceipt.show({ text, undo: { label: t("elev.keep.undo"), testId: `ms-${kind}-undo`, onUndo: () => { void onUndo(); msReceipt.clear(); } } });
+    msReceipt.show({ text, undo: { label: t("elev.keep.undo"), testId: `ms-${kind}-undo`, onUndo: undoThen(onUndo, msReceipt.clear) } });
   };
   const receiptUnder = (kind: "keepsake" | "explain", id: string) =>
     msReceiptFor?.kind === kind && msReceiptFor.id === id

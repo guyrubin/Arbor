@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -20,6 +20,13 @@ import { useLanguage } from "../../context/LanguageContext";
  * the session (announcePolite) — exempt from the dialog shield, so a receipt
  * inside the capture sheet is read too. Nothing is read twice. A receipt drawn
  * for an EARLIER answer (`announce={false}`) is shown, not announced.
+ *
+ * UNDO IS HONEST. Undo runs the reversing write and waits for it: while it
+ * runs the button is disabled (a double tap writes once); when it fails the
+ * line stays — the thing IS still kept — with one calm line saying the undo
+ * didn't go through, announced through the same polite region, and the button
+ * becomes "Try again". Only a write that went through clears the receipt
+ * (undoThen: the host's clear runs after the write, never before it).
  *
  * PENDING. AI work answers with ONE quiet line after 400 ms (PendingLine):
  * never a spinner wall, never a flash — work that settles sooner shows nothing.
@@ -47,7 +54,10 @@ export interface ReceiptLink {
 
 export interface ReceiptUndo {
   label: string;
-  onUndo: () => void;
+  /** The reversing write. A returned promise is awaited (button disabled
+   *  meanwhile); a throw or rejection keeps the line with the failure line and
+   *  "Try again". Build it with `undoThen(write, clear)`. */
+  onUndo: () => unknown;
   testId?: string;
   disabled?: boolean;
 }
@@ -93,6 +103,62 @@ export function receiptText(node: React.ReactNode): string {
     return "";
   };
   return walk(node).replace(/\s+/g, " ").trim();
+}
+
+/** idle · pending (the reversing write is running) · failed (it did not go through). */
+export type UndoPhase = "idle" | "pending" | "failed";
+
+/** Pure: the undo state machine. `run` ignores a tap while a write is
+ *  pending (one write per tap), reports pending → idle on success and
+ *  pending → failed on a throw or rejection. Resolves true when it went through. */
+export function createUndoRunner(onPhase: (phase: UndoPhase) => void = () => undefined) {
+  let phase: UndoPhase = "idle";
+  const set = (next: UndoPhase) => { phase = next; onPhase(next); };
+  return {
+    phase: () => phase,
+    run: async (onUndo: () => unknown): Promise<boolean> => {
+      if (phase === "pending") return false;
+      set("pending");
+      try {
+        await onUndo();
+      } catch {
+        set("failed");
+        return false;
+      }
+      set("idle");
+      return true;
+    },
+  };
+}
+
+/** The receipt's undo phase; setState stops once the line is gone (a
+ *  successful undo usually clears it). */
+export function useUndoRunner(): { phase: UndoPhase; run: (onUndo: () => unknown) => Promise<boolean> } {
+  const [phase, setPhase] = useState<UndoPhase>("idle");
+  const live = useRef(true);
+  useEffect(() => { live.current = true; return () => { live.current = false; }; }, []);
+  const runner = useRef<ReturnType<typeof createUndoRunner> | null>(null);
+  if (!runner.current) runner.current = createUndoRunner((next) => { if (live.current) setPhase(next); });
+  return { phase, run: runner.current.run };
+}
+
+/** Pure: what the Undo button shows in each phase — disabled while the write
+ *  runs, "Try again" (`retryLabel`) once it failed. */
+export function undoButtonState(phase: UndoPhase, undo: Pick<ReceiptUndo, "label" | "disabled">, retryLabel: string): { label: string; disabled: boolean; busy: boolean } {
+  return {
+    label: phase === "failed" ? retryLabel : undo.label,
+    disabled: Boolean(undo.disabled) || phase === "pending",
+    busy: phase === "pending",
+  };
+}
+
+/** An Undo handler that clears its receipt only once the reversing write went
+ *  through; a failed write throws on to the Receipt, which keeps the line. */
+export function undoThen(write: () => unknown, done: () => void): () => Promise<void> {
+  return async () => {
+    await write();
+    done();
+  };
 }
 
 let region: HTMLElement | null = null;
@@ -196,6 +262,13 @@ export function Receipt({
   useEffect(() => {
     if (announce && spoken) announcePolite(spoken);
   }, [announce, spoken]);
+  const undoRun = useUndoRunner();
+  const failed = undoRun.phase === "failed";
+  const undoButton = undo ? undoButtonState(undoRun.phase, undo, t("err.retry")) : null;
+  const failedText = t("elev.loop.receipt.undoFailed");
+  useEffect(() => {
+    if (failed) announcePolite(failedText);
+  }, [failed, failedText]);
   const sizeCls = size === "sm" ? "t-sm" : "t-base";
   const kept = tone === "kept";
   const line = (
@@ -216,7 +289,7 @@ export function Receipt({
   );
   if (!link && !undo) return className ? <div className={className}>{line}</div> : line;
   return (
-    <div data-receipt-row="" className={`flex items-center gap-2${className ? ` ${className}` : ""}`}>
+    <div data-receipt-row="" className={`flex items-center gap-2${failed ? " flex-wrap" : ""}${className ? ` ${className}` : ""}`}>
       {line}
       {link && (
         <a
@@ -234,15 +307,37 @@ export function Receipt({
         <button
           type="button"
           data-testid={undo.testId}
-          onClick={undo.onUndo}
-          disabled={undo.disabled}
           className={`${link ? "" : "ms-auto "}${TRAILING}`}
+          data-undo={undoRun.phase}
+          onClick={() => { void undoRun.run(undo.onUndo); }}
+          disabled={undoButton!.disabled}
+          aria-busy={undoButton!.busy || undefined}
           style={{ color: "var(--arbor-clay)" }}
         >
-          {undo.label}
+          {undoButton!.label}
         </button>
       )}
+      {undo && failed && <ReceiptUndoFailed testId={undo.testId ? `${undo.testId}-failed` : undefined} />}
     </div>
+  );
+}
+
+/** The calm line under a receipt whose Undo did not go through (announced by
+ *  Receipt through the polite region, so it carries no live role itself). */
+export function ReceiptUndoFailed({ testId }: { testId?: string }) {
+  const { t, uiLang } = useLanguage();
+  const lang = uiLang === "he" ? "he" : "en";
+  return (
+    <p
+      data-testid={testId}
+      data-receipt-undo-failed=""
+      dir={lang === "he" ? "rtl" : "ltr"}
+      lang={lang}
+      className="basis-full t-sm leading-snug"
+      style={{ color: "var(--arbor-ink-soft)" }}
+    >
+      {t("elev.loop.receipt.undoFailed")}
+    </p>
   );
 }
 
