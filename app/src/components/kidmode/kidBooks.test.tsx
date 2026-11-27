@@ -332,7 +332,7 @@ describe("K2: one David book per child", () => {
     expect(dash.match(/stories: kidShelf,/g)).toHaveLength(2);
     const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("const kidShelf = useMemo(() => kidShelfFor(libraryBooks), [libraryBooks]);");
-    expect(tab).toContain("runs, stories: kidShelf })}");
+    expect(tab).toContain("runs, reads: readsCol.items, stories: kidShelf })}");
     expect(tab).toMatch(/lang: storyLang,\s*stories: kidShelf,\s*\}\)/);
   });
 });

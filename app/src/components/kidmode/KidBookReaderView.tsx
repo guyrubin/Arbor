@@ -48,8 +48,9 @@ function OwnedBookReader({ entry, edition, owner, lang, onClose, together }: { e
   const progress = useBookBookmark(childProfile.id, entry.book, edition, owner);
   const souvenirs = useKidSouvenirs(childProfile.id);
   // B-BOOK-51: one open event per opening, one finish per true ending (the
-  // reader's last-page -> END transition; a resumed END never counts), and the
-  // one read ledger. Catalogue ids only: never the child, never the path chosen.
+  // reader fires onComplete only through lib/bookReads trueEndingGate: at most
+  // once per opening, never from a resumed END), and the one read ledger.
+  // Catalogue ids only: never the child, never the path chosen.
   const reads = useChildCollection<BookRead>(childProfile.id, BOOK_READS);
   const readsRef = useRef(reads);
   readsRef.current = reads;

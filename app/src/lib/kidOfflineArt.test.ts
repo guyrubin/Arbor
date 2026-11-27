@@ -224,16 +224,16 @@ describe("B-BOOK-27: a library book's shared art is kept offline", () => {
   });
   it("Tonight first, then up to 3 other books finished most recently (a plan book by its pattern id); unread books wait", () => {
     const e = (id: string, pattern?: string) => ({ book: (pattern ? { id, kind: "plan", pattern } : { id }) as never });
-    const shelf = [e("tonight"), e("a"), e("b"), e("c"), e("d"), e("plan-x--1", "plan-x"), e("never-read")];
+    const shelf = [e("tonight"), e("book-a"), e("book-b"), e("book-c"), e("book-d"), e("plan-x--1", "plan-x"), e("never-read")];
     const reads = [
-      { bookId: "a", finishedAt: "2026-10-01T10:00:00Z" },
-      { bookId: "b", finishedAt: "2026-10-05T10:00:00Z" },
-      { bookId: "a", finishedAt: "2026-10-06T10:00:00Z" },
-      { bookId: "c", finishedAt: "2026-09-01T10:00:00Z" },
+      { bookId: "book-a", finishedAt: "2026-10-01T10:00:00Z" },
+      { bookId: "book-b", finishedAt: "2026-10-05T10:00:00Z" },
+      { bookId: "book-a", finishedAt: "2026-10-06T10:00:00Z" },
+      { bookId: "book-c", finishedAt: "2026-09-01T10:00:00Z" },
       { bookId: "plan-x", finishedAt: "2026-10-04T10:00:00Z" },
-      { bookId: "d", finishedAt: "2026-08-01T10:00:00Z" },
+      { bookId: "book-d", finishedAt: "2026-08-01T10:00:00Z" },
     ];
-    expect(offlineLibraryBooks(shelf, reads).map((x) => (x.book as { id: string }).id)).toEqual(["tonight", "a", "b", "plan-x--1"]);
+    expect(offlineLibraryBooks(shelf, reads).map((x) => (x.book as { id: string }).id)).toEqual(["tonight", "book-a", "book-b", "plan-x--1"]);
     expect(offlineLibraryBooks(shelf, []).map((x) => (x.book as { id: string }).id)).toEqual(["tonight"]);
     expect(offlineLibraryBooks([], reads)).toEqual([]);
   });
