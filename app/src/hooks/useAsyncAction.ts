@@ -110,7 +110,7 @@ export function useAsyncAction<Args extends unknown[], T>(
   name: string,
   fn: (...args: Args) => Promise<T>,
   options: {
-    /** Friendly fallback when the thrown error has no usable message. */
+    /** Friendly, localized message shown when there is no `toMessage`. */
     fallbackError: string;
     /** Map an error to a friendly message (e.g. localized, paywall-aware). */
     toMessage?: (err: unknown) => string;
@@ -164,11 +164,10 @@ export function useAsyncAction<Args extends unknown[], T>(
           opts.onPaywall(err);
           return undefined;
         }
-        const message = opts.toMessage
-          ? opts.toMessage(err)
-          : err instanceof Error && err.message
-            ? err.message
-            : opts.fallbackError;
+        // B-AIOPS-01 follow-up: without a `toMessage` the localized fallback
+        // is shown — never `err.message`, which is the server's code or its
+        // English `details` (e.g. "quota_unavailable").
+        const message = opts.toMessage ? opts.toMessage(err) : opts.fallbackError;
         setError(message || opts.fallbackError);
         return undefined;
       } finally {

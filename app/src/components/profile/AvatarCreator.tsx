@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useDialog } from "../../hooks/useDialog";
 import { createPortal } from "react-dom";
+import { browserOnline, classifyAiFailure } from "../../lib/aiErrorCopy";
 import { motion, AnimatePresence } from "motion/react";
 import { HOUSE_AVATAR_STYLE } from "../../lib/avatarStyle";
 import { api, EscalationRequiredError, isImageResting, type AvatarStyle, type AvatarDescriptors, type AvatarCharacterIntent } from "../../lib/api";
@@ -123,7 +124,11 @@ export default function AvatarCreator({
           onResting?.();
           return t("elev.hero.resting");
         }
-        return err instanceof Error && err.message ? err.message : t("gen.avatar.fail");
+        // B-AIOPS-01 follow-up: a known failure (quota_unavailable, the hourly
+        // quota, consent, offline) reads its classified copy; anything else is
+        // the avatar's own calm line — never the server's code or words.
+        const copy = classifyAiFailure(err, { online: browserOnline() });
+        return copy.kind === "generic" ? t("gen.avatar.fail") : t(copy.bodyKey, copy.bodyParams);
       },
       onPaywall: arbor ? (err) => arbor.openPaywall(err.feature || "avatarGenerate", err.plan) : undefined,
     },
