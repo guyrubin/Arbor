@@ -92,3 +92,13 @@
 /* B-GAME-40: the makers' own shelf under the world's games, and the world picture held in view while a long shelf scrolls on a wide screen. */
 .studio-v2__shelf-title{font-size:20px;line-height:1.25;margin-block:22px 2px;color:var(--studio-text)}
 @media(min-width:951px){.studio-v2__world-scene{position:sticky;inset-block-start:24px;align-self:start}}
+
+/* B-KID-172: the Stories room joins the picture shelf. Books stand as 3:4 covers (the book's own plate, else the kit's reading room with its title), two across on a phone and three on wider screens; a lone last book keeps its cover shape. The story makers and the bookshelf door follow in a 3:2 row. */
+.studio-v2__activity-grid[data-shelf=books] .studio-v2__activity-art{aspect-ratio:3/4;inline-size:100%;block-size:auto;border-radius:0}
+.studio-v2__activity-grid[data-shelf=books]>.studio-v2__activity:last-child:nth-child(odd){grid-column:auto}
+.studio-v2__activity-grid[data-shelf=books]>.studio-v2__activity:last-child:nth-child(odd) .studio-v2__activity-art{aspect-ratio:3/4}
+.studio-v2__activity-grid[data-shelf=books] .studio-v2__activity-copy{padding:8px 10px 12px}
+.studio-v2__activity-grid[data-shelf=books]>.studio-v2__activity strong{font-size:15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.studio-v2__activity-grid[data-shelf=story-makers]{margin-block-start:4px}
+@media(min-width:951px){.studio-v2__activity-grid[data-shelf=books]{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.studio-v2__activity-grid>.studio-v2__activity,.studio-v2__activity-grid .studio-activity-picture>img{transition:none}.studio-v2__activity-grid>.studio-v2__activity:hover,.studio-v2[dir=rtl] .studio-v2__activity-grid>.studio-v2__activity:hover{transform:none}.studio-v2__activity-grid>.studio-v2__activity:hover .studio-activity-picture>img{transform:none}}
