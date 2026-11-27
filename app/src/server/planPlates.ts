@@ -22,18 +22,24 @@
  *        answers what it did; calling again continues (skip = idempotent).
  *   GET  /api/admin/plan-plates
  *        The per-plate state (painted / failed / unpainted) per pattern, for
- *        the admin control (components/plans/PlanPlatePainter). Same gate.
+ *        the admin control (components/plans/PlanPlatePainter), and (B-BOOK-27)
+ *        each painted plate's review from its provenance record (the reviews field:
+ *        unreviewed / reviewed / child-painted / has-text, with who and when).
+ *        Same gate.
  *   POST /api/admin/plan-plates/review   { pattern, plate, childFree, textFree }
  *        B-BOOK-27: the painter records that they viewed ONE painted plate
  *        full size (lane B §4.9): both flags as seen (literal booleans), the
  *        reviewer's email and the time, written into the plate's provenance
  *        record. Same gate as the paint route; 404 for an unpainted plate.
  *        A repaint writes a fresh, unreviewed record.
+ *   GET  /api/admin/plan-plates/:pattern/:plate/image
+ *        The painted master for the reviewer to view full size, reviewed or
+ *        not (same gate, no-store). Families never reach it.
  *   GET  /api/plans/plates/:pattern/:plate
  *        Read-only, any signed-in user (shared, child-free content: no
  *        per-child ownership check; auth kept, the sandbox lets the
  *        unauthenticated local caller through like server/bookAssets.ts).
- *        Streams the stored webp (or png) with long cache headers; 404 when
+ *        Streams the stored webp (or png), revalidated on each read; 404 when
  *        unpainted (the renderer advances on image error). B-BOOK-27: also
  *        404 unless the provenance record beside it says the plate was
  *        REVIEWED — recorded child-free and text-free with a reviewer named
@@ -239,6 +245,25 @@ async function readJson(file: BookAssetFile): Promise<unknown> {
   }
 }
 
+export type PlateReviewState = "unreviewed" | "reviewed" | "child-painted" | "has-text";
+export interface PlateReview {
+  state: PlateReviewState;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+/** B-BOOK-27: a painted plate's review as the owner's control shows it, from its provenance record. */
+export function plateReviewOf(raw: unknown, patternId: string, plateId: string): PlateReview {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { state: "unreviewed" };
+  const r = raw as Record<string, unknown>;
+  const by = typeof r.reviewedBy === "string" && r.reviewedBy.trim() ? r.reviewedBy : null;
+  if (r.pattern !== patternId || r.plate !== plateId || !by) return { state: "unreviewed" };
+  const who = { reviewedBy: by, ...(typeof r.reviewedAt === "string" ? { reviewedAt: r.reviewedAt } : {}) };
+  if (r.childFree !== true) return { state: "child-painted", ...who };
+  if (r.textFree !== true) return { state: "has-text", ...who };
+  return { state: sharedPlateServable(raw, patternId, plateId) ? "reviewed" : "unreviewed", ...who };
+}
+
 export interface PlanPlatesDeps {
   config: Pick<ArborConfig, "modelProvider" | "memoryAdapter" | "arborEnv" | "vertexModelImage" | "vertexImageRegions" | "gcpRegion" | "geminiImageModel">;
   getBucket: () => Promise<BookAssetBucket | null>;
@@ -291,7 +316,16 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
     try {
       const bucket = await deps.getBucket();
       const names = bucket ? await listShared(bucket) : [];
-      res.json({ storage: !!bucket, patterns: plateStatesFrom(names), costPerImageUsd: PLAN_PLATE_IMAGE_USD, maxImagesPerRun: maxImages, maxUsdPerRun: maxUsd });
+      const patterns = plateStatesFrom(names);
+      const reviews = {} as Record<PatternId, Record<string, PlateReview>>;
+      for (const p of PATTERN_IDS) {
+        reviews[p] = {};
+        for (const [id, st] of Object.entries(patterns[p])) {
+          if (st !== "painted" || !bucket) continue;
+          reviews[p][id] = plateReviewOf(await readJson(bucket.file(planPlateObject(p, id, "json"))), p, id);
+        }
+      }
+      res.json({ storage: !!bucket, patterns, reviews, costPerImageUsd: PLAN_PLATE_IMAGE_USD, maxImagesPerRun: maxImages, maxUsdPerRun: maxUsd });
     } catch (error: unknown) {
       logger.error("Plan plates status error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
       refuse(res, 503, "plan_plates_unavailable", "Plate storage is not available");
@@ -427,6 +461,42 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
     }
   });
 
+  const findMaster = async (bucket: BookAssetBucket, pattern: PatternId, plate: string): Promise<{ file: BookAssetFile; type: string } | null> => {
+    for (const ext of ["webp", "png"] as const) {
+      const f = bucket.file(planPlateObject(pattern, plate, ext));
+      const [exists] = await f.exists();
+      if (exists) return { file: f, type: ext === "webp" ? "image/webp" : "image/png" };
+    }
+    return null;
+  };
+  const streamTo = (req: express.Request, res: Response, file: BookAssetFile) => {
+    const stream = file.createReadStream();
+    stream.on("error", (err: Error) => {
+      logger.error("Plan plate stream error", err, { requestId: requestIdOf(req) });
+      if (!res.headersSent) res.status(500).end();
+      else res.destroy();
+    });
+    res.on("close", () => { if ("destroy" in stream) (stream as import("node:stream").Readable).destroy(); });
+    stream.pipe(res);
+  };
+
+  // B-BOOK-27: the reviewer views the painted master full size before recording the review.
+  router.get("/admin/plan-plates/:pattern/:plate/image", painterOnly, async (req, res) => {
+    const { pattern, plate } = req.params;
+    if (!isPatternId(pattern) || !PLATE_ID.test(plate) || !planPlateTable(pattern)[plate]) { res.status(404).json({ error: "Not found" }); return; }
+    try {
+      const bucket = await deps.getBucket();
+      const master = bucket ? await findMaster(bucket, pattern, plate) : null;
+      if (!master) { res.status(404).json({ error: "Not found" }); return; }
+      res.setHeader("Content-Type", master.type);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      streamTo(req, res, master.file);
+    } catch (error: unknown) {
+      logger.error("Plan plate admin read error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
+      res.status(500).json({ error: "Failed to read the plate" });
+    }
+  });
+
   // The read route: any signed-in user (the sandbox's local caller where allowed).
   const verified: RequestHandler = (req, res, next) => {
     const uid = userOf(req)?.uid;
@@ -441,27 +511,16 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
     try {
       const bucket = await deps.getBucket();
       if (!bucket) { res.status(404).json({ error: "Not found" }); return; }
-      let file: BookAssetFile | null = null;
-      let type = "image/webp";
-      for (const ext of ["webp", "png"] as const) {
-        const f = bucket.file(planPlateObject(pattern, plate, ext));
-        const [exists] = await f.exists();
-        if (exists) { file = f; type = ext === "webp" ? "image/webp" : "image/png"; break; }
-      }
-      if (!file) { res.status(404).json({ error: "Not found" }); return; }
+      const master = await findMaster(bucket, pattern, plate);
+      if (!master) { res.status(404).json({ error: "Not found" }); return; }
       // B-BOOK-27: an unreviewed or child-painted shared plate never reaches a family (fail closed).
       if (!sharedPlateServable(await readJson(bucket.file(planPlateObject(pattern, plate, "json"))), pattern, plate)) { res.status(404).json({ error: "Not found" }); return; }
-      res.setHeader("Content-Type", type);
-      res.setHeader("Cache-Control", "private, max-age=604800, immutable");
+      res.setHeader("Content-Type", master.type);
+      // B-BOOK-27: a review can be withdrawn (a repaint, a later child-painted verdict), so the
+      // device revalidates on every read instead of keeping the plate for a week.
+      res.setHeader("Cache-Control", "private, no-cache");
       res.setHeader("X-Content-Type-Options", "nosniff");
-      const stream = file.createReadStream();
-      stream.on("error", (err: Error) => {
-        logger.error("Plan plate stream error", err, { requestId: requestIdOf(req) });
-        if (!res.headersSent) res.status(500).end();
-        else res.destroy();
-      });
-      res.on("close", () => { if ("destroy" in stream) (stream as import("node:stream").Readable).destroy(); });
-      stream.pipe(res);
+      streamTo(req, res, master.file);
     } catch (error: unknown) {
       logger.error("Plan plate read error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
       res.status(500).json({ error: "Failed to read the plate" });
