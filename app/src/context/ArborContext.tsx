@@ -1829,8 +1829,9 @@ function useArborState() {
     // B-STATUS-01: the caller answers with its receipt line (and its Undo).
     return row.id;
   };
-  /** B-STATUS-01: Undo for "Keep this" — the kept row goes again. */
-  const unkeepBehaviorInsight = (id: string) => void insightsCol.remove(id);
+  /** B-STATUS-01: Undo for "Keep this" — the kept row goes again. Returns the
+   *  write, so a failed undo keeps its receipt (Receipt's undo is honest). */
+  const unkeepBehaviorInsight = (id: string) => insightsCol.remove(id);
   const keptInsights = useMemo(() => insightsCol.items.filter((r) => r.kind === "kept-insight"), [insightsCol.items]);
 
   // Mark a behavior log resolved / unresolved
@@ -1850,7 +1851,8 @@ function useArborState() {
     if (!log) return Promise.reject(new Error("The saved moment is no longer available"));
     return logsCol.upsert({ ...log, shelf, ...(milestoneId ? { milestoneId } : {}) });
   };
-  const deletePlan = (id: string) => void plansCol.remove(id);
+  // B-STATUS-01: returns the write, so the started receipt's Undo can tell a failure.
+  const deletePlan = (id: string) => plansCol.remove(id);
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
   // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
   const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals));

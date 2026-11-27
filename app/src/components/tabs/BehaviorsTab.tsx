@@ -26,7 +26,7 @@ import { useComposition } from "../../design/useComposition";
 import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonomy";
 import "../moments/mychild.css";
 import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 
 const DAY = 86_400_000;
 
@@ -54,7 +54,7 @@ export default function BehaviorsTab() {
     if (!id) return;
     keptReceipt.show({
       text: t("beh.analysis.kept", { name: behFirst }),
-      undo: { label: t("elev.keep.undo"), testId: "beh-kept-undo", onUndo: () => { unkeepBehaviorInsight(id); keptReceipt.clear(); } },
+      undo: { label: t("elev.keep.undo"), testId: "beh-kept-undo", onUndo: undoThen(() => unkeepBehaviorInsight(id), keptReceipt.clear) },
     });
   };
   // N-Hard-D: the pill row ends with the day and "since you started on <the first hard moment logged>"; nothing logged, no suffix.
