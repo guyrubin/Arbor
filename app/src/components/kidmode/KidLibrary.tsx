@@ -54,7 +54,7 @@ function ScopedKidLibrary({ books, theme, lang, childProfile, loadingId, onOpen,
   return (
     <div className="space-y-6" data-testid="kid-library">
       {!readingComic && (books.length > 0 ? (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,220px))] sm:justify-center" data-kid-library-grid="" style={{ listStyle: "none", margin: 0, padding: 0 }} aria-busy={loadingId ? true : undefined}>
+        <ul data-kid-studio="" className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(150px,220px))] sm:justify-center" data-kid-library-grid="" style={{ listStyle: "none", margin: 0, padding: 0 }} aria-busy={loadingId ? true : undefined}>
           {books.map((b, i) => (
             <li key={b.story.id} style={{ opacity: loadingId && loadingId !== b.story.id ? 0.6 : 1 }}>
               <KidBookCover
@@ -73,9 +73,10 @@ function ScopedKidLibrary({ books, theme, lang, childProfile, loadingId, onOpen,
           ))}
         </ul>
       ) : (
-        <div className="comic-panel flex flex-col items-center gap-3 p-6 text-center" data-testid="kid-library-empty">
+        // B-KID-172: the Studio's frosted card, not the comic ink panel.
+        <div className="flex flex-col items-center gap-3 p-6 text-center" data-testid="kid-library-empty" data-kid-studio="" style={{ border: "1px solid var(--studio-surface)", borderRadius: "var(--studio-radius-card)", background: "var(--studio-frost)", boxShadow: "0 6px 18px var(--studio-shade)" }}>
           <HeroAvatar size={88} mood="think" animate={false} decorative />
-          <p className="kid-type-label" dir="auto" style={{ color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.empty", lang)}</p>
+          <p className="kid-type-label" dir="auto" style={{ margin: 0, fontFamily: "var(--studio-font)", fontWeight: 800, color: "var(--studio-graphite)" }}>{kidsStoriesText("kidBooks.empty", lang)}</p>
         </div>
       ))}
       {/* "Made before": the saved comics, after the books, only those that open on this device. */}

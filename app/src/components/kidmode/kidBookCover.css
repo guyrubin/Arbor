@@ -34,3 +34,27 @@
   outline-offset: 4px;
   border-radius: 12px;
 }
+/* B-KID-172: on the shelf grid a book is a Studio picture tile, like a game on
+   the game shelf: a white card with a soft lift, the cover on top and its
+   title inside the card, so the words read over any stage behind. */
+.arbor-play [data-kid-book][data-kid-book-layout="grid"] {
+  padding: 6px 6px 10px !important;
+  gap: 8px !important;
+  border: 1px solid var(--studio-surface) !important;
+  border-radius: var(--studio-radius-card) !important;
+  background: var(--studio-surface) !important;
+  box-shadow: 0 6px 18px var(--studio-shade);
+  transition: transform .25s var(--studio-ease-soft), box-shadow .25s var(--studio-ease-soft);
+}
+.arbor-play [data-kid-book][data-kid-book-layout="grid"] > span:last-child { padding-inline: 4px; }
+@media (hover: hover) and (pointer: fine) {
+  .arbor-play [data-kid-book][data-kid-book-layout="grid"]:hover { transform: translateY(-4px); box-shadow: var(--studio-lift); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arbor-play [data-kid-book][data-kid-book-layout="grid"],
+  .arbor-play [data-kid-book][data-kid-book-layout="grid"]:hover,
+  .arbor-play [data-kid-book][data-kid-book-layout="grid"]:active { transition: none; transform: none; }
+}
+@media (forced-colors: active) {
+  .arbor-play [data-kid-book][data-kid-book-layout="grid"] { border: 2px solid ButtonText !important; }
+}

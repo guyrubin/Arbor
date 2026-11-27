@@ -174,7 +174,11 @@ describe("KidBookCover — the one cover", () => {
       if (!painted?.hasHero) continue;
       const html = renderToStaticMarkup(<KidBookCover {...base} storyId={id} title="A book" layout="grid" />);
       expect(html, id).not.toContain("/visuals/cards/");
-      expect(html, id).not.toContain("<img");
+      // B-KID-172 re-pin: never blank paper — the one picture is the kit's hero-free reading room.
+      const srcs = [...html.matchAll(/<img[^>]*src="([^"]+)"/g)].map((m) => m[1]);
+      expect(srcs, id).toEqual([kidArt("film3d", "studio.portal.stories")!.src480]);
+      expect(kidArt("film3d", "studio.portal.stories")!.hasHero).toBe(false);
+      expect(html, id).toContain("data-kid-book-fallback-art");
       expect(html, id).toContain("data-kid-book-titlecard");
       expect(html, id).toContain("A book");
     }
@@ -206,7 +210,8 @@ describe("KidBookCover — the one cover", () => {
     expect(big.match(/Noah&#x27;s Ark/g)).toHaveLength(1);
     const tab = readFileSync(path.join(__dirname, "..", "tabs", "HeroJourneyTab.tsx"), "utf8");
     expect(tab).toContain("const coverHero = heroAvatarUrl ? <HeroAvatar size={150} mood=\"wave\" animate={false} ring={false} badge={false} decorative /> : undefined;");
-    expect(tab).toMatch(/<KidBookTitleCard title=\{[^}]+\}[^>]*hero=\{coverHero\} heroSize=\{162\} titleSize=\{28\} \/>/);
+    // B-KID-172 re-pin: the reader's cover stands on the same kit picture as the shelf tile.
+    expect(tab).toMatch(/<KidBookTitleCard title=\{[^}]+\}[^>]*hero=\{coverHero\} heroSize=\{162\} titleSize=\{28\} theme=\{kidTheme\} \/>/);
     // The fallback title is visible on the card normally, and on the facing
     // page in short landscape, where the fixed-size portrait hid its words.
     expect(big).toContain('data-kid-book-card-title=""');
@@ -232,8 +237,10 @@ describe("KidBookCover — the one cover", () => {
     expect(storybookCover("noahs-ark")).toBe(false);
     const html = renderToStaticMarkup(<KidBookCover {...base} theme="storybook" storyId="noahs-ark" title="Noah's Ark" layout="row" />);
     expect(html).toContain("data-kid-book-titlecard");
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain("/visuals/");
+    // B-KID-172 re-pin: the theme's own kit picture (its Stories door), never another theme's file.
+    const srcs = [...html.matchAll(/<img[^>]*src="([^"]+)"/g)].map((m) => m[1]);
+    expect(srcs).toEqual([kidArt("storybook", "studio.portal.stories")!.src480]);
+    expect(html).not.toContain("/visuals/cards/");
     expect(html).not.toMatch(EMOJI);
     expect(html).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(html).toContain('data-pack="courage"');

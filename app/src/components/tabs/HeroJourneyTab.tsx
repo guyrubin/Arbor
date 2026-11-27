@@ -956,16 +956,17 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       const cover = storyCover(refusedPin.id);
       const pinTitle = uiLang === "he" ? refusedPin.titleHe : refusedPin.title;
     return kidMode ? (
-        <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} style={{ marginInline: -20, marginBlockStart: -24 }}>
-          <div className={KID_BOOK_ART_CLASS} style={{ background: "var(--arbor-paper-deep)" }}>
+        // B-KID-172: the refused pin wears the Studio look: the cover (its own, else the kit's reading room), Studio type and the Studio action button.
+        <div className="arbor-play flex flex-col items-center gap-4 text-center" data-kid-book-pin-cover={refusedPin.id} data-kid-studio="" style={{ marginInline: -20, marginBlockStart: -24, fontFamily: "var(--studio-font)", color: "var(--studio-graphite)" }}>
+          <div className={KID_BOOK_ART_CLASS} style={{ background: "var(--studio-mist)", border: "1px solid var(--studio-line)" }}>
             {cover
               ? <img src={cover.src} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: cover.objectPosition }} />
-              : <KidBookTitleCard title={pinTitle} pack={refusedPin.pack} />}
+              : <KidBookTitleCard title={pinTitle} pack={refusedPin.pack} theme={kidTheme} titleSize={24} />}
           </div>
-          <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black px-5" style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 26, lineHeight: 1.2, color: "var(--arbor-ink)" }}>{pinTitle}</p>
+          <p lang={uiLang === "he" ? "he" : "en"} dir={langDir(uiLang === "he" ? "he" : "en")} className="font-black px-5" style={{ margin: 0, fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: 26, lineHeight: 1.2, color: "var(--studio-graphite)" }}>{pinTitle}</p>
           <div className="flex w-full max-w-md flex-col gap-3 px-5 pb-5">
-            <button type="button" data-kid-book-pin-read="" onClick={() => openKidBook(refusedPin, false)} style={{ minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer", background: "var(--arbor-green-cta-start)", color: "var(--arbor-on-accent)" }}>{kidsStoriesText("shelf.read", uiLang === "he" ? "he" : "en")}</button>
-            <button type="button" onClick={() => setRefusedPin(null)} style={{ minBlockSize: 56, borderRadius: 18, fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 20, border: "var(--comic-line)", cursor: "pointer", background: "var(--arbor-paper-elevated)", color: "var(--arbor-ink)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
+            <button type="button" data-kid-book-pin-read="" onClick={() => openKidBook(refusedPin, false)} style={{ minBlockSize: 56, borderRadius: 16, fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: 20, border: "1px solid transparent", cursor: "pointer", background: "var(--studio-action)", color: "var(--studio-action-ink)" }}>{kidsStoriesText("shelf.read", uiLang === "he" ? "he" : "en")}</button>
+            <button type="button" onClick={() => setRefusedPin(null)} style={{ minBlockSize: 56, borderRadius: 16, fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: 20, border: "1px solid var(--studio-line)", cursor: "pointer", background: "var(--studio-surface)", color: "var(--studio-graphite)" }}>{kidsStoriesText("kidBooks.title", uiLang === "he" ? "he" : "en")}</button>
           </div>
         </div>
       ) : null;
@@ -1697,7 +1698,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
           ? <StoryArtwork art={authoredCover} lang={renderLang} heroUrl={heroAvatarUrl ?? heroCameoUrl} heroName={childProfile.name?.split(" ")[0]} />
           : bookArt
           ? <img src={bookArt} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover" style={{ objectPosition: storyCover(activeStory.id)?.objectPosition }} />
-          : <KidBookTitleCard title={isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)} pack={activeStory.pack} hero={coverHero} heroSize={162} titleSize={28} />}
+          : <KidBookTitleCard title={isolateNameIn(render.title || activeStory.title, childProfile.name?.split(" ")[0], renderLang)} pack={activeStory.pack} hero={coverHero} heroSize={162} titleSize={28} theme={kidTheme} />}
       </div>
     );
     const isLastBeat = !onCover && sceneIndex === scenes.length - 1;
