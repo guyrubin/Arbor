@@ -23,12 +23,23 @@
  *   GET  /api/admin/plan-plates
  *        The per-plate state (painted / failed / unpainted) per pattern, for
  *        the admin control (components/plans/PlanPlatePainter). Same gate.
+ *   POST /api/admin/plan-plates/review   { pattern, plate, childFree, textFree }
+ *        B-BOOK-27: the painter records that they viewed ONE painted plate
+ *        full size (lane B §4.9): both flags as seen (literal booleans), the
+ *        reviewer's email and the time, written into the plate's provenance
+ *        record. Same gate as the paint route; 404 for an unpainted plate.
+ *        A repaint writes a fresh, unreviewed record.
  *   GET  /api/plans/plates/:pattern/:plate
  *        Read-only, any signed-in user (shared, child-free content: no
  *        per-child ownership check; auth kept, the sandbox lets the
  *        unauthenticated local caller through like server/bookAssets.ts).
  *        Streams the stored webp (or png) with long cache headers; 404 when
- *        unpainted (the renderer advances on image error).
+ *        unpainted (the renderer advances on image error). B-BOOK-27: also
+ *        404 unless the provenance record beside it says the plate was
+ *        REVIEWED — recorded child-free and text-free with a reviewer named
+ *        (lib/library/platePolicy.plateReviewed). A missing, unreadable or
+ *        mismatched record, an unreviewed plate and a child-painted one
+ *        (childFree false) are never served: fail closed.
  *
  * Storage: shared/plans/<pattern>/<plate>.webp|.png, a provenance JSON
  * beside it (<plate>.json: childFree / textFree flags — false until a person
@@ -46,6 +57,7 @@ import type { GeneratedImage, GenerateImageOptions } from "../ai/modelRouter.js"
 import { isAbortError } from "../ai/modelRetry.js";
 import type { LightRig } from "../lib/library/bookPlates.js";
 import { PLAN_PLATE_BRIEFS, planPlateTable } from "../lib/library/plans/planPlates.js";
+import { plateReviewed } from "../lib/library/platePolicy.js";
 import { TAIL } from "./heroPosePrompts.js";
 import { isPatternId, PATTERN_IDS } from "../lib/library/plans/planVisibility.js";
 import type { PatternId } from "../lib/library/types.js";
@@ -180,9 +192,12 @@ export interface PlanPlateProvenance {
   height: number | null;
   /** "3:2" when the master is within 1% of the plate contract. */
   aspect: "3:2" | "other" | "unknown";
-  /** False until a person has viewed the plate full size (lane B §4.9). */
-  childFree: false;
-  textFree: false;
+  /** False at paint; set only by the review route, as a person saw the plate full size (lane B §4.9). */
+  childFree: boolean;
+  textFree: boolean;
+  /** B-BOOK-27: who viewed the plate full size; null at paint (never served until set). */
+  reviewedBy: string | null;
+  reviewedAt?: string;
   /** The provider offers no text / figure attribute signal: never verified here. */
   qc: "unverified";
   model: string;
@@ -191,6 +206,37 @@ export interface PlanPlateProvenance {
   painterUid: string;
   paintedAt: string;
   costUsd: number;
+}
+
+/**
+ * B-BOOK-27: may this provenance record's plate be served to families? Only a
+ * record of THIS plate that says it was reviewed: child-free and text-free
+ * recorded, a reviewer named. Anything else (no record, unreadable JSON,
+ * another plate's record, unreviewed, child-painted) = no. Fail closed.
+ */
+export function sharedPlateServable(raw: unknown, patternId: string, plateId: string): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const r = raw as Record<string, unknown>;
+  if (r.pattern !== patternId || r.plate !== plateId) return false;
+  return plateReviewed({ provenance: { childFree: r.childFree === true, textFree: r.textFree === true, reviewedBy: typeof r.reviewedBy === "string" ? r.reviewedBy : null } });
+}
+
+async function readJson(file: BookAssetFile): Promise<unknown> {
+  const [exists] = await file.exists();
+  if (!exists) return null;
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of file.createReadStream() as AsyncIterable<Buffer | string>) {
+    const b = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+    size += b.length;
+    if (size > 64 * 1024) return null; // a provenance record is a few hundred bytes
+    chunks.push(b);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return null;
+  }
 }
 
 export interface PlanPlatesDeps {
@@ -324,7 +370,7 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
         const provenance: PlanPlateProvenance = {
           pattern: job.pattern, plate: job.plate, file: file.name, mimeType: ext === "webp" ? "image/webp" : "image/png",
           width: dims?.width ?? null, height: dims?.height ?? null, aspect,
-          childFree: false, textFree: false, qc: "unverified",
+          childFree: false, textFree: false, reviewedBy: null, qc: "unverified",
           model: pin.model, location: pin.location, promptSha256: sha256(prompt), painterUid: uid,
           paintedAt: new Date(now()).toISOString(), costUsd: PLAN_PLATE_IMAGE_USD,
         };
@@ -358,6 +404,29 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
     });
   });
 
+  // B-BOOK-27: the painter records the full-size review of one painted plate.
+  router.post("/admin/plan-plates/review", painterOnly, express.json({ limit: "1kb" }), async (req, res) => {
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const { pattern, plate } = b;
+    if (!isPatternId(pattern) || typeof plate !== "string" || !PLATE_ID.test(plate) || !planPlateTable(pattern)[plate]) { refuse(res, 404, "plan_unknown_plate", "Unknown plate"); return; }
+    if (typeof b.childFree !== "boolean" || typeof b.textFree !== "boolean") { refuse(res, 400, "plan_plate_review_bad_request", "childFree and textFree are required"); return; }
+    const reviewer = (userOf(req)!.email || "").trim().toLowerCase();
+    try {
+      const bucket = await deps.getBucket();
+      if (!bucket) { refuse(res, 503, "plan_plates_unavailable", "Plate storage is not available"); return; }
+      const record = bucket.file(planPlateObject(pattern, plate, "json"));
+      const prov = await readJson(record);
+      if (!prov || typeof prov !== "object" || (prov as Record<string, unknown>).pattern !== pattern || (prov as Record<string, unknown>).plate !== plate) { refuse(res, 404, "plan_plate_unpainted", "This plate is not painted"); return; }
+      const next = { ...(prov as Record<string, unknown>), childFree: b.childFree, textFree: b.textFree, reviewedBy: reviewer, reviewedAt: new Date(now()).toISOString() };
+      if (!record.save) throw new Error("storage has no write path");
+      await record.save(Buffer.from(JSON.stringify(next)), { contentType: "application/json", resumable: false });
+      res.json({ pattern, plate, childFree: b.childFree, textFree: b.textFree, reviewedBy: reviewer, servable: sharedPlateServable(next, pattern, plate) });
+    } catch (error: unknown) {
+      logger.error("Plan plate review error", error instanceof Error ? error : new Error(String(error)), { requestId: requestIdOf(req) });
+      refuse(res, 503, "plan_plates_unavailable", "Plate storage is not available");
+    }
+  });
+
   // The read route: any signed-in user (the sandbox's local caller where allowed).
   const verified: RequestHandler = (req, res, next) => {
     const uid = userOf(req)?.uid;
@@ -380,6 +449,8 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
         if (exists) { file = f; type = ext === "webp" ? "image/webp" : "image/png"; break; }
       }
       if (!file) { res.status(404).json({ error: "Not found" }); return; }
+      // B-BOOK-27: an unreviewed or child-painted shared plate never reaches a family (fail closed).
+      if (!sharedPlateServable(await readJson(bucket.file(planPlateObject(pattern, plate, "json"))), pattern, plate)) { res.status(404).json({ error: "Not found" }); return; }
       res.setHeader("Content-Type", type);
       res.setHeader("Cache-Control", "private, max-age=604800, immutable");
       res.setHeader("X-Content-Type-Options", "nosniff");

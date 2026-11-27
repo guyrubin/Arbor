@@ -5,17 +5,26 @@
  * viewed them); every plate or overlay FILE in the bundle is accounted for by
  * a reviewed registry entry; a fixture book's unreviewed plates never ship;
  * the Everyday Plans pattern plates (shared by every family, painted in
- * product, provenance still empty) are a FROZEN list that may only shrink.
- * Negative controls prove each rule bites.
+ * product, provenance still empty) are a FROZEN, dated list that may only
+ * shrink, and the server never serves them unreviewed (server/planPlates).
+ *
+ * The book list is derived from the live registry, never written out here:
+ * every canonical and fixture book (books/index), every authored pattern
+ * (plans/planBooks.PATTERNS) with its `--demo` book AND one composed book per
+ * non-default menu item (planMenuCoverageBooks), so a new book, pattern or
+ * menu item is covered with no list to update. Negative controls mutate the
+ * real registry entries (never synthetic strings) and prove each rule bites.
  */
 import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BOOK_PLATES, FIXTURE_BOOKS, LIBRARY_BOOKS } from "./books";
+import { allBooks, BOOK_PLATES, bookPlatesFor, FIXTURE_BOOKS, LIBRARY_BOOKS } from "./books";
+import { allBookPages } from "./bookShape";
 import { fiveSmoothStones } from "./books/fiveSmoothStones";
 import type { BookPlate, PlateTable } from "./bookPlates";
-import { PLAN_FIXTURE_BOOKS } from "./plans/planBooks";
+import { authoredPatterns, PLAN_FIXTURE_BOOKS, planMenuCoverageBooks } from "./plans/planBooks";
+import type { PatternDef } from "./plans/patterns";
 import { planPlateTable } from "./plans/planPlates";
 import { PATTERN_IDS } from "./plans/planVisibility";
 import { bookPlateFindings, plateReviewed, reviewGap, shippedPlateFindings, strayPlateFindings, type ShippedBook } from "./platePolicy";
@@ -36,25 +45,33 @@ function walk(dir: string, out: string[] = []): string[] {
 const rel = (f: string) => path.relative(VISUALS, f).split(path.sep).join("/");
 
 const SHIPPED: Record<string, ShippedBook> = Object.fromEntries(Object.values(LIBRARY_BOOKS).map((b) => [b.id, { book: b, table: BOOK_PLATES[b.id] }]));
-const PLAN_TABLES: Record<string, PlateTable> = Object.fromEntries(PATTERN_IDS.map((p) => [p, planPlateTable(p)]));
+/** Every authored pattern (the live registry), not the visibility list: the two must agree (asserted below). */
+const AUTHORED = authoredPatterns().map((d) => d.id);
+const PLAN_TABLES: Record<string, PlateTable> = Object.fromEntries(AUTHORED.map((p) => [p, planPlateTable(p)]));
+/** Every plan book the checks read: each pattern's default book and one per non-default menu item. */
+const PLAN_BOOKS = [...Object.values(PLAN_FIXTURE_BOOKS), ...planMenuCoverageBooks()];
+const nonReview = (f: string) => !/unreviewed plate/.test(f);
 
 /**
  * The Everyday Plans pattern plates (lib/library/plans/planPlates.ts, the
- * Plans track's files): authored with EMPTY provenance and served to every
- * family through GET /api/plans/plates once painted in product, with no
- * reviewed flag in the registry. FROZEN: entries may only shrink — a plate
- * leaves this list when its registry entry records the full-size review; a
- * new unreviewed shared plate fails the build.
+ * Plans track's files): authored with EMPTY provenance; none is committed
+ * (planPlateManifest is empty) and the in-product paints are served through
+ * GET /api/plans/plates only once their stored record says reviewed
+ * (server/planPlates.sharedPlateServable, B-BOOK-27, fail closed). FROZEN
+ * and DATED: entries may only shrink — a plate leaves this list when its
+ * registry entry records the full-size review; a new unreviewed shared plate
+ * fails the build. These cannot pass without reviewed art (no art change here).
  */
-const UNREVIEWED_PLAN_PLATES: Readonly<Record<string, readonly string[]>> = {
-  "plan-poo-sit": ["PP1", "PP2", "PP3", "PP4", "PP5", "PP6", "PP7", "PP8"],
-  "plan-toilet-start": ["PT1", "PT2", "PT3", "PT4", "PT5", "PT6", "PT7", "PT8"],
-  "plan-sleep-alone": ["PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "PS7", "PS8"],
-  "plan-stay-in-bed": ["PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7", "PB8"],
-  "plan-dropoff": ["PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8"],
-  "plan-big-feelings": ["PF1", "PF2", "PF3", "PF4", "PF5", "PF6", "PF7", "PF8"],
-  "plan-screen-end": ["PE1", "PE2", "PE3", "PE4", "PE5", "PE6", "PE7", "PE8"],
-  "plan-new-food": ["PN1", "PN2", "PN3", "PN4", "PN5", "PN6", "PN7", "PN8"],
+const PLAN_ART_PENDING = { since: "2026-11-27", reason: "pattern plates not yet painted and viewed full size; the registry holds no review, so they ship nowhere and the read route refuses them" } as const;
+const UNREVIEWED_PLAN_PLATES: Readonly<Record<string, { since: string; reason: string; plates: readonly string[] }>> = {
+  "plan-poo-sit": { ...PLAN_ART_PENDING, plates: ["PP1", "PP2", "PP3", "PP4", "PP5", "PP6", "PP7", "PP8"] },
+  "plan-toilet-start": { ...PLAN_ART_PENDING, plates: ["PT1", "PT2", "PT3", "PT4", "PT5", "PT6", "PT7", "PT8"] },
+  "plan-sleep-alone": { ...PLAN_ART_PENDING, plates: ["PS1", "PS2", "PS3", "PS4", "PS5", "PS6", "PS7", "PS8"] },
+  "plan-stay-in-bed": { ...PLAN_ART_PENDING, plates: ["PB1", "PB2", "PB3", "PB4", "PB5", "PB6", "PB7", "PB8"] },
+  "plan-dropoff": { ...PLAN_ART_PENDING, plates: ["PD1", "PD2", "PD3", "PD4", "PD5", "PD6", "PD7", "PD8"] },
+  "plan-big-feelings": { ...PLAN_ART_PENDING, plates: ["PF1", "PF2", "PF3", "PF4", "PF5", "PF6", "PF7", "PF8"] },
+  "plan-screen-end": { ...PLAN_ART_PENDING, plates: ["PE1", "PE2", "PE3", "PE4", "PE5", "PE6", "PE7", "PE8"] },
+  "plan-new-food": { ...PLAN_ART_PENDING, plates: ["PN1", "PN2", "PN3", "PN4", "PN5", "PN6", "PN7", "PN8"] },
 };
 
 describe("B-BOOK-27: every library book's plates are reviewed and carry their slot metadata", () => {
@@ -68,10 +85,37 @@ describe("B-BOOK-27: every library book's plates are reviewed and carry their sl
   });
 
   it("every plan book's pages have their slot metadata (its plates' review is the frozen list below)", () => {
-    expect(Object.keys(PLAN_FIXTURE_BOOKS).length).toBe(PATTERN_IDS.length);
-    for (const book of Object.values(PLAN_FIXTURE_BOOKS)) {
-      expect(bookPlateFindings(book, planPlateTable(book.pattern)).filter((f) => !/unreviewed plate/.test(f)), book.id).toEqual([]);
+    expect(Object.keys(PLAN_FIXTURE_BOOKS).length).toBe(AUTHORED.length);
+    for (const book of PLAN_BOOKS) {
+      expect(bookPlateFindings(book, planPlateTable(book.pattern)).filter(nonReview), book.id).toEqual([]);
     }
+  });
+});
+
+describe("B-BOOK-27: the checks read the live registry, so nothing in it is left out", () => {
+  it("every canonical and fixture book has a plate table, and no table belongs to no book", () => {
+    const ids = allBooks().map((b) => b.id).sort();
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(Object.keys(BOOK_PLATES).sort()).toEqual(ids);
+    for (const book of allBooks()) expect(bookPlatesFor(book), book.id).toBe(BOOK_PLATES[book.id]);
+    for (const id of Object.keys(LIBRARY_BOOKS)) expect(Object.keys(FIXTURE_BOOKS), id).not.toContain(id);
+  });
+
+  it("the authored patterns and the visibility list are the same set (a new pattern cannot dodge the checks or the read route)", () => {
+    expect([...AUTHORED].sort()).toEqual([...PATTERN_IDS].sort());
+  });
+
+  it("every menu item of every pattern is read by some checked plan book, and so is every plate of each pattern's table", () => {
+    for (const def of authoredPatterns()) {
+      const books = PLAN_BOOKS.filter((b) => b.pattern === def.id);
+      const items = new Set(books.flatMap((b) => b.steps.map((s) => s.menuId)));
+      for (const m of def.menu) expect(items, `${def.id}: menu item ${m.id}`).toContain(m.id);
+      const named = new Set(books.flatMap((b) => allBookPages(b).map((p) => p.plateId)));
+      expect([...named].sort(), def.id).toEqual(Object.keys(planPlateTable(def.id)).sort());
+    }
+    // the menu coverage reaches beyond the default steps (else it would add nothing)
+    expect(planMenuCoverageBooks().length).toBe(authoredPatterns().reduce((n, d) => n + d.menu.filter((m) => d.defaultSteps[m.slot - 1] !== m.id).length, 0));
+    expect(planMenuCoverageBooks().length).toBeGreaterThan(0);
   });
 });
 
@@ -108,10 +152,18 @@ describe("B-BOOK-27: nothing unreviewed ships", () => {
       if (ids.length) unreviewed[pattern] = ids.sort();
     }
     for (const [pattern, ids] of Object.entries(unreviewed)) {
-      for (const id of ids) expect(UNREVIEWED_PLAN_PLATES[pattern] ?? [], `${pattern}/${id} is a new unreviewed shared plate`).toContain(id);
+      for (const id of ids) expect(UNREVIEWED_PLAN_PLATES[pattern]?.plates ?? [], `${pattern}/${id} is a new unreviewed shared plate`).toContain(id);
     }
-    for (const [pattern, ids] of Object.entries(UNREVIEWED_PLAN_PLATES)) {
-      for (const id of ids) expect(unreviewed[pattern] ?? [], `${pattern}/${id} is reviewed now: remove it from UNREVIEWED_PLAN_PLATES`).toContain(id);
+    for (const [pattern, entry] of Object.entries(UNREVIEWED_PLAN_PLATES)) {
+      expect(entry.since, pattern).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(entry.reason.trim().length, pattern).toBeGreaterThan(20);
+      for (const id of entry.plates) expect(unreviewed[pattern] ?? [], `${pattern}/${id} is reviewed now: remove it from UNREVIEWED_PLAN_PLATES`).toContain(id);
+    }
+  });
+
+  it("an allow-listed shared plate ships nowhere: none is committed under public/visuals/plans", () => {
+    for (const [pattern, entry] of Object.entries(UNREVIEWED_PLAN_PLATES)) {
+      for (const id of entry.plates) expect(files, `${pattern}/${id}`).not.toContain(`plans/${pattern}/${id}.webp`);
     }
   });
 });
@@ -189,5 +241,38 @@ describe("B-BOOK-27: negative controls — each rule bites", () => {
       "cards/overlays/helmet.webp: a plate or overlay folder outside visuals/books and visuals/plans",
       "worlds/PP1.webp: named like a registered plate (PP1) outside visuals/books and visuals/plans",
     ]);
+  });
+
+  it("a shared plan plate recorded child-painted is rejected even with a reviewer named (real pattern table)", () => {
+    const pattern = AUTHORED[0];
+    const real = PLAN_TABLES[pattern];
+    const id = Object.keys(real)[0];
+    const reviewed = { ...real, [id]: { ...real[id], provenance: { childFree: true, textFree: true, reviewedBy: "art-review" } } };
+    expect(shippedPlateFindings([`plans/${pattern}/${id}.webp`], SHIPPED, { ...PLAN_TABLES, [pattern]: reviewed })).toEqual([]);
+    const childPainted = { ...real, [id]: { ...real[id], provenance: { childFree: false, textFree: true, reviewedBy: "art-review" } } };
+    expect(plateReviewed(childPainted[id])).toBe(false);
+    expect(shippedPlateFindings([`plans/${pattern}/${id}.webp`], SHIPPED, { ...PLAN_TABLES, [pattern]: childPainted })).toEqual([`plans/${pattern}/${id}.webp: unreviewed shared plate (not recorded child-free)`]);
+    // and a book's plate the same way: reviewed, then child-painted
+    const t = BOOK_PLATES[fiveSmoothStones.id];
+    const plate = fiveSmoothStones.pages[0].plateId;
+    const painted = { ...t, [plate]: { ...t[plate], provenance: { ...t[plate].provenance, childFree: false } } };
+    expect(bookPlateFindings(fiveSmoothStones, painted)).toContain(`five-smooth-stones/${plate}: unreviewed plate (not recorded child-free)`);
+  });
+
+  it("a broken NON-default menu item (real pattern, its own art mutated) is caught only because the menu coverage books read it", () => {
+    const def = authoredPatterns().find((d) => d.menu.some((m) => d.defaultSteps[m.slot - 1] !== m.id))!;
+    const item = def.menu.find((m) => def.defaultSteps[m.slot - 1] !== m.id)!;
+    const broken: PatternDef = { ...def, menu: def.menu.map((m) => (m.id === item.id ? { ...m, art: { ...m.art, slot: { ...m.art.slot, y: 0.2, scale: 0.5 }, phoneCrop: 1.4 } } : m)) };
+    const table = planPlateTable(def.id);
+    const book = planMenuCoverageBooks([broken]).find((b) => b.steps.some((s) => s.menuId === item.id))!;
+    const findings = bookPlateFindings(book, table).filter(nonReview);
+    expect(findings.some((f) => /hero slot .* is not inside the plate with head room/.test(f)), findings.join("; ")).toBe(true);
+    expect(findings.some((f) => /phone window is not inside the plate/.test(f)), findings.join("; ")).toBe(true);
+    // the default book alone never reads that item (the gap this coverage closes)
+    expect(PLAN_FIXTURE_BOOKS[`${def.id}--demo`].steps.map((s) => s.menuId)).not.toContain(item.id);
+    // an unregistered plate on that item is caught the same way
+    const ghost: PatternDef = { ...def, menu: def.menu.map((m) => (m.id === item.id ? { ...m, art: { ...m.art, plateId: "PX-ghost" } } : m)) };
+    const ghostBook = planMenuCoverageBooks([ghost]).find((b) => b.steps.some((s) => s.menuId === item.id))!;
+    expect(bookPlateFindings(ghostBook, table).some((f) => f.endsWith("plate PX-ghost is not registered"))).toBe(true);
   });
 });
