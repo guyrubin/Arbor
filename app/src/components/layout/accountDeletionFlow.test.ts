@@ -120,6 +120,8 @@ function boundaries() {
     return key + (vars ? " " + JSON.stringify(vars) : "");
   } };
   const toast = vi.fn((_message: string, kind: string) => { order.push("toast:" + kind); });
+  // B-STATUS-01: the deletion answers with the receipt carried to the sign-in screen.
+  const carryReceipt = vi.fn((_note: { text: string }, place: string) => { order.push("receipt:" + place); });
   const api = { accountDelete: vi.fn(async () => receipt()) };
   const purgeAllComicPages = vi.fn(async () => { order.push("purge"); });
   const commerceAllowed = vi.fn(() => true);
@@ -137,6 +139,7 @@ function boundaries() {
     "../../context/LanguageContext": { useLanguage: () => language },
     "../../context/AuthContext": { useAuth: () => auth },
     "../../context/ToastContext": { useToast: () => ({ toast }) },
+    "../ui/Receipt": { carryReceipt },
     "../../lib/api": { api },
     "../../lib/accountDeletionLease": { accountDeletionLeases: leases },
     "../../lib/comicPageStore": { purgeAllComicPages },
@@ -145,7 +148,7 @@ function boundaries() {
     // B-GA-09 round 7: this account's unfinished child erases (none unless a test adds them).
     "../../lib/pendingErase": { readPendingErases: (uid: string) => pending.filter((p) => p.uid === uid) },
   };
-  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, storage, removeItem, order, pending };
+  return { imports, leases, auth, language, api, commerceAllowed, purgeAllComicPages, signOut, toast, carryReceipt, storage, removeItem, order, pending };
 }
 function deletion(source = deletionSource, b = boundaries()) {
   const onClose = vi.fn(() => { b.order.push("close"); });
@@ -166,7 +169,7 @@ function settings(source = settingsSource) {
     "../ui/Icon": { Icon: "Icon" }, "./AdminDashboard": { default: "AdminDashboard", __esModule: true },
     "./ParentalGatePanel": { default: "ParentalGatePanel", __esModule: true },
     // B-STATUS-01: the saved-language receipt line (Settings' own slot).
-    "../ui/Receipt": { ReceiptNoteLine: "ReceiptNoteLine", useReceiptNote: () => ({ note: null, show: () => {}, clear: () => {} }) },
+    "../ui/Receipt": { Receipt: "Receipt", ReceiptNoteLine: "ReceiptNoteLine", useReceiptNote: () => ({ note: null, show: () => {}, clear: () => {} }) },
     // B-PLAY-06: Settings consumes a requested row focus on open.
     "./settingsBus": { consumeSettingsFocus: () => null, SETTINGS_FOCUS_ANCHOR: { pin: "settings-pin-row" } },
     "./DeleteAccountModal": { default: "DeleteAccountModal", __esModule: true },
@@ -336,7 +339,7 @@ describe("production account-deletion callbacks", () => {
   it("only a complete receipt invokes the existing local purge, Arbor-key cleanup, close and sign-out sequence", async () => {
     const f = deletion(); f.api.accountDelete.mockResolvedValueOnce(receipt(true));
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); await f.settle();
-    expect(f.order).toEqual(["purge", "remove:arbor.child", "remove:arbor.theme", "toast:success", "close", "signOut"]);
+    expect(f.order).toEqual(["purge", "remove:arbor.child", "remove:arbor.theme", "receipt:signed-out", "close", "signOut"]);
     expect(f.storage.unrelated).toBe("keep"); expect(f.signOut).toHaveBeenCalledOnce();
   });
   it("forced close/reopen keeps the pending lock but ignores the old receipt", async () => {
@@ -354,7 +357,8 @@ describe("production account-deletion callbacks", () => {
     f.type("DELETE"); button(f.tree, "set.acctDel.confirm").props.onClick(); f.setOpen(false);
     wait.resolve(receipt(true)); await f.settle();
     expect(f.purgeAllComicPages).toHaveBeenCalledOnce(); expect(f.signOut).toHaveBeenCalledOnce();
-    expect(f.toast).toHaveBeenCalledWith("set.acctDel.done", "success", undefined, { outlivesVisit: true });
+    expect(f.carryReceipt).toHaveBeenCalledWith({ text: "elev.loop.receipt.accountDeleted" }, "signed-out");
+    expect(f.toast).not.toHaveBeenCalled();
   });
   it("identity changes invalidate confirmation and a pending completion cannot clean another account", async () => {
     const f = deletion(), wait = deferred<AccountDeletionReceipt>(); f.api.accountDelete.mockReturnValueOnce(wait.promise);

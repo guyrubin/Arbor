@@ -46,7 +46,7 @@ describe("1 · the poll gives up out loud", () => {
     const toast = vi.fn();
     const onTimeout = vi.fn();
     startBillingReturnPoll({
-      toast, t: (k) => k, onTimeout,
+      toast, answer: (m: string) => toast(m), t: (k) => k, onTimeout,
       refresh: () => new Promise<EntitlementInfo>((resolve) => { answerLate = resolve; }),
     });
     await vi.advanceTimersByTimeAsync(15_000);
@@ -61,7 +61,7 @@ describe("1 · the poll gives up out loud", () => {
     const toast = vi.fn();
     const onTimeout = vi.fn();
     const refresh = vi.fn(async () => { throw new Error("network"); });
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, onTimeout, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, onTimeout, ...immediate() });
     await flush();
 
     expect(refresh).toHaveBeenCalledTimes(6);
@@ -74,7 +74,7 @@ describe("1 · the poll gives up out loud", () => {
   it("plan stays free for every try → the same one pending message", async () => {
     const toast = vi.fn();
     const refresh = vi.fn(async () => FREE);
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, maxTries: 3, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, maxTries: 3, ...immediate() });
     await flush();
 
     expect(refresh).toHaveBeenCalledTimes(3);
@@ -106,7 +106,7 @@ describe("2 · the winning branch is unchanged", () => {
   it("plan flips → activated once, never the pending message", async () => {
     const toast = vi.fn();
     const onTimeout = vi.fn();
-    startBillingReturnPoll({ toast, t: (k) => k, refresh: async () => PLUS, onTimeout, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh: async () => PLUS, onTimeout, ...immediate() });
     await flush();
     expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
     expect(onTimeout).not.toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe("2 · the winning branch is unchanged", () => {
     const toast = vi.fn();
     let n = 0;
     const refresh = vi.fn(async () => { n += 1; if (n === 1) throw new Error("network"); return PLUS; });
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, ...immediate() });
     await flush();
     expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
   });
@@ -125,7 +125,7 @@ describe("2 · the winning branch is unchanged", () => {
     const toast = vi.fn();
     let resolve: (e: EntitlementInfo) => void = () => undefined;
     const cancelPoll = startBillingReturnPoll({
-      toast, t: (k) => k, maxTries: 1,
+      toast, answer: (m: string) => toast(m), t: (k) => k, maxTries: 1,
       refresh: () => new Promise<EntitlementInfo>((r) => { resolve = r; }),
     });
     cancelPoll();
@@ -141,7 +141,7 @@ describe("web checkout confirmation requires purchased access", () => {
     const refresh = vi.fn()
       .mockResolvedValueOnce(APP_TRIAL)
       .mockResolvedValueOnce(PLUS);
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, ...immediate() });
     await flush();
 
     expect(refresh).toHaveBeenCalledTimes(2);
@@ -172,7 +172,7 @@ describe("web checkout confirmation requires purchased access", () => {
   it.each(unconfirmed)("does not confirm %s as the web purchase", async (_label, fields) => {
     const toast = vi.fn();
     const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({ ...PLUS, ...fields }));
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, maxTries: 2, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, maxTries: 2, ...immediate() });
     await flush();
 
     expect(refresh).toHaveBeenCalledTimes(2);
@@ -185,7 +185,7 @@ describe("web checkout confirmation requires purchased access", () => {
     const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({
       ...PLUS, status: "canceled", willRenew: false, currentPeriodEnd: paidUntil,
     }));
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, ...immediate() });
     await flush();
 
     expect(refresh).toHaveBeenCalledTimes(1);
@@ -198,7 +198,7 @@ describe("web checkout confirmation requires purchased access", () => {
     const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({
       ...PLUS, plan: "family", source: "env", provider: "stripe", status: "active", willRenew: true, currentPeriodEnd: paidUntil,
     }));
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, ...immediate() });
     await flush();
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);
@@ -207,7 +207,7 @@ describe("web checkout confirmation requires purchased access", () => {
   it("retains recognition of an existing paid Family web subscription", async () => {
     const toast = vi.fn();
     const refresh = vi.fn(async (): Promise<EntitlementInfo> => ({ ...PLUS, plan: "family" }));
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, ...immediate() });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, ...immediate() });
     await flush();
 
     expect(toast.mock.calls.map((c) => c[0])).toEqual(["pw.activating", "pw.activated"]);

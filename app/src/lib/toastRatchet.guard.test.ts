@@ -158,14 +158,18 @@ if (process.env.TOAST_BASELINE_WRITE === "1") {
 
 describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink-only ratchet", () => {
   it("the scan reads the real corpus (non-vacuity)", () => {
-    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines; 80 call
-    // sites remain (errors and Undo included). The bar holds at 80 (critic r1:
-    // a non-vacuity floor is never lowered to fit a conversion).
-    expect(SITES.length).toBeGreaterThanOrEqual(80);
+    // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines (80 call
+    // sites left); wave 4 turned the last 8 (81 → 73, each named in the wave-4
+    // block below). The floor moves only by those named removals: 73.
+    expect(SITES.length).toBeGreaterThanOrEqual(73);
     const kinds = new Set(SITES.map((s) => s.kind));
-    for (const k of ["error", "action", "success", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
-    // a known file, counted by hand: ArborContext's two success toasts (plan woven, analysis kept)
-    expect(CURRENT["context/ArborContext.tsx"]?.success).toBe(2);
+    for (const k of ["error", "action", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
+    // the done bar: no success toast anywhere in the corpus (the counter still
+    // sees one — the negative controls below put one back into real source)
+    expect(kinds.has("success")).toBe(false);
+    // a known file, counted by hand: ArborContext keeps its forwarding wrapper
+    // (dynamic) and the "link moved" notice (info); its two success toasts went
+    expect(CURRENT["context/ArborContext.tsx"]).toEqual({ dynamic: 1, info: 1 });
     // the capture tray's keep toast carries its Undo: an action, never a success
     expect(SITES.filter((s) => s.file === "components/capture/CaptureProposalsTray.tsx" && s.kind === "action")).toHaveLength(1);
   });
@@ -237,6 +241,71 @@ describe("B-STATUS-01 · wave 3: the success toasts of these surfaces became rec
   it("NEGATIVE CONTROL: the pre-change Consult save is a ratcheted success toast", () => {
     const pre = 'setOutcome("");\n    toast(t("elev.learnCare.appt.followUp.saved"), "success");';
     expect(toastCallSites(pre, "x.tsx").map((s) => s.kind)).toEqual(["success"]);
+  });
+});
+
+describe("B-STATUS-01 · wave 4: zero success toasts — the last eight became receipt lines", () => {
+  /* Each site closed the surface it answered from (a sheet, a dialog, the
+     paywall, a sign-out) or lived in a context with no surface. Each now
+     answers with the ONE Receipt line: under the thing it changed (host slot),
+     or carried to the place the thing went (carryReceipt → CarriedReceiptLine
+     in Shell / on the sign-in screen). Undo where the write can be reversed. */
+  const CONVERTED: [file: string, answer: RegExp][] = [
+    ["components/layout/DeleteAccountModal.tsx", /carryReceipt\(\{ text: t\("elev\.loop\.receipt\.accountDeleted"\) \}, "signed-out"\)/],
+    ["components/milestones/FirstKeepsakeSheet.tsx", /if \(onSaved\) onSaved\(draft, keepsake\);\s*else carryReceipt\(/],
+    ["components/overview/QuickLogModal.tsx", /carryReceipt\(\{\s*text: t\("elev\.loop\.receipt\.momentEdited"\)/],
+    ["components/profile/AddChildModal.tsx", /carryReceipt\(\{ text: t\("elev\.loop\.receipt\.childAdded"/],
+    ["context/ArborContext.tsx", /return row\.id;/],
+    ["hooks/useCheckout.ts", /if \(fx\.tone === "success"\) \{[\s\S]{0,240}carryReceipt\([\s\S]{0,80}receiptNote\.show\(/],
+    ["hooks/useEntitlement.ts", /deps\.answer\(deps\.t\("pw\.activated"\)\)/],
+  ];
+  const src = (f: string) => readFileSync(path.join(SRC, f), "utf8");
+
+  it("the baseline holds no success line at all, and no file holds a success toast", () => {
+    expect(totals(readBaseline()).success).toBe(0);
+    for (const [file, counts] of Object.entries(readBaseline())) expect(counts.success, file).toBeUndefined();
+    expect(Object.entries(CURRENT).filter(([, c]) => c.success)).toEqual([]);
+  });
+
+  it("each former success toast answers with the receipt grammar", () => {
+    for (const [file, answer] of CONVERTED) expect(src(file), file).toMatch(answer);
+    // the hosts draw them: the carried slots, the keepsake/explain/kept lines,
+    // the plan's started line (now with Undo), the Plan row
+    expect(src("components/layout/Shell.tsx")).toMatch(/<CarriedReceiptLine place="app" childId=\{childProfile\.id\}/);
+    expect(src("components/auth/LoginScreen.tsx")).toMatch(/<CarriedReceiptLine place="signed-out"/);
+    expect(src("components/tabs/MilestonesTab.tsx")).toMatch(/onSaved=\{keepsakeSaved\}/);
+    expect(src("components/companion/NoticeObjectDetail.tsx")).toMatch(/onSaved=\{evidenceSaved\}/);
+    expect(src("components/tabs/BehaviorsTab.tsx")).toMatch(/answerKept\(keepBehaviorInsight\(behaviorAnalysis\.actionPlanSuggestion\)\)/);
+    expect(src("components/tabs/PlansTab.tsx")).toMatch(/testId: "plans-started-undo"/);
+    expect(src("components/layout/SettingsModal.tsx")).toMatch(/<ReceiptNoteLine note=\{planReceipt\} testId="plan-receipt"/);
+    expect(src("components/billing/PaywallModal.tsx")).toMatch(/useCheckout\(\{ answer: "carry" \}\)/);
+    expect(src("hooks/useBillingReturn.ts")).toMatch(/answer: \(message\) => carryReceipt\(/);
+  });
+
+  it("no forwarding wrapper can carry a success: their type stops it", () => {
+    for (const f of ["context/ArborContext.tsx", "components/milestones/FirstKeepsakeSheet.tsx"]) {
+      expect(src(f), f).toMatch(/const toast = \(message: string, type\?: "error" \| "info"\) => toastCtx\?\.toast\(message, type\);/);
+    }
+    expect(src("hooks/useEntitlement.ts")).toMatch(/toast: \(message: string, type\?: "info" \| "error"\) => void;/);
+  });
+
+  it("NEGATIVE CONTROL: the old Add-child toast put back into the real file is caught against the real baseline", () => {
+    const real = src("components/profile/AddChildModal.tsx");
+    const reverted = real.replace(/carryReceipt\(\{ text: t\("elev\.loop\.receipt\.childAdded"[^\n]*\n/, 'toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });\n');
+    expect(reverted).not.toBe(real);
+    const file = "components/profile/AddChildModal.tsx";
+    const counts = ratchetedCounts(toastCallSites(reverted, file).map((s) => ({ ...s, file })));
+    expect(ratchetViolations({ ...CURRENT, ...counts }, readBaseline()).grew).toEqual([`${file}: 1 success toast(s), baseline 0`]);
+  });
+
+  it("NEGATIVE CONTROL: the keepsake success toast put back through the sheet's wrapper is caught", () => {
+    const real = src("components/milestones/FirstKeepsakeSheet.tsx");
+    const reverted = real.replace(/if \(onSaved\) onSaved\(draft, keepsake\);/, 'toast(t("elev.waveR.keepsake.saved"), "success");');
+    expect(reverted).not.toBe(real);
+    const file = "components/milestones/FirstKeepsakeSheet.tsx";
+    const counts = ratchetedCounts(toastCallSites(reverted, file).map((s) => ({ ...s, file })));
+    expect(counts[file]?.success).toBe(1);
+    expect(ratchetViolations({ ...CURRENT, ...counts }, readBaseline()).grew).toEqual([`${file}: 1 success toast(s), baseline 0`]);
   });
 });
 

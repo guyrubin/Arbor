@@ -203,18 +203,20 @@ describe("4 · billing return: read-once flag + ONE activating toast", () => {
   it("plan flips → exactly one pw.activating and one pw.activated", async () => {
     const toast = vi.fn();
     const refresh = vi.fn(async () => SERVER_PLUS);
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, schedule: (fn) => { fn(); return 0; }, cancel: () => undefined });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, schedule: (fn) => { fn(); return 0; }, cancel: () => undefined });
     await flush();
     expect(toast.mock.calls.filter((c) => c[0] === "pw.activating")).toHaveLength(1);
     expect(toast.mock.calls.filter((c) => c[0] === "pw.activated")).toHaveLength(1);
-    expect(toast).toHaveBeenCalledWith("pw.activated", "success");
+    // B-STATUS-01: the confirmation is the receipt answer, never a success toast.
+    expect(toast).toHaveBeenCalledWith("pw.activated");
+    expect(toast.mock.calls.some((c) => c[1] === "success")).toBe(false);
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it("plan stays free → activating once, polls up to maxTries, never activated", async () => {
     const toast = vi.fn();
     const refresh = vi.fn(async () => FALLBACK_FREE);
-    startBillingReturnPoll({ toast, t: (k) => k, refresh, schedule: (fn) => { fn(); return 0; }, cancel: () => undefined, maxTries: 3 });
+    startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh, schedule: (fn) => { fn(); return 0; }, cancel: () => undefined, maxTries: 3 });
     await flush();
     expect(toast.mock.calls.filter((c) => c[0] === "pw.activating")).toHaveLength(1);
     expect(toast.mock.calls.some((c) => c[0] === "pw.activated")).toBe(false);
@@ -225,7 +227,7 @@ describe("4 · billing return: read-once flag + ONE activating toast", () => {
     const toast = vi.fn();
     let resolveRefresh: (e: EntitlementInfo) => void = () => undefined;
     const refresh = vi.fn(() => new Promise<EntitlementInfo>((r) => { resolveRefresh = r; }));
-    const cancel = startBillingReturnPoll({ toast, t: (k) => k, refresh });
+    const cancel = startBillingReturnPoll({ toast, answer: (m: string) => toast(m), t: (k) => k, refresh });
     cancel();
     resolveRefresh(SERVER_PLUS);
     await flush();

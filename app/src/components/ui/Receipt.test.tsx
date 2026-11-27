@@ -27,7 +27,7 @@ vi.mock("../../context/LanguageContext", async () => {
   };
 });
 
-import { PENDING_DELAY_MS, PendingLine, RECEIPT_DOCK_CLEARANCE_PX, Receipt, announcePolite, receiptText, revealReceipt, startPendingClock } from "./Receipt";
+import { CarriedReceiptLine, PENDING_DELAY_MS, PendingLine, RECEIPT_DOCK_CLEARANCE_PX, Receipt, announcePolite, carriedFor, carryReceipt, clearCarriedReceipt, peekCarriedReceipt, receiptText, revealReceipt, startPendingClock } from "./Receipt";
 import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -221,5 +221,64 @@ describe("critic r1 (B-STATUS-01) — a receipt that lands off-screen is brought
   it("ReceiptNoteLine reveals each new note (keyed on its seq)", () => {
     const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "Receipt.tsx"), "utf8");
     expect(src).toContain("useEffect(() => { if (seq) revealReceipt(testId); }, [seq, testId]);");
+  });
+});
+
+describe("B-STATUS-01 wave 4 — a CARRIED receipt answers where the thing went when its surface closed", () => {
+  afterEach(() => { clearCarriedReceipt(); state.lang = "en"; });
+
+  it("one slot: a new carry replaces the last (new seq), clear empties it, clear(place) only that place", () => {
+    carryReceipt({ text: "A" });
+    const first = peekCarriedReceipt();
+    carryReceipt({ text: "B" }, "signed-out");
+    expect(peekCarriedReceipt()).toMatchObject({ text: "B", place: "signed-out" });
+    expect(peekCarriedReceipt()!.seq).toBeGreaterThan(first!.seq);
+    clearCarriedReceipt("app");
+    expect(peekCarriedReceipt()?.text).toBe("B"); // negative control: another place's note stays
+    clearCarriedReceipt("signed-out");
+    expect(peekCarriedReceipt()).toBeNull();
+  });
+
+  it("a note bound to a child or an account shows only for that child / account, and only in its place", () => {
+    carryReceipt({ text: "Added Noa" }, "app", { childId: "child-b" });
+    const note = peekCarriedReceipt();
+    expect(carriedFor(note, "app", { childId: "child-b" })?.text).toBe("Added Noa");
+    expect(carriedFor(note, "app", { childId: "child-a" })).toBeNull();
+    expect(carriedFor(note, "signed-out", { childId: "child-b" })).toBeNull();
+    carryReceipt({ text: "Plan on" }, "app", { uid: "u1" });
+    expect(carriedFor(peekCarriedReceipt(), "app", { uid: "u2" })).toBeNull();
+    expect(carriedFor(peekCarriedReceipt(), "app", { uid: "u1" })?.text).toBe("Plan on");
+    // an unbound note shows for whoever is on screen
+    carryReceipt({ text: "Saved" });
+    expect(carriedFor(peekCarriedReceipt(), "app", { childId: "child-a" })?.text).toBe("Saved");
+  });
+
+  it("the slot draws the ONE Receipt line (EN + HE, with its Undo), and nothing for another place", () => {
+    carryReceipt({ text: "Saved your changes to this moment in the Journal.", link: { where: "Journal", href: "#/journal" }, undo: { label: "Undo", onUndo: () => {}, testId: "u" } }, "app", { childId: "c" });
+    const html = renderToStaticMarkup(<CarriedReceiptLine place="app" childId="c" testId="slot" />);
+    expect(html).toContain('data-testid="slot"');
+    expect(html).toContain('data-receipt="muted"');
+    expect(html).toContain('href="#/journal"');
+    expect(html).toContain(">Undo<");
+    expect(renderToStaticMarkup(<CarriedReceiptLine place="signed-out" testId="slot" />)).toBe("");
+    state.lang = "he";
+    carryReceipt({ text: "החשבון והנתונים שלו נמחקו מארבור ומהמכשיר הזה. אי אפשר לבטל את זה." }, "signed-out");
+    const he = renderToStaticMarkup(<CarriedReceiptLine place="signed-out" testId="out" />);
+    expect(he).toContain('dir="rtl"');
+    expect(he).toContain('lang="he"');
+  });
+
+  it("each former success toast has its EN and HE words", async () => {
+    const { translate } = await vi.importActual<typeof import("../../lib/i18n")>("../../lib/i18n");
+    for (const key of ["childAdded", "accountDeleted", "planWhere", "keepsakeKept", "momentEdited"]) {
+      const k = `elev.loop.receipt.${key}`;
+      const en = translate("en", k, { name: "Noa", title: "Three steps" });
+      const he = translate("he", k, { name: "Noa", title: "Three steps" });
+      expect(en, k).not.toBe(k);
+      expect(he, k).not.toBe(k);
+      expect(he, k).toMatch(/[\u0590-\u05FF]/);
+      expect(en, k).not.toMatch(/\{\w+\}/);
+      expect(he, k).not.toMatch(/\{\w+\}/);
+    }
   });
 });

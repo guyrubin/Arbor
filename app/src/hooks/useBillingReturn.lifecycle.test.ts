@@ -53,6 +53,8 @@ async function mountedReturnProof() {
     "../context/AuthContext": { useAuth: () => ({ user: { uid: state.uid } }) },
     "../context/LanguageContext": { useLanguage: () => { const lang = state.lang; return { t: key => `${lang}:${key}` }; } },
     "../context/ToastContext": { useToast: () => ({ toast: (message, type, action) => messages.push({ message, type, action }) }) },
+    // B-STATUS-01: the confirmation is carried as the receipt line, not a toast.
+    "../components/ui/Receipt": { carryReceipt: (note, place) => messages.push({ message: note.text, type: place === "app" ? "receipt" : "misplaced" }) },
     "./useEntitlement": entitlement,
   });
   const trial = { ...entitlement.FALLBACK_FREE, plan: "plus", source: "trial", provider: "none", status: "in_trial" };
@@ -76,11 +78,11 @@ async function mountedReturnProof() {
     render(); await flush();
     proof.queryIsOnlyTrigger = requests.length === 1 && requests[0].uid === "synthetic-owner-a" && location.search === "?keep=1" && location.hash === "#/overview";
     requests[0].resolve(trial); await flush();
-    proof.trialDoesNotConfirm = !messages.some(message => message.type === "success");
+    proof.trialDoesNotConfirm = !messages.some(message => message.type === "receipt");
     await advance(2500);
     state.lang = "he"; render(); await flush();
     requests[1].resolve(paid); await flush();
-    proof.localePreservesPoll = requests.length === 2 && messages.filter(message => message.type === "success").length === 1 && messages.at(-1).message === "he:pw.activated";
+    proof.localePreservesPoll = requests.length === 2 && messages.filter(message => message.type === "receipt").length === 1 && messages.at(-1).message === "he:pw.activated he:elev.loop.receipt.planWhere";
 
     // A fresh return stays pending through six trial answers, then Retry must
     // keep polling until the delayed webhook's paid answer appears.
@@ -96,7 +98,7 @@ async function mountedReturnProof() {
     pending.action.onClick(); await flush();
     requests.at(-1).resolve(trial); await flush(); await advance(2500);
     requests.at(-1).resolve(paid); await flush();
-    proof.retryKeepsPolling = requests.length === beforeRetry + 2 && messages.at(-1).message === "he:pw.activated";
+    proof.retryKeepsPolling = requests.length === beforeRetry + 2 && messages.at(-1).message === "he:pw.activated he:elev.loop.receipt.planWhere";
 
     // The old account's retained Retry must be inert after the auth owner moves.
     state.uid = "synthetic-owner-b"; entitlement.setEntitlementOwner(state.uid); render(); await flush();
@@ -108,10 +110,10 @@ async function mountedReturnProof() {
     flushSync(() => root.render(null));
     state.uid = "synthetic-owner-a"; entitlement.setEntitlementOwner(state.uid);
     entitlement.markBillingReturn(); render(); await flush();
-    const old = requests.at(-1), successes = messages.filter(message => message.type === "success").length;
+    const old = requests.at(-1), successes = messages.filter(message => message.type === "receipt").length;
     state.uid = "synthetic-owner-b"; entitlement.setEntitlementOwner(state.uid); render(); await flush();
     old.resolve(paid); await flush(); await advance(15_000);
-    proof.ownerChangeCancelsConfirmation = old.signal.aborted && messages.filter(message => message.type === "success").length === successes && entitlement.cachedEntitlement() === null;
+    proof.ownerChangeCancelsConfirmation = old.signal.aborted && messages.filter(message => message.type === "receipt").length === successes && entitlement.cachedEntitlement() === null;
 
     flushSync(() => root.render(null)); location.search = "?billing=cancel";
     const beforeCancel = requests.length, beforeCancelMessages = messages.length;
