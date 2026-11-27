@@ -205,11 +205,22 @@ describe("B-BOOK-27: a library book's shared art is kept offline", () => {
   });
   it("every book of the registry fits one worker message (so no plate of Tonight is cut off)", async () => {
     const { allBooks } = await import("./library/books");
-    const { PLAN_FIXTURE_BOOKS } = await import("./library/plans/planBooks");
+    const { PLAN_FIXTURE_BOOKS, planMenuCoverageBooks } = await import("./library/plans/planBooks");
+    const planBooks = [...Object.values(PLAN_FIXTURE_BOOKS), ...planMenuCoverageBooks()];
     expect(KID_ART_MESSAGE_MAX).toBe(Number(/const ART_MAX = (\d+);/.exec(swSource)![1]));
-    for (const book of [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS)]) expect(libraryBookArtUrls(book).length, book.id).toBeLessThanOrEqual(KID_ART_MESSAGE_MAX);
+    for (const book of [...allBooks(), ...planBooks]) expect(libraryBookArtUrls(book).length, book.id).toBeLessThanOrEqual(KID_ART_MESSAGE_MAX);
     // a plan plate painted in product reads through the signed-in route: never handed to the worker
-    for (const book of Object.values(PLAN_FIXTURE_BOOKS)) expect(libraryBookArtUrls(book).every((u) => u.startsWith("/visuals/plans/")), book.id).toBe(true);
+    for (const book of planBooks) expect(libraryBookArtUrls(book).every((u) => u.startsWith("/visuals/plans/")), book.id).toBe(true);
+  });
+  it("B-BOOK-27: every shipped library book (the live registry) hands the worker only files that exist in the bundle", async () => {
+    const { LIBRARY_BOOKS } = await import("./library/books");
+    const books = Object.values(LIBRARY_BOOKS);
+    expect(books.length).toBeGreaterThan(0);
+    for (const book of books) {
+      const urls = libraryBookArtUrls(book);
+      expect(urls.length, book.id).toBeGreaterThan(0);
+      for (const u of urls) expect(existsSync(path.join(APP, "public", u)), `${book.id}: ${u}`).toBe(true);
+    }
   });
   it("Tonight first, then up to 3 other books finished most recently (a plan book by its pattern id); unread books wait", () => {
     const e = (id: string, pattern?: string) => ({ book: (pattern ? { id, kind: "plan", pattern } : { id }) as never });

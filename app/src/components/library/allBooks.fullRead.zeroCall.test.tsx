@@ -1,7 +1,9 @@
 /**
  * B-BOOK-27 — "CI fails if any library book makes a model, image or TTS
  * request on a full read", run over EVERY book of the current registry: the
- * library books, the engine fixture and each Everyday Plans pattern's book.
+ * library books, the engine fixture and each Everyday Plans pattern's book,
+ * plus one composed book per non-default menu item (planMenuCoverageBooks),
+ * all derived from the live registry so a new book or menu item is read too.
  *
  * The real BookReader runs with its real hooks and effects (narration,
  * bookmarks, plan-plate reads, art-state timers): React's hooks are routed
@@ -55,7 +57,7 @@ import { BookPage } from "./BookPage";
 import { BookEnd } from "./BookParts";
 import { initialBookFlow } from "../../lib/library/bookFlow";
 import { allBooks } from "../../lib/library/books";
-import { PLAN_FIXTURE_BOOKS } from "../../lib/library/plans/planBooks";
+import { PLAN_FIXTURE_BOOKS, planMenuCoverageBooks } from "../../lib/library/plans/planBooks";
 import { loadPlanPlateUrl, resetPlanPlateSources } from "../../lib/plans/planPlateSource";
 import { setAuthTokenProvider } from "../../lib/api";
 import type { BookPageLayout } from "../../lib/library/bookPageLayout";
@@ -287,7 +289,7 @@ async function readToEnd(book: AnyBook, choiceId: string | null, lang: "en" | "h
   return seen;
 }
 
-const BOOKS: AnyBook[] = [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS)];
+const BOOKS: AnyBook[] = [...allBooks(), ...Object.values(PLAN_FIXTURE_BOOKS), ...planMenuCoverageBooks()];
 const offences = () => env.requests.map((r) => [r.via, r.url, requestOffence(r.url)] as const).filter(([via, , why]) => why !== null || via === "speechSynthesis" || via === "sendBeacon" || via === "WebSocket" || via === "EventSource" || via === "XMLHttpRequest");
 
 describe("a fresh read starts the decision with its authored question", () => {
@@ -417,6 +419,9 @@ describe("B-BOOK-27: a full read of every book in the registry makes zero model,
     expect(ids).toContain("abrams-long-road");
     expect(ids.filter((id) => id.endsWith("--demo")).length).toBe(Object.keys(PLAN_FIXTURE_BOOKS).length);
     expect(Object.keys(PLAN_FIXTURE_BOOKS).length).toBeGreaterThanOrEqual(8);
+    // every non-default menu item is read too
+    expect(ids.filter((id) => id.includes("--menu-")).length).toBe(planMenuCoverageBooks().length);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   for (const book of BOOKS) {

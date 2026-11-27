@@ -7,7 +7,9 @@
  * per-painter ledger, with a provenance record beside each master
  * (qc "unverified", childFree / textFree false until viewed). The read route
  * serves any signed-in user (401 signed out, the sandbox where allowed), 404
- * until painted, long cache headers once painted. Every object sits under
+ * until painted AND reviewed (B-BOOK-27: an unreviewed or child-painted
+ * shared plate, or one without a readable provenance record, is never
+ * served), long cache headers once reviewed. Every object sits under
  * shared/plans/ — never a child path. Synthetic data only.
  */
 import express from "express";
@@ -17,7 +19,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { BookAssetBucket, BookAssetFile, BookAssetSaveOptions } from "./bookAssets";
 import { IMAGE_COUNTERS, IMAGE_GLOBAL_DAILY } from "./imageQuota";
 import { MemoryCounterStore, QuotaStoreUnavailableError } from "./quotaStore";
-import { createPlanPlatesRouter, estimatePaintUsd, imageDimensions, isPlatePainter, PLAN_PLATE_PREFIX, PLAN_PLATE_RULES, PLAN_PLATES_COUNTER, PLAN_PLATES_MAX_IMAGES, PLAN_PLATES_MAX_USD, PLATE_LIGHT, PLATE_RULES, PLATE_STYLE, planPlateObject, planPlatePrompt, plateStatesFrom } from "./planPlates";
+import { createPlanPlatesRouter, sharedPlateServable, estimatePaintUsd, imageDimensions, isPlatePainter, PLAN_PLATE_PREFIX, PLAN_PLATE_RULES, PLAN_PLATES_COUNTER, PLAN_PLATES_MAX_IMAGES, PLAN_PLATES_MAX_USD, PLATE_LIGHT, PLATE_RULES, PLATE_STYLE, planPlateObject, planPlatePrompt, plateStatesFrom } from "./planPlates";
 import { TAIL } from "./heroPosePrompts";
 import { PLAN_PLATE_BRIEFS, planPlateTable } from "../lib/library/plans/planPlates";
 import { PATTERN_IDS } from "../lib/library/plans/planVisibility";
@@ -83,6 +85,7 @@ function serve(opts: { user?: User; bucket?: MemoryBucket | null; generate?: (pr
 }
 
 const post = (url: string, body: unknown) => fetch(`${url}/admin/plan-plates`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+const review = (url: string, body: unknown) => fetch(`${url}/admin/plan-plates/review`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 const ADMIN: User = { uid: "founder-uid", email: "founder@example.test" };
 const COMPED: User = { uid: "comped-uid", email: "comped@example.test" };
 const FAMILY: User = { uid: "family-1", email: "parent@example.test" };
@@ -191,7 +194,7 @@ describe("POST /admin/plan-plates", () => {
         expect(master, id).toBeDefined();
         expect(master.opts.contentType).toBe("image/png");
         const prov = JSON.parse(s.bucket.objects.get(`shared/plans/plan-poo-sit/${id}.json`)!.data.toString("utf8"));
-        expect(prov).toMatchObject({ pattern: "plan-poo-sit", plate: id, childFree: false, textFree: false, qc: "unverified", model: "gemini-2.5-flash-image", location: "europe-west4", painterUid: user!.uid, paintedAt: "2026-10-28T10:00:00.000Z", costUsd: 0.039, width: 1536, height: 1024, aspect: "3:2" });
+        expect(prov).toMatchObject({ pattern: "plan-poo-sit", plate: id, childFree: false, textFree: false, reviewedBy: null, qc: "unverified", model: "gemini-2.5-flash-image", location: "europe-west4", painterUid: user!.uid, paintedAt: "2026-10-28T10:00:00.000Z", costUsd: 0.039, width: 1536, height: 1024, aspect: "3:2" });
         expect(prov.promptSha256).toMatch(/^[0-9a-f]{64}$/);
       }
       for (const name of s.bucket.objects.keys()) expect(name.startsWith("shared/plans/")).toBe(true);
@@ -286,12 +289,15 @@ describe("GET /plans/plates/:pattern/:plate", () => {
   afterAll(() => servers.forEach((s) => s.close()));
   const up = async (o: Parameters<typeof serve>[0] = {}) => { const s = await serve(o); servers.push(s); return s; };
 
-  it("404 until painted, 200 with the image and long cache headers after; any signed-in user, no child in the path", async () => {
+  it("404 until painted and reviewed, 200 with the image and long cache headers after; any signed-in user, no child in the path", async () => {
     const bucket = new MemoryBucket();
     const admin = await up({ user: ADMIN, bucket });
     const family = await up({ user: FAMILY, bucket });
     expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
     await post(admin.url, { pattern: "plan-poo-sit", plate: "PP1" });
+    // B-BOOK-27: painted, not yet viewed full size: never served
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
+    expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1", childFree: true, textFree: true })).status).toBe(200);
     const r = await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`);
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toBe("image/png");
@@ -306,6 +312,7 @@ describe("GET /plans/plates/:pattern/:plate", () => {
   it("401 signed out (fail closed), the sandbox's local caller only where allowed", async () => {
     const bucket = new MemoryBucket();
     bucket.objects.set("shared/plans/plan-poo-sit/PP1.webp", { data: Buffer.from("webp"), opts: { contentType: "image/webp" } });
+    bucket.objects.set("shared/plans/plan-poo-sit/PP1.json", { data: Buffer.from(JSON.stringify({ pattern: "plan-poo-sit", plate: "PP1", childFree: true, textFree: true, reviewedBy: "founder@example.test" })), opts: { contentType: "application/json" } });
     const closed = await up({ user: null, bucket });
     expect((await fetch(`${closed.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(401);
     const sandbox = await up({ user: null, bucket, allowLocal: true });
@@ -314,5 +321,81 @@ describe("GET /plans/plates/:pattern/:plate", () => {
     expect(r.headers.get("content-type")).toBe("image/webp");
     const none = await up({ user: FAMILY, bucket: null });
     expect((await fetch(`${none.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
+  });
+});
+
+describe("B-BOOK-27: an unreviewed or child-painted shared plate is never served", () => {
+  const servers: { close: () => void }[] = [];
+  afterAll(() => servers.forEach((s) => s.close()));
+  const up = async (o: Parameters<typeof serve>[0] = {}) => { const s = await serve(o); servers.push(s); return s; };
+  const plates = PATTERN_IDS.flatMap((p) => Object.keys(planPlateTable(p)).map((id) => [p, id] as const));
+
+  it("the servable rule over every registered plate: only a record of THIS plate, child-free, text-free, a reviewer named", () => {
+    expect(plates.length).toBeGreaterThanOrEqual(64);
+    for (const [pattern, plate] of plates) {
+      const ok = { pattern, plate, childFree: true, textFree: true, reviewedBy: "founder@example.test" };
+      expect(sharedPlateServable(ok, pattern, plate), `${pattern}/${plate}`).toBe(true);
+      for (const bad of [
+        null, undefined, "x", [], {},
+        { ...ok, childFree: false }, // child-painted
+        { ...ok, textFree: false },
+        { ...ok, reviewedBy: null }, // painted, never viewed (the record as the paint route writes it)
+        { ...ok, reviewedBy: " " },
+        { ...ok, childFree: "true" },
+        { ...ok, plate: `${plate}x` },
+        { ...ok, pattern: "plan-made-up" },
+      ]) expect(sharedPlateServable(bad, pattern, plate), `${pattern}/${plate} ${JSON.stringify(bad)}`).toBe(false);
+    }
+  });
+
+  it("a freshly painted pattern serves nothing until each plate's review is recorded; a child-painted verdict stays unserved", async () => {
+    const bucket = new MemoryBucket();
+    const admin = await up({ user: ADMIN, bucket });
+    const family = await up({ user: FAMILY, bucket });
+    await post(admin.url, { pattern: "plan-dropoff" });
+    const ids = Object.keys(planPlateTable("plan-dropoff"));
+    for (const id of ids) expect((await fetch(`${family.url}/plans/plates/plan-dropoff/${id}`)).status, id).toBe(404);
+    const [first, second, third] = ids;
+    const r = await review(admin.url, { pattern: "plan-dropoff", plate: first, childFree: true, textFree: true });
+    expect(await r.json()).toMatchObject({ reviewedBy: "founder@example.test", servable: true });
+    expect(JSON.parse(bucket.objects.get(`shared/plans/plan-dropoff/${first}.json`)!.data.toString("utf8"))).toMatchObject({ childFree: true, textFree: true, reviewedBy: "founder@example.test", reviewedAt: "2026-10-28T10:00:00.000Z", qc: "unverified", model: "gemini-2.5-flash-image" });
+    expect((await fetch(`${family.url}/plans/plates/plan-dropoff/${first}`)).status).toBe(200);
+    // the reviewer saw a child painted in: recorded, and never served
+    expect(await (await review(admin.url, { pattern: "plan-dropoff", plate: second, childFree: false, textFree: true })).json()).toMatchObject({ servable: false });
+    expect((await fetch(`${family.url}/plans/plates/plan-dropoff/${second}`)).status).toBe(404);
+    expect((await fetch(`${family.url}/plans/plates/plan-dropoff/${third}`)).status).toBe(404);
+    // a repaint writes a fresh, unreviewed record: unserved again
+    await post(admin.url, { pattern: "plan-dropoff", plate: first, repaint: true });
+    expect((await fetch(`${family.url}/plans/plates/plan-dropoff/${first}`)).status).toBe(404);
+  });
+
+  it("a master with no record, an unreadable record or another plate's record is not served (fail closed)", async () => {
+    const bucket = new MemoryBucket();
+    const family = await up({ user: FAMILY, bucket });
+    const put = (name: string, data: string) => bucket.objects.set(`shared/plans/plan-poo-sit/${name}`, { data: Buffer.from(data), opts: { contentType: "x" } });
+    put("PP1.webp", "webp");
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
+    put("PP1.json", "{not json");
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
+    put("PP1.json", JSON.stringify({ pattern: "plan-poo-sit", plate: "PP2", childFree: true, textFree: true, reviewedBy: "founder@example.test" }));
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404);
+    put("PP1.json", JSON.stringify({ pattern: "plan-poo-sit", plate: "PP1", childFree: true, textFree: true, reviewedBy: "founder@example.test" }));
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(200);
+  });
+
+  it("the review route: the painter only, a real painted plate, both flags as literal booleans", async () => {
+    const bucket = new MemoryBucket();
+    const admin = await up({ user: ADMIN, bucket });
+    for (const user of [FAMILY, null]) {
+      const s = await up({ user, bucket });
+      expect((await review(s.url, { pattern: "plan-poo-sit", plate: "PP1", childFree: true, textFree: true })).status).toBe(403);
+    }
+    expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1", childFree: true, textFree: true })).status).toBe(404); // unpainted
+    await post(admin.url, { pattern: "plan-poo-sit", plate: "PP1" });
+    expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP99", childFree: true, textFree: true })).status).toBe(404);
+    expect((await review(admin.url, { pattern: "plan-made-up", plate: "PP1", childFree: true, textFree: true })).status).toBe(404);
+    expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1", childFree: "yes", textFree: true })).status).toBe(400);
+    expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1" })).status).toBe(400);
+    expect(JSON.parse(bucket.objects.get("shared/plans/plan-poo-sit/PP1.json")!.data.toString("utf8")).reviewedBy).toBeNull();
   });
 });
