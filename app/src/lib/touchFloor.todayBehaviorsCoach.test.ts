@@ -268,7 +268,7 @@ describe("B-DESIGN-04 · Today keeps its 44 px floors after the blend", () => {
     expect(card.match(/data-answer="(?:did|not_today)"[\s\S]{0,120}?className="[^"]*\bmin-h-12\b/g)).toHaveLength(2);
     // B-STATUS-01: Undo is drawn by the one Receipt line; its trailing
     // controls (Open · Undo) share ONE 44 x 44 class.
-    expect(card).toContain('undo={onUndo ? { label: t("elev.loop.notice.undo"), onUndo, testId: "practice-undo" } : null}');
+    expect(card).toContain('undo={onUndo ? { label: t("elev.loop.notice.undo"), testId: "practice-undo", onUndo: undoThen(onUndo, () => undefined) } : null}');
     const receipt = read("components/ui/Receipt.tsx");
     expect(receipt).toMatch(/const TRAILING = "inline-flex min-h-\[44px\] min-w-\[44px\]/);
     expect(receipt).toMatch(/data-testid=\{undo\.testId\}[\s\S]{0,200}?\$\{TRAILING\}/);

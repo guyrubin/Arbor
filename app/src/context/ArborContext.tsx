@@ -552,7 +552,8 @@ function useArborState() {
   const recordTodayOutcome = (...args: Parameters<typeof saveTodayOutcome>) => {
     void saveTodayOutcome(...args).catch(() => toast(t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai"), "error"));
   };
-  const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  // B-STATUS-01: returns the write, so the practice receipt's Undo can await it.
+  const removeTodayAction = (id: string) => actionLoopCol.remove(id);
   /** B-LOOP-09 — "Did it" / "Not today" on today's practice: ONE dose row per
    *  day on the actionLoops ledger (lib/practice/choosePractice). No streak,
    *  no count is derived from it on Today. */

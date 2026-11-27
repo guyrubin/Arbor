@@ -4,8 +4,8 @@
  * Every Receipt Undo — a just-started plan, a kept insight (Behaviors and a
  * milestone's explanation), a keepsake (Milestones and Notice detail), a
  * moment's edit, and the family plan, screening re-check, fresh grant, visit
- * follow-up / outcome / home program, bedtime night / kept answer and logged
- * play — runs its reversing write through ONE runner:
+ * follow-up / outcome / home program, bedtime night / kept answer, logged
+ * play and today's practice dose — runs its reversing write through ONE runner:
  *   - a failing write keeps the item AND the receipt, with one calm line that
  *     the undo didn't go through (EN + HE) and "Try again" on the button;
  *   - a retry that goes through clears the receipt and undoes the item;
@@ -226,6 +226,16 @@ const SITES: Site[] = [
       return { store, write: () => undoPlayCompletion({ id: "play-1", created: true }), kept: () => store.items.has("play-1"), undone: () => !store.items.has("play-1") };
     },
   },
+  {
+    ops: 1,
+    name: "practice dose (PracticeCard on Now: useNowLoop.undoPractice → removeTodayAction of today's dose row)",
+    make: (failures) => {
+      const store = fakeStore([{ id: "dose-1" }], failures);
+      const removeTodayAction = (id: string) => store.remove(id); // ArborContext.removeTodayAction
+      const undoPractice = () => removeTodayAction("dose-1"); // useNowLoop
+      return { store, write: () => undoPractice(), kept: () => store.items.has("dose-1"), undone: () => !store.items.has("dose-1") };
+    },
+  },
 ];
 
 describe("B-STATUS-01 · each Undo site: a failed write keeps the item and says so; a retry goes through; one write per tap", () => {
@@ -375,6 +385,13 @@ describe("B-STATUS-01 · the remaining Receipt Undo callers return their write a
     expect(bed).toMatch(/onUndo: undoThen\(\(\) => \{\s*const id = keptIds\.current\[i\];\s*return id \? deleteLog\(id\) : undefined;/);
     expect(src("components/tabs/DailyPlayTab.tsx")).toContain("onUndo: undoThen(() => undoPlayCompletion(done), () => { playReceipt.clear(); restore(); })");
     expect(src("context/ArborContext.tsx")).toContain("done.created ? playLogCol.remove(done.id) : Promise.resolve();");
+    // the practice dose: the write is returned, typed as a promise, and run through undoThen
+    expect(src("context/ArborContext.tsx")).toContain("const removeTodayAction = (id: string) => actionLoopCol.remove(id);");
+    expect(src("context/ArborContext.tsx")).not.toContain("void actionLoopCol.remove(id)");
+    expect(src("components/companion/useNowLoop.ts")).toContain("undoPractice: dose ? () => removeTodayAction(dose.id) : undefined");
+    const card = src("components/loop/PracticeCard.tsx");
+    expect(card).toContain("onUndo?: () => Promise<void>;");
+    expect(card).toContain('onUndo: undoThen(onUndo, () => undefined)');
     for (const rel of ["components/tabs/ConsultTab.tsx", "components/sections/Appointments.tsx", "components/tabs/BedtimeStoriesTab.tsx"]) {
       expect(src(rel), rel).not.toMatch(/void (?:followUpsCol|apptsCol|programsCol|familyGoalsCol)\.(?:remove|upsert)\([^)]*\);\s*(?:for|if|setOutcome|\})/);
     }
@@ -382,7 +399,7 @@ describe("B-STATUS-01 · the remaining Receipt Undo callers return their write a
 });
 
 /* The guard: every Receipt Undo in src/ goes through undoThen. A Receipt undo
- * is an object with `label` then (optionally `testId`) then `onUndo`. Three
+ * is an object with `label` then (optionally `testId`) then `onUndo`. Two
  * callers keep their own honest pending/failure state and are named here. */
 const SRC_ROOT = path.join(here, "..", "..");
 function sourceFiles(dir: string, out: string[] = []): string[] {
@@ -404,8 +421,6 @@ const OWN_STATE: Record<string, string> = {
   "components/loop/NoticeCard.tsx": ": undo, testId: \"notice-undo\"",
   // the removal's Undo has its own restoring / restore_failed / restore_queued states
   "components/companion/NoticeObjectDetail.tsx": ": () => void undoRemoval()",
-  // forwards its host's onUndo prop (the practice loop's own undo)
-  "components/loop/PracticeCard.tsx": ", testId: \"practice-undo\"",
 };
 
 describe("B-STATUS-01 · guard: every Receipt Undo in src/ goes through undoThen", () => {
@@ -416,7 +431,7 @@ describe("B-STATUS-01 · guard: every Receipt Undo in src/ goes through undoThen
     const files = new Set(all.map((u) => u.file));
     for (const f of ["components/tabs/PlansTab.tsx", "components/tabs/BehaviorsTab.tsx", "components/tabs/MilestonesTab.tsx", "components/overview/QuickLogModal.tsx",
       "components/familyPlan/FamilyPlanView.tsx", "components/sections/Screening.tsx", "components/sections/TrustedSharing.tsx", "components/sections/Appointments.tsx",
-      "components/tabs/ConsultTab.tsx", "components/tabs/BedtimeStoriesTab.tsx", "components/tabs/DailyPlayTab.tsx"]) expect(files.has(f), f).toBe(true);
+      "components/tabs/ConsultTab.tsx", "components/tabs/BedtimeStoriesTab.tsx", "components/tabs/DailyPlayTab.tsx", "components/loop/PracticeCard.tsx"]) expect(files.has(f), f).toBe(true);
   });
 
   it("every one is undoThen(…) or a named caller with its own state (each name still matches: shrink-only)", () => {
@@ -426,6 +441,16 @@ describe("B-STATUS-01 · guard: every Receipt Undo in src/ goes through undoThen
     for (const [file, rest] of Object.entries(OWN_STATE)) {
       expect(all.some((u) => u.file === file && !u.honest && u.rest.startsWith(rest)), file).toBe(true);
     }
+  });
+
+  it("NEGATIVE CONTROL: the pre-change PracticeCard undo (the host's prop forwarded bare), put back into real source, is caught", () => {
+    const card = src("components/loop/PracticeCard.tsx").replace(
+      'undo={onUndo ? { label: t("elev.loop.notice.undo"), testId: "practice-undo", onUndo: undoThen(onUndo, () => undefined) } : null}',
+      'undo={onUndo ? { label: t("elev.loop.notice.undo"), onUndo, testId: "practice-undo" } : null}',
+    );
+    expect(card).toContain('onUndo, testId: "practice-undo" }');
+    expect(receiptUndos("components/loop/PracticeCard.tsx", card).filter((u) => !u.honest)).toHaveLength(1);
+    expect(OWN_STATE["components/loop/PracticeCard.tsx"]).toBeUndefined();
   });
 
   it("NEGATIVE CONTROL: the pre-change Screening and DailyPlay handlers, put back into real source, are caught", () => {
