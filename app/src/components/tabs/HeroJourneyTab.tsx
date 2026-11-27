@@ -1034,7 +1034,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
             the virtue chips and the separate Library shelf are gone from the
             kid register; the parent branch below is unchanged. */}
         <KidLibrary
-          books={kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges, hasCover: (id) => storyCover(id) !== null, runs, stories: kidShelf })}
+          books={kidBooks({ lang: storyLang, ageMonths: childMonths, showAllAges, hasCover: (id) => storyCover(id) !== null, runs, reads: readsCol.items, stories: kidShelf })}
           theme={kidTheme}
           lang={uiLang === "he" ? "he" : "en"}
           childProfile={childProfile}
