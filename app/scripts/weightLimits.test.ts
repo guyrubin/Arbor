@@ -21,6 +21,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { CHROME_CAPS as CAPS_OF_RECORD, chromeCapViolations as violationsOf, chromeSummary, chromeWeightTotals } from "./capture/chrome-weight.mjs";
 
 type Metric = "tappableAboveFold" | "tappable" | "textSizes" | "under12" | "uppercase" | "gradients" | "screens" | "verdictTokens";
 type Weight = Partial<Record<Metric, number>> & Record<Exclude<Metric, "verdictTokens">, number>;
@@ -48,13 +49,7 @@ export const HARD_CAPS: { metric: Metric; max: number; at375?: boolean }[] = [
  * 0 text under 12 px, 0 controls under 44 px. A cap the measured chrome breaks is a `todo`
  * naming the number and the decision that owns it — never a loosened cap.
  */
-export const CHROME_CAPS: { metric: ChromeMetric; max: number }[] = [
-  { metric: "tappable", max: 8 },
-  { metric: "uppercase", max: 0 },
-  { metric: "gradients", max: 0 },
-  { metric: "under12", max: 0 },
-  { metric: "sub44", max: 0 },
-];
+export const CHROME_CAPS = CAPS_OF_RECORD as readonly { metric: ChromeMetric; max: number }[]; // one home: scripts/capture/chrome-weight.mjs
 /** Measured 29 Oct (sweep at 1d763e2): the v3 chrome keeps doors P4 would remove. B-SHELL-35's
  *  open decision (Kid Mode in the strip/top bar; the sidebar's child row + profile edit) owns them. */
 export const CHROME_KNOWN_OVER: Readonly<Record<string, Partial<Record<ChromeMetric, number>>>> = {
@@ -63,10 +58,7 @@ export const CHROME_KNOWN_OVER: Readonly<Record<string, Partial<Record<ChromeMet
 };
 
 /** Chrome caps on one base cell: the broken caps, as "chrome metric value > max". */
-export function chromeCapViolations(cell: Cell): string[] {
-  if (!cell.chromeWeight) return [];
-  return CHROME_CAPS.filter((cap) => cell.chromeWeight![cap.metric] > cap.max).map((cap) => `chrome ${cap.metric} ${cell.chromeWeight![cap.metric]} > ${cap.max}`);
-}
+export const chromeCapViolations = (cell: Cell): string[] => violationsOf(cell);
 
 const stateOf = (c: Pick<Cell, "state">) => c.state ?? "base";
 const keyOf = (c: Pick<Cell, "route" | "viewport" | "lang" | "state">) => `${c.route}|${c.viewport}|${c.lang}${stateOf(c) === "base" ? "" : `|${stateOf(c)}`}`;
@@ -158,6 +150,9 @@ describe.skipIf(!ready)(`B-INF-06 — hard caps on the redesigned routes${ready 
 });
 
 describe.skipIf(!sweep)(`B-INF-09 — the chrome's caps on every base cell${sweep ? "" : " [skipped: no weighted sweep]"}`, () => {
+  it("every mounted base cell records a complete chromeWeight block", () => {
+    expect(chromeWeightTotals(sweep!.cells).missing).toEqual([]);
+  });
   const viewports = [...new Set((sweep?.cells ?? []).filter((c) => stateOf(c) === "base" && c.chromeWeight).map((c) => c.viewport))];
   for (const viewport of viewports) {
     for (const cap of CHROME_CAPS) {
@@ -272,6 +267,22 @@ describe("B-INF-09 — the chrome's caps (fixtures)", () => {
   it("holds at the caps and names each broken one", () => {
     expect(chromeCapViolations(cell)).toEqual([]);
     expect(chromeCapViolations({ ...cell, chromeWeight: { ...chrome, tappable: 9, under12: 1, uppercase: 1 } })).toEqual(["chrome tappable 9 > 8", "chrome uppercase 1 > 0", "chrome under12 1 > 0"]);
+  });
+  it("the run totals count weighed cells, name a cell with no block, and count cells over each cap", () => {
+    const over = { ...cell, viewport: "1280x800", chromeWeight: { ...chrome, tappable: 12 } };
+    const bare = { ...cell, route: "journal", chromeWeight: undefined };
+    const unmounted = { ...cell, route: "learn", mounted: false, chromeWeight: undefined };
+    const stateCell = { ...cell, state: "capture-open", chromeWeight: { ...chrome, under12: 4 } };
+    const t = chromeWeightTotals([cell, over, bare, unmounted, stateCell]);
+    expect(t).toMatchObject({ cells: 2, mounted: 3, missing: ["journal|375x812|en"] });
+    expect(t.worst.tappable).toBe(12);
+    expect(t.overCells).toEqual({ tappable: 1, uppercase: 0, gradients: 0, under12: 0, sub44: 0 });
+    expect(chromeSummary(t)).toBe("chrome=2/3 chromeOver=tappable:1 chromeWorstTap=12");
+  });
+  it("the sweep writes the chrome totals into sweep.json and its SWEEP line", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "rendered-sweep.mjs"), "utf8");
+    expect(src).toContain("chrome: chromeWeightTotals(baseCells)");
+    expect(src).toContain("chromeSummary(t.chrome)");
   });
   it("the chrome regions are marked in source: dock, strip, sidebar, top bar", () => {
     const read = (f: string) => fs.readFileSync(path.resolve(__dirname, "..", "src", "components", "layout", f), "utf8");
