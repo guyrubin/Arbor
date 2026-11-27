@@ -4,8 +4,10 @@
  * canonical book's manuscript, as pure rules over the authored text, each
  * returning the lines that break it. A book that the lint rejects never
  * reaches the critic; the critic (lib/library/manuscriptCritic) scores what
- * a script cannot. Every rule has a seeded failure in manuscriptLint.test.ts,
- * and the proof's v3 text ("Five Smooth Stones") passes.
+ * a script cannot. Every rule has a seeded failure in manuscriptLint.test.ts
+ * (on the proof) and in manuscriptRegistry.test.ts (on every registry book,
+ * against AUTOMATIC_RULES); the proof's v3 text ("Five Smooth Stones")
+ * passes. The quoted per-path report: lib/library/manuscriptReport.
  *
  * Rules (the standard's automatic fails a script can see, plus its caps):
  *   parity       EN + HE-m + HE-f on every line, Hebrew in Hebrew, NFC
@@ -89,16 +91,19 @@ function pageWords(page: Page, pick: (l: BookLine) => string): number {
   return words(pick(page.text)) + echoMax + (page.closing ? words(pick(page.closing)) : 0) + (page.repair ? words(pick(page.repair.textAfter)) : 0) + taps;
 }
 
-/** Sentences of a book line: a sentence also ends at a closing quote after
- *  its stop (`…valley." David counts` is two), which planLint's splitter keeps
- *  as one. */
+/** Sentences of a book line, exactly as written (name tokens kept, so a
+ *  finding quotes the line itself): a sentence also ends at a closing quote
+ *  after its stop (`…valley." David counts` is two), which planLint's
+ *  splitter keeps as one. */
 export function bookSentences(text: string): string[] {
   return text
-    .replace(/\{(name|hero)\}/g, "Name")
     .split(/(?<=[.!?…]["”’»]?)\s+|\n+/)
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** A sentence's words, a name token counting as one word. */
+export const sentenceWords = (s: string) => words(s.replace(/\{(name|hero)\}/g, "Name"));
 
 /** A sentence inside quotation marks (a quoted verse or a character's own words). */
 const isQuoted = (s: string) => /^["“”„«»'‘’]|["“”„«»'‘’][.!?…]*$/.test(s.trim()) || /["“”„«]/.test(s);
@@ -163,7 +168,7 @@ export function lintManuscript(book: Book, opts: ManuscriptLintOptions = {}): Li
       // sentence caps (a quoted verse may run to 20)
       if (role !== "label") {
         for (const s of bookSentences(text)) {
-          const n = words(s);
+          const n = sentenceWords(s);
           const cap = isQuoted(s) ? Math.max(QUOTED_VERSE_CAP, SENTENCE_CAP[band]) : SENTENCE_CAP[band];
           if (n > cap) hit("sentence", pageId, lang, s, `${n} > ${cap} words`);
         }
@@ -256,6 +261,50 @@ export function lintManuscript(book: Book, opts: ManuscriptLintOptions = {}): Li
     if (GOD_EN.test(brief) || GOD_HE.test(brief)) hit("god", `plate:${id}`, "en", brief, "God depicted or a religious symbol in a plate brief");
   }
   return hits;
+}
+
+/**
+ * The catalogue of automatic rules: every rule id lintManuscript can emit,
+ * with the standard clause it implements and its kind. Every kind is a
+ * ceiling the standard itself sets, a required part, or a banned element:
+ * there is deliberately no "shorter is better" rule, no readability score
+ * and no presence rule a writer could satisfy only by flattening a page (the
+ * depth the standard asks for, D1–D6, is the critic's, never the script's).
+ * The registry test proves each id has a seeded failure.
+ */
+export const AUTOMATIC_RULES = {
+  parity: { clause: "§3 HE parity broken", kind: "required part", what: "EN + HE-m + HE-f on every line, Hebrew in Hebrew, NFC" },
+  words: { clause: "§3 over a word cap", kind: "ceiling", what: "words per page by band (5–7: EN 40 / HE 34; 3–4: 25 / 21)" },
+  sentence: { clause: "§3 over a word cap", kind: "ceiling", what: "words per sentence by band (12 / 8); a quoted verse to 20" },
+  preaching: { clause: "§3 preaching", kind: "banned element", what: "a virtue word or a stated moral in the child's text" },
+  name: { clause: "BR2 / §2 name tokens", kind: "required part", what: "{name} only on frame lines (CAST); {hero} on every story page (COMPANION); no Hebrew prefix glued" },
+  branch: { clause: "§3 branches' first pages share text or picture state", kind: "required part", what: "the first branch pages differ in text and picture" },
+  echo: { clause: "§3 C6 rejoin carries memory (presence only)", kind: "required part", what: "one distinct echo per choice on the rejoin and last pages, each ≤ 12 words" },
+  choice: { clause: "§3 C3 real choice (shape only)", kind: "required part", what: "3 typed choices HARD / EASY / THIRD (2 allowed for 3–4); labels ≤ 5 / 6 words" },
+  "dead-end": { clause: "§3 a dead-end branch or a repair with a second choice", kind: "required part", what: "1–2 page branches that rejoin; only EASY / THIRD repair; no question in a repair" },
+  god: { clause: "§1 / §3 God depicted", kind: "banned element", what: "a plate brief depicting God or a religious symbol" },
+  "divine-name": { clause: "§1 the divine name", kind: "banned element", what: "the Tetragrammaton anywhere in the text" },
+  tts: { clause: "§3 C9 TTS-safe", kind: "banned element", what: "parentheses or a dash aside in the child's text" },
+  digit: { clause: "§3 a score shown to the child", kind: "banned element", what: "a digit, a score or a count shown to the child" },
+  shame: { clause: "§3 shame", kind: "banned element", what: "a shame word in the child's text" },
+} as const;
+export type AutomaticRuleId = keyof typeof AUTOMATIC_RULES;
+export const AUTOMATIC_RULE_IDS = Object.keys(AUTOMATIC_RULES) as AutomaticRuleId[];
+
+/** What the registry itself says a book's pictures show, as plate-brief text
+ *  for the God check: plate, overlay and art-state names, and every
+ *  plate detail a repair reveals. An art round's own briefs are passed beside
+ *  these (lintManuscript's `plateBriefs`). */
+export function bookPictureBriefs(book: Book): Record<string, string> {
+  const out: Record<string, string> = {};
+  const say = (id: string) => id.replace(/[-_]+/g, " ");
+  for (const p of allBookPages(book)) {
+    out[`${p.id}:plate`] = say(p.plateId);
+    for (const o of p.overlays ?? []) out[`${p.id}:overlay:${o.id}`] = say(o.id);
+    for (const s of p.artStates ?? []) out[`${p.id}:state:${s.id}`] = [say(s.id), s.plateId ? say(s.plateId) : "", ...s.overlays.map(say)].filter(Boolean).join(", ");
+    for (const it of p.repair?.items ?? []) if (it.plateDetailAfter) out[`${p.id}:repair:${it.id}`] = it.plateDetailAfter;
+  }
+  return out;
 }
 
 /** The plate-brief check alone (plan patterns and art rounds share it). */

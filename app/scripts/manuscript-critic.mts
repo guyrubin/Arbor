@@ -8,11 +8,14 @@
  *   npx tsx scripts/manuscript-critic.mts <bookId> --report <file> lint + check a returned report:
  *       every path scored, every criterion 0–2 with a quote really in that path's
  *       text, then the §3 pass bar (exit 1 when the report is unusable or fails)
+ *
+ * The quoted per-path report for every registry book: scripts/manuscript-report.mts.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getLibraryBook, DEFAULT_REVIEW_BOOK } from "../src/lib/library/books/index.ts";
-import { lintManuscript } from "../src/lib/library/manuscriptLint.ts";
+import { bookPictureBriefs, lintManuscript } from "../src/lib/library/manuscriptLint.ts";
+import { parsePlaceholderCaptions } from "../src/lib/library/manuscriptReport.ts";
 import { criticPrompt, criticVerdict, manuscriptPaths, type CriticReport } from "../src/lib/library/manuscriptCritic.ts";
 
 const args = process.argv.slice(2);
@@ -25,7 +28,9 @@ const book = getLibraryBook(bookId);
 if (!book) throw new Error(`no book ${bookId}`);
 
 let failed = false;
-const hits = lintManuscript(book);
+// plate briefs: the registry's picture names + the art-round captions (the God check)
+const captions = parsePlaceholderCaptions(readFileSync(new URL("./dev-book-placeholders.py", import.meta.url), "utf8"));
+const hits = lintManuscript(book, { plateBriefs: { ...bookPictureBriefs(book), ...(captions[book.id] ?? {}) } });
 console.log(`# ${book.id}: manuscript lint — ${hits.length ? `${hits.length} automatic fail(s)` : "clean"}`);
 for (const h of hits) console.log(`- ${h.rule} · ${h.pageId} · ${h.lang}${h.detail ? ` · ${h.detail}` : ""}: ${h.text}`);
 if (hits.length) failed = true;
