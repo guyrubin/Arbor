@@ -73,7 +73,7 @@ export const EVENT_PROP_ALLOWLIST = ["source", "market", "utm_campaign"] as cons
  *  the kid-mode tag). Projected for these events alone; never a child id or a
  *  choice id (the client projection refuses both, kidPlayEvents.guard.test). */
 export const KID_PLAY_EVENTS = ["game_sitting", "book_opened", "book_finished"] as const;
-export const KID_EVENT_PROP_ALLOWLIST = ["game", "replay", "book_id", "lang", "hero", "kid_mode"] as const;
+export const KID_EVENT_PROP_ALLOWLIST = ["game", "replay", "prompted", "book_id", "lang", "hero", "kid_mode"] as const;
 /** A weekly cell about fewer families than this is hidden (B-BOOK-51 boundary). */
 export const MIN_CELL_FAMILIES = 5;
 
@@ -370,9 +370,16 @@ export type KidGameWeek = {
   /** Sittings that were a Play again — the replay share is replays of sittings
    *  (two counts; this module never divides, the reader prints "n of m"). */
   replays: number | null;
-  /** Families that came back to this game unprompted on a later day within 7
-   *  days of their first sitting that week (Kid Mode has no push into a game). */
+  /** Of `returnFamilies`, those that came back to this game unprompted — a
+   *  sitting the child opened themselves, not a grown-up's door into the game
+   *  (`prompted`) — on a later day within 7 days of their first sitting that
+   *  week. Null when the cell is hidden or the return cannot be counted yet. */
   returned7d: number | null;
+  /** Families whose first sitting that week is at least 7 days before the
+   *  report's as-of time, so the return question is answerable. A week still
+   *  inside its 7 days is not a week without returns. Null (and so is
+   *  `returned7d`) while fewer than `minFamilies` families qualify. */
+  returnFamilies: number | null;
 };
 export type KidBookWeek = { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null };
 export type KidPlaySummary = { minFamilies: number; games: KidGameWeek[]; books: KidBookWeek[] };
@@ -385,9 +392,10 @@ const dayOf = (ms: number) => Math.floor(ms / DAY);
  * counts and shares of PLAY, never a statement about any child (no
  * developmental inference, no per-family row). A cell about fewer than
  * MIN_CELL_FAMILIES families is hidden: its numbers are null. Only events the
- * client tagged `kid_mode: true` count.
+ * client tagged `kid_mode: true` count. `asOfMs` is the report's as-of time:
+ * the return is counted only over families whose 7 days have passed.
  */
-export function summariseKidPlay(events: readonly CohortEventDoc[], minFamilies = MIN_CELL_FAMILIES): KidPlaySummary {
+export function summariseKidPlay(events: readonly CohortEventDoc[], minFamilies = MIN_CELL_FAMILIES, asOfMs = Number.POSITIVE_INFINITY): KidPlaySummary {
   const kid = events.filter((e) => e.props?.kid_mode === true && (KID_PLAY_EVENTS as readonly string[]).includes(e.event) && e.at && Number.isFinite(Date.parse(e.at)));
   // every sitting of a (uid, game), by day, for the return check
   const sittingDays = new Map<string, number[]>();
@@ -410,8 +418,11 @@ export function summariseKidPlay(events: readonly CohortEventDoc[], minFamilies 
       const prev = cell.first.get(e.uid);
       if (prev === undefined || ms < prev) cell.first.set(e.uid, ms);
       games.set(key, cell);
-      const k = `${e.uid}|${game}`;
-      sittingDays.set(k, [...(sittingDays.get(k) ?? []), dayOf(ms)]);
+      // A return is the child's own: a grown-up's door into the game is not one.
+      if (e.props.prompted !== true) {
+        const k = `${e.uid}|${game}`;
+        sittingDays.set(k, [...(sittingDays.get(k) ?? []), dayOf(ms)]);
+      }
     } else {
       const book = typeof e.props.book_id === "string" ? e.props.book_id : null;
       if (!book) continue;
@@ -426,13 +437,17 @@ export function summariseKidPlay(events: readonly CohortEventDoc[], minFamilies 
   const gameRows: KidGameWeek[] = [...games.entries()].map(([key, c]) => {
     const [week, game] = key.split("|");
     const families = c.uids.size;
-    if (families < minFamilies) return { week, game, hidden: true, families: null, sittings: null, replays: null, returned7d: null };
+    if (families < minFamilies) return { week, game, hidden: true, families: null, sittings: null, replays: null, returned7d: null, returnFamilies: null };
+    let eligible = 0;
     let returned = 0;
     for (const [uid, firstMs] of c.first) {
+      if (firstMs + 7 * DAY > asOfMs) continue; // its 7 days have not passed yet
+      eligible += 1;
       const d0 = dayOf(firstMs);
       if ((sittingDays.get(`${uid}|${game}`) ?? []).some((d) => d > d0 && d <= d0 + 7)) returned += 1;
     }
-    return { week, game, hidden: false, families, sittings: c.sittings, replays: c.replays, returned7d: returned };
+    const answerable = eligible >= minFamilies;
+    return { week, game, hidden: false, families, sittings: c.sittings, replays: c.replays, returned7d: answerable ? returned : null, returnFamilies: answerable ? eligible : null };
   });
   const bookRows: KidBookWeek[] = [...books.entries()].map(([key, c]) => {
     const [week, book] = key.split("|");
@@ -1145,7 +1160,7 @@ export async function buildCohortReport(
     activation: { ...activationCounts, definition: null },
     funnels,
     ...(loop ? { loop } : {}),
-    kidPlay: summariseKidPlay(events),
+    kidPlay: summariseKidPlay(events, MIN_CELL_FAMILIES, now.getTime()),
     households: summariseHouseholds(householdInputs.rollups, householdInputs.events, householdInputs.offers, householdInputs.billing, "channel", dayKeyOf(new Date(opts.since)) ?? null),
     contract: summariseMetricContract({
       rollups,
@@ -1183,7 +1198,7 @@ export async function buildKidPlayReport(
   // Wave-3 carry-over: `events` is what the read scanned (every event since
   // `since`, of any name); `kept` is the Kid Mode events the summary counted
   // (internal and demo families out). It reported `kept` as `events` before.
-  return { since: opts.since, kidPlay: summariseKidPlay(events), scanned: { events: allEvents.length, kept: events.length, mode: store.mode }, generatedAt: (opts.now ?? new Date()).toISOString() };
+  return { since: opts.since, kidPlay: summariseKidPlay(events, MIN_CELL_FAMILIES, (opts.now ?? new Date()).getTime()), scanned: { events: allEvents.length, kept: events.length, mode: store.mode }, generatedAt: (opts.now ?? new Date()).toISOString() };
 }
 
 /** The key pattern no response value may ever be filed under. Exported so the

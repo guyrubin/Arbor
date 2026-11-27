@@ -53,7 +53,7 @@ import { noteKidActivity } from "../../../../lib/kidModeGate";
 import { Ending, captionKey } from "./Ending";
 import { Icon } from "../../../ui/Icon";
 import { CourtyardPetals, DustPuff, LanternGlint, TagBurst } from "./courtyardLife";
-import { trackGameSitting } from "../../../../lib/kpiEvents";
+import { leaveGameSitting, openGameSitting, replayGameSitting, sittingScope } from "../../../../lib/gameSittings";
 
 /** HE lines addressed to the child: `.boy` / `.girl`, else the plural base. */
 export function formKey(base: string, gender: string | undefined): string {
@@ -444,13 +444,15 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
   }, [childId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [sitting, setSitting] = useState(0);
-  // B-GAME-18: the first sitting of this visit (later ones are counted by Play again).
-  const firstSat = useRef(false);
+  // B-GAME-18: the first sitting of this visit (later ones are counted by Play
+  // again). Opened once the account is known; lib/gameSittings keeps a
+  // remount, a reload or a quick step back inside the sitting already open.
+  const scope = sittingScope(ownerId, childId);
   useEffect(() => {
-    if (firstSat.current) return;
-    firstSat.current = true;
-    trackGameSitting({ game: "sneak", replay: false });
-  }, []);
+    if (!ownerId) return;
+    openGameSitting("sneak", scope);
+    return () => leaveGameSitting("sneak", scope);
+  }, [ownerId, scope]);
   const stateRef = useRef<SneakState | null>(null);
   // B-GAME-07e: the demonstration on the device's first sitting only.
   if (!stateRef.current) stateRef.current = startSitting({ seed: newSeed(childId, 0), track: start.track, level: start.level, intro: !demoSeen() });
@@ -601,7 +603,7 @@ function SneakFreezeGame({ art, sheet }: { art: SneakArt; sheet: HeroSheet }) {
     setV(viewOf(stateRef.current));
     setSitting(n);
     // B-GAME-18: an in-game Play again is a new sitting.
-    trackGameSitting({ game: "sneak", replay: true });
+    replayGameSitting("sneak", scope);
   };
 
   const signal = signalOf(v);

@@ -74,6 +74,7 @@ import { GameCompletionProvider } from "../game/GameSessionContext";
 import { GameFinish } from "../game/GameShell";
 import { KidFinishMoment } from "../rewards/KidSouvenir";
 import { resetStudioNextFlagForTests } from "./studioNextFlag";
+import { markGameDoor, resetGameSittingsForTest, SITTING_GAP_MS } from "../../../lib/gameSittings";
 import { StudioCreationResult } from "./StudioCreationResult";
 import { StudioMakerCover } from "./StudioMakerArt";
 import MemoryMatch from "../../practice/MemoryMatch";
@@ -117,6 +118,7 @@ beforeEach(() => {
   h.stores.clear(); h.slots = []; h.effects = []; h.cursor = 0; h.lang = "en"; h.uid = "owner-a";
   h.child = { id: "child-a", name: "Aya", age: 5, ageMonths: 62, ageMonthsAsOf: "2026-10-13" };
   h.session = { playOnly: true, onComplete: vi.fn() }; h.allowed = true; h.hush = null;
+  resetGameSittingsForTest();
   vi.stubGlobal("window", { setTimeout, clearTimeout, setInterval, clearInterval });
   vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: h.capture } });
 });
@@ -210,6 +212,44 @@ describe("V2 entry, identity and persistent result", () => {
     complete(); expect(draw()[0].props["data-studio-phase"]).toBe("play");
     const nextComplete = tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void;
     cleanup("session"); nextComplete(); expect(h.sound).toHaveBeenCalledTimes(1);
+  });
+  it("B-GAME-18: one sitting event per sitting across remount, reload, back-navigation and Play again", () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => stored.get(k) ?? null, setItem: (k: string, v: string) => { stored.set(k, v); }, removeItem: (k: string) => { stored.delete(k); } });
+    const sittings = () => h.track.mock.calls.filter(c => c[0] === "game_sitting").map(c => c[1]);
+    let mount = 0;
+    const open = (activityId: StudioActivityId = "memory") => {
+      const key = `sit:${mount++}`;
+      const draw = () => render(key, () => StudioGameSession({ activityId, onBack: vi.fn() }));
+      click(draw().find(node => node.props["data-studio-start"] === ""));
+      return { key, tree: draw(), draw };
+    };
+    const first = open();
+    expect(sittings()).toEqual([{ game: "memory", replay: false, prompted: false }]);
+    // remount (error-boundary reset, session key settling) and a step back to the world and straight in again
+    cleanup(first.key); vi.advanceTimersByTime(60_000);
+    const again = open();
+    expect(sittings()).toHaveLength(1);
+    // Play again is its own sitting
+    (again.tree.find(node => node.type === GameCompletionProvider)!.props.onComplete as () => void)();
+    click(again.draw().find(node => node.props["data-studio-replay"] === "")); again.draw();
+    expect(sittings().at(-1)).toEqual({ game: "memory", replay: true, prompted: false });
+    expect(sittings()).toHaveLength(2);
+    cleanup(again.key);
+    // a reload restores the persisted view: same sitting (this tab's ledger survives, memory does not)
+    resetGameSittingsForTest(); open();
+    expect(sittings()).toHaveLength(2);
+    expect([...stored.keys()]).toEqual(["arbor.kidmode.sitting"]);
+    expect(Object.keys(JSON.parse(stored.get("arbor.kidmode.sitting")!)).sort()).toEqual(["at", "g", "p"]);
+    expect(stored.get("arbor.kidmode.sitting")).not.toMatch(/child|owner/);
+    // a different game, a different child, and the same game after the gap are new sittings
+    open("beat"); expect(sittings()).toHaveLength(3);
+    h.child = { ...h.child, id: "child-b" }; open("beat"); expect(sittings()).toHaveLength(4);
+    vi.advanceTimersByTime(SITTING_GAP_MS + 1); open("beat"); expect(sittings()).toHaveLength(5);
+    // a grown-up's door onto a game marks that sitting prompted
+    markGameDoor("puzzle"); open("puzzle");
+    expect(sittings().at(-1)).toEqual({ game: "puzzle", replay: false, prompted: true });
+    for (const props of sittings()) expect(Object.keys(props as object).sort()).toEqual(["game", "prompted", "replay"]);
   });
   it("owner, child and activity changes use different mounted session keys", () => {
     const draw = (activityId: StudioActivityId = "memory") => render("outer", () => StudioGame({ activityId, onBack: vi.fn() }))[0].key;

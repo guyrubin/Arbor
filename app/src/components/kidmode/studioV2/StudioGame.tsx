@@ -12,7 +12,7 @@ import { localizedMimicPacks } from "../../../practice/mimicContent";
 import { HeroAvatar } from "../../ui/HeroAvatar";
 import { KidStageFallback } from "../KidStageFallback";
 import { sneakFreezeFlagOn } from "../kidWorlds";
-import { trackGameSitting } from "../../../lib/kpiEvents";
+import { leaveGameSitting, openGameSitting, replayGameSitting, sittingScope } from "../../../lib/gameSittings";
 import { kidSfx } from "../audio/kidAudio";
 import { GameFinish, GameShell } from "../game/GameShell";
 import { GameCompletionProvider } from "../game/GameSessionContext";
@@ -77,6 +77,7 @@ export function StudioGame({ activityId, onBack }: { activityId: StudioActivityI
 
 export function StudioGameSession({ activityId, onBack }: { activityId: StudioActivityId; onBack: () => void }) {
   const { childProfile } = useArbor();
+  const { user } = useAuth();
   const { uiLang } = useLanguage();
   const lang = uiLang === "he" ? "he" : "en";
   const labels = studioCopy(lang);
@@ -145,14 +146,19 @@ export function StudioGameSession({ activityId, onBack }: { activityId: StudioAc
   useEffect(() => { if (phase === "result") kidSfx("finish"); }, [phase]);
   // B-GAME-18: ONE analytics event per sitting — each start or Play again of a
   // game. Sneak & Freeze counts its own sittings (it has its own Play again and
-  // a second host), so it is skipped here. The game id and whether it is a
-  // replay; nothing about the child or how they played.
+  // a second host), so it is skipped here. The game id, whether it is a replay
+  // and whether a grown-up's door opened it; nothing about the child or how
+  // they played. lib/gameSittings keeps a remount, a reload or a quick step
+  // back into the same game inside the sitting that is already open.
   const sat = useRef(-1);
+  const scope = sittingScope(user?.uid, childProfile.id);
   useEffect(() => {
     if (phase !== "play" || sat.current === round || activityId === "sneak") return;
     sat.current = round;
-    trackGameSitting({ game: activityId, replay: round > 0 });
-  }, [phase, round, activityId]);
+    if (round > 0) replayGameSitting(activityId, scope);
+    else openGameSitting(activityId, scope);
+  }, [phase, round, activityId, scope]);
+  useEffect(() => () => { if (sat.current >= 0 && activityId !== "sneak") leaveGameSitting(activityId, scope); }, [activityId, scope]);
   const Component = STUDIO_GAME_COMPONENTS[activityId];
   const eligible = !!Component && studioActivityFits(activityId, childProfile, lang, undefined, { sneakEnabled: sneakFreezeFlagOn() });
 
