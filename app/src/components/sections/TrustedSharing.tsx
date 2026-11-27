@@ -819,7 +819,7 @@ export default function TrustedSharing() {
               {team.map((g) => {
                 const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
                 return (
-                  <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+                  <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0 lg:[&:nth-last-child(2):nth-child(odd)]:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
                     {/* Round 2 (B-SHELL-45 follow-up): at 375 the email had 66 px. The
                         words' column keeps at least 9rem, so on a phone the Revoke
                         button wraps to its own line at the end edge instead of
@@ -830,7 +830,7 @@ export default function TrustedSharing() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <InitialsTile name={g.recipientEmail} tone={tone} />
                       <div className="flex-1 min-w-[9rem]">
-                        <h3 className="text-sm font-extrabold truncate" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textAlign: uiLang === "he" ? "end" : "start" }}>{g.recipientEmail}</h3>
+                        <h3 className="text-sm font-extrabold truncate" dir="auto" title={g.recipientEmail} style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textAlign: uiLang === "he" ? "end" : "start" }}>{g.recipientEmail}</h3>
                         <p className="text-xs" style={{ color: PASTEL[tone].ink, overflowWrap: "normal" }}>{roleLabel(g.role)}</p>
                       </div>
                       <button onClick={() => revoke(g)} disabled={busy === g.id} className="ms-auto inline-flex min-h-11 items-center gap-1 px-2 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>
