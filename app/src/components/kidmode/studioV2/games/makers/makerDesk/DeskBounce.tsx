@@ -20,7 +20,7 @@ import {
  * lanterns under fireworks. One frame loop, which runs only while the program
  * is open and the tab is visible, and is cancelled on unmount; at most 96
  * sparks; nothing here can end the game. */
-const PALETTE = ['night', 'indigo-deep', 'indigo', 'slate', 'teal', 'teal-deep', 'sea', 'cream', 'white', 'butter', 'sun', 'amber', 'rose', 'spring', 'lilac', 'snow', 'snow-shade', 'orange', 'sky'] as const;
+const PALETTE = ['slate', 'steel-dark', 'teal', 'teal-deep', 'sea', 'cream', 'white', 'butter', 'sun', 'amber', 'rose', 'spring', 'lilac', 'snow', 'snow-shade', 'orange', 'sky'] as const;
 type Ink = typeof PALETTE[number];
 const LANTERN_INK: readonly Ink[] = ['amber', 'rose', 'sea', 'spring', 'lilac'];
 const SHOW_S = 3.4;
@@ -138,18 +138,21 @@ export function DeskBounce({ w, audio, reduced, firstLayout, controls, onAllLit,
         const wave = showing >= 0 && !still ? 0.6 + 0.4 * Math.sin(t * 6 - col * 0.9 - row * 0.6) : 1;
         const sweep = rowWave[row] < 0.7 && !still ? Math.max(0, 1 - Math.abs(rowWave[row] / 0.7 * (LANTERN_COLS + 1) - col - 0.5)) : 0;
         const popped = pop[i] < 0.3 && !still ? 1 - pop[i] / 0.3 : 0;
-        const body = on ? ink[LANTERN_INK[l.hue]] : ink.indigo;
+        // B-KID-173: an unlit lantern is pale paper on the pearl glass (never navy); lit, it takes its colour.
+        const body = on ? ink[LANTERN_INK[l.hue]] : ink['snow-shade'];
         const grow = popped > 0.4 ? 1 : 0;
         if (!lift) px(x + l.w / 2, -oy, 1, y + oy - 1, ink.slate, 0.35);
         if (on) { px(x - 4 - grow, y - 4 - grow, l.w + 8 + grow * 2, l.h + 8 + grow * 2, body, 0.08 * wave + popped * 0.16); px(x - 2 - grow, y - 2 - grow, l.w + 4 + grow * 2, l.h + 4 + grow * 2, body, 0.22 * wave + popped * 0.3); }
         // A paper lantern: rounded body, two ribs, a cap on top and a tassel below.
+        // Unlit paper needs an edge on the pale glass: a soft steel outline under the body.
+        if (!on) { px(x - 1, y + 1, l.w + 2, l.h - 2, ink['steel-dark'], 0.5); px(x + 1, y - 1, l.w - 2, l.h + 2, ink['steel-dark'], 0.5); px(x, y, l.w, l.h, ink['steel-dark'], 0.5); }
         px(x + 1, y, l.w - 2, l.h, body);
         px(x, y + 1, l.w, l.h - 2, body);
         if (on) {
           px(x + 3, y + 2, l.w - 6, l.h - 4, ink.butter, 0.55 + 0.45 * wave);
           px(x + 5, y + 3, l.w - 10, 1, ink.white, 0.85 * wave);
           if (popped || sweep) px(x, y, l.w, l.h, ink.white, Math.max(popped * 0.8, sweep * 0.7));
-        } else { px(x + 3, y + 2, l.w - 6, l.h - 4, ink['indigo-deep']); px(x + 2, y + 1, l.w - 4, 1, ink.slate, 0.5); }
+        } else { px(x + 3, y + 2, l.w - 6, l.h - 4, ink.snow, 0.7); px(x + 2, y + 1, l.w - 4, 1, ink.white, 0.6); }
         px(x + Math.round(l.w / 3), y + 1, 1, l.h - 2, on ? ink.amber : ink.slate, on ? 0.5 : 0.8);
         px(x + Math.round(l.w * 2 / 3), y + 1, 1, l.h - 2, on ? ink.amber : ink.slate, on ? 0.5 : 0.8);
         px(x + l.w / 2 - 4, y - 1, 8, 1, on ? ink.amber : ink.slate);
@@ -168,7 +171,7 @@ export function DeskBounce({ w, audio, reduced, firstLayout, controls, onAllLit,
       const tilt = still ? 0 : Math.max(-1, Math.min(1, Math.round(lean)));
       // A firm graphite edge keeps the pale paddle legible on pearl glass.
       px(pxl - 1, pyt - 1, pw + 2, ph + 2, ink.slate);
-      px(pxl + 2, pyt + ph + 1, pw - 4, 1, ink.night, 0.5);
+      px(pxl + 2, pyt + ph + 1, pw - 4, 1, ink['steel-dark'], 0.5);
       px(pxl - 2, pyt + ph + 3, pw + 4, 1, ink.sea, 0.12 + glow * 0.2);
       const halfW = Math.round(pw / 2);
       px(pxl, pyt + (tilt < 0 ? 1 : 0), halfW, ph, ink.cream); px(pxl + halfW, pyt + (tilt > 0 ? 1 : 0), pw - halfW, ph, ink.cream);

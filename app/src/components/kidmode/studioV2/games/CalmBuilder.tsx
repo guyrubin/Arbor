@@ -1,21 +1,39 @@
 import { NEXT_GAME_COPY } from "../../../../lib/i18nGameNext";
 import { useState } from "react";
-import { Check, Flower2, LampFloor, LibraryBig, Moon, Panda, Plus, RectangleHorizontal, RectangleVertical, ShoppingBasket, Sprout, Sun, Sunset, Undo2 } from "lucide-react";
+import { Check, Moon, Panda, ShoppingBasket, Sun, Sunset, Undo2 } from "lucide-react";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useArborOptional } from "../../../../context/ArborContext";
 import { useKidTheme } from "../../../../hooks/useKidTheme";
-import { kidArt } from "../../../../lib/kidThemeManifest";
+import { kidArt, kidArtSrcSet, studioMakerArt } from "../../../../lib/kidThemeManifest";
 import { GameFinish, GameShell } from "../../game/GameShell";
 import { CORNER_OBJECTS, emptyCorner, placeCornerObject, type CornerLayout, type CornerObject } from "./gameRules";
 import { GAME_COPY } from "./gameCopy";
+import { BopSprite } from "./adventures/BopArt";
+import "./adventures/adventures.css";
 import "./studioGames.css";
 import { StudioPlayHero } from "../StudioPlayHero";
 import { useStudioCreations } from "../studioCreations";
 
-const OBJECT_GLYPHS = { cushion: RectangleHorizontal, plant: Sprout, books: LibraryBig, lamp: LampFloor, blanket: RectangleVertical, panda: Panda, flowers: Flower2, basket: ShoppingBasket };
-function ObjectGlyph({ object }: { object: CornerObject }) {
-  const Glyph = OBJECT_GLYPHS[object];
-  return <Glyph aria-hidden="true" strokeWidth={1.8} />;
+/** B-KID-173: the corner's things are the Season 01 kit's own props (the Bop
+ * toy world and the makers' kit library), never line drawings. The kit has no
+ * panda toy or basket, so those two keep a glyph on a pearl token until it does. */
+const OBJECT_PROPS: Readonly<Partial<Record<CornerObject, string>>> = {
+  cushion: "item-cushion", books: "item-journal", lamp: "item-lamp", blanket: "rest-rug", flowers: "flower-open",
+};
+const OBJECT_KIT: Readonly<Partial<Record<CornerObject, string>>> = { plant: studioMakerArt("kit-prop-planter-bud") };
+const OBJECT_GLYPHS: Readonly<Partial<Record<CornerObject, typeof Panda>>> = { panda: Panda, basket: ShoppingBasket };
+export function cornerObjectArt(object: CornerObject): { kind: "bop" | "kit"; src: string } | { kind: "glyph" } {
+  const bop = OBJECT_PROPS[object];
+  if (bop) return { kind: "bop", src: bop };
+  const kit = OBJECT_KIT[object];
+  return kit ? { kind: "kit", src: kit } : { kind: "glyph" };
+}
+function ObjectArt({ object }: { object: CornerObject }) {
+  const art = cornerObjectArt(object);
+  if (art.kind === "bop") return <BopSprite name={art.src} className="studio-corner-prop" />;
+  if (art.kind === "kit") return <img className="bop-sprite studio-corner-prop" data-kit-prop={object} src={art.src} alt="" draggable={false} decoding="async" />;
+  const Glyph = OBJECT_GLYPHS[object]!;
+  return <span className="studio-corner-token" aria-hidden="true"><Glyph aria-hidden="true" strokeWidth={2.2} /></span>;
 }
 
 function BuilderPlay() {
@@ -49,7 +67,7 @@ function BuilderPlay() {
   };
   const reset = () => { setLayout(emptyCorner()); setHistory([]); setSelected(null); setStatus(""); setLight("day"); setFinished(false); };
   return <GameShell worldId="calm-builder" title={copy.builder} instruction={copy.builderInstruction}>
-    <div className="studio-game studio-game-panel" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <section className="studio-game adventure adventure--bop" data-kit-shell="" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {finished ? <GameFinish creation={{ kind: "corner", layout, light, scene }} title={copy.builderFinish} subtitle={copy.builderShare} onPlayAgain={reset} playAgainLabel={copy.again} homeLabel={copy.home} /> : <>
         <p className="studio-game-help">{copy.builderHint}</p>
         <div className="studio-game-actions" role="group" aria-label={nextWords.cornerPlace}>
@@ -66,13 +84,18 @@ function BuilderPlay() {
             return <button type="button" className="studio-game-button" key={value} aria-pressed={light === value} onClick={() => setLight(value)}><Glyph aria-hidden="true" size={20} />{copy[value]}</button>;
           })}
         </div>
-        <div className="studio-corner" data-light={light} role="group" aria-label={copy.room} style={art ? { backgroundImage: `url("${art.src}")`, backgroundPosition: art.objectPosition } : undefined}>
+        {/* B-KID-173: the Bop games' pearl stage. The room is the film plate
+            under the stage; the light is a wash over it (night is dimmed
+            pearl, never navy); the props stand on it with their own shadow. */}
+        <div className="studio-corner bop-stage" data-light={light} data-armed={selected !== null} role="group" aria-label={copy.room}>
+          {art && <img className="bop-scene studio-corner-room" src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(min-width: 700px) 900px, 100vw" alt="" draggable={false} decoding="async" style={{ objectPosition: art.objectPosition }} />}
+          <span className="studio-corner-light" aria-hidden="true" />
           <div className="studio-corner-resident"><StudioPlayHero size={108} /></div>
           <div className="studio-corner-places">
             {layout.map((object, index) => <button type="button" className="studio-corner-place" key={index} data-filled={!!object} data-selected={!!object && selected === object}
               aria-label={`${copy.place} ${index + 1}${object ? `: ${copy[object]}` : ""}`} onClick={() => place(index)}
               onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const value = event.dataTransfer.getData("text/plain"); if (CORNER_OBJECTS.includes(value as CornerObject)) place(index, value as CornerObject); }}>
-              {object ? <ObjectGlyph object={object} /> : <Plus aria-hidden="true" size={24} />}
+              {object && <ObjectArt object={object} />}
             </button>)}
           </div>
         </div>
@@ -80,7 +103,7 @@ function BuilderPlay() {
         <div className="studio-corner-tray" role="group" aria-label={copy.objects}>
           {CORNER_OBJECTS.map(object => <button type="button" className="studio-object" key={object} aria-pressed={selected === object} data-placed={layout.includes(object)} draggable
             onDragStart={event => { event.dataTransfer.setData("text/plain", object); setSelected(object); setStatus(""); }} onClick={() => { setSelected(selected === object ? null : object); setStatus(""); }}>
-            <ObjectGlyph object={object} /><span>{copy[object]}</span>
+            <span className="studio-object-art"><ObjectArt object={object} /></span><span>{copy[object]}</span>
           </button>)}
         </div>
         <div className="studio-game-actions">
@@ -89,7 +112,7 @@ function BuilderPlay() {
           <button type="button" className="studio-game-button studio-game-button--go" disabled={!layout.some(Boolean)} onClick={() => setFinished(true)}><Check aria-hidden="true" size={20} />{copy.done}</button>
         </div>
       </>}
-    </div>
+    </section>
   </GameShell>;
 }
 

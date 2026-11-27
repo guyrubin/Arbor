@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { DESK_KIT } from './deskKit';
 /** Inside the computer everything is deliberately chunky: crisp squares from
  * a small fixed palette, to contrast with the soft paper room around it.
- * Each drawing is a grid of letters; each letter is one square of one ink. */
+ * Each drawing is a grid of letters; each letter is one square of one ink.
+ * B-KID-173: the screens are the Studio's pearl glass, not navy: `k` is the
+ * steel frame, `n` the pearl screen, `i` an unlit (pale paper) lantern. */
 const INK: Readonly<Record<string, string>> = {
-  k: 'var(--mk-indigo-deep)', n: 'var(--mk-night)', i: 'var(--mk-indigo)', t: 'var(--mk-teal)', T: 'var(--mk-teal-deep)',
+  k: 'var(--mk-steel-dark)', n: 'var(--mk-snow)', i: 'var(--mk-snow-shade)', t: 'var(--mk-teal)', T: 'var(--mk-teal-deep)',
   c: 'var(--mk-cream)', p: 'var(--mk-paper-shade)', w: 'var(--mk-white)', b: 'var(--mk-butter)', y: 'var(--mk-sun)',
   a: 'var(--mk-amber)', o: 'var(--mk-orange)', r: 'var(--mk-rose)', R: 'var(--mk-rose-deep)', s: 'var(--mk-sea)',
   g: 'var(--mk-spring)', G: 'var(--mk-leaf)', l: 'var(--mk-lilac)', d: 'var(--mk-wood-light)', D: 'var(--mk-wood)', e: 'var(--mk-wood-dark)',
@@ -19,8 +21,8 @@ export const ICON_BOUNCE = [
   'kniinaaniiniinnk',
   'kniinaaniiniinnk',
   'knnnnnnnnnnnnnnk',
-  'knnnnnnnnwwnnnnk',
-  'knnnnnnnnwwnnnnk',
+  'knnnnnnnnkknnnnk',
+  'knnnnnnnnkknnnnk',
   'knnnnnnnnnnnnnnk',
   'knnnnnnnnnnnnnnk',
   'knnnccccccnnnnnk',
@@ -51,16 +53,16 @@ export const ICON_TERMINAL = [
   'kttttttttttttttk',
   'ktwtbtattttttttk',
   'knnnnnnnnnnnnnnk',
-  'kngnnnnnnnnnnnnk',
-  'knnggnnnnnnnnnnk',
-  'knnnnggnnnnnnnnk',
-  'knnggnnnnnnnnnnk',
-  'kngnnnnbbbbnnnnk',
+  'knTnnnnnnnnnnnnk',
+  'knnTTnnnnnnnnnnk',
+  'knnnnTTnnnnnnnnk',
+  'knnTTnnnnnnnnnnk',
+  'knTnnnnaaaannnnk',
   'knnnnnnnnnnnnnnk',
   'knnnnnnnnnnnnnnk',
-  'knggggnggnggggnk',
+  'knTTTTnTTnTTTTnk',
   'knnnnnnnnnnnnnnk',
-  'kngggnggggnnnnnk',
+  'knTTTnTTTTnnnnnk',
   'knnnnnnnnnnnnnnk',
   '.kkkkkkkkkkkkkk.',
 ];

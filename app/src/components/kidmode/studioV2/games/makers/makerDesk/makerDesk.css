@@ -45,11 +45,12 @@
 
 /* The lid: asleep it is dark glass with a few z's; awake it glows and shows what is inside. */
 .md-lid { position: absolute; inset: 0; pointer-events: none; }
-.md-lid::before { content: ""; position: absolute; inset: 0; background: linear-gradient(172deg, color-mix(in srgb, var(--mk-slate) 90%, transparent), color-mix(in srgb, var(--mk-night) 92%, transparent) 72%); opacity: .93; transition: opacity .6s var(--studio-ease-soft); }
+/* B-KID-173: the glass is the Studio's pearl, never a navy screen. Asleep it is dimmed pearl; awake it is lit pearl. */
+.md-lid::before { content: ""; position: absolute; inset: 0; background: linear-gradient(172deg, color-mix(in srgb, var(--studio-mist) 92%, transparent), color-mix(in srgb, var(--studio-graphite-soft) 46%, var(--studio-mist)) 78%); opacity: .93; transition: opacity .6s var(--studio-ease-soft); }
 .md-lid::after { content: ""; position: absolute; inset-inline-start: 26%; inset-block-start: 0; inline-size: 20%; block-size: 34%; background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--mk-white) 22%, transparent) 50%, transparent 70%); animation: md-shimmer 6s ease-in-out infinite; }
-.md-lid[data-screen=on]::before { opacity: 1; background: radial-gradient(ellipse at 58% 16%, color-mix(in srgb, var(--mk-sea) 62%, transparent), color-mix(in srgb, var(--mk-indigo) 74%, transparent) 62%, color-mix(in srgb, var(--mk-indigo-deep) 86%, transparent)); }
+.md-lid[data-screen=on]::before { opacity: 1; background: radial-gradient(ellipse at 58% 16%, var(--studio-surface), color-mix(in srgb, var(--mk-sky-pale) 70%, var(--studio-pearl)) 62%, color-mix(in srgb, var(--studio-mist) 82%, var(--mk-sky-pale))); }
 .md-lid[data-screen=on][data-woke=true]::before { animation: md-wake .8s steps(8) both; }
-.md-lid__zz { position: absolute; inset-inline-start: 50%; inset-block-start: 7%; inline-size: 18%; block-size: 18%; color: color-mix(in srgb, var(--mk-sky-pale) 86%, transparent); font: 900 calc(var(--bench-w) * .034)/1 var(--studio-font); transition: opacity .3s ease; }
+.md-lid__zz { position: absolute; inset-inline-start: 50%; inset-block-start: 7%; inline-size: 18%; block-size: 18%; color: var(--studio-graphite-soft); font: 900 calc(var(--bench-w) * .034)/1 var(--studio-font); transition: opacity .3s ease; }
 .md-lid__zz i { position: absolute; inset-inline-start: 0; inset-block-end: 0; font-style: normal; opacity: 0; animation: md-zz 3.6s ease-in-out infinite; }
 .md-lid__zz i:nth-child(2) { animation-delay: 1.2s; } .md-lid__zz i:nth-child(3) { animation-delay: 2.4s; }
 .md-lid[data-screen=on] .md-lid__zz { opacity: 0; }
@@ -258,7 +259,7 @@
 .md-crew__dot i { inline-size: 14px; block-size: 14px; border-radius: 50%; border: 2px dashed currentColor; transition: transform .16s var(--studio-ease-spring); }
 .md-crew__dot span { max-inline-size: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .md-crew__dot[data-here=true] { color: var(--studio-graphite); }
-.md-crew__dot[data-here=true] i { border: 0; background: var(--mk-sea); box-shadow: 0 0 0 2px var(--mk-night), 0 0 0 4px var(--mk-snow); }
+.md-crew__dot[data-here=true] i { border: 0; background: var(--mk-sea); box-shadow: 0 0 0 2px var(--studio-graphite-soft), 0 0 0 4px var(--mk-snow); }
 .md-crew__dot[data-here=true][data-crew=gobgob] i { background: var(--mk-orange); } .md-crew__dot[data-here=true][data-crew=chock] i { background: var(--mk-fur-light); } .md-crew__dot[data-here=true][data-crew=pep] i { background: var(--mk-snow-shade); } .md-crew__dot[data-here=true][data-crew=aya] i { background: var(--mk-water); }
 .md-crew__dot:active i { transform: scale(.8); }
 
@@ -267,7 +268,7 @@
 .md-bounce__canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; display: block; image-rendering: pixelated; }
 /* Chained hits brighten the whole screen: a bloom that follows the game's own glow. */
 .md-bounce__bloom { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: var(--md-glow); background: radial-gradient(90% 60% at 50% 30%, color-mix(in srgb, var(--mk-amber) 38%, transparent), color-mix(in srgb, var(--mk-sea) 16%, transparent) 60%, transparent); }
-.md-bounce__ghost { position: absolute; inset-block-end: calc(var(--glass-bottom) + 6%); inset-inline-start: 50%; inline-size: clamp(44px, 12cqmin, 76px); margin-inline-start: -6%; pointer-events: none; animation: md-slide 2.6s ease-in-out infinite; filter: drop-shadow(0 6px 8px color-mix(in srgb, var(--mk-night) 60%, transparent)); }
+.md-bounce__ghost { position: absolute; inset-block-end: calc(var(--glass-bottom) + 6%); inset-inline-start: 50%; inline-size: clamp(44px, 12cqmin, 76px); margin-inline-start: -6%; pointer-events: none; animation: md-slide 2.6s ease-in-out infinite; filter: drop-shadow(0 6px 8px var(--studio-shade)); }
 .md .md-hold { touch-action: none; }
 
 /* Ask the computer: a friendly machine. */

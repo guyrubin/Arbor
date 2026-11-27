@@ -49,7 +49,8 @@ export interface View {
 interface Sky { top: PaletteName; low: PaletteName; glow: PaletteName }
 const SKIES: Readonly<Record<SkyId, readonly Sky[]>> = {
   seaDay: [{ top: 'sky', low: 'sky-pale', glow: 'white' }, { top: 'bluebell', low: 'blossom', glow: 'butter' }, { top: 'sea', low: 'sky-pale', glow: 'snow' }],
-  deepNight: [{ top: 'night', low: 'indigo', glow: 'violet' }, { top: 'indigo-deep', low: 'violet', glow: 'lilac' }, { top: 'night', low: 'indigo-deep', glow: 'bluebell' }],
+  // B-KID-173: the night stage is dimmed pearl felt (steel to chalk), never a navy sky.
+  deepNight: [{ top: 'steel', low: 'chalk', glow: 'butter' }, { top: 'steel-light', low: 'snow', glow: 'lilac' }, { top: 'steel', low: 'sky-pale', glow: 'blossom' }],
   pondDawn: [{ top: 'sky-pale', low: 'butter', glow: 'blossom' }, { top: 'lilac', low: 'blossom', glow: 'butter' }, { top: 'sky', low: 'celadon', glow: 'white' }],
   gardenNoon: [{ top: 'sky', low: 'sky-pale', glow: 'butter' }, { top: 'sky-pale', low: 'butter', glow: 'white' }, { top: 'bluebell', low: 'sky-pale', glow: 'blossom' }],
 };
@@ -116,13 +117,13 @@ export function paintScene(ctx: Ctx, view: View, scene: Scene, pal: Palette, par
     waves(GROUND - 34, 'sea', 30, 0.55);
   } else if (story.sky === 'deepNight') {
     const mx = at(0.74 - 0.5 * seeded(salt, 1)), my = top + 50 + 24 * seeded(salt, 2);
-    clay(ovalPoints(mx, my, 25, 25), mixRgb(pal.snow, pal.butter, 0.3), 12);
+    clay(ovalPoints(mx, my, 25, 25), mixRgb(pal.butter, pal.white, 0.25), 12);
     for (let i = 0; i < 7; i++) {
       const sx = at(0.07 + 0.86 * seeded(salt, 20 + i)), sy = top + 22 + (GROUND - top - 120) * seeded(salt, 40 + i), r = 6 + 5 * seeded(salt, 60 + i), tw = 1 + 0.08 * Math.sin(d * 0.9 + i * 2);
       if (Math.hypot(sx - mx, sy - my) < 44) continue;
-      clay(starPoints(r * tw, r * 0.46).map(([x, y]) => [sx + x, sy + y] as Pt), pal.butter, 30 + i);
+      clay(starPoints(r * tw, r * 0.46).map(([x, y]) => [sx + x, sy + y] as Pt), pal.amber, 30 + i);
     }
-    clay(moundPoints(at(0.5), GROUND - 6, span * 0.62, 26), mixRgb(pal.slate, pal.lilac, 0.4), 13);
+    clay(moundPoints(at(0.5), GROUND - 6, span * 0.62, 26), mixRgb(pal.steel, pal.lilac, 0.4), 13);
   } else if (story.sky === 'pondDawn') {
     clay(ovalPoints(at(0.2 + 0.6 * seeded(salt, 1)), top + 52, 19, 19), mixRgb(pal.sun, pal.blossom, 0.3), 11);
     for (let i = 0; i < 5; i++) { const rx = at(i < 3 ? 0.03 + 0.05 * i : 0.87 + 0.05 * (i - 3)), hgt = 70 + 50 * seeded(salt, 10 + i); clay(leafPoints({ ax: rx, ay: GROUND - 8, tx: rx + 10 * (seeded(salt, 20 + i) - 0.5), ty: GROUND - 8 - hgt, w: 5 }), i % 2 ? pal.leaf : pal['leaf-deep'], 40 + i); }
