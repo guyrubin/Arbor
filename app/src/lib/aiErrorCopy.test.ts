@@ -9,8 +9,9 @@
  * Before this both rendered one sentence with one Retry button.
  */
 import { describe, it, expect } from "vitest";
-import { ApiError, EscalationRequiredError, LIVE_RESTING, PaywallError } from "./api";
-import { CONSENT_STATUS, QUOTA_STATUS, classifyAiFailure, retryAfterSeconds } from "./aiErrorCopy";
+import { ApiError, EscalationRequiredError, IMAGE_RESTING, LIVE_RESTING, PaywallError, QUOTA_UNAVAILABLE } from "./api";
+import { CONSENT_STATUS, QUOTA_STATUS, aiFailureMessage, classifyAiFailure, retryAfterSeconds } from "./aiErrorCopy";
+import { translate } from "./i18n";
 
 const quota = () => new ApiError("You've reached the hourly AI limit (25 requests).", 429, 2_400);
 const consent = () => new ApiError("Parental consent required.", 451);
@@ -162,5 +163,55 @@ describe("B-ASKJB-49 — a 409 says what it is and sends the parent to Safety", 
       expect(e.actionRoute, message).toBe("safety");
       expect(e.retryable, message).toBe(false);
     }
+  });
+});
+
+describe("B-AIOPS-01 follow-up — every server code reads as calm copy, never a slug", () => {
+  const en = (key: string, vars?: Record<string, string | number>) => translate("en", key, vars);
+  const he = (key: string, vars?: Record<string, string | number>) => translate("he", key, vars);
+
+  it("quota_unavailable (retryable 503) is the generic retryable copy in both locales", async () => {
+    const { QUOTA_UNAVAILABLE: serverCode } = await import("../server/quotaStore");
+    expect(QUOTA_UNAVAILABLE).toBe(serverCode);
+    const c = classifyAiFailure(new ApiError(QUOTA_UNAVAILABLE, 503, 15), { online: true });
+    expect(c.kind).toBe("generic");
+    expect(c.bodyKey).toBe("elev.aierrors.generic.body");
+    expect(c.retryable).toBe(true);
+    for (const t of [en, he]) {
+      const line = aiFailureMessage(new ApiError(QUOTA_UNAVAILABLE, 503, 15), t, { online: true });
+      expect(line).toBe(t("elev.aierrors.generic.body"));
+      expect(line).not.toContain("quota_unavailable");
+    }
+    // Negative control: not the "you used your hour" copy.
+    expect(c.bodyKey).not.toBe(classifyAiFailure(quota()).bodyKey);
+  });
+
+  it("image_resting is the existing 'resting today' line, not the hourly-questions copy", () => {
+    const c = classifyAiFailure(new ApiError(IMAGE_RESTING, 429), { online: true });
+    expect(c.kind).toBe("imageResting");
+    expect(c.bodyKey).toBe("elev.hero.resting");
+    expect(c.retryable).toBe(false);
+    expect(aiFailureMessage(new ApiError(IMAGE_RESTING, 429), en, { online: true })).toBe(en("elev.hero.resting"));
+    expect(aiFailureMessage(new ApiError(IMAGE_RESTING, 429), he, { online: true })).toBe(he("elev.hero.resting"));
+    expect(he("elev.hero.resting")).not.toBe(en("elev.hero.resting"));
+    // Negative control: another 429 keeps the hourly quota copy.
+    expect(classifyAiFailure(quota(), { online: true }).kind).toBe("quota");
+  });
+
+  it("an unknown code or English details falls back to the generic copy, both locales", () => {
+    for (const err of [new ApiError("some_new_code", 500), new ApiError("This story could not be personalised right now.", 422), new Error("boom"), "x", null]) {
+      expect(classifyAiFailure(err, { online: true }).kind).toBe("generic");
+      for (const t of [en, he]) {
+        const line = aiFailureMessage(err, t, { online: true });
+        expect(line).toBe(t("elev.aierrors.generic.body"));
+        expect(line).not.toMatch(/some_new_code|personalised|boom/);
+      }
+    }
+    expect(he("elev.aierrors.generic.body")).not.toBe(en("elev.aierrors.generic.body"));
+  });
+
+  it("aiFailureMessage uses the ApiError's own Retry-After for the hourly quota", () => {
+    expect(aiFailureMessage(quota(), en, { online: true })).toBe(en("elev.aierrors.quota.bodyMinutes", { minutes: 40 }));
+    expect(aiFailureMessage(quota(), en, { online: false })).toBe(en("elev.aierrors.offline.body"));
   });
 });
