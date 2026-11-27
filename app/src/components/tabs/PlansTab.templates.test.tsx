@@ -127,7 +127,10 @@ describe("B-ASKJB-26 · after a start, the page answers where the parent is look
     const active = tab.indexOf('<div data-module="plans-yours"');
     expect(active).toBeGreaterThan(-1);
     expect(tab.indexOf('testId="plans-started-receipt"')).toBeGreaterThan(active);
-    expect(tab).toContain('startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` })');
+    expect(tab).toContain('text: `${lead.title} · ${t("elev.plans.startedToday")}`,');
+    // B-STATUS-01: the same line answers "Create a plan" (the former success
+    // toast) and carries Undo, which takes the just-started plan away.
+    expect(tab).toMatch(/undo: \{ label: t\("elev\.keep\.undo"\), testId: "plans-started-undo", onUndo: \(\) => \{ deletePlan\(lead\.id\); startedReceipt\.clear\(\); \} \}/);
     for (const lang of ["en", "he"] as const) expect(translate(lang, "elev.plans.startedToday")).not.toBe("elev.plans.startedToday");
   });
 });

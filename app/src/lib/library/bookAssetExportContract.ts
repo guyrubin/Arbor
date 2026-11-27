@@ -8,10 +8,26 @@ export const BOOK_EXPORT_LIMITS = Object.freeze({
   inventoryPage: 1000,
   manifestBytes: 512 * 1024,
   fileBytes: 8 * 1024 * 1024,
-  totalBytes: 32 * 1024 * 1024,
+  /** B-CAREPRO-50: was 32 MB, below one ordinary ten-book library (~22
+   *  pictures ≈ 200 KB + 36 narration clips ≈ 64 KB a book ≈ 7 MB), so every
+   *  big library ended byte_limit. 128 MB holds ten books even at the write
+   *  path's own 300 KB WebP cap (≈ 9 MB a book). */
+  totalBytes: 128 * 1024 * 1024,
   requestMs: 20_000,
-  totalMs: 120_000,
+  /** B-CAREPRO-50: was 120 s for the whole export — fewer than one sequential
+   *  read of ~960 files at ordinary latency, plus one wait on the per-minute
+   *  read pace, so the tail of every big library ended `timeout`. Each read
+   *  still has its own `requestMs`. */
+  totalMs: 600_000,
 });
+
+/** B-CAREPRO-50: a file that failed for a passing reason (5xx, network, a
+ *  body that did not match the server's hash) is read again after these
+ *  waits; one blip no longer ends the rest of the export. */
+export const BOOK_EXPORT_TRANSIENT_RETRY_MS: readonly number[] = [500, 2000];
+/** …and only this many files in a row failing that way mean the service is
+ *  down: the rest are then named `unavailable` without being read. */
+export const BOOK_EXPORT_STOP_AFTER_UNAVAILABLE = 3;
 
 /** B-CAREPRO-50 (critic r1): export reads one account may have in flight at
  *  once (the client reads one file at a time; one more covers a retry). */
@@ -47,6 +63,9 @@ export type BookExportReceipt = BookExportFile & (
   | { status: BookExportFailure }
 );
 
+/** The limits one export runs under (the receipt records them). */
+export type BookExportLimits = { readonly [K in keyof typeof BOOK_EXPORT_LIMITS]: number };
+
 export interface PortableBookAssets {
   format: "arbor-private-book-assets-v1";
   /** Only this private prefix; shared public plates/audio are not child data. */
@@ -54,7 +73,7 @@ export interface PortableBookAssets {
   status: "complete" | "incomplete";
   inventory: "complete" | "incomplete" | "unavailable";
   issues: string[];
-  limits: typeof BOOK_EXPORT_LIMITS;
+  limits: BookExportLimits;
   includedFiles: number;
   includedBytes: number;
   files: BookExportReceipt[];

@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import type { UsageCounterStore } from "./quotaStore.js";
+import { isQuotaStoreUnavailable, sendQuotaUnavailable, type UsageCounterStore } from "./quotaStore.js";
 import { COACH_METER, TRIAL_ENDED_BODY, accessEnded, entitlementForRequest, type EntitlementStore } from "./entitlements.js";
 import { logger, requestIdOf } from "./logger.js";
 
@@ -21,6 +21,24 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const TTS_DAILY_CHAR_LIMIT = Number(process.env.TTS_DAILY_CHAR_LIMIT || 150_000);
 /** Mirrors the /api/tts handler's clip so metering can never exceed synthesis. */
 const TTS_MAX_CHARS_PER_CALL = 4000;
+
+/**
+ * B-AIOPS-01: a counter-store error fails CLOSED with a calm, retryable 503 —
+ * never an allowed call (that was "0 used" as fact) and never the 429/402
+ * "you hit your limit" copy (the parent has not). Any other error propagates
+ * unchanged.
+ */
+const failClosedOnStoreError = (gate: string, handler: RequestHandler): RequestHandler => async (req, res, next) => {
+  try {
+    await handler(req, res, next);
+  } catch (error) {
+    if (!isQuotaStoreUnavailable(error)) throw error;
+    try {
+      logger.warn("ai.gate.quota_unavailable", { requestId: requestIdOf(req), gate });
+    } catch { /* telemetry must never break a request */ }
+    if (!res.headersSent) sendQuotaUnavailable(res);
+  }
+};
 
 const quotaKeyOf = (req: any): string => req.user?.uid || req.ip || "anon";
 
@@ -58,7 +76,7 @@ const rejectOverHourlyQuota = (res: any, count: number, resetAt: number): boolea
 export const aiHourlyExempt = (config: { modelProvider: string; arborEnv: string }): boolean =>
   config.modelProvider === "mock" && config.arborEnv !== "prod";
 
-export const createAiQuota = (counters: UsageCounterStore, opts: { exempt?: boolean } = {}): RequestHandler => async (req, res, next) => {
+export const createAiQuota = (counters: UsageCounterStore, opts: { exempt?: boolean } = {}): RequestHandler => failClosedOnStoreError("ai_hourly", async (req, res, next) => {
   // B-AIOPS-02: a Live renewal is bounded by the family voice allowance, not
   // this cap (isLiveRenewalRequest below; the token route verifies it).
   if (isLiveRenewalRequest(req)) {
@@ -75,7 +93,7 @@ export const createAiQuota = (counters: UsageCounterStore, opts: { exempt?: bool
   logGateDuration(req, "ai_hourly", startedAt);
   if (rejectOverHourlyQuota(res, count, resetAt)) return;
   next();
-};
+});
 
 /**
  * AIR-7: ONE combined gate for /chat and /council, replacing the serial
@@ -90,7 +108,7 @@ export const createCoachGate = (
   counters: UsageCounterStore,
   entitlementStore: EntitlementStore,
   opts: { exemptHourly?: boolean } = {},
-): RequestHandler => async (req, res, next) => {
+): RequestHandler => failClosedOnStoreError("coach_gate", async (req, res, next) => {
   const startedAt = Date.now();
   const key = quotaKeyOf(req);
   const actor = { uid: (req as any).user?.uid || "local-sandbox", email: ((req as any).user?.email as string | null) || null };
@@ -134,7 +152,7 @@ export const createCoachGate = (
     return;
   }
   next();
-};
+});
 
 /**
  * AIR-6: character-based DAILY meter for /api/tts. Neural TTS sentence calls
@@ -145,7 +163,7 @@ export const createCoachGate = (
  * X-AI-Quota-Remaining untouched. The safety posture is unchanged: the lexical
  * screen runs UNCONDITIONALLY inside the /tts handler regardless of metering.
  */
-export const createTtsQuota = (counters: UsageCounterStore): RequestHandler => async (req, res, next) => {
+export const createTtsQuota = (counters: UsageCounterStore): RequestHandler => failClosedOnStoreError("tts_chars", async (req, res, next) => {
   const startedAt = Date.now();
   const key = quotaKeyOf(req);
   const text = typeof (req as any).body?.text === "string" ? (req as any).body.text : "";
@@ -169,7 +187,7 @@ export const createTtsQuota = (counters: UsageCounterStore): RequestHandler => a
     return;
   }
   next();
-};
+});
 
 /**
  * B-AIOPS-02: a Live RENEWAL (a mint that names the caller's own opened

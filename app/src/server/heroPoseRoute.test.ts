@@ -14,7 +14,7 @@ vi.mock("firebase-admin/firestore", async (importOriginal) => ({
   getFirestore: () => firestore,
 }));
 
-import { MemoryCounterStore } from "./quotaStore.js";
+import { MemoryCounterStore, QuotaStoreUnavailableError, type UsageCounterStore } from "./quotaStore.js";
 import type { EntitlementStore, Plan } from "./entitlements.js";
 import { createHeroPoseHandler, FirestoreHeroPoseSource, LocalHeroPoseSource, type HeroPoseSource, type StoredHero } from "./heroPoseRoute.js";
 import { HERO_BOOK_POSE_IDS, HERO_BOOK_POSE_SETS, HERO_PLAN_POSE_IDS, HERO_POSE_REFUSALS, HERO_SHEET_POSE_IDS, HERO_SHEET_PROMPT_VERSION, heroAvatarHash, isHeroPose, planRoutePose } from "../lib/heroSheetContract.js";
@@ -40,9 +40,9 @@ function makeRes() {
 const plans = (p: Record<string, Plan>): EntitlementStore => ({ async getPlan(uid) { return p[uid] ?? null; }, async getRecord(uid) { return p[uid] ? { plan: p[uid], status: "active" } : null; } });
 const source = (hero: StoredHero | null, strictHash = true): HeroPoseSource & { loads: number } => ({ strictHash, loads: 0, async load() { this.loads++; return hero; } });
 
-function setup(opts: { hero?: StoredHero | null; strict?: boolean; requireUid?: boolean; plan?: Plan; fail?: boolean } = {}) {
+function setup(opts: { hero?: StoredHero | null; strict?: boolean; requireUid?: boolean; plan?: Plan; fail?: boolean; counters?: UsageCounterStore } = {}) {
   const src = source(opts.hero === undefined ? { photoUrl: HERO, source: "descriptor", anchor: ANCHOR } : opts.hero, opts.strict ?? true);
-  const counters = new MemoryCounterStore();
+  const counters = opts.counters ?? new MemoryCounterStore();
   const gen = vi.fn(async (_req: unknown, _res: unknown, input: { prompt: string; images: { mimeType: string; data: string }[] }) => {
     if (opts.fail) throw new Error("model down");
     void input;
@@ -227,6 +227,16 @@ describe("B-GAME-13b /hero-pose — the call", () => {
     const cheer = await s.call({ childId: "c1", pose: "cheer" });
     expect(cheer.body.newSheet).toBe(false);
     expect(s.gen.mock.calls[1][2].images).toEqual([{ mimeType: "image/jpeg", data: "SURMRQ==" }, { mimeType: "image/png", data: "SEVSTw==" }]);
+  });
+
+  it("B-AIOPS-01: a counter-store error answers a calm retryable 503 and draws nothing", async () => {
+    const down = new QuotaStoreUnavailableError("img_sheet_global_daily");
+    const counters: UsageCounterStore = { increment: async () => { throw down; }, add: async () => { throw down; }, peek: async () => { throw down; } };
+    const s = setup({ counters });
+    const r = await s.call({ childId: "c1", pose: "idle" });
+    expect(r.statusCode).toBe(503);
+    expect(r.body).toEqual({ error: "quota_unavailable", code: "quota_unavailable", retryable: true });
+    expect(s.gen).not.toHaveBeenCalled();
   });
 
   it("a provider failure answers through the image failure map and gives the call unit back", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { MemoryCounterStore } from "./quotaStore.js";
+import { MemoryCounterStore, QuotaStoreUnavailableError, QUOTA_UNAVAILABLE_BODY, isQuotaStoreUnavailable, sendQuotaUnavailable } from "./quotaStore.js";
 
 /**
  * AIR-7 mock state: the fake Firestore counts round-trips so the tests can
@@ -9,6 +9,9 @@ import { MemoryCounterStore } from "./quotaStore.js";
 let serverCount = 0;
 let setCalls = 0;
 let getCalls = 0;
+/** B-AIOPS-01: make the fake datastore throw on write / read. */
+let failSet = false;
+let failGet = false;
 
 vi.mock("firebase-admin/app", () => ({
   getApps: () => [{}],
@@ -25,10 +28,12 @@ vi.mock("firebase-admin/firestore", () => ({
       doc: () => ({
         set: async (data: any) => {
           setCalls += 1;
+          if (failSet) throw new Error("synthetic firestore outage");
           serverCount += Number(data?.count?.__increment ?? 0);
         },
         get: async () => {
           getCalls += 1;
+          if (failGet) throw new Error("synthetic firestore outage");
           return { data: () => ({ count: serverCount }) };
         },
       }),
@@ -84,6 +89,8 @@ describe("FirestoreCounterStore single-round-trip fast path (AIR-7)", () => {
     serverCount = 0;
     setCalls = 0;
     getCalls = 0;
+    failSet = false;
+    failGet = false;
   });
 
   const makeStore = async () => {
@@ -135,5 +142,73 @@ describe("FirestoreCounterStore single-round-trip fast path (AIR-7)", () => {
     const after = await store.add("tts_chars_daily", "u4", 50, 60_000, { limit: 150_000 });
     expect(after.count).toBe(150);
     expect(getCalls).toBe(1); // only the baseline sync read
+  });
+});
+
+/**
+ * B-AIOPS-01: a datastore error is NOT "zero usage". The store used to answer
+ * `{ count: 0 }` on any Firestore failure (logged "failing open"), so every cap
+ * granted spare capacity it could not prove. It now throws a typed error.
+ */
+describe("FirestoreCounterStore fails closed on a datastore error (B-AIOPS-01)", () => {
+  beforeEach(() => {
+    serverCount = 0;
+    setCalls = 0;
+    getCalls = 0;
+    failSet = false;
+    failGet = false;
+  });
+
+  const makeStore = async () => {
+    const { FirestoreCounterStore } = await import("./quotaStore.js");
+    return new FirestoreCounterStore({ firestoreDatabaseId: "(default)" } as any);
+  };
+
+  it("increment: a failed write throws QuotaStoreUnavailableError, never count 0", async () => {
+    const store = await makeStore();
+    failSet = true;
+    await expect(store.increment("ai_hourly", "u1", 60_000, { limit: 80 })).rejects.toBeInstanceOf(QuotaStoreUnavailableError);
+    await expect(store.add("tts_chars_daily", "u1", 10, 60_000)).rejects.toBeInstanceOf(QuotaStoreUnavailableError);
+  });
+
+  it("increment: a failed authoritative read throws too", async () => {
+    const store = await makeStore();
+    failGet = true;
+    const err = await store.increment("img_user_daily", "u2", 60_000).catch((e) => e);
+    expect(isQuotaStoreUnavailable(err)).toBe(true);
+    expect(err.counter).toBe("img_user_daily");
+  });
+
+  it("peek: a failed read throws instead of reporting 0 used", async () => {
+    const store = await makeStore();
+    failGet = true;
+    await expect(store.peek("coach_daily", "u3", 60_000)).rejects.toBeInstanceOf(QuotaStoreUnavailableError);
+  });
+
+  it("normal path unchanged once the store recovers", async () => {
+    const store = await makeStore();
+    failSet = true;
+    await store.increment("ai_hourly", "u4", 60_000).catch(() => undefined);
+    failSet = false;
+    const ok = await store.increment("ai_hourly", "u4", 60_000);
+    expect(ok.count).toBe(1);
+    expect((await store.peek("ai_hourly", "u4", 60_000)).count).toBe(1);
+  });
+
+  it("sendQuotaUnavailable answers a calm retryable 503 with Retry-After", () => {
+    const headers: Record<string, string> = {};
+    let status = 0;
+    let body: unknown;
+    sendQuotaUnavailable({ setHeader: (k, v) => { headers[k] = v; }, status: (c) => { status = c; return { json: (b) => { body = b; } }; } });
+    expect(status).toBe(503);
+    expect(headers["Retry-After"]).toBe("15");
+    expect(body).toEqual({ error: "quota_unavailable", code: "quota_unavailable", retryable: true });
+    expect(QUOTA_UNAVAILABLE_BODY.retryable).toBe(true);
+  });
+
+  it("MemoryCounterStore is unchanged (never throws for a normal call)", async () => {
+    const store = new MemoryCounterStore();
+    expect((await store.peek("x", "k", 60_000)).count).toBe(0);
+    expect((await store.increment("x", "k", 60_000)).count).toBe(1);
   });
 });

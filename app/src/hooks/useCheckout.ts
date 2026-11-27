@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { carryReceipt, useReceiptNote } from "../components/ui/Receipt";
 import { useToast } from "../context/ToastContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useArborOptional } from "../context/ArborContext";
@@ -67,7 +68,14 @@ export function resolveRestoreOutcome(result: NativeRestoreOutcome): OutcomeEffe
  * Any new purchase surface MUST call this hook; storeCheckoutGuard.test.ts
  * fails the build on any other caller of the billing checkout/portal API.
  */
-export function useCheckout() {
+/** B-STATUS-01 — where a billing success answers. "here": the surface stays
+ *  open (Settings › Your plan) and draws the receipt line itself. "carry": the surface
+ *  closes on success (the paywall), so the line is carried to Shell's receipt
+ *  slot and names where the plan lives. A purchase has no Undo: it is managed
+ *  or cancelled in Settings › Your plan. */
+export type CheckoutAnswer = "here" | "carry";
+
+export function useCheckout({ answer = "here" }: { answer?: CheckoutAnswer } = {}) {
   const { toast } = useToast();
   const { t, uiLang } = useLanguage();
   // Optional: the paywall lives in ArborContext; the hook also serves Settings,
@@ -76,10 +84,20 @@ export function useCheckout() {
   const [busy, setBusy] = useState(false);
   const checkoutPending = useRef(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // B-STATUS-01: the success line ("here"), and the manage-elsewhere notice.
+  const receiptNote = useReceiptNote();
+  const [manageNotice, setManageNotice] = useState<string | null>(null);
 
   const applyEffects = (fx: OutcomeEffects) => {
     if (fx.close) arbor?.closePaywall();
-    if (fx.toastKey) toast(t(fx.toastKey), fx.tone);
+    if (!fx.toastKey) return;
+    if (fx.tone === "success") {
+      const text = t(fx.toastKey);
+      if (answer === "carry") carryReceipt({ text: `${text} ${t("elev.loop.receipt.planWhere")}` }, "app");
+      else receiptNote.show({ text });
+      return;
+    }
+    toast(t(fx.toastKey), fx.tone);
   };
 
   const startCheckout = async (plan: PaidPlan, cadence: Cadence, surface: CheckoutSurface) => {
@@ -127,7 +145,8 @@ export function useCheckout() {
       const result = await performOpenPortal(defaultDeps());
       // B-GA-13: a web purchase is cancelled in RevenueCat's portal, never in a
       // store, so a parent without a link is told where else to cancel.
-      if (result === "unavailable") toast(t(manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider)), "success");
+      // B-STATUS-01: an instruction, not a success — drawn in the Plan row.
+      setManageNotice(result === "unavailable" ? manageFallbackKey(isNativePlatform, cachedEntitlement()?.provider) : null);
     } finally {
       setBusy(false);
     }
@@ -146,5 +165,5 @@ export function useCheckout() {
     }
   };
 
-  return { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative: isNativePlatform };
+  return { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative: isNativePlatform, receipt: receiptNote.note, manageNotice };
 }

@@ -76,7 +76,8 @@ export interface PlanNarrationChild {
 }
 
 const RATE_LIMITED = new Set(["book_assets_rate", "http_429"]);
-const BUSY = new Set(["book_narration_busy", "network", "http_500", "http_502", "http_503", "book_storage_unavailable"]);
+// B-AIOPS-01: "quota_unavailable" = the usage counters could not be read; a short retry, never "resting".
+const BUSY = new Set(["book_narration_busy", "network", "http_500", "http_502", "http_503", "book_storage_unavailable", "quota_unavailable"]);
 /** The approved document may still be on its way to the server. */
 const SETTLING = new Set(["plan_narration_no_plan"]);
 

@@ -164,6 +164,13 @@ export const IMAGE_RESTING = "image_resting";
 export const isImageResting = (err: unknown): boolean =>
   err instanceof ApiError && err.status === 429 && err.message === IMAGE_RESTING;
 
+/** B-AIOPS-01: a metered gate's retryable 503 when the usage-counter store is
+ *  down (server/quotaStore.ts QUOTA_UNAVAILABLE). Nothing was spent; a short
+ *  retry is the honest advice. Never rendered as a slug. */
+export const QUOTA_UNAVAILABLE = "quota_unavailable";
+export const isQuotaUnavailable = (err: unknown): boolean =>
+  err instanceof ApiError && err.message === QUOTA_UNAVAILABLE;
+
 /** B-AIOPS-02: /live/token's 429 code — the FAMILY's realtime-voice minutes
  *  for today are reserved or spent (server/liveBudget.ts). Not the hourly AI
  *  quota and not "busy": no Retry-After; typed coaching stays open. */
@@ -743,7 +750,8 @@ export type EntitlementInfo = {
   limits: { coachMessagesPerDay: number | null; maxChildren: number; professionalReports: boolean; advancedPlans: boolean; coParentSeats: number };
   source: string;
   enforced: boolean;
-  usage: { coachMessagesToday: number };
+  /** null = the server could not read today's meter (B-AIOPS-01): unknown, never 0. */
+  usage: { coachMessagesToday: number | null };
   status?: "active" | "in_trial" | "grace_period" | "canceled" | "expired" | null;
   provider?: "stripe" | "app_store" | "play_store" | "comp" | "none" | null;
   currentPeriodEnd?: string | null;

@@ -16,7 +16,7 @@ import type { AddressInfo } from "node:net";
 import { afterAll, describe, expect, it } from "vitest";
 import type { BookAssetBucket, BookAssetFile, BookAssetSaveOptions } from "./bookAssets";
 import { IMAGE_COUNTERS, IMAGE_GLOBAL_DAILY } from "./imageQuota";
-import { MemoryCounterStore } from "./quotaStore";
+import { MemoryCounterStore, QuotaStoreUnavailableError } from "./quotaStore";
 import { createPlanPlatesRouter, estimatePaintUsd, imageDimensions, isPlatePainter, PLAN_PLATE_PREFIX, PLAN_PLATE_RULES, PLAN_PLATES_COUNTER, PLAN_PLATES_MAX_IMAGES, PLAN_PLATES_MAX_USD, PLATE_LIGHT, PLATE_RULES, PLATE_STYLE, planPlateObject, planPlatePrompt, plateStatesFrom } from "./planPlates";
 import { TAIL } from "./heroPosePrompts";
 import { PLAN_PLATE_BRIEFS, planPlateTable } from "../lib/library/plans/planPlates";
@@ -212,6 +212,18 @@ describe("POST /admin/plan-plates", () => {
     expect(s.calls).toHaveLength(9);
     expect((await post(s.url, { pattern: "plan-poo-sit", plate: "PP99" })).status).toBe(404);
     expect((await post(s.url, { pattern: "plan-made-up" })).status).toBe(404);
+  });
+
+  it("B-AIOPS-01: a counter-store error stops the run before any provider call (fails closed)", async () => {
+    class DownStore extends MemoryCounterStore {
+      override async increment(name: string): Promise<{ count: number; resetAt: number }> { throw new QuotaStoreUnavailableError(name); }
+    }
+    const s = await up({ user: ADMIN, counters: new DownStore() });
+    const r = await post(s.url, { pattern: "plan-poo-sit" });
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.run).toMatchObject({ planned: 8, painted: 0, failed: 0, left: 8, stopped: "quota_unavailable" });
+    expect(s.calls).toHaveLength(0);
   });
 
   it("refuses a run over the per-run cap (images or USD) before any provider call", async () => {

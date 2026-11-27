@@ -31,30 +31,40 @@ describe("B-SHELL-42 — the strip's Working on line is gone, everywhere it coul
   });
 });
 
-describe("B-SHELL-42 — no slash form when the child's gender is known", () => {
-  it("the switcher genders the active-child sentence only; Switch child stays generic", () => {
-    const src = read("TopbarKidSwitcher.tsx");
-    expect(src).toContain('const knownGender = activeChild.gender === "boy" || activeChild.gender === "girl";');
-    expect(src).toContain("return resolveHebrewSlash(head, activeChild.gender) + switchChild;");
-    expect(src).toContain("aria-label={activeChildLabel}");
-    expect(src).toContain("aria-label={switchChild}");
-    // round 2 (critic P2): the list's own label is never gendered by the active child
-    expect(src).not.toMatch(/resolveHebrewSlash\(t\("aria\.switchChild"\)/);
-    expect(src).not.toContain('aria-label={t("aria.activeChildSwitch"');
+/** Hebrew intake-form slash pairs ("ילד/ה", "פעיל/ה"): Hebrew letters either side of a slash. */
+const SLASH = /[א-ת]\/[א-ת]/;
+/** Every translation key a strip component names literally (t("…")). */
+const stripKeys = (src: string) => [...new Set([...src.matchAll(/\bt\("([A-Za-z0-9_.]+)"/g)].map((m) => m[1]))];
+/** The strip's Hebrew strings that still carry a slash pair, for any child. */
+const slashed = (lookup: (key: string) => string) =>
+  STRIP.flatMap((f) => stripKeys(read(f))).filter((k) => SLASH.test(lookup(k)));
+
+describe("B-SHELL-42 r3 — no slash form in the strip, known gender or not", () => {
+  it("every Hebrew string the strip and its switcher name is slash-free", () => {
+    const keys = STRIP.flatMap((f) => stripKeys(read(f)));
+    expect(keys.length).toBeGreaterThan(15); // sanity: the scan reads real keys
+    for (const k of ["aria.switchChild", "aria.activeChildSwitch", "aria.editChildProfile"]) expect(keys).toContain(k);
+    expect(slashed((k) => translate("he", k, { name: "Dylan" }))).toEqual([]);
   });
 
-  it("HE reads the boy's and the girl's forms; EN is unchanged", () => {
-    const raw = translate("he", "aria.activeChildSwitch", { name: "Dylan" });
-    const tail = translate("he", "aria.switchChild");
-    expect(raw).toMatch(/[א-ת]\/[א-ת]/); // the shipped string carries the slash pairs
-    expect(raw.endsWith(tail)).toBe(true); // the label ends with the generic Switch child
-    const label = (gender: string) => resolveHebrewSlash(raw.slice(0, raw.length - tail.length), gender) + tail;
-    expect(label("boy")).toContain("ילד פעיל");
-    expect(label("girl")).toContain("ילדה פעילה");
-    // the active child is gendered; switching keeps the inclusive form over a mixed list
-    expect(label("girl").endsWith("החלפת ילד/ה")).toBe(true);
-    expect(label("girl").slice(0, -tail.length)).not.toMatch(/[א-ת]\/[א-ת]/);
-    const en = translate("en", "aria.activeChildSwitch", { name: "Dylan" });
-    expect(resolveHebrewSlash(en, "girl")).toBe(en);
+  it("the switcher label is the same neutral sentence for a boy, a girl and an unknown gender", () => {
+    const he = translate("he", "aria.activeChildSwitch", { name: "Dylan" });
+    expect(he).toContain("Dylan");
+    expect(he.endsWith(translate("he", "aria.switchChild"))).toBe(true);
+    for (const gender of ["boy", "girl", undefined]) expect(resolveHebrewSlash(he, gender), String(gender)).toBe(he);
+    const src = read("TopbarKidSwitcher.tsx");
+    expect(src).toContain('const activeChildLabel = t("aria.activeChildSwitch", { name: activeChild.name });');
+    expect(src).toContain("aria-label={activeChildLabel}");
+    expect(src).toContain("aria-label={switchChild}");
+    // EN carries no pairs and is unchanged
+    expect(translate("en", "aria.activeChildSwitch", { name: "Dylan" }).replace(/[\u2066-\u2069]/g, "")).toBe("Active child: Dylan. Switch child");
+  });
+
+  it("NEGATIVE CONTROL: the 29 Oct tail (\"החלפת ילד/ה\"), put back into the real dictionary, is caught", () => {
+    const shipped = (k: string) => (k === "aria.switchChild" ? "החלפת ילד/ה" : translate("he", k, { name: "Dylan" }));
+    expect(slashed(shipped)).toEqual(["aria.switchChild"]);
+    // and a girl's gendered head with the old generic tail still printed a slash
+    const old = resolveHebrewSlash("ילד/ה פעיל/ה: Dylan. ", "girl") + "החלפת ילד/ה";
+    expect(SLASH.test(old)).toBe(true);
   });
 });

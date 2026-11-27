@@ -49,7 +49,7 @@ import type { ShelfId } from "../../lib/shelves/registry";
 import type { DomainId } from "../../lib/domains/registry";
 import CaptureWhereArea, { areaFromHash, shelfForArea } from "./CaptureWhereArea";
 // B-STATUS-01: the one receipt line and the one pending line of parent mode.
-import { PendingLine, Receipt } from "../ui/Receipt";
+import { PendingLine, Receipt, carryReceipt, clearCarriedReceipt } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../lib/kept/captureKeep";
 // F-CHILD-2: the hard-moment slider names its ends in words (aria-valuetext
@@ -134,6 +134,7 @@ export default function QuickLogModal({
     autofillLogTemplate,
     addMoment,
     deleteLog,
+    restoreLog,
     seedCoach,
     cancelEditLog,
     milestones,
@@ -739,6 +740,8 @@ export default function QuickLogModal({
       response: newLogResponse,
     });
     const isCurrent = sessionRef.current.lease("write");
+    // B-STATUS-01: the row as it was, for the edit receipt's Undo.
+    const beforeEdit = editLogId ? behaviorLogs.find((l) => l.id === editLogId) ?? null : null;
     busyRef.current = true; setSaving(true); setSaveError(null);
     try {
       const written = await handleAddLog(e, { callerShowsFailure: true, ...contentProvenance });
@@ -746,7 +749,14 @@ export default function QuickLogModal({
       if (!written) { setSaveError(t("companion.capture.saveError")); return; }
       setReviewing(false); setSource("text");
       if (editLogId) {
-        toast(t("capture.edit.saved"), "success");
+        // B-STATUS-01: the sheet closes onto the page the edit came from; the
+        // answer is carried there (Shell's receipt slot, this child only),
+        // with a link to the Journal and Undo back to the row as it was.
+        carryReceipt({
+          text: t("elev.loop.receipt.momentEdited"),
+          link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "moment-edited-open" },
+          undo: beforeEdit ? { label: t("elev.keep.undo"), testId: "moment-edited-undo", onUndo: () => { clearCarriedReceipt("app"); void restoreLog(beforeEdit); } } : null,
+        }, "app", { childId: childProfile.id });
         closeSheet();
         return;
       }

@@ -63,6 +63,7 @@ export type ValuePreviewReason =
   | "already-subscribed"
   | "not-metered"
   | "not-enforced"
+  | "usage-unknown"
   | "thread-in-use"
   | "surface-busy"
   | "offline"
@@ -93,13 +94,16 @@ export type ValuePreviewInput = {
 };
 
 /**
- * Coach messages left today, or null when the plan is not metered at all.
+ * Coach messages left today, or null when the plan is not metered at all (or,
+ * B-AIOPS-01, when the server could not read the meter).
  * Mirrors the server's own arithmetic in aiQuota.ts (`limit - count`, floored
  * at zero) so the client can never quote a number the server would not.
  */
 export function coachRemaining(entitlement: EntitlementInfo): number | null {
   const limit = entitlement.limits.coachMessagesPerDay;
   if (limit === null) return null;
+  // B-AIOPS-01: an unknown meter is not "0 used" — quote nothing.
+  if (typeof entitlement.usage.coachMessagesToday !== "number") return null;
   const used = Math.max(0, entitlement.usage.coachMessagesToday);
   return Math.max(0, limit - used);
 }
@@ -123,6 +127,8 @@ export function decideValuePreview(input: ValuePreviewInput): ValuePreviewDecisi
   if (limit === null) return { show: false, reason: "not-metered" };
   // Unenforced access (beta) never meets a wall, so there is nothing to preview.
   if (!entitlement.enforced) return { show: false, reason: "not-enforced" };
+  // B-AIOPS-01: the server could not read today's meter — never sell on a guess.
+  if (typeof entitlement.usage.coachMessagesToday !== "number") return { show: false, reason: "usage-unknown" };
 
   if (!threadEmpty) return { show: false, reason: "thread-in-use" };
   if (!surfaceIdle) return { show: false, reason: "surface-busy" };
@@ -134,7 +140,7 @@ export function decideValuePreview(input: ValuePreviewInput): ValuePreviewDecisi
 
   if (dismissedOn === today) return { show: false, reason: "dismissed-today" };
 
-  return { show: true, reason: "shown", used: Math.max(0, entitlement.usage.coachMessagesToday), limit, remaining };
+  return { show: true, reason: "shown", used: Math.max(0, entitlement.usage.coachMessagesToday as number), limit, remaining };
 }
 
 /** Local calendar day, `YYYY-MM-DD`. The server meter is a rolling 24h window;

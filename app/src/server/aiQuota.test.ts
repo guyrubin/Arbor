@@ -314,3 +314,84 @@ describe("P7-DESIGN fix r1 · the hourly AI cap and the mock provider", () => {
     expect(src).toContain("createCoachGate(counters, entitlementStore, { exemptHourly: aiHourlyExempt(config) })");
   });
 });
+
+/**
+ * B-AIOPS-01: a counter-store error used to read as "0 used" (the Firestore
+ * store returned count 0), so every gate let the paid call through. The store
+ * now throws QuotaStoreUnavailableError and each gate fails CLOSED with a calm,
+ * retryable 503 — never next(), never the 429/402 "limit reached" copy.
+ */
+describe("gates fail closed on a counter-store error (B-AIOPS-01)", () => {
+  /** A store whose writes/reads throw the typed outage error. */
+  async function brokenStore() {
+    const { QuotaStoreUnavailableError: E } = await import("./quotaStore.js");
+    return {
+      increment: async (name: string) => { throw new E(name); },
+      add: async (name: string) => { throw new E(name); },
+      peek: async (name: string) => { throw new E(name); },
+    };
+  }
+  const freeStore = { getPlan: async () => null, setPlan: async () => {} } as any;
+
+  async function call(mw: any, body?: unknown) {
+    const res = makeRes();
+    let passed = false;
+    await mw({ user: { uid: "outage-user" }, body } as any, res as any, () => { passed = true; });
+    return { res, passed };
+  }
+  const expectCalm503 = (res: any) => {
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({ error: "quota_unavailable", code: "quota_unavailable", retryable: true });
+    expect(res.headers["Retry-After"]).toBe("15");
+  };
+
+  it("hourly AI quota: 503 retryable, the call is not allowed", async () => {
+    const createAiQuota = await loadAiQuota("80");
+    const { res, passed } = await call(createAiQuota(await brokenStore() as any));
+    expect(passed).toBe(false);
+    expectCalm503(res);
+  });
+
+  it("coach gate: 503 retryable on the hourly counter, never the 402 upsell", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    process.env.FREE_COACH_MESSAGES_PER_DAY = "5";
+    vi.resetModules();
+    const { createCoachGate } = await import("./aiQuota.js");
+    const { res, passed } = await call(createCoachGate(await brokenStore() as any, freeStore));
+    expect(passed).toBe(false);
+    expectCalm503(res);
+  });
+
+  it("coach gate: 503 retryable when only the coach meter fails (hourly exempt)", async () => {
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    process.env.FREE_COACH_MESSAGES_PER_DAY = "5";
+    vi.resetModules();
+    const { createCoachGate } = await import("./aiQuota.js");
+    const { res, passed } = await call(createCoachGate(await brokenStore() as any, freeStore, { exemptHourly: true }));
+    expect(passed).toBe(false);
+    expectCalm503(res);
+  });
+
+  it("TTS character meter: 503 retryable, not the 'voice is resting' 429", async () => {
+    process.env.TTS_DAILY_CHAR_LIMIT = "150000";
+    vi.resetModules();
+    const { createTtsQuota } = await import("./aiQuota.js");
+    const { res, passed } = await call(createTtsQuota(await brokenStore() as any), { text: "hello" });
+    expect(passed).toBe(false);
+    expectCalm503(res);
+  });
+
+  it("a non-store error still propagates unchanged", async () => {
+    const createAiQuota = await loadAiQuota("80");
+    const boom = { increment: async () => { throw new Error("unrelated"); } } as any;
+    await expect(call(createAiQuota(boom))).rejects.toThrow("unrelated");
+  });
+
+  it("normal path unchanged: a healthy store still passes the call", async () => {
+    const createAiQuota = await loadAiQuota("80");
+    const { res, passed } = await call(createAiQuota(new MemoryCounterStore()));
+    expect(passed).toBe(true);
+    expect(res.statusCode).toBe(0);
+    expect(res.headers["X-AI-Quota-Remaining"]).toBe("79");
+  });
+});

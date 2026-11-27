@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { fmtDayShort, fmtDayTime } from "../../lib/formatDate";
 import { en as loopEn, he as loopHe } from "../../lib/i18nElevation/closeloop";
 import { contextLabel } from "./contextLabel";
+import { translate } from "../../lib/i18n";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(here, "..", "..");
@@ -96,12 +97,21 @@ describe("OBJ-BEH-04 · the place, in the reader's language", () => {
     expect(contextLabel("  ", t)).toBe("");
   });
 
+  /** The patterns card localizes the place: one predicate, so its control runs on real source. */
+  const placeLocalized = (source: string) =>
+    /contextLabel\(insights\.context\.label, t\)/.test(source) &&
+    !source.includes("insights.context.label.toLowerCase()") &&
+    !/value=\{insights\.context\.label\}/.test(source);
+
   it("both surfaces route the context through it", () => {
     expect(stripComments(read("components/journal/JournalMomentDetails.tsx"))).toMatch(/contextLabel\(log\.context, t\)/);
-    expect(PATTERNS).toMatch(/contextLabel\(insights\.context\.label, t\)/);
-    // NEGATIVE CONTROL: the raw enum renders.
-    expect(PATTERNS).not.toContain("insights.context.label.toLowerCase()");
-    expect(PATTERNS).not.toMatch(/value=\{insights\.context\.label\}/);
+    expect(placeLocalized(PATTERNS)).toBe(true);
+  });
+
+  it("NEGATIVE CONTROL (B-INF-13): the real PatternInsights, put back on the raw enum, is caught", () => {
+    const raw = PATTERNS.replace("contextLabel(insights.context.label, t)", "insights.context.label.toLowerCase()");
+    expect(raw).not.toBe(PATTERNS);
+    expect(placeLocalized(raw)).toBe(false);
   });
 });
 
@@ -128,14 +138,22 @@ describe("OBJ-BEH-04 · the patterns card counts, and can say 'one'", () => {
       expect(dict["elev.closeloop.pattern.resolvedSub.many"]).toContain("{count}");
     }
     expect(loopEn["elev.closeloop.pattern.noted.one"]).toBe("1 moment noted");
-    expect(PATTERNS).toMatch(/count === 1 \? "one" : "many"/);
-    expect(PATTERNS).toMatch(/insights\.resolved === 1 \? "one" : "many"/);
+    expect(choosesOneOrMany(PATTERNS)).toBe(true);
   });
 
-  it("NEGATIVE CONTROL: the shipped key really did pluralise unconditionally", () => {
-    // Still in lib/i18n.ts (nothing renders it now) — the defect, on record.
-    expect(PATTERNS).not.toMatch(/beh\.pattern\.(place|day|time)Sub/);
-    expect(PATTERNS).not.toMatch(/t\("beh\.pattern\.resolvedSub"/);
+  /** Both counts pick "one" or "many", and nothing renders the unconditional plural keys. */
+  const choosesOneOrMany = (source: string) =>
+    /count === 1 \? "one" : "many"/.test(source) &&
+    /insights\.resolved === 1 \? "one" : "many"/.test(source) &&
+    !/beh\.pattern\.(place|day|time)Sub/.test(source) &&
+    !/t\("beh\.pattern\.resolvedSub"/.test(source);
+
+  it("NEGATIVE CONTROL (B-INF-13): the real card, put back on the shipped plural key, is caught", () => {
+    // The retired key is still in lib/i18n.ts (nothing renders it now) and pluralises unconditionally.
+    expect(translate("en", "beh.pattern.placeSub", { count: 1 })).toBe("1 moments noted");
+    const shipped = PATTERNS.replace('`elev.closeloop.pattern.noted.${count === 1 ? "one" : "many"}`', '"beh.pattern.placeSub"');
+    expect(shipped).not.toBe(PATTERNS);
+    expect(choosesOneOrMany(shipped)).toBe(false);
   });
 
   it("every new key exists in EN and HE", () => {

@@ -46,7 +46,8 @@ export default function PaywallModal() {
   const name = firstName || t("learn.yourChild");
   // A plain count of approved memory facts — never a %, hidden at 0.
   const keptCount = approvedMemoryItems?.length ?? 0;
-  const { busy, checkoutError, startCheckout, restorePurchases, isNative } = useCheckout();
+  // B-STATUS-01: the paywall closes on success, so its answer is carried.
+  const { busy, checkoutError, startCheckout, restorePurchases, isNative } = useCheckout({ answer: "carry" });
   const { prices: nativePrices, status: offeringStatus } = useNativeOffering();
   // B-GA-12: annual is the accepted initial cadence (DEFAULT_CADENCE, shared
   // with Settings); a parent's explicit tap wins thereafter — never reset on open.

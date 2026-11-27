@@ -22,7 +22,7 @@ import { loadFramework } from "../services/framework.js";
 import { LocalMemoryStore } from "../memory/localMemoryStore.js";
 import { LocalShareStore } from "../sharing/shares.js";
 import { LocalConsentStore } from "../sharing/consent.js";
-import { createCounterStore } from "./quotaStore.js";
+import { createCounterStore, QuotaStoreUnavailableError } from "./quotaStore.js";
 import { createEntitlementStore, cohortTagFor } from "./entitlements.js";
 import { createReferralStore } from "./referral.js";
 import { createConsultStore } from "./consultRequests.js";
@@ -151,6 +151,50 @@ describe("B-MEAS-01 · GET /api/admin/cohorts excludes by default, ?includeInter
     const ent = await (await fetch(`${base}/api/entitlement`)).json();
     expect(["internal", "family"]).toContain(ent.cohort);
     expect(JSON.stringify(ent)).not.toMatch(/@/);
+  });
+
+  // B-AIOPS-01: /entitlement is a DISPLAY read of the coach meter. A counter-store
+  // error degrades to "unknown" (null) — never 0 used as fact — and the plan still answers.
+  it("/entitlement: a counter-store error reports usage unknown (null), never 0", async () => {
+    const prior = process.env.ENFORCE_ENTITLEMENTS;
+    process.env.ENFORCE_ENTITLEMENTS = "true";
+    try {
+      const config = createTestConfig();
+      const entitlementStore = createEntitlementStore(config);
+      const down = new QuotaStoreUnavailableError("coach_daily");
+      const broken = { increment: async () => { throw down; }, add: async () => { throw down; }, peek: async () => { throw down; } };
+      const mount = (counters: any) => {
+        const app = express();
+        app.use(express.json());
+        app.use((req, _res, next) => { (req as any).user = { uid: "free-family-uid", email: null }; next(); });
+        app.use("/api", createApiRouter({
+          config,
+          modelProvider: { generateJson: async () => ({}) } as unknown as ModelProvider,
+          memoryStore: new LocalMemoryStore(), shareStore: new LocalShareStore(), consentStore: new LocalConsentStore(),
+          framework: loadFramework(), entitlementStore, referralStore: createReferralStore(config, entitlementStore),
+          counters, consultStore: createConsultStore(config), adminMetrics: createAdminMetricsStore(config),
+          waitlistStore: createWaitlistStore(config), cohortMetricsStore: new FakeStore(),
+        }));
+        return app;
+      };
+      const get = async (counters: any) => {
+        const server = await new Promise<Server>((resolve) => { const s = mount(counters).listen(0, "127.0.0.1", () => resolve(s)); });
+        servers.push(server);
+        const res = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/api/entitlement`);
+        return { status: res.status, body: await res.json() };
+      };
+      const healthy = await get(createCounterStore(config));
+      expect(healthy.status).toBe(200);
+      // A metered (free) plan: the route reads the meter.
+      expect(typeof healthy.body.limits.coachMessagesPerDay).toBe("number");
+      expect(healthy.body.usage.coachMessagesToday).toBe(0);
+      const out = await get(broken);
+      expect(out.status).toBe(200);
+      expect(out.body.plan).toBe(healthy.body.plan);
+      expect(out.body.usage.coachMessagesToday).toBeNull();
+    } finally {
+      if (prior === undefined) delete process.env.ENFORCE_ENTITLEMENTS; else process.env.ENFORCE_ENTITLEMENTS = prior;
+    }
   });
 });
 

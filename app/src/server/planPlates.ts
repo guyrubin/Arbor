@@ -51,7 +51,7 @@ import { isPatternId, PATTERN_IDS } from "../lib/library/plans/planVisibility.js
 import type { PatternId } from "../lib/library/types.js";
 import type { BookAssetBucket, BookAssetFile } from "./bookAssets.js";
 import { IMAGE_COUNTERS, IMAGE_GLOBAL_DAILY } from "./imageQuota.js";
-import type { UsageCounterStore } from "./quotaStore.js";
+import { isQuotaStoreUnavailable, type UsageCounterStore } from "./quotaStore.js";
 import { bookAssetLimiter } from "./apiRateLimits.js";
 import { logger, requestIdOf } from "./logger.js";
 
@@ -291,16 +291,24 @@ export function createPlanPlatesRouter(deps: PlanPlatesDeps): express.Router {
     const started = now();
     let painted = 0;
     let failed = 0;
-    let stopped: "deadline" | "breaker" | "client" | null = null;
+    let stopped: "deadline" | "breaker" | "client" | "quota_unavailable" | null = null;
     let clientGone = false;
     res.on("close", () => { if (!res.writableEnded) clientGone = true; });
     for (const job of todo) {
       if (clientGone) { stopped = "client"; break; }
       if (now() - started > runMs) { stopped = "deadline"; break; }
       // The image routes' global breaker bounds provider attempts, i.e. cost, for everyone.
-      const global = await deps.counters.increment(IMAGE_COUNTERS.global, "all", DAY_MS);
-      if (global.count > IMAGE_GLOBAL_DAILY) { stopped = "breaker"; break; }
-      await deps.counters.increment(PLAN_PLATES_COUNTER, uid, DAY_MS);
+      // B-AIOPS-01: a counter-store error stops the run (fails closed); never paint uncounted.
+      try {
+        const global = await deps.counters.increment(IMAGE_COUNTERS.global, "all", DAY_MS);
+        if (global.count > IMAGE_GLOBAL_DAILY) { stopped = "breaker"; break; }
+        await deps.counters.increment(PLAN_PLATES_COUNTER, uid, DAY_MS);
+      } catch (error: unknown) {
+        if (!isQuotaStoreUnavailable(error)) throw error;
+        logger.warn("Plan plates quota store unavailable", { requestId: requestIdOf(req) });
+        stopped = "quota_unavailable";
+        break;
+      }
       const prompt = planPlatePrompt(job.pattern, job.plate)!;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), PLAN_PLATE_IMAGE_MS);

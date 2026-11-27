@@ -9,6 +9,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useEntitlement, childLimitReached, PAID_PLAN_LIMITS } from "../../hooks/useEntitlement";
 import { buildNewChildInput } from "../../lib/childProfileInput";
 import { PlanBadge } from "../ui/PlanBadge";
+import { carryReceipt } from "../ui/Receipt";
 // B-SHELL-17: Add child IS onboarding steps 2–3 — the SAME StepChild (one age
 // field: years + months, the controller-consent affirmation, LegalLinks) and
 // the SAME StepDomains, rendered in a Sheet. No second form, no second age
@@ -68,8 +69,11 @@ export default function AddChildModal({ open, onClose }: { open: boolean; onClos
         strengthsText: "", challengesText: challenges.join("\n"),
       });
       const childName = input.name;
-      await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
-      toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });
+      const added = await addChild({ ...input, ...(birthDate ? { birthDate } : {}) });
+      // B-STATUS-01: the dialog closes onto the new child's page, so the answer
+      // is carried there (Shell's receipt slot, bound to that child). No Undo:
+      // removing a profile is the confirmed erase in Your data, never one tap.
+      carryReceipt({ text: t("elev.loop.receipt.childAdded", { name: childName }) }, "app", { childId: added?.id ?? null });
       close();
     } catch {
       // B-DATA-15: a new child's id comes from the server; offline (or a

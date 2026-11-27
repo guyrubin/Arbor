@@ -7,6 +7,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useProfile } from "../../context/ProfileContext";
 import { useToast } from "../../context/ToastContext";
 import { CHILD_SUBCOLLECTIONS, downloadDeletionReceipt, downloadJson, exportChildData } from "../../lib/childData";
+import { describeExportGaps } from "../../lib/exportGaps";
 import { createChildExportRun } from "../../lib/childExportRun";
 import { childExportFilename } from "../../lib/childExportFilename";
 import { withChildExportSession } from "../../lib/childExportSession";
@@ -51,6 +52,8 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
   // ── Export ────────────────────────────────────────────────────────────────
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<"complete" | "incomplete" | null>(null);
+  // B-CAREPRO-50: what a partial export left out, in the parent's words.
+  const [exportGaps, setExportGaps] = useState<string[]>([]);
   const exportRun = useRef(createChildExportRun());
   const exportButtonRef = useRef<HTMLButtonElement | null>(null);
   const scope = `${open}|${user?.uid ?? ""}|${childProfile.id}`;
@@ -67,6 +70,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     lifetime.active = true;
     setExporting(false);
     setExportResult(null);
+    setExportGaps([]);
     return () => {
       lifetime.active = false;
       if (lifetimeRef.current === lifetime) exportRun.current.cancel();
@@ -85,6 +89,7 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
     }
     setExporting(true);
     setExportResult(null);
+    setExportGaps([]);
     try {
       await withChildExportSession(user?.uid, run.controller.signal, async (session) => {
         const data = await exportChildData(user?.uid, childProfile, { signal: session.signal });
@@ -97,8 +102,12 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
         };
         assertCurrent();
         const status = data.exportReceipt.status;
+        // The summary never blocks the download; the receipt names every file.
+        const gaps = await describeExportGaps(data, t, uiLang, first).catch(() => [] as string[]);
+        assertCurrent();
         downloadJson(childExportFilename(childProfile.name || "", status), { ...data, exportNote: t("sec.sharing.data.exportNote") }, assertCurrent);
         setExportResult(status);
+        setExportGaps(gaps);
       });
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError") && exportRun.current.current(run, scopeRef.current)) toast(t("elev.yourData.exportFailed"), "error");
@@ -329,6 +338,12 @@ export default function YourDataSheet({ open, onClose, onDeleteAccount }: {
           {exportResult && <p role="status" data-testid="your-data-export-receipt" className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
             {t(exportResult === "complete" ? "elev.yourData.exportComplete" : "elev.yourData.exportPartial")}
           </p>}
+          {exportResult === "incomplete" && exportGaps.length > 0 && <div data-testid="your-data-export-gaps" className="text-sm leading-relaxed" style={{ color: "var(--arbor-ink)" }}>
+            <p className="font-bold">{t("elev.yourData.gap.title")}</p>
+            <ul className="list-disc ps-5">
+              {exportGaps.map((line, i) => <li key={i}>{line}</li>)}
+            </ul>
+          </div>}
           <button
             onClick={() => setDeleting(true)}
             disabled={exporting}

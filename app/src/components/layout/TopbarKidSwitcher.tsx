@@ -3,7 +3,6 @@ import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
 import { useProfile } from "../../context/ProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
 import { Avatar } from "../ui/Avatar";
 import AddChildModal from "../profile/AddChildModal";
 import ProfileEditDrawer from "../profile/ProfileEditDrawer";
@@ -183,20 +182,12 @@ export function ChildIdentity({ child, t }: { child: ChildProfile; t: (key: stri
 export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = false, shrink = false }: { maxWidth?: string; fullWidth?: boolean; /** In a flex row (the phone strip): take the natural width, shrink when the row is full — no fixed cap (c2 r1). */ shrink?: boolean } = {}) {
   const { profiles, activeChild, setActiveChild } = useProfile();
   const { t } = useLanguage();
-  // B-SHELL-42: when the profile knows the active child's gender the strip names THAT child in
-  // it — never "ילד/ה פעיל/ה" (Law 8, lib/hebrewSlashGender). "Switch child" stays generic: the
-  // list it opens may hold a boy and a girl. An unknown gender keeps the inclusive slash;
-  // English has no pairs, so it is unchanged.
-  const knownGender = activeChild.gender === "boy" || activeChild.gender === "girl";
+  // B-SHELL-42 r3: the switcher's Hebrew names no child in a slash form ("ילד/ה פעיל/ה",
+  // "החלפת ילד/ה"), whatever the profile says about gender: the strings are written
+  // slash-free and neutral (the profile is active; you move between the children), so a
+  // known gender never meets an intake-form slash and an unknown one needs none.
   const switchChild = t("aria.switchChild");
-  const activeChildLabel = (() => {
-    const label = t("aria.activeChildSwitch", { name: activeChild.name });
-    if (!knownGender) return label;
-    // Gender the active-child sentence only; the trailing "Switch child" keeps its generic form.
-    if (!label.endsWith(switchChild)) return resolveHebrewSlash(label, activeChild.gender);
-    const head = label.slice(0, label.length - switchChild.length);
-    return resolveHebrewSlash(head, activeChild.gender) + switchChild;
-  })();
+  const activeChildLabel = t("aria.activeChildSwitch", { name: activeChild.name });
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   // v10 (canvas V77): the sidebar card is the switcher alone; editing the child's
@@ -284,19 +275,8 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
           <div
             role="listbox"
             aria-label={switchChild}
-            style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              /* logical property: aligns end-edge under both LTR and RTL */
-              insetInlineEnd: 0,
-              zIndex: 50,
-              minWidth: "200px",
-              borderRadius: "16px",
-              padding: "6px",
-              background: "var(--arbor-paper-elevated)",
-              border: "1px solid var(--arbor-rule)",
-              boxShadow: "0 12px 32px color-mix(in srgb, var(--arbor-ink) 12%, transparent)",
-            }}
+            data-testid="switcher-list"
+            style={SWITCHER_LIST_STYLE}
           >
             {/* Child list */}
             {profiles.map((p) => (
@@ -406,3 +386,29 @@ export default function TopbarKidSwitcher({ maxWidth = "180px", fullWidth = fals
     </div>
   );
 }
+
+/**
+ * B-SHELL-42 r3 — the open family list fits the phone (390 HE). Both mounts sit at the
+ * START of their row (the phone strip: gutter · mark · switcher; the sidebar: full width),
+ * so the list hangs from the chip's START edge and grows toward the row's free side. The
+ * old end-edge anchor (from the old top-right chip) pushed a 200 px list past the
+ * screen edge from a narrow chip at the start: off the right edge in Hebrew, the left in
+ * English. The max width keeps it inside the 16 px gutters whatever the chip's width.
+ * Exported so the layout guard reads the shipped style, not a copy.
+ */
+export const SWITCHER_LIST_MIN_WIDTH_PX = 200;
+export const SWITCHER_LIST_STYLE: React.CSSProperties = Object.freeze({
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  /* logical property: hangs from the chip's start edge under both LTR and RTL */
+  insetInlineStart: 0,
+  zIndex: 50,
+  minWidth: `${SWITCHER_LIST_MIN_WIDTH_PX}px`,
+  maxWidth: "calc(100vw - 32px)",
+  boxSizing: "border-box",
+  borderRadius: "16px",
+  padding: "6px",
+  background: "var(--arbor-paper-elevated)",
+  border: "1px solid var(--arbor-rule)",
+  boxShadow: "0 12px 32px color-mix(in srgb, var(--arbor-ink) 12%, transparent)",
+});

@@ -797,13 +797,30 @@ const relOf = (abs: string): string => path.relative(srcRoot, abs).split(path.se
 const isTestFile = (rel: string): boolean => /\.test\.(ts|tsx)$/.test(rel);
 
 describe("rgba-creep ratchet — src/**/*.{ts,tsx,css} may only shrink", () => {
+  const rgbaCount = (text: string): number => (text.match(/rgba\(/g) ?? []).length;
   const counts = new Map<string, number>();
   for (const abs of walkSrc(srcRoot, [".ts", ".tsx", ".css"])) {
     const rel = relOf(abs);
     if (isTestFile(rel)) continue; // ratchet baselines live in test files
-    const n = (readFileSync(abs, "utf8").match(/rgba\(/g) ?? []).length;
+    const n = rgbaCount(readFileSync(abs, "utf8"));
     if (n > 0) counts.set(rel, n);
   }
+  /** Allowances that differ from the file's count (slack, or a stale file). */
+  const slackOf = (c: ReadonlyMap<string, number>) =>
+    Object.entries(RGBA_BASELINE)
+      .filter(([rel, allowed]) => (c.get(rel) ?? 0) !== allowed)
+      .map(([rel, allowed]) => `${rel}: allowance ${allowed}, file has ${c.get(rel) ?? 0}`);
+  /** Files whose count exceeds their allowance (0 for an unlisted file). */
+  const growthOf = (c: ReadonlyMap<string, number>) =>
+    [...c].filter(([rel, n]) => n > (RGBA_BASELINE[rel] ?? 0)).map(([rel, n]) => `${rel}: ${n} > baseline ${RGBA_BASELINE[rel] ?? 0}`);
+  /** The real file's text, edited, recounted into a copy of the real scan. */
+  const recount = (rel: string, edit: (text: string) => string) => {
+    const real = readFileSync(path.join(srcRoot, rel), "utf8");
+    const mutated = edit(real);
+    expect(mutated).not.toBe(real);
+    return new Map(counts).set(rel, rgbaCount(mutated));
+  };
+  const ADD_CHILD = "components/profile/AddChildFields.tsx";
 
   it("scans a non-trivial set (sanity)", () => {
     expect(counts.size).toBeGreaterThan(20);
@@ -812,27 +829,33 @@ describe("rgba-creep ratchet — src/**/*.{ts,tsx,css} may only shrink", () => {
   // B-INF-13: an allowance is the file's count, not a ceiling with slack — a decrease that
   // left the old number would let the next commit add rgba() back unseen.
   it("every allowance equals its file's current count (ratcheted down, no slack, no stale file)", () => {
-    const slack = Object.entries(RGBA_BASELINE)
-      .filter(([rel, allowed]) => (counts.get(rel) ?? 0) !== allowed)
-      .map(([rel, allowed]) => `${rel}: allowance ${allowed}, file has ${counts.get(rel) ?? 0}`);
+    const slack = slackOf(counts);
     expect(slack, `ratchet RGBA_BASELINE down to the file counts:\n${slack.join("\n")}`).toEqual([]);
-    // Negative control: the 10 Oct shape (AddChildFields allowed 3 while holding 2) is caught.
-    const stale = { ...RGBA_BASELINE, "components/profile/AddChildFields.tsx": (counts.get("components/profile/AddChildFields.tsx") ?? 0) + 1 };
-    expect(Object.entries(stale).filter(([rel, allowed]) => (counts.get(rel) ?? 0) !== allowed)).toHaveLength(1);
+  });
+
+  it("NEGATIVE CONTROL (B-INF-13): the real AddChildFields, one rgba() lighter, leaves slack that is caught", () => {
+    // The 10 Oct shape: the file dropped a literal and its allowance kept the old number.
+    const lighter = recount(ADD_CHILD, (text) => text.replace(/rgba\([^)]*\)/, "var(--arbor-green-ink)"));
+    expect(slackOf(lighter)).toEqual([`${ADD_CHILD}: allowance ${RGBA_BASELINE[ADD_CHILD]}, file has ${RGBA_BASELINE[ADD_CHILD] - 1}`]);
   });
 
   it("no file grows its rgba() count; unlisted files introduce none", () => {
-    const growth: string[] = [];
-    for (const [rel, n] of counts) {
-      const allowed = RGBA_BASELINE[rel] ?? 0;
-      if (n > allowed) growth.push(`${rel}: ${n} > baseline ${allowed}`);
-    }
+    const growth = growthOf(counts);
     expect(
       growth,
       `rgba() creep — use a var(--arbor-*) token instead (GD-1 blocks deleting old ` +
         `literals, but nothing may add new ones). If a decrease landed, ratchet the ` +
         `RGBA_BASELINE down in a reviewed commit:\n${growth.join("\n")}`,
     ).toEqual([]);
+  });
+
+  it("NEGATIVE CONTROL (B-INF-13): one rgba() added to real source is caught, listed file or not", () => {
+    const grown = recount(ADD_CHILD, (text) => `${text}\nconst creep = "rgba(0, 0, 0, 0.1)";\n`);
+    expect(growthOf(grown)).toEqual([`${ADD_CHILD}: ${RGBA_BASELINE[ADD_CHILD] + 1} > baseline ${RGBA_BASELINE[ADD_CHILD]}`]);
+    const UNLISTED = "components/layout/TopbarKidSwitcher.tsx";
+    expect(RGBA_BASELINE[UNLISTED]).toBeUndefined();
+    const fresh = recount(UNLISTED, (text) => `${text}\nconst creep = "rgba(0, 0, 0, 0.1)";\n`);
+    expect(growthOf(fresh)).toEqual([`${UNLISTED}: 1 > baseline 0`]);
   });
 });
 

@@ -12,6 +12,7 @@ import { useToast } from "../../context/ToastContext";
 import { Receipt } from "../ui/Receipt";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { api } from "../../lib/api";
+import { aiFailureMessage } from "../../lib/aiErrorCopy";
 import { normalizeAvatarStyle } from "../../lib/avatarStyle";
 import { isolate } from "../../lib/i18n";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
@@ -488,7 +489,9 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       finishingRef.current = false;
     } catch (e) {
       if (isKidModeActive() || parentRequestEpoch.current !== epoch) return;
-      const msg = e instanceof Error ? e.message : "Failed to start the journey.";
+      // B-AIOPS-01 follow-up: classified, localized parent copy — never the
+      // server's code (quota_unavailable, image_resting…) or English details.
+      const msg = aiFailureMessage(e, t);
       // B-KID-45 (KB-02): a child with a hero keeps the page art on the
       // authored fallback (the story's comic theme + the beat spine).
       const fallback = authoredJourneyRender(story, storyLang, heroAvatarUrl ? (STORY_COMIC[story.id]?.theme ?? story.theme) : undefined, storyHero);
@@ -781,7 +784,7 @@ export default function HeroJourneyTab({ initialStoryId, pinNonce = 0 }: {
       setChoiceId(undefined);
       setSaved(false);
     } catch (e) {
-      if (!isKidModeActive() && parentRequestEpoch.current === epoch && e instanceof Error) toast(e.message, "error");
+      if (!isKidModeActive() && parentRequestEpoch.current === epoch) toast(aiFailureMessage(e, t), "error");
     } finally {
       if (parentRequestEpoch.current === epoch) setRewriting(false);
     }

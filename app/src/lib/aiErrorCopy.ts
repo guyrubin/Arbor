@@ -22,10 +22,10 @@
  * Pure and dependency-light on purpose: it returns i18n KEYS + params, so the
  * render site owns t() and the copy stays translatable. No React, no I/O.
  */
-import { ApiError, EscalationRequiredError, NON_CRISIS_409_CODES, PaywallError, SEAT_IN_USE, isLiveResting } from "./api";
+import { ApiError, EscalationRequiredError, NON_CRISIS_409_CODES, PaywallError, SEAT_IN_USE, isImageResting, isLiveResting, isQuotaUnavailable } from "./api";
 import type { ActiveTab } from "./routes";
 
-export type AiFailureKind = "offline" | "quota" | "voiceResting" | "consent" | "paywall" | "escalation" | "generic";
+export type AiFailureKind = "offline" | "quota" | "voiceResting" | "imageResting" | "consent" | "paywall" | "escalation" | "generic";
 
 export interface AiFailureCopy {
   kind: AiFailureKind;
@@ -110,6 +110,22 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
     };
   }
 
+  // B-KID-05: today's drawing quota is spent (429 image_resting). Not the
+  // hourly question quota — the existing "resting today" line, no retry.
+  if (isImageResting(err)) {
+    return {
+      kind: "imageResting",
+      titleKey: "elev.aierrors.quota.title",
+      bodyKey: "elev.hero.resting",
+      bodyParams: {},
+      retryable: false,
+    };
+  }
+
+  // B-AIOPS-01: the usage counters could not be read (retryable 503). Nothing
+  // was spent; it is the generic "try it again", explicitly — never the slug.
+  if (isQuotaUnavailable(err)) return GENERIC();
+
   switch (statusOf(err)) {
     case QUOTA_STATUS: {
       const minutes =
@@ -162,14 +178,36 @@ export function classifyAiFailure(err: unknown, ctx: AiFailureContext = {}): AiF
         retryable: false,
       };
     default:
-      return {
-        kind: "generic",
-        titleKey: "elev.aierrors.generic.title",
-        bodyKey: "elev.aierrors.generic.body",
-        bodyParams: {},
-        retryable: true,
-      };
+      // Any other status or code (including unknown slugs) — the generic copy.
+      return GENERIC();
   }
+}
+
+const GENERIC = (): AiFailureCopy => ({
+  kind: "generic",
+  titleKey: "elev.aierrors.generic.title",
+  bodyKey: "elev.aierrors.generic.body",
+  bodyParams: {},
+  retryable: true,
+});
+
+/**
+ * B-AIOPS-01 follow-up: the ONE line a toast or inline note shows for a failed
+ * AI/image/plan/book call — the classified body in the parent's locale, never
+ * `err.message` (which is the server's code or English `details`). Parent
+ * register only: kid-mode surfaces keep their own kid copy.
+ */
+export function aiFailureMessage(
+  err: unknown,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  ctx: AiFailureContext = {},
+): string {
+  const copy = classifyAiFailure(err, {
+    online: browserOnline(),
+    retryAfterSeconds: err instanceof ApiError ? err.retryAfterSeconds : undefined,
+    ...ctx,
+  });
+  return t(copy.bodyKey, copy.bodyParams);
 }
 
 /** Parse a `Retry-After` header value (seconds form) — null when absent/bad. */

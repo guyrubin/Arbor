@@ -217,3 +217,42 @@ describe("B-KID-119: the client never fires a scene/comic call the plan cannot g
     expect(src).toContain('imageAllowance: IMAGE_ALLOWANCE[accessEnded(entitlement) ? "signed_out" : entitlement.plan],');
   });
 });
+
+/** B-AIOPS-01: a store that throws the typed outage error on the named counters. */
+const failingOn = (inner: MemoryCounterStore, names: string[], ops: ("increment" | "add" | "peek")[] = ["increment", "add", "peek"]) => {
+  const boom = async (name: string) => { const { QuotaStoreUnavailableError } = await import("./quotaStore.js"); throw new QuotaStoreUnavailableError(name); };
+  return {
+    increment: (name: string, key: string, w: number) => (ops.includes("increment") && names.includes(name) ? boom(name) : inner.increment(name, key, w)) as any,
+    add: (name: string, key: string, amt: number, w: number) => (ops.includes("add") && names.includes(name) ? boom(name) : inner.add(name, key, amt, w)) as any,
+    peek: (name: string, key: string, w: number) => (ops.includes("peek") && names.includes(name) ? boom(name) : inner.peek(name, key, w)) as any,
+  };
+};
+
+describe("B-AIOPS-01: image allowance fails closed on a counter-store error", () => {
+  it("a failed counter is a calm retryable 503 — never an allowed call, never 'resting'", async () => {
+    const { createImageQuota } = await load();
+    const counters = failingOn(new MemoryCounterStore(), ["img_global_daily"]);
+    const r = await call(createImageQuota(counters as any, storeFor({ p: "plus" })), "p");
+    expect(r.passed).toBe(false);
+    expect(r.res.statusCode).toBe(503);
+    expect(r.res.body).toEqual({ error: "quota_unavailable", code: "quota_unavailable", retryable: true });
+    expect(r.res.headers["Retry-After"]).toBe("15");
+  });
+
+  it("a failure mid-reservation gives back what this request already reserved", async () => {
+    const { createImageQuota } = await load();
+    const inner = new MemoryCounterStore();
+    const counters = failingOn(inner, ["img_user_30d"], ["increment"]);
+    const r = await call(createImageQuota(counters as any, storeFor({ p: "plus" })), "p");
+    expect(r.passed).toBe(false);
+    expect(r.res.statusCode).toBe(503);
+    expect((await inner.peek("img_user_daily", "p", 86400000)).count).toBe(0);
+  });
+
+  it("normal path unchanged: a healthy store still allows the call", async () => {
+    const { createImageQuota } = await load();
+    const r = await call(createImageQuota(new MemoryCounterStore(), storeFor({ p: "plus" })), "p");
+    expect(r.passed).toBe(true);
+    expect(r.res.headers["X-Image-Quota-Remaining"]).toBe("2");
+  });
+});

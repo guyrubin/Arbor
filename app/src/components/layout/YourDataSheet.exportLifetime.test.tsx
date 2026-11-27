@@ -220,6 +220,10 @@ describe("final browser boundary and fresh parent action", () => {
     const after = elements(render());
     expect(after.find(e => e.props?.["data-testid"] === "your-data-export-receipt").props.children)
       .toBe(translate(lang, partial ? "elev.yourData.exportPartial" : "elev.yourData.exportComplete"));
+    // B-CAREPRO-50: a partial export says what it left out, in the parent's language.
+    const gaps = after.find(e => e.props?.["data-testid"] === "your-data-export-gaps");
+    if (!partial) expect(gaps).toBeUndefined();
+    else expect(elements(gaps).filter(e => e.type === "li").map(e => e.props.children)).toEqual([translate(lang, "elev.yourData.gap.unlisted", { name: name.split(" ")[0] })]);
     expect(after.find(e => e.props?.["data-testid"] === "your-data-export").props.children)
       .toContain(translate(lang, "elev.yourData.export", { name: name.split(" ")[0] }));
   });

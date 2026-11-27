@@ -243,7 +243,7 @@ function useArborState() {
   // through the app toast (ToastProvider wraps ArborProvider in App.tsx; the
   // optional accessor keeps unit renders without a provider from throwing).
   const toastCtx = useToastOptional();
-  const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
+  const toast = (message: string, type?: "error" | "info") => toastCtx?.toast(message, type); // B-STATUS-01: no success through here
 
   // Active child comes from ProfileContext so every AI call, log, and plan is
   // scoped to the selected child rather than a hardcoded profile.
@@ -1786,7 +1786,8 @@ function useArborState() {
       const planProps = trackPlanGenerated({ steps: planSteps, source: "plans" });
       trackFirstPlan(planProps); // activation: only the family's first plan
       void maybeActivateReferral(); // mk-p0-2: a referred parent's activation closes the loop
-      toast(t("ctx.toast.planWoven", { title: planData.title }), "success");
+      // B-STATUS-01: no toast — the new plan leads Plans with its receipt line
+      // ("<title> · Started today", Undo), PlansTab's started receipt.
     } catch (err: any) {
       // B-ASKJB-49 r2: a 409 renders the crisis card and logs nothing.
       if (err instanceof EscalationRequiredError) setEscalatedSurface("plans");
@@ -1810,9 +1811,9 @@ function useArborState() {
 
   /** TJB-04 "Keep this": one tap writes the suggestion line as a kept-insight
    *  row in the same subcollection (parent-owned record, no new sink). */
-  const keepBehaviorInsight = (text: string) => {
+  const keepBehaviorInsight = (text: string): string | null => {
     const clean = text.trim();
-    if (!clean) return;
+    if (!clean) return null;
     const now = new Date().toISOString();
     const row: InsightRecord = {
       id: `kept-${Date.now()}`,
@@ -1825,8 +1826,11 @@ function useArborState() {
     };
     void insightsCol.upsert(row);
     try { track("insight_kept", { source: "behavior-analysis" }); } catch { /* noop */ }
-    toast(t("beh.analysis.kept", { name: (childProfile.name || "").split(" ")[0] }), "success");
+    // B-STATUS-01: the caller answers with its receipt line (and its Undo).
+    return row.id;
   };
+  /** B-STATUS-01: Undo for "Keep this" — the kept row goes again. */
+  const unkeepBehaviorInsight = (id: string) => void insightsCol.remove(id);
   const keptInsights = useMemo(() => insightsCol.items.filter((r) => r.kind === "kept-insight"), [insightsCol.items]);
 
   // Mark a behavior log resolved / unresolved
@@ -1837,6 +1841,8 @@ function useArborState() {
 
   // Deletions (data correction)
   const deleteLog = (id: string) => logsCol.remove(id);
+  /** B-STATUS-01: Undo for a saved edit — the row exactly as it was before. */
+  const restoreLog = (previous: BehaviorLog) => logsCol.upsert(previous);
   /** B-LOOP-06: the parent confirmed where a saved moment belongs (and,
    *  optionally, the milestone it evidences). Only the parent's tap calls it. */
   const fileMomentOnShelf = (logId: string, shelf: ShelfId, milestoneId?: string, original?: BehaviorLog) => {
@@ -2122,6 +2128,7 @@ function useArborState() {
     updatePlanStepText,
     toggleLogResolved,
     deleteLog,
+    restoreLog,
     deletePlan,
     startPlanFromTemplate,
     startRoutinePlan,
@@ -2135,6 +2142,7 @@ function useArborState() {
     behaviorAnalysis: behaviorAnalysisView,
     behaviorAnalysisRecord,
     keepBehaviorInsight,
+    unkeepBehaviorInsight,
     keptInsights,
     isAnalyzingBehavior,
     memoryReviewItems,

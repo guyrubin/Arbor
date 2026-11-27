@@ -15,7 +15,7 @@ vi.mock("./logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: v
 import { bookTtsCandidate, createBookNarrationRouter, localNarrationChildSource, mockBookTts, mockToneWav, narrationSetId, type BookTtsCheck, type BookTtsProvider, type BookTtsRequest, type NarrationChildSource } from "./bookNarration";
 import { LocalBookAssetsDocStore } from "./bookSheet";
 import type { BookAssetBucket, BookAssetFile } from "./bookAssets";
-import { MemoryCounterStore } from "./quotaStore";
+import { MemoryCounterStore, QuotaStoreUnavailableError, type UsageCounterStore } from "./quotaStore";
 import type { EntitlementStore, Plan } from "./entitlements";
 import type { BookAssetsDoc } from "../lib/library/bookAssetPaths";
 
@@ -41,7 +41,7 @@ const plans = (p: Record<string, Plan>): EntitlementStore => ({ async getPlan(ui
 const open: RequestHandler = (_req, _res, next) => next();
 const DOC: BookAssetsDoc = { id: BOOK, bookId: BOOK, sheetId: SHEET, setId: "none", sets: ["none"], sheetManifest: { poses: {} }, files: [`hero-sheets/${SHEET}/sit.webp`], bytes: 1, createdAt: "t0" };
 
-async function serve(opts: { name?: string | null; gender?: string | null; check?: BookTtsCheck; provider?: BookTtsProvider; doc?: BookAssetsDoc | null; arborEnv?: string; children?: NarrationChildSource; mock?: boolean; local?: boolean } = {}) {
+async function serve(opts: { name?: string | null; gender?: string | null; check?: BookTtsCheck; provider?: BookTtsProvider; doc?: BookAssetsDoc | null; arborEnv?: string; children?: NarrationChildSource; mock?: boolean; local?: boolean; counters?: UsageCounterStore } = {}) {
   const mem = memBucket();
   const docs = new LocalBookAssetsDocStore();
   const doc = opts.doc === undefined ? DOC : opts.doc;
@@ -58,7 +58,7 @@ async function serve(opts: { name?: string | null; gender?: string | null; check
     next();
   });
   app.use("/api", createBookNarrationRouter({
-    getBucket: async () => mem.bucket, requireOwnership: open, docs, children, counters: new MemoryCounterStore(),
+    getBucket: async () => mem.bucket, requireOwnership: open, docs, children, counters: opts.counters ?? new MemoryCounterStore(),
     entitlements: plans({ owner: "plus", free: "free" }), provider, check: opts.check === undefined ? null : opts.check,
     mock: opts.mock, local: opts.local, config: { arborEnv: (opts.arborEnv ?? "local") as never },
   }));
@@ -183,6 +183,18 @@ describe("K2 2b: the check, the quota, the policy", () => {
     expect((await g.post({ bookId: BOOK, lang: "en", file: "p1.mp3" })).body).toMatchObject({ code: "book_narration_resting", window: "day" });
     expect(g.calls).toEqual([]);
     await g.stop();
+  });
+
+  it("B-AIOPS-01: a counter-store error is a calm retryable 503 with no take spent, never 'resting'", async () => {
+    const down = new QuotaStoreUnavailableError("tts_book_global_daily");
+    const counters: UsageCounterStore = { increment: async () => { throw down; }, add: async () => { throw down; }, peek: async () => { throw down; } };
+    const s = await serve({ counters });
+    const r = await s.post({ bookId: BOOK, lang: "en", file: "p1.mp3" });
+    expect(r.status).toBe(503);
+    expect(r.body).toEqual({ error: "quota_unavailable", code: "quota_unavailable", retryable: true });
+    expect(s.calls).toEqual([]);
+    expect([...s.objects.keys()].filter((k) => k.includes("/narration/"))).toEqual([]);
+    await s.stop();
   });
 
   it("the provider carries child data: prod admits it only where it runs in the EU (fails closed)", async () => {

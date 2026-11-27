@@ -115,6 +115,9 @@ export type CoachResponse = z.infer<typeof coachResponseZodSchema> & {
   todayPlanProvenance?: { step: number; memoryId: string; kind: "approved_fact" }[];
   /** V77: server-set provenance — the active program this answer's prompt carried (never model-emitted). */
   activeProgramUsed?: { id: string; week: number };
+  /** B-AI-11: server-set, never rendered — see resolveCitedSources. */
+  citedCardIds?: string[];
+  suppliedCardIds?: string[];
 };
 
 /**
@@ -353,6 +356,29 @@ export const buildSourceCards = (
     const card = byId.get(id);
     return card ? [{ id, title: card.title, type: card.type }] : [];
   });
+};
+
+/**
+ * B-AI-11: the shown sources of an answer are the cards it CITED that were
+ * also SUPPLIED in the prompt — never the whole supplied set. Three distinct
+ * id lists come out:
+ *  - suppliedCardIds: every card offered in the prompt (context, not support);
+ *  - citedCardIds: what the model said it used, raw (unknown ids kept, for the
+ *    eval citation-hallucination trend line);
+ *  - sourceCardsUsed / sourceCards: the verified intersection, in cited order,
+ *    de-duplicated — the only ids a parent is shown.
+ * A model that cites nothing (or only unknown ids) gets NO shown sources; the
+ * old fill-every-supplied-id fallback is gone.
+ */
+export const resolveCitedSources = (
+  cited: readonly string[] | undefined,
+  supplied: readonly { id: string; title: string; type: string }[]
+): { sourceCardsUsed: string[]; sourceCards: SourceCardRef[]; citedCardIds: string[]; suppliedCardIds: string[] } => {
+  const citedCardIds = (cited ?? []).filter((id): id is string => typeof id === "string");
+  const suppliedCardIds = supplied.map((card) => card.id);
+  const offered = new Set(suppliedCardIds);
+  const sourceCardsUsed = Array.from(new Set(citedCardIds.filter((id) => offered.has(id))));
+  return { sourceCardsUsed, sourceCards: buildSourceCards(sourceCardsUsed, supplied), citedCardIds, suppliedCardIds };
 };
 
 /** B-AI-14 (coach_chat 1.5.0): the model schema sent on a SEEDED turn says

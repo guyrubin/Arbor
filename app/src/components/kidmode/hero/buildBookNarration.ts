@@ -52,7 +52,8 @@ export interface NarrationBuildScope {
 }
 
 const RATE_LIMITED = new Set(["book_assets_rate", "http_429"]);
-const BUSY = new Set(["book_narration_busy", "network", "http_500", "http_502", "http_503", "book_storage_unavailable"]);
+// B-AIOPS-01: "quota_unavailable" = the usage counters could not be read; a short retry, never "resting".
+const BUSY = new Set(["book_narration_busy", "network", "http_500", "http_502", "http_503", "book_storage_unavailable", "quota_unavailable"]);
 
 /** Render (or find) every name file of one voice folder. */
 export async function buildBookNarration(input: { childId: string; folder: VoiceFolder; bookId?: string }, deps: NarrationBuilderDeps): Promise<NarrationBuildResult> {

@@ -34,7 +34,7 @@ import { useLanguage, type AiLang } from "../../context/LanguageContext";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { useEntitlement } from "../../hooks/useEntitlement";
 import { useCheckout } from "../../hooks/useCheckout";
 import { T } from "../../lib/tokens";
@@ -91,7 +91,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
   const [dataOpen, setDataOpen] = useState(false);
   // STORE-2: all checkout/manage/restore actions go through the ONE platform-
   // gated hook — no inline `/api/billing/…` calls in this file (guard-tested).
-  const { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative } = useCheckout();
+  const { busy, checkoutError, startCheckout, openPortal, restorePurchases, isNative, receipt: planReceipt, manageNotice } = useCheckout();
   // B-GA-12: on native, no upgrade button without a store price for this cadence;
   // the notice tells loading from a failed/missing offering apart.
   const offer = offeringGate({ isNative: isNativePlatform, status: nativeOffering.status, nativePrices: nativeOffering.prices, plan: "plus", cadence, platform: nativePlatform, t });
@@ -497,6 +497,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
               <button onClick={() => void openPortal()} disabled={busy} className="set-act set-primary mt-2.5 min-h-11 disabled:opacity-50">
                 {t("set.plan.manage")}
               </button>
+              {/* B-STATUS-01: where to manage it instead — the Plan row says so. */}
+              {manageNotice && <Receipt icon="info" size="sm" testId="plan-manage-notice" className="mt-2">{t(manageNotice)}</Receipt>}
             </>
           )}
 
@@ -510,7 +512,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           )}
           {!isPaid && !entitlementUnverified && (
             <>
-              {coachLimit !== null && !isTrial && !trialEnded && (
+              {coachLimit !== null && !isTrial && !trialEnded && typeof entitlement.usage.coachMessagesToday === "number" && (
                 <p className="text-xs mt-2" style={{ color: "var(--arbor-muted)" }}>
                   {t("set.plan.coachToday", { used: entitlement.usage.coachMessagesToday, limit: coachLimit })}
                 </p>
@@ -563,6 +565,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
 
           {/* STORE-2: Apple-required Restore Purchases — native builds ONLY
               (StoreKit/Play re-links past purchases to this account). */}
+          {/* B-STATUS-01: a purchase or restore made here answers in this row. */}
+          <ReceiptNoteLine note={planReceipt} testId="plan-receipt" size="sm" className="mt-2" />
           {isNative && (
             <button onClick={() => void restorePurchases()} disabled={busy} className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold rounded-xl px-3 min-h-11 disabled:opacity-50" style={{ background: "var(--arbor-paper-deep)", color: "var(--arbor-ink)", border: "1px solid var(--arbor-rule)" }}>
               {t("set.plan.restore")}

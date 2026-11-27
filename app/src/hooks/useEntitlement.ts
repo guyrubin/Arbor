@@ -178,7 +178,11 @@ export function takeBillingReturn(storage: FlagStorage | null = sessionStore()):
 }
 
 export type BillingReturnDeps = {
-  toast: (message: string, type?: "info" | "success" | "error") => void;
+  /** "Activating…" and the pending message (Retry rides on it). */
+  toast: (message: string, type?: "info" | "error") => void;
+  /** B-STATUS-01: the confirmed purchase answers with the Receipt line, not a
+   *  success toast (useBillingReturn carries it to Shell's receipt slot). */
+  answer: (message: string) => void;
   t: (key: string) => string;
   refresh: () => Promise<EntitlementInfo>;
   schedule?: (fn: () => void, ms: number) => unknown;
@@ -263,7 +267,7 @@ export function startBillingReturnPoll(deps: BillingReturnDeps): () => void {
       // A failed read is an unconfirmed try, never a reason to stop silently.
       if (!alive || settled) return;
     }
-    if (confirmed) { settled = true; clearTimeout(deadline); deps.toast(deps.t("pw.activated"), "success"); return; }
+    if (confirmed) { settled = true; clearTimeout(deadline); deps.answer(deps.t("pw.activated")); return; }
     if (tries < maxTries) handle = schedule(() => void poll(), intervalMs);
     else giveUp();
   };

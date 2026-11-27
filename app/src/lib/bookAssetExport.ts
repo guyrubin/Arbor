@@ -2,7 +2,7 @@ import { authHeaders } from "./api";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { BOOK_ASSET_ID, bookAssetUrl, isBookAssetRel } from "./library/bookAssetPaths";
-import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS, BOOK_EXPORT_MEDIA_TYPES, type BookExportFailure, type BookExportFile, type BookExportInventory, type PortableBookAssets } from "./library/bookAssetExportContract";
+import { BOOK_EXPORT_DIGEST_HEADER, BOOK_EXPORT_LIMITS, BOOK_EXPORT_MEDIA_TYPES, BOOK_EXPORT_STOP_AFTER_UNAVAILABLE, BOOK_EXPORT_TRANSIENT_RETRY_MS, type BookExportFailure, type BookExportFile, type BookExportInventory, type BookExportLimits, type PortableBookAssets } from "./library/bookAssetExportContract";
 
 class ExportFailure extends Error {
   constructor(readonly code: BookExportFailure) { super(code); }
@@ -33,9 +33,9 @@ export function pauseWithin(ms: number, signal: AbortSignal | undefined, deadlin
 }
 
 /** Bound token refresh, dispatch and body reads, including a stalled stream. */
-async function boundedRequest<T>(signal: AbortSignal | undefined, deadline: number, work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function boundedRequest<T>(signal: AbortSignal | undefined, deadline: number, work: (signal: AbortSignal) => Promise<T>, requestMs: number = BOOK_EXPORT_LIMITS.requestMs): Promise<T> {
   if (signal?.aborted) throw new ExportFailure("cancelled");
-  const ms = Math.min(BOOK_EXPORT_LIMITS.requestMs, deadline - Date.now());
+  const ms = Math.min(requestMs, deadline - Date.now());
   if (ms <= 0) throw new ExportFailure("timeout");
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
@@ -165,10 +165,17 @@ function base64(bytes: Uint8Array): string {
  * It is a read-only, parent-requested download. No model/provider calls, public
  * URLs, uploads, new caches or credentials are created by this path.
  */
-export async function exportPrivateBookAssets(uid: string | undefined, childId: string, metadata: unknown[], options: { signal?: AbortSignal; metadataComplete?: boolean } = {}): Promise<PortableBookAssets> {
+export async function exportPrivateBookAssets(uid: string | undefined, childId: string, metadata: unknown[], options: {
+  signal?: AbortSignal; metadataComplete?: boolean;
+  /** Tests narrow the budget (the receipt records the limits actually used). */
+  limits?: Partial<BookExportLimits>;
+  /** Tests shorten the waits before a passing failure is read again. */
+  transientRetryMs?: readonly number[];
+} = {}): Promise<PortableBookAssets> {
+  const limits: BookExportLimits = { ...BOOK_EXPORT_LIMITS, ...options.limits };
   const out: PortableBookAssets = {
     format: "arbor-private-book-assets-v1", scope: "private-book-storage-and-registered-metadata",
-    status: "incomplete", inventory: "unavailable", issues: [], limits: BOOK_EXPORT_LIMITS,
+    status: "incomplete", inventory: "unavailable", issues: [], limits,
     includedFiles: 0, includedBytes: 0, files: [],
   };
   if (options.metadataComplete === false) out.issues.push("metadata_unavailable");
@@ -194,7 +201,7 @@ export async function exportPrivateBookAssets(uid: string | undefined, childId: 
     if (current !== owner) { ownerLost = true; controller.abort(); }
   });
   try {
-    await collectPrivateBookAssets(out, childId, metadata, controller.signal, assertOwner);
+    await collectPrivateBookAssets(out, childId, metadata, controller.signal, assertOwner, limits, options.transientRetryMs ?? BOOK_EXPORT_TRANSIENT_RETRY_MS);
     assertOwner();
   } catch (e) {
     out.status = "incomplete";
@@ -216,11 +223,11 @@ export async function exportPrivateBookAssets(uid: string | undefined, childId: 
   return out;
 }
 
-async function collectPrivateBookAssets(out: PortableBookAssets, childId: string, metadata: unknown[], signal: AbortSignal, assertOwner: () => void): Promise<void> {
-  const deadline = Date.now() + BOOK_EXPORT_LIMITS.totalMs;
+async function collectPrivateBookAssets(out: PortableBookAssets, childId: string, metadata: unknown[], signal: AbortSignal, assertOwner: () => void, limits: BookExportLimits, retryMs: readonly number[]): Promise<void> {
+  const deadline = Date.now() + limits.totalMs;
   let inventory: BookExportInventory;
   try {
-    inventory = await boundedRequest(signal, deadline, async (signal) => parseInventory(await requestBytes(`/api/children/${encodeURIComponent(childId)}/book-assets/export-manifest`, BOOK_EXPORT_LIMITS.manifestBytes, signal, assertOwner), childId));
+    inventory = await boundedRequest(signal, deadline, async (signal) => parseInventory(await requestBytes(`/api/children/${encodeURIComponent(childId)}/book-assets/export-manifest`, limits.manifestBytes, signal, assertOwner), childId), limits.requestMs);
   } catch (e) { out.issues.push(failureOf(e)); return; }
   out.inventory = inventory.status;
   out.issues.push(...inventory.issues);
@@ -229,12 +236,12 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
   // treated as an empty, successfully exported set. Unknown unsafe names are
   // not copied into portable paths or used as requests.
   let checked = 0;
-  if (metadata.length > BOOK_EXPORT_LIMITS.files) out.issues.push("metadata_limit");
-  for (const raw of metadata.slice(0, BOOK_EXPORT_LIMITS.files)) {
+  if (metadata.length > limits.files) out.issues.push("metadata_limit");
+  for (const raw of metadata.slice(0, limits.files)) {
     const doc = raw as { bookId?: unknown; files?: unknown } | null;
     if (!doc || typeof doc.bookId !== "string" || !BOOK_ASSET_ID.test(doc.bookId) || !Array.isArray(doc.files)) { out.issues.push("invalid_metadata"); continue; }
     for (const path of doc.files) {
-      if (++checked > BOOK_EXPORT_LIMITS.files) { out.issues.push("metadata_limit"); break; }
+      if (++checked > limits.files) { out.issues.push("metadata_limit"); break; }
       if (typeof path !== "string" || !isBookAssetRel(path)) { out.issues.push("invalid_metadata"); continue; }
       const file = { bookId: doc.bookId, path, bytes: null };
       if (!listed.has(keyOf(file))) {
@@ -243,52 +250,68 @@ async function collectPrivateBookAssets(out: PortableBookAssets, childId: string
         listed.set(keyOf(file), file);
       }
     }
-    if (checked > BOOK_EXPORT_LIMITS.files) break;
+    if (checked > limits.files) break;
   }
   let stop: BookExportFailure | undefined;
   let reservedBytes = 0;
+  let unavailableInARow = 0;
   for (const file of inventory.files) {
     let status = stop;
     if (signal.aborted) status = "cancelled";
     if (Date.now() >= deadline) status = "timeout";
     if (!status && file.bytes === null) status = "unknown_size";
-    if (!status && (file.bytes! > BOOK_EXPORT_LIMITS.fileBytes || reservedBytes + file.bytes! > BOOK_EXPORT_LIMITS.totalBytes)) status = "byte_limit";
+    if (!status && (file.bytes! > limits.fileBytes || reservedBytes + file.bytes! > limits.totalBytes)) status = "byte_limit";
     if (status) { out.files.push({ ...file, status }); continue; }
     // Failed/partial reads still consume this attempt's budget. They cannot
     // turn a bounded export into an unbounded sequence of discarded bodies.
     reservedBytes += file.bytes!;
     try {
-      const served: ServedAs = { digest: null, mediaType: null };
-      let bytes: Uint8Array | undefined;
-      for (let attempt = 0; bytes === undefined; attempt++) {
+      let kept: { bytes: Uint8Array; sha256: string; mediaType: string } | undefined;
+      for (let paced = 0, passing = 0; kept === undefined;) {
+        const served: ServedAs = { digest: null, mediaType: null };
         try {
-          bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!, served));
+          const bytes = await boundedRequest(signal, deadline, (signal) => requestBytes(`${bookAssetUrl(childId, file.bookId, file.path)}&export=1`, file.bytes!, signal, assertOwner, file.bytes!, served), limits.requestMs);
+          assertOwner();
+          const hash = await boundedRequest(signal, deadline, async (signal) => {
+            const result = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>));
+            assertOwner();
+            signal.throwIfAborted();
+            return result;
+          }, limits.requestMs);
+          assertOwner();
+          if (signal.aborted) throw new ExportFailure("cancelled");
+          const sha256 = Array.from(hash, (n) => n.toString(16).padStart(2, "0")).join("");
+          // B-CAREPRO-50: the device's digest must equal the server's, and the
+          // file is typed by what the server served it as — never by its path.
+          if (!served.digest || served.digest !== sha256 || !served.mediaType) throw new ExportFailure("integrity");
+          kept = { bytes, sha256, mediaType: served.mediaType };
         } catch (e) {
-          if (!(e instanceof RetryLater)) throw e;
-          if (attempt >= EXPORT_RETRY_ATTEMPTS) throw new ExportFailure("unavailable");
-          await pauseWithin(e.seconds * 1000, signal, deadline);
+          if (e instanceof RetryLater) {
+            if (paced++ >= EXPORT_RETRY_ATTEMPTS) throw new ExportFailure("unavailable");
+            await pauseWithin(e.seconds * 1000, signal, deadline);
+            continue;
+          }
+          // B-CAREPRO-50: a passing failure (5xx, network, a cut stream) is
+          // read again; a digest mismatch is reported, never retried into a pass.
+          if (failureOf(e) === "unavailable" && !signal.aborted && passing < retryMs.length) {
+            await pauseWithin(retryMs[passing++], signal, deadline);
+            continue;
+          }
+          throw e;
         }
       }
-      assertOwner();
-      const hash = await boundedRequest(signal, deadline, async (signal) => {
-        const result = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>));
-        assertOwner();
-        signal.throwIfAborted();
-        return result;
-      });
-      assertOwner();
-      if (signal.aborted) throw new ExportFailure("cancelled");
-      const sha256 = Array.from(hash, (n) => n.toString(16).padStart(2, "0")).join("");
-      // B-CAREPRO-50: the device's digest must equal the server's, and the
-      // file is typed by what the server served it as — never by its path.
-      if (!served.digest || served.digest !== sha256 || !served.mediaType) throw new ExportFailure("integrity");
-      out.files.push({ ...file, status: "included", encoding: "base64", mediaType: served.mediaType, sha256, data: base64(bytes) });
+      out.files.push({ ...file, status: "included", encoding: "base64", mediaType: kept.mediaType, sha256: kept.sha256, data: base64(kept.bytes) });
       out.includedFiles++;
-      out.includedBytes += bytes.length;
+      out.includedBytes += kept.bytes.length;
+      unavailableInARow = 0;
     } catch (e) {
       const status = failureOf(e);
       out.files.push({ ...file, status });
-      if (["unauthorized", "cancelled", "timeout", "unavailable"].includes(status)) stop = status;
+      unavailableInARow = status === "unavailable" ? unavailableInARow + 1 : 0;
+      // One file's failure names that file only; the rest are still read
+      // unless the session ended or the service is down.
+      if (["unauthorized", "cancelled", "timeout"].includes(status)) stop = status;
+      else if (unavailableInARow >= BOOK_EXPORT_STOP_AFTER_UNAVAILABLE) stop = "unavailable";
     }
   }
   out.issues = [...new Set(out.issues)];

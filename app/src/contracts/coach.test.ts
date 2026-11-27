@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ESCALATE_IF_FALLBACK, HYPOTHESIS_UNCERTAINTY, buildSourceCards, coachResponseZodSchema, createCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, renderCoachResponse, scrubHandoffNotes, scrubHypothesisConfidence, toFileTurnContract, withEscalateIfFallback } from "./coach.js";
+import { ESCALATE_IF_FALLBACK, HYPOTHESIS_UNCERTAINTY, buildSourceCards, resolveCitedSources, coachResponseZodSchema, createCoachResponseGeminiSchema, createFileTurnCoachResponseGeminiSchema, createSeededCoachResponseGeminiSchema, renderCoachResponse, scrubHandoffNotes, scrubHypothesisConfidence, toFileTurnContract, withEscalateIfFallback } from "./coach.js";
 import { sharedEscalation } from "../content/hardMomentCards.js";
 import { loadFramework } from "../services/framework.js";
 
@@ -92,6 +92,41 @@ describe("coach Zod schema", () => {
     expect(coachResponseZodSchema.parse(validCoach).approvedMemoryFactsUsed).toBeUndefined();
     expect(() => coachResponseZodSchema.parse({ ...validCoach, approvedMemoryFactsUsed: 2.5 })).toThrow();
     expect(() => coachResponseZodSchema.parse({ ...validCoach, approvedMemoryFactsUsed: -1 })).toThrow();
+  });
+});
+
+describe("resolveCitedSources (B-AI-11: shown = cited ∩ supplied)", () => {
+  const supplied = [
+    { id: "card-a", title: "Card A", type: "intervention" },
+    { id: "card-b", title: "Card B", type: "scholar" },
+    { id: "card-c", title: "Card C", type: "practice_card" },
+  ];
+
+  it("a cited subset shows only that subset, in cited order", () => {
+    const out = resolveCitedSources(["card-c", "card-a"], supplied);
+    expect(out.sourceCardsUsed).toEqual(["card-c", "card-a"]);
+    expect(out.sourceCards.map((c) => c.id)).toEqual(["card-c", "card-a"]);
+    expect(out.sourceCards[0]).toEqual({ id: "card-c", title: "Card C", type: "practice_card" });
+    expect(out.suppliedCardIds).toEqual(["card-a", "card-b", "card-c"]);
+  });
+
+  it("no citation shows no sources — never the whole supplied set", () => {
+    for (const cited of [undefined, []]) {
+      const out = resolveCitedSources(cited, supplied);
+      expect(out.sourceCardsUsed).toEqual([]);
+      expect(out.sourceCards).toEqual([]);
+      expect(out.citedCardIds).toEqual([]);
+      // Negative control: the supplied context is still recorded, separately.
+      expect(out.suppliedCardIds).toHaveLength(3);
+    }
+  });
+
+  it("unknown cited ids are dropped from shown sources but kept as raw citations", () => {
+    const out = resolveCitedSources(["made-up", "card-b", "card-b"], supplied);
+    expect(out.sourceCardsUsed).toEqual(["card-b"]);
+    expect(out.sourceCards.map((c) => c.id)).toEqual(["card-b"]);
+    expect(out.citedCardIds).toEqual(["made-up", "card-b", "card-b"]);
+    expect(resolveCitedSources(["made-up"], supplied).sourceCardsUsed).toEqual([]);
   });
 });
 
