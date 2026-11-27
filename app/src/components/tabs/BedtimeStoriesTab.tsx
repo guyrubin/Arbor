@@ -29,7 +29,7 @@ import { Icon } from "../ui/Icon";
 import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../../context/ToastContext";
-import { Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { Receipt, ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { api, EscalationRequiredError } from "../../lib/api";
 import { resolveHebrewSlash } from "../../lib/hebrewSlashGender";
@@ -253,7 +253,7 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
         undo: written.id ? {
           label: t("elev.loop.notice.undo"),
           testId: "bedtime-night-receipt-undo",
-          onUndo: () => { nightReceipt.clear(); void deleteLog(written.id); },
+          onUndo: undoThen(() => deleteLog(written.id), nightReceipt.clear),
         } : null,
       });
       reset();
@@ -465,12 +465,14 @@ export function BedtimeStoryBody({ embedded = false }: { embedded?: boolean }) {
                     undo={keptIds.current[i] ? {
                       label: t("elev.loop.notice.undo"),
                       testId: "bedtime-answer-kept-undo",
-                      onUndo: () => {
+                      // B-STATUS-01: the kept line goes only once the delete went through.
+                      onUndo: undoThen(() => {
                         const id = keptIds.current[i];
+                        return id ? deleteLog(id) : undefined;
+                      }, () => {
                         delete keptIds.current[i];
                         setKept((k) => ({ ...k, [i]: false }));
-                        if (id) void deleteLog(id);
-                      },
+                      }),
                     } : null}
                   >
                     {t("elev.bedtime.keep.done")}

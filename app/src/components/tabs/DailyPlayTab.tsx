@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useArbor } from "../../context/ArborContext";
 import { useAuth } from "../../context/AuthContext";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { useHashQuery } from "../../hooks/useHashQuery";
 import { DsRoot, Guide, MoreLink, Route, RouteHead, RouteSection, scrollToSection, Token } from "../../design/primitives";
@@ -80,7 +80,8 @@ function ScopedDailyPlayTab() {
     undo: {
       label: t("elev.loop.notice.undo"),
       testId: "play-receipt-undo",
-      onUndo: () => { playReceipt.clear(); undoPlayCompletion(done); restore(); },
+      // B-STATUS-01: the tap's state comes back only once the log is gone.
+      onUndo: undoThen(() => undoPlayCompletion(done), () => { playReceipt.clear(); restore(); }),
     },
   });
   const { t, uiLang } = useLanguage();

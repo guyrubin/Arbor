@@ -13,7 +13,7 @@ import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { HOME_PROGRAM_SCOPE_ID, grantsHomeProgram, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
@@ -321,15 +321,15 @@ export default function TrustedSharing() {
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
   /** B-STATUS-01: Undo on a fresh grant revokes it (the server keeps the
-   *  revoked grant in Sharing history, as any revoke does). */
+   *  revoked grant in Sharing history, as any revoke does). A refused revoke
+   *  keeps the receipt with its "still kept · Try again" line. */
   const undoFor = (created: ShareGrant | null | undefined) => created?.id ? {
     label: t("elev.loop.notice.undo"),
     testId: "sharing-receipt-undo",
-    onUndo: () => {
+    onUndo: undoThen(() => api.revokeShare(created.id).then(() => reloadOwn()), () => {
       receipt.clear();
       setInvite((current) => (current?.email === created.recipientEmail ? null : current));
-      void api.revokeShare(created.id).then(() => reloadOwn(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
-    },
+    }),
   } : null;
 
   /** One grant path for the week card and the custom wizard (same toasts,
