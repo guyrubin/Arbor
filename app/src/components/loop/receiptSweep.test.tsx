@@ -68,7 +68,7 @@ describe("B-STATUS-01 · the practice card answers back", () => {
     it(`${lang}: "Did it" → the receipt, a link to its shelf, Undo; "Not today" → the receipt, no link`, () => {
       state.lang = lang;
       const shelf = translate(lang, "elev.shelves.words");
-      const did = renderToStaticMarkup(<PracticeCard practice={practice} milestone={null} shelf="words" childName="Noa" gender="girl" answered="did" onAnswer={() => undefined} onUndo={() => undefined} />);
+      const did = renderToStaticMarkup(<PracticeCard practice={practice} milestone={null} shelf="words" childName="Noa" gender="girl" answered="did" onAnswer={() => undefined} onUndo={async () => undefined} />);
       const r = receipt(did, "practice-receipt");
       expectReceiptShape(r.line, lang);
       expect(r.words).toBe(words(translate(lang, "elev.loop.practice.didReceipt", { name: "Noa", shelf })));
