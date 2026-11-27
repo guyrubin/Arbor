@@ -148,8 +148,20 @@ briefs). They are painted once, in-product, not committed:
   <plate>.webp|png` with a provenance JSON beside each (model, location,
   prompt sha256, painter, time, cost; `childFree`/`textFree` stay false and
   `qc: "unverified"` until a person has viewed the plate full size).
-- `GET /api/plans/plates/:pattern/:plate` — any signed-in user, long cache
-  headers, 404 until painted (the reader advances on an image error).
+- `GET /api/plans/plates/:pattern/:plate` — any signed-in user, revalidated
+  on every read, 404 until painted AND reviewed (B-BOOK-27: the provenance
+  record must say child-free, text-free and name a reviewer; a missing,
+  unreadable, unreviewed or child-painted record is never served). The reader
+  advances on an image error.
+- **The review step (owner, B-BOOK-27).** Under Settings › Owner tools, each
+  painted plate shows "not reviewed — families do not see it", "reviewed by
+  <email> on <time>", or what was found (a child or person, words). "Mark
+  reviewed" opens the painted master full size (`GET /api/admin/plan-plates/
+  :pattern/:plate/image`, painter-only) with two boxes, ticked only for what
+  you saw; "Save review" calls `POST /api/admin/plan-plates/review`
+  `{ pattern, plate, childFree, textFree }`. Both ticked: families get the
+  plate on their next read. Otherwise it is recorded and stays hidden. A
+  repaint clears the review, so a repainted plate must be reviewed again.
 - A plate committed under `app/public/visuals/plans/<pattern>/<plate>.webp`
   wins: `npm run build` regenerates `planPlateManifest.ts` from that folder
   and the plate resolves to the static path instead of the route.

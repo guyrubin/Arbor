@@ -9,7 +9,7 @@
  * serves any signed-in user (401 signed out, the sandbox where allowed), 404
  * until painted AND reviewed (B-BOOK-27: an unreviewed or child-painted
  * shared plate, or one without a readable provenance record, is never
- * served), long cache headers once reviewed. Every object sits under
+ * served), revalidated on every read once reviewed. Every object sits under
  * shared/plans/ — never a child path. Synthetic data only.
  */
 import express from "express";
@@ -301,7 +301,7 @@ describe("GET /plans/plates/:pattern/:plate", () => {
     const r = await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`);
     expect(r.status).toBe(200);
     expect(r.headers.get("content-type")).toBe("image/png");
-    expect(r.headers.get("cache-control")).toBe("private, max-age=604800, immutable");
+    expect(r.headers.get("cache-control")).toBe("private, no-cache"); // B-BOOK-27: a withdrawn review takes effect on the next read
     expect(r.headers.get("x-content-type-options")).toBe("nosniff");
     expect(Buffer.from(await r.arrayBuffer()).equals(MASTER)).toBe(true);
     expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP2`)).status).toBe(404);
@@ -397,5 +397,38 @@ describe("B-BOOK-27: an unreviewed or child-painted shared plate is never served
     expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1", childFree: "yes", textFree: true })).status).toBe(400);
     expect((await review(admin.url, { pattern: "plan-poo-sit", plate: "PP1" })).status).toBe(400);
     expect(JSON.parse(bucket.objects.get("shared/plans/plan-poo-sit/PP1.json")!.data.toString("utf8")).reviewedBy).toBeNull();
+  });
+
+  it("the status route carries each painted plate's review for the owner's control (who and when)", async () => {
+    const bucket = new MemoryBucket();
+    const admin = await up({ user: ADMIN, bucket });
+    await post(admin.url, { pattern: "plan-new-food" });
+    const [a, b, c] = Object.keys(planPlateTable("plan-new-food"));
+    await review(admin.url, { pattern: "plan-new-food", plate: a, childFree: true, textFree: true });
+    await review(admin.url, { pattern: "plan-new-food", plate: b, childFree: false, textFree: true });
+    await review(admin.url, { pattern: "plan-new-food", plate: c, childFree: true, textFree: false });
+    const status = await (await fetch(`${admin.url}/admin/plan-plates`)).json();
+    const rows = status.reviews["plan-new-food"];
+    expect(rows[a]).toEqual({ state: "reviewed", reviewedBy: "founder@example.test", reviewedAt: "2026-10-28T10:00:00.000Z" });
+    expect(rows[b]).toMatchObject({ state: "child-painted", reviewedBy: "founder@example.test" });
+    expect(rows[c]).toMatchObject({ state: "has-text" });
+    expect(Object.values(rows).filter((r: any) => r.state === "unreviewed").length).toBe(Object.keys(planPlateTable("plan-new-food")).length - 3);
+    expect(status.reviews["plan-poo-sit"]).toEqual({}); // unpainted: no review row
+  });
+
+  it("the reviewer sees the painted master through the painter-only image route, reviewed or not; families never reach it", async () => {
+    const bucket = new MemoryBucket();
+    const admin = await up({ user: ADMIN, bucket });
+    const family = await up({ user: FAMILY, bucket });
+    expect((await fetch(`${admin.url}/admin/plan-plates/plan-poo-sit/PP1/image`)).status).toBe(404); // unpainted
+    await post(admin.url, { pattern: "plan-poo-sit", plate: "PP1" });
+    const r = await fetch(`${admin.url}/admin/plan-plates/plan-poo-sit/PP1/image`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toBe("image/png");
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    expect(Buffer.from(await r.arrayBuffer()).equals(MASTER)).toBe(true);
+    expect((await fetch(`${family.url}/admin/plan-plates/plan-poo-sit/PP1/image`)).status).toBe(403);
+    expect((await fetch(`${family.url}/plans/plates/plan-poo-sit/PP1`)).status).toBe(404); // still unreviewed for families
+    expect((await fetch(`${admin.url}/admin/plan-plates/plan-poo-sit/PP99/image`)).status).toBe(404);
   });
 });
