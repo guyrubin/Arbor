@@ -574,7 +574,7 @@ export function trackPlanApproved(args: { pattern: string; lang: string; ownStep
  * (kidPlayEvents.guard.test.ts) fails if a choice id or child id gets in.
  */
 export type BookHero = "own" | "stock";
-export const KID_PLAY_EVENT_KEYS = { book: ["book_id", "lang", "hero"], game: ["game", "replay"] } as const;
+export const KID_PLAY_EVENT_KEYS = { book: ["book_id", "lang", "hero"], game: ["game", "replay", "prompted"] } as const;
 /** A catalogue id: lowercase letter words joined by '-' (no catalogue id has a
  *  digit), 3+ characters — a timestamp, a generated row id, a production child
  *  id or a one-letter choice id never passes. */
@@ -594,8 +594,13 @@ export function trackBookFinished(args: { bookId: string; lang: string; hero: Bo
   const props = bookProps(args);
   if (props) track(KpiEvent.BookFinished, props);
 }
-/** ONE event per sitting. `replay`: the child chose Play again in this visit. */
-export function trackGameSitting(args: { game: string; replay: boolean }): void {
+/** ONE event per sitting. `replay`: the child chose Play again in this visit.
+ *  `prompted`: a grown-up's door opened Kid Mode straight onto this game (the
+ *  way in, never anything about the child) — the admin return count reads
+ *  only the sittings the child opened themselves. Call sites go through
+ *  lib/gameSittings, which keeps it to one event per sitting across remounts,
+ *  reloads and back-navigation. */
+export function trackGameSitting(args: { game: string; replay: boolean; prompted?: boolean }): void {
   const game = catalogueId(args.game);
-  if (game) track(KpiEvent.GameSitting, { game, replay: args.replay === true });
+  if (game) track(KpiEvent.GameSitting, { game, replay: args.replay === true, prompted: args.prompted === true });
 }

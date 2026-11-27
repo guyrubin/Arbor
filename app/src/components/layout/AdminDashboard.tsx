@@ -122,7 +122,7 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
                   <td>{g.week} · {g.game}</td>
                   <td className={numCell}>{g.hidden ? "Hidden" : g.sittings}</td>
                   <td className={numCell}>{of(g.replays, g.sittings)}</td>
-                  <td className={numCell}>{of(g.returned7d, g.families)}</td>
+                  <td className={numCell}>{g.hidden ? "Hidden" : g.returnFamilies == null ? "Not yet" : of(g.returned7d, g.returnFamilies)}</td>
                 </tr>
               ))}
             </tbody>
@@ -140,7 +140,7 @@ export function KidPlayPanel({ data }: { data: AdminKidPlay | null | "unavailabl
               ))}
             </tbody>
           </table>
-          <p className="text-xs mt-3" style={muted}>Cells about fewer than {data.minFamilies} families are hidden. Kid Mode sends no push into a game, so a return is unprompted. Play is never read as a sign about a child.</p>
+          <p className="text-xs mt-3" style={muted}>Cells about fewer than {data.minFamilies} families are hidden. A return is a game the child opened again themselves, not through a grown-up's door, on a later day within 7 days; it reads Not yet until enough families' 7 days have passed. Play is never read as a sign about a child.</p>
         </>
       )}
     </div>

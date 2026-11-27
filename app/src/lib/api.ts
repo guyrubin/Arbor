@@ -807,7 +807,7 @@ export type AdminOverview = {
  *  game and book per ISO week; a cell under `minFamilies` families is hidden. */
 export type AdminKidPlay = {
   minFamilies: number;
-  games: { week: string; game: string; hidden: boolean; families: number | null; sittings: number | null; replays: number | null; returned7d: number | null }[];
+  games: { week: string; game: string; hidden: boolean; families: number | null; sittings: number | null; replays: number | null; returned7d: number | null; returnFamilies: number | null }[];
   books: { week: string; book: string; hidden: boolean; families: number | null; opened: number | null; finished: number | null }[];
 };
 
