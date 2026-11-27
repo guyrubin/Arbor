@@ -129,7 +129,7 @@ describe("both upgrade surfaces show the price before checkout (CARE-5)", () => 
     expect(checkout).not.toMatch(/checkoutUnavailable", tone: "success"/);
     expect(settings).toMatch(/useCheckout\(\)/);
     expect(settings).not.toMatch(/checkoutSoon"\), "success"/);
-    expect(paywall).toMatch(/useCheckout\(\)/);
+    expect(paywall).toMatch(/useCheckout\(\{ answer: "carry" \}\)/); // B-STATUS-01: the paywall closes on success
   });
 });
 

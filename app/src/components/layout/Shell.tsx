@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useCallback, useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { CarriedReceiptLine, clearCarriedReceipt, useCarriedReceipt } from "../ui/Receipt";
 import { useArbor, ActiveTab } from "../../context/ArborContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -255,6 +256,15 @@ export default function Shell() {
     return () => window.removeEventListener(FAMILY_TOPIC_SHEET_EVENT, open);
   }, [openTopic, createTopic]);
   const ActiveTabComponent = tabRegistry[activeTab];
+  // B-STATUS-01: a carried receipt answers on the page it arrived on; moving
+  // to another place ends it (useCarriedReceipt: the same child only).
+  const carriedNote = useCarriedReceipt("app", { childId: childProfile.id });
+  const carriedOn = useRef<{ seq: number; tab: string } | null>(null);
+  useEffect(() => {
+    if (!carriedNote) { carriedOn.current = null; return; }
+    if (carriedOn.current?.seq !== carriedNote.seq) carriedOn.current = { seq: carriedNote.seq, tab: activeTab };
+    else if (carriedOn.current.tab !== activeTab) clearCarriedReceipt("app");
+  }, [carriedNote, activeTab]);
   const section = sectionForTab(activeTab);
   // v3 IA-01: Back returns to the route's home, its place or its door
   // (#/learn → For you, the parent). A home's own route has no Back.
@@ -541,6 +551,12 @@ export default function Shell() {
               fewer, or ended). Parent register only; self-hides for paid,
               comped and admin accounts (billing/trialNotice.ts). */}
           {!kidLocked && <TrialNoticeBanner />}
+
+          {/* B-STATUS-01: the answer to an action whose surface closed (a child
+              added, a moment's edit saved, a plan bought or restored) — the ONE
+              receipt line, carried to the page the thing went to. It belongs to
+              the child it was drawn for and leaves when the parent moves on. */}
+          {!kidLocked && <CarriedReceiptLine place="app" childId={childProfile.id} testId="shell-carried-receipt" className="mb-3" size="sm" />}
 
           {/* Sandbox banner if API key is missing (production sets
               VITE_HAS_GEMINI_API, so it never shows there).

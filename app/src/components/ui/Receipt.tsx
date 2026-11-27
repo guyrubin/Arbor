@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "./Icon";
 import { useLanguage } from "../../context/LanguageContext";
 
@@ -294,6 +294,79 @@ export function ReceiptNoteLine({ note, testId, className, size }: { note: Shown
       {note.text}
     </Receipt>
   );
+}
+
+/* B-STATUS-01 — a CARRIED receipt. Some actions close the surface they were
+ * taken on (a sheet saves and shuts, the paywall closes on a purchase, an
+ * account deletion signs out), so no "where it happened" is left to draw on.
+ * Their answer is carried to the place the thing went: `carryReceipt` hands a
+ * note to ONE slot, and <CarriedReceiptLine place=…> draws it there (Shell's
+ * main column inside the app, the sign-in screen once the account is gone).
+ * The same Receipt line: past tense, where it went, Open, Undo when the write
+ * can be reversed, announced once through the polite region.
+ *
+ * Scope: a note bound to an account (`uid`) or a child (`childId`) shows only
+ * while that account / child is the one on screen, and each place clears the
+ * OTHER place's note when it mounts (signing in drops the "account deleted"
+ * line; signing out drops an in-app line), so a note never crosses visits. */
+export type CarryPlace = "app" | "signed-out";
+export type CarryScope = { uid?: string | null; childId?: string | null };
+export type CarriedReceipt = ShownReceiptNote & { place: CarryPlace; uid?: string; childId?: string };
+
+let carried: CarriedReceipt | null = null;
+let carriedSeq = 0;
+const carryListeners = new Set<() => void>();
+const emitCarry = () => { for (const l of carryListeners) l(); };
+
+export function carryReceipt(note: ReceiptNote, place: CarryPlace = "app", scope: CarryScope = {}): void {
+  carried = {
+    ...note,
+    place,
+    ...(scope.uid ? { uid: scope.uid } : {}),
+    ...(scope.childId ? { childId: scope.childId } : {}),
+    seq: ++carriedSeq,
+  };
+  emitCarry();
+}
+
+/** Clear the carried note — any, or only the one carried to `place`. */
+export function clearCarriedReceipt(place?: CarryPlace): void {
+  if (!carried || (place && carried.place !== place)) return;
+  carried = null;
+  emitCarry();
+}
+
+const subscribeCarry = (l: () => void) => { carryListeners.add(l); return () => { carryListeners.delete(l); }; };
+const readCarry = () => carried;
+/** The note now carried, if any (a seam for tests). */
+export const peekCarriedReceipt = (): CarriedReceipt | null => carried;
+
+/** Pure: may this host draw this note? */
+export function carriedFor(note: CarriedReceipt | null, place: CarryPlace, scope: CarryScope = {}): CarriedReceipt | null {
+  if (!note || note.place !== place) return null;
+  if (note.uid && note.uid !== (scope.uid ?? undefined)) return null;
+  if (note.childId && note.childId !== (scope.childId ?? undefined)) return null;
+  return note;
+}
+
+export function useCarriedReceipt(place: CarryPlace, scope: CarryScope = {}): CarriedReceipt | null {
+  const note = useSyncExternalStore(subscribeCarry, readCarry, readCarry);
+  return carriedFor(note, place, scope);
+}
+
+/** The slot a host draws once (Shell: "app"; the sign-in screen: "signed-out"). */
+export function CarriedReceiptLine({ place, uid, childId, testId = "carried-receipt", className, size }: {
+  place: CarryPlace;
+  uid?: string | null;
+  childId?: string | null;
+  testId?: string;
+  className?: string;
+  size?: "sm" | "base";
+}) {
+  const note = useCarriedReceipt(place, { uid, childId });
+  // Arriving here ends the other place's visit (idempotent under StrictMode).
+  useEffect(() => { clearCarriedReceipt(place === "app" ? "signed-out" : "app"); }, [place]);
+  return <ReceiptNoteLine note={note} testId={testId} className={className} size={size} />;
 }
 
 export default Receipt;

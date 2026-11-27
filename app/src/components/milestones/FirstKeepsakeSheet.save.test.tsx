@@ -63,7 +63,7 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-const render = (onSave: (draft: unknown) => Promise<unknown>, onRemove: () => Promise<unknown>, onClose: () => void, extra: { open?: boolean; pendingAcknowledgementMessage?: string } = {}) => {
+const render = (onSave: (draft: unknown) => Promise<unknown>, onRemove: () => Promise<unknown>, onClose: () => void, extra: { open?: boolean; pendingAcknowledgementMessage?: string; onSaved?: (draft: unknown, before: unknown) => void } = {}) => {
   h.cursor = 0;
   return renderToStaticMarkup(
     <FirstKeepsakeSheet
@@ -90,8 +90,10 @@ describe("v3 F-CHILD-1 — the keepsake receipt waits for the write", () => {
     const write = deferred();
     const onSave = vi.fn((_draft: unknown) => write.promise);
     const onClose = vi.fn();
-    render(onSave, async () => {}, onClose);
+    const onSaved = vi.fn();
+    render(onSave, async () => {}, onClose, { onSaved });
     h.buttons["first-keepsake-save"].onClick!();
+    expect(onSaved).not.toHaveBeenCalled();
     expect(onSave).toHaveBeenCalledOnce();
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ milestoneId: "first", note: saved.note, noticedOn: saved.noticedOn }));
     await tick();
@@ -99,8 +101,11 @@ describe("v3 F-CHILD-1 — the keepsake receipt waits for the write", () => {
     expect(onClose).not.toHaveBeenCalled();
     write.resolve();
     await tick();
-    expect(h.toast).toHaveBeenCalledOnce();
-    expect(h.toast).toHaveBeenCalledWith(en("elev.waveR.keepsake.saved"), "success");
+    // B-STATUS-01: the host answers (its receipt line, Undo to what was kept
+    // before) — never a success toast; only after the write resolved.
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(onSaved).toHaveBeenCalledOnce();
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ milestoneId: "first", note: saved.note }), saved);
     expect(onClose).toHaveBeenCalledOnce();
   });
 

@@ -165,6 +165,12 @@ export const en: Record<string, string> = {
   // ── B-STATUS-01 · one feedback grammar: the receipt link, the pending line ─
   "elev.loop.receipt.open": "Open",
   "elev.loop.receipt.openAria": "Open {where}",
+  // B-STATUS-01 · the former success toasts, each saying where the thing went
+  "elev.loop.receipt.childAdded": "Added {name}'s profile — you're on {name}'s page now.",
+  "elev.loop.receipt.accountDeleted": "Your account and its data were deleted from Arbor and from this device. This can't be undone.",
+  "elev.loop.receipt.planWhere": "Your plan is in Settings, under Your plan.",
+  "elev.loop.receipt.keepsakeKept": "Kept on “{title}”, with the day you gave it.",
+  "elev.loop.receipt.momentEdited": "Saved your changes to this moment in the Journal.",
   "elev.loop.pending.practice": "Arbor is choosing today's practice…",
 };
 
@@ -316,5 +322,11 @@ export const he: Record<string, string> = {
   // ── B-STATUS-01 · one feedback grammar: the receipt link, the pending line ─
   "elev.loop.receipt.open": "לפתוח",
   "elev.loop.receipt.openAria": "לפתוח את {where}",
+  // B-STATUS-01 · the former success toasts, each saying where the thing went
+  "elev.loop.receipt.childAdded": "הפרופיל של {name} נוסף — עכשיו אתם בעמוד של {name}.",
+  "elev.loop.receipt.accountDeleted": "החשבון והנתונים שלו נמחקו מארבור ומהמכשיר הזה. אי אפשר לבטל את זה.",
+  "elev.loop.receipt.planWhere": "התוכנית מופיעה בהגדרות, תחת „התוכנית שלכם”.",
+  "elev.loop.receipt.keepsakeKept": "נשמר באבן הדרך „{title}”, עם היום שנתתם.",
+  "elev.loop.receipt.momentEdited": "השינויים ברגע הזה נשמרו ביומן.",
   "elev.loop.pending.practice": "ארבור בוחר את התרגול של היום…",
 };

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useToast } from "../context/ToastContext";
+import { carryReceipt } from "../components/ui/Receipt";
 import { BILLING_PENDING_KEY, refreshEntitlement, startBillingReturnPoll, takeBillingReturn } from "./useEntitlement";
 
 /** Own one account's web-checkout verification until it settles or unmounts.
@@ -36,6 +37,10 @@ export function useBillingReturn(): void {
       stop = startBillingReturnPoll({
         refresh: refreshEntitlement,
         t: (key) => callbacks.current.t(key),
+        // B-STATUS-01: the confirmation is the ONE receipt line, carried to
+        // the page the parent returned to; it names where the plan lives.
+        // No Undo: a purchase is managed (or cancelled) in Settings › Your plan.
+        answer: (message) => carryReceipt({ text: `${message} ${callbacks.current.t("elev.loop.receipt.planWhere")}` }, "app"),
         toast: (message, type) => {
           const current = callbacks.current;
           current.toast(message, type, message === current.t(BILLING_PENDING_KEY)

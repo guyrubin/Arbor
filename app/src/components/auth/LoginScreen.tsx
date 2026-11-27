@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Icon } from "../ui/Icon";
+import { CarriedReceiptLine } from "../ui/Receipt";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { ArborMark as ArborMarkIcon } from "../ui/ArborMark";
@@ -132,6 +133,9 @@ export default function LoginScreen() {
         </div>
 
         {trialEntry?.moment && <SignInSituation moment={trialEntry.moment} kept={trialEntry.kept} />}
+
+        {/* B-STATUS-01: a deleted account answers here, where the parent lands. */}
+        <CarriedReceiptLine place="signed-out" testId="signed-out-receipt" size="sm" />
 
         {error && (
           <div role="alert" className="text-xs rounded-xl px-4 py-2.5" style={{ background: "var(--arbor-pink-soft)", color: "var(--arbor-pink-ink)" }}>

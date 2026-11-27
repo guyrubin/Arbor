@@ -45,11 +45,12 @@ import { HeroAvatar } from "../ui/HeroAvatar";
 // (beside lib/firsts, which owns the CELEBRATION of a first).
 // B-GROWTH-10 — persistence is the registered `keepsakes` subcollection.
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import MilestoneKeptNote, { MilestoneKeptStatus } from "../milestones/MilestoneKeptNote";
 import { useMilestoneKeptNotes } from "../../hooks/useMilestoneKeptNotes";
 import {
   keepsakeDoc, keepsakeMapFromDocs, migrateLocalKeepsakes, upsertKeepsake,
-  type KeepsakeDoc, type KeepsakeDraft,
+  type FirstKeepsake, type KeepsakeDoc, type KeepsakeDraft,
 } from "../../lib/firstsKeepsake";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { DEVELOPMENTAL_DOMAIN_IDS, DOMAIN_IDS, domainName, primaryDomainLabel, type DomainId } from "../../lib/domains/registry";
@@ -138,6 +139,7 @@ export default function MilestonesTab() {
     // GP-23 "Keep this": the canonical save verb writes the answer into the
     // child's `insights` record (the TJB-04 seam) — one tap, no new sink.
     keepBehaviorInsight,
+    unkeepBehaviorInsight,
     behaviorLogs,
   } = useArbor();
 
@@ -203,6 +205,27 @@ export default function MilestonesTab() {
   const saveKeepsake = (draft: KeepsakeDraft) => {
     const next = upsertKeepsake(keepsakes, draft, new Date().toISOString());
     return keepsakeCol.upsert(keepsakeDoc(next[draft.milestoneId]));
+  };
+  // B-STATUS-01: a saved keepsake and a kept explanation answer under the
+  // milestone they belong to — ONE receipt line, Undo back to what was there.
+  const msReceipt = useReceiptNote();
+  const [msReceiptFor, setMsReceiptFor] = useState<{ kind: "keepsake" | "explain"; id: string } | null>(null);
+  const answerUnder = (kind: "keepsake" | "explain", id: string, text: string, onUndo: () => unknown) => {
+    setMsReceiptFor({ kind, id });
+    msReceipt.show({ text, undo: { label: t("elev.keep.undo"), testId: `ms-${kind}-undo`, onUndo: () => { void onUndo(); msReceipt.clear(); } } });
+  };
+  const receiptUnder = (kind: "keepsake" | "explain", id: string) =>
+    msReceiptFor?.kind === kind && msReceiptFor.id === id
+      ? <ReceiptNoteLine note={msReceipt.note} testId={`ms-${kind}-receipt`} size="sm" className="mt-2" />
+      : null;
+  const explainKept = (milestoneId: string, kept: string | null) => {
+    if (kept) answerUnder("explain", milestoneId, t("beh.analysis.kept", { name: (childProfile.name || "").split(" ")[0] }), () => unkeepBehaviorInsight(kept));
+  };
+  const keepsakeSaved = (saved: KeepsakeDraft, before: FirstKeepsake | null) => {
+    const item = milestones.find((m) => m.id === saved.milestoneId);
+    const title = item ? milestoneText(item, "title", t, { gender: childProfile.gender }) : "";
+    answerUnder("keepsake", saved.milestoneId, t("elev.loop.receipt.keepsakeKept", { title }),
+      () => (before ? keepsakeCol.upsert(keepsakeDoc(before)) : keepsakeCol.remove(saved.milestoneId)));
   };
   const dropKeepsake = (milestoneId: string) => {
     return keepsakeCol.remove(milestoneId);
@@ -634,7 +657,7 @@ export default function MilestonesTab() {
           {(item.checked || keepsakes[item.id]) && (
             <div className="pt-2">
               {keepsakes[item.id] ? (
-                <>{renderKeepsake(item)}</>
+                <>{renderKeepsake(item)}{receiptUnder("keepsake", item.id)}</>
               ) : (
                 <button
                   type="button"
@@ -724,9 +747,10 @@ export default function MilestonesTab() {
                     trustLink
                     className="mt-2.5"
                     actions={[
-                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(`${milestoneText(item, "title", t, msGender)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`) },
+                      { verb: "save", label: t("elev.waveR.ms.explain.keep"), icon: "bookmark_add", onClick: () => explainKept(item.id, keepBehaviorInsight(`${milestoneText(item, "title", t, msGender)} — ${explainAnswerText(explanations[item.id], t("explain.tryToday"))}`)) },
                     ]}
                   />
+                  {receiptUnder("explain", item.id)}
                 </>
               )}
             </div>
@@ -1460,6 +1484,7 @@ export default function MilestonesTab() {
         beforeShare={keptNotes.beforeExport}
         onSave={saveKeepsake}
         onRemove={() => (openKeepsake ? dropKeepsake(openKeepsake.id) : Promise.resolve())}
+        onSaved={keepsakeSaved}
         onClose={() => setKeepsakeFor(null)}
       />
     </DsRoot>

@@ -76,6 +76,7 @@ export default function PlansTab() {
     isPlanGenerating,
     actionPlans,
     plansLoaded,
+    deletePlan,
     seedCoach,
     actionLoop,
     activeTodayAction,
@@ -140,7 +141,12 @@ export default function PlansTab() {
     const lead = leadId ? actionPlans[0] : null;
     if (lead) {
       setSelectedId(lead.id);
-      startedReceipt.show({ text: `${lead.title} · ${t("elev.plans.startedToday")}` });
+      // B-STATUS-01: this line is the answer to "Create a plan" too (the
+      // former "plan ready" toast); Undo takes the just-started plan away.
+      startedReceipt.show({
+        text: `${lead.title} · ${t("elev.plans.startedToday")}`,
+        undo: { label: t("elev.keep.undo"), testId: "plans-started-undo", onUndo: () => { deletePlan(lead.id); startedReceipt.clear(); } },
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plansLoaded, actionPlans]);

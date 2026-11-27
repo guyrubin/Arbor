@@ -26,13 +26,14 @@ import { useComposition } from "../../design/useComposition";
 import { behaviorTypeLabel, isIncidentType } from "../../content/behaviorTaxonomy";
 import "../moments/mychild.css";
 import { MOMENTS_V10_COPY } from "../moments/momentsV10Copy";
+import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 
 const DAY = 86_400_000;
 
 export default function BehaviorsTab() {
   const {
     handleAnalyzeBehaviors, isAnalyzingBehavior, behaviorLogs, behaviorAnalysis,
-    behaviorAnalysisRecord, keepBehaviorInsight, seedCoach, setActiveTab,
+    behaviorAnalysisRecord, keepBehaviorInsight, unkeepBehaviorInsight, seedCoach, setActiveTab,
     childProfile, openCaptureSheet, openHardMomentNow, actionLoop,
     requestJournalFilter, lastSavedBehavior, dismissBehaviorEcho, escalatedSurface,
   } = useArbor();
@@ -47,6 +48,15 @@ export default function BehaviorsTab() {
   const hardLogs = useMemo(() => [...behaviorLogs].filter((l) => isIncidentType(l.behaviorType))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [behaviorLogs]);
   const behFirst = (childProfile.name || "").split(" ")[0];
+  // B-STATUS-01: "Keep this" answers under the bar it was tapped on, with Undo.
+  const keptReceipt = useReceiptNote();
+  const answerKept = (id: string | null) => {
+    if (!id) return;
+    keptReceipt.show({
+      text: t("beh.analysis.kept", { name: behFirst }),
+      undo: { label: t("elev.keep.undo"), testId: "beh-kept-undo", onUndo: () => { unkeepBehaviorInsight(id); keptReceipt.clear(); } },
+    });
+  };
   // N-Hard-D: the pill row ends with the day and "since you started on <the first hard moment logged>"; nothing logged, no suffix.
   const firstLogged = hardLogs.length ? hardLogs[hardLogs.length - 1].timestamp : null;
   useShellRowEnd(firstLogged ? { suffix: v.hard.sinceStarted(fmtDayMonthLongV10(firstLogged, uiLang)) } : null);
@@ -323,7 +333,7 @@ export default function BehaviorsTab() {
                     trustLink
                     variant="bar"
                     actions={[
-                      { verb: "save", label: t("beh.analysis.keep"), icon: "bookmark_add", onClick: () => keepBehaviorInsight(behaviorAnalysis.actionPlanSuggestion) },
+                      { verb: "save", label: t("beh.analysis.keep"), icon: "bookmark_add", onClick: () => answerKept(keepBehaviorInsight(behaviorAnalysis.actionPlanSuggestion)) },
                     ]}
                     extras={[
                       {
@@ -337,6 +347,7 @@ export default function BehaviorsTab() {
                       },
                     ]}
                   />
+                  <ReceiptNoteLine note={keptReceipt.note} testId="beh-kept-receipt" size="sm" className="mt-2" />
                 </div>
               </motion.div>
             )}

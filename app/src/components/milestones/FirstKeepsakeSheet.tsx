@@ -3,6 +3,7 @@ import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { ShareButton } from "../ui/ShareButton";
+import { carryReceipt } from "../ui/Receipt";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useToastOptional } from "../../context/ToastContext";
@@ -63,6 +64,7 @@ export default function FirstKeepsakeSheet({
   beforeShare,
   onSave,
   onRemove,
+  onSaved,
   onClose,
 }: {
   open: boolean;
@@ -81,6 +83,10 @@ export default function FirstKeepsakeSheet({
   beforeShare: () => boolean;
   /** The write; resolves once the keepsake is stored. */
   onSave: (draft: KeepsakeDraft) => Promise<unknown>;
+  /** B-STATUS-01: the sheet closes on save, so the HOST answers where the
+   *  keepsake went (its receipt line, Undo back to `before`). Without a host
+   *  answer the receipt is carried to the app's receipt slot. */
+  onSaved?: (saved: KeepsakeDraft, before: FirstKeepsake | null) => void;
   /** The removal; resolves once the keepsake is gone. */
   onRemove: () => Promise<unknown>;
   onClose: () => void;
@@ -89,7 +95,7 @@ export default function FirstKeepsakeSheet({
   const { user } = useAuth();
   const Surface = useCompactSurface() ? Sheet : Modal;
   const toastCtx = useToastOptional();
-  const toast = (message: string, type?: "success" | "error" | "info") => toastCtx?.toast(message, type);
+  const toast = (message: string, type?: "error" | "info") => toastCtx?.toast(message, type); // B-STATUS-01: no success through here
 
   // Seeded from the saved keepsake on first paint; the effect below re-seeds
   // when a different milestone's sheet opens.
@@ -150,7 +156,8 @@ export default function FirstKeepsakeSheet({
     if (!isCurrent()) return;
     owner.busy = false;
     setWriting(false);
-    toast(t("elev.waveR.keepsake.saved"), "success");
+    if (onSaved) onSaved(draft, keepsake);
+    else carryReceipt({ text: t("elev.loop.receipt.keepsakeKept", { title: milestoneTitle }) }, "app", { childId });
     onClose();
   };
 

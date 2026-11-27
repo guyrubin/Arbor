@@ -50,9 +50,9 @@ describe("CR-09 · toast action slot", () => {
     expect(toastSrc).toContain("queueRef.current = queueRef.current.filter((q) => q.outlivesVisit);");
     expect(toastSrc).toContain("setToasts((t) => t.filter((x) => x.outlivesVisit));");
     expect(toastSrc).toContain('const outlivesVisit = options?.outlivesVisit === true && !action;');
+    // B-STATUS-01: Add child and Delete account answer with carried receipt
+    // lines now (components/ui/Receipt carryReceipt), not visit-free toasts.
     const sites: [string, string][] = [
-      ["components/profile/AddChildModal.tsx", 'toast(t("ac.addedToast", { name: childName }), "success", undefined, { outlivesVisit: true });'],
-      ["components/layout/DeleteAccountModal.tsx", 'toast(t("set.acctDel.done"), "success", undefined, { outlivesVisit: true });'],
       ["context/ArborContext.tsx", 'toastCtx?.toast(t("elev.nav.linkMoved"), "info", undefined, { outlivesVisit: true });'],
     ];
     for (const [file, call] of sites) expect(fs.readFileSync(path.join(SRC, file), "utf8")).toContain(call);

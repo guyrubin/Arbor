@@ -1,5 +1,6 @@
 import React, { useCallback, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Modal } from "../ui/Modal";
+import { carryReceipt } from "../ui/Receipt";
 import { useLanguage } from "../../context/LanguageContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -123,7 +124,9 @@ export default function DeleteAccountModal({ open, onClose }: { open: boolean; o
       if (receipt.complete) {
         await wipeDeviceData(ownsAccount);
         if (!ownsAccount()) return;
-        toast(t("set.acctDel.done"), "success", undefined, { outlivesVisit: true });
+        // B-STATUS-01: the account is gone and the app signs out, so the answer
+        // is carried to the sign-in screen (no Undo: the deletion is final).
+        carryReceipt({ text: t("elev.loop.receipt.accountDeleted") }, "signed-out");
         onClose();
         await signOut();
       } else if (isCurrent()) {

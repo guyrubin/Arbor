@@ -25,7 +25,7 @@ import { practiceText } from "../loop/PracticeCard";
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
-import { PendingLine, Receipt } from "../ui/Receipt";
+import { PendingLine, Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { NOTICE_DETAIL_COPY } from "./noticeDetailCopy";
 import "./noticeObjectDetail.css";
@@ -110,6 +110,26 @@ export default function NoticeObjectDetail({ target, onClose, editEvidence = fal
     if (!owns()) throw new Error("The active observation changed");
     evidenceAttempt.current = null;
   };
+  // B-STATUS-01: the editor closes on save; the kept words answer here, under
+  // the evidence they joined, with Undo back to what was kept before.
+  const evidenceReceipt = useReceiptNote();
+  const evidenceSaved = (saved: KeepsakeDraft, before: FirstKeepsake | null) => {
+    if (!owns()) return;
+    evidenceReceipt.show({
+      text: t("elev.loop.receipt.keepsakeKept", { title: sourceTitle }),
+      undo: {
+        label: t("elev.keep.undo"),
+        testId: "notice-object-evidence-undo",
+        onUndo: () => {
+          if (!owns()) return;
+          evidenceReceipt.clear();
+          void (before
+            ? keepsakes.upsert(keepsakeDoc(before), { requireAcknowledgement: true })
+            : keepsakes.remove(saved.milestoneId, { requireAcknowledgement: true })).catch(() => undefined);
+        },
+      },
+    });
+  };
   const removeAnswer = async () => {
     if (!milestone || removal === "saving" || removal === "restoring" || !owns()) return;
     setRemoval("saving");
@@ -174,6 +194,7 @@ export default function NoticeObjectDetail({ target, onClose, editEvidence = fal
             <Icon name={kept ? "edit_note" : "bookmark_add"} size={18} /><span>{kept ? copy.editEvidence : copy.addEvidence}</span>
           </button>}
           {kept && <p className="notice-object-note">{copy.separate}</p>}
+          <ReceiptNoteLine note={evidenceReceipt.note} testId="notice-object-evidence-receipt" size="sm" />
         </section>
 
         {linkedId && <section className="notice-object-linked" data-testid="notice-object-linked">
@@ -224,7 +245,7 @@ export default function NoticeObjectDetail({ target, onClose, editEvidence = fal
       childId={childProfile.id} childName={childProfile.name?.split(" ")[0] ?? ""} keepsake={editorSeed.current}
       initialNoticedOn={milestone.observedWhen === "today" && validDate(milestone.observedAt) ? localDayKey(new Date(milestone.observedAt!)) : ""}
       pendingAcknowledgementMessage={copy.pending}
-      canShare={false} beforeShare={() => false} onSave={saveEvidence} onRemove={removeEvidence} onClose={() => { editorSeed.current = undefined; evidenceAttempt.current = null; setEditing(false); }}
+      canShare={false} beforeShare={() => false} onSave={saveEvidence} onRemove={removeEvidence} onSaved={evidenceSaved} onClose={() => { editorSeed.current = undefined; evidenceAttempt.current = null; setEditing(false); }}
     />}
   </Surface>;
 }
