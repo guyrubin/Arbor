@@ -11,7 +11,7 @@ import { ShelfGlyph } from "../ui/ShelfGlyph";
 import { practiceDoNamed } from "../../lib/journal/shelfView";
 import { practiceTitle, titleIsWholeDo } from "../../lib/practice/practiceTitle";
 import { PRACTICE_ADAPTATIONS, PRACTICE_ADAPTATION_KEYS, type PracticeAdaptationKey } from "../../content/practiceAdaptations";
-import { Receipt } from "../ui/Receipt";
+import { Receipt, undoThen } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 
 /** The page-language text of a practice field, Hebrew slash forms resolved
@@ -59,8 +59,9 @@ export interface PracticeCardProps {
   /** Today's dose answer, if given (the card shows its one-line receipt). */
   answered?: PracticeAnswer | null;
   onAnswer: (answer: PracticeAnswer) => void;
-  /** Undo the dose row (the card asks again). */
-  onUndo?: () => void;
+  /** Undo the dose row (the card asks again). B-STATUS-01: returns the
+   *  write; a refusal keeps the receipt with the failure line and Try again. */
+  onUndo?: () => Promise<void>;
   /** B-LOOP-07: the parent's own words on this shelf, dated — THEN and NOW
    *  (lib/today/shelfWords), oldest first; the change is in their words. */
   quotes?: ReadonlyArray<PracticeQuote>;
@@ -247,7 +248,8 @@ export default function PracticeCard({
           className="mt-3.5"
           announce={answered !== answeredAtMount.current}
           link={answered === "did" ? { where: shelfName, href: `#${routeHash("journal", { shelf })}`, testId: "practice-receipt-open" } : null}
-          undo={onUndo ? { label: t("elev.loop.notice.undo"), onUndo, testId: "practice-undo" } : null}
+          /* B-STATUS-01: the receipt goes once the dose row is gone (answered → null). */
+          undo={onUndo ? { label: t("elev.loop.notice.undo"), testId: "practice-undo", onUndo: undoThen(onUndo, () => undefined) } : null}
         >
           {t(answered === "did" ? (besideWords ? "elev.loop.practice.didReceiptWords" : "elev.loop.practice.didReceipt") : "elev.loop.practice.notTodayReceipt", { name: childName || t("today.record.childFallback"), shelf: shelfName })}
         </Receipt>

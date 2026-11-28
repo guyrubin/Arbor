@@ -22,6 +22,7 @@ import { DsRoot } from "../../design/primitives";
 import { careCopy } from "../care/v10/careV10Copy";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { undoThen } from "../ui/Receipt";
 import ts from "typescript";
 import { visitForConsult } from "../../lib/today/dayCard";
 import { appointmentStatus, consultAudienceForProfession, makeFollowUp, visitAwaitingOutcome } from "../../lib/careTrack";
@@ -91,6 +92,8 @@ const env = {
   useToast: () => ({ toast }),
   useReceiptNote: () => ({ note: null, show: receiptShow, clear: vi.fn() }),
   ReceiptNoteLine: () => null,
+  // B-STATUS-01: the real undo plumbing (the line clears only after the writes)
+  undoThen,
   useChildCollection: (_child: string, name: string) => collection(name),
   // the real open-loop rule: a follow-up for the visit closes it
   visitAwaitingOutcome, isIntakeProfession: () => false, consultHeading: () => "generic", activeHomeEnrolments: () => [], guidedTierOn: () => false,

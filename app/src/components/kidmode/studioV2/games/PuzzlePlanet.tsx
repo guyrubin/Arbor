@@ -1,6 +1,6 @@
 import { NEXT_GAME_COPY } from "../../../../lib/i18nGameNext";
 import { useState } from "react";
-import { Check, Eye, Lightbulb, Puzzle } from "lucide-react";
+import { Check, Eye, Lightbulb } from "lucide-react";
 import { useLanguage } from "../../../../context/LanguageContext";
 import { useArborOptional } from "../../../../context/ArborContext";
 import { useKidTheme } from "../../../../hooks/useKidTheme";
@@ -9,6 +9,8 @@ import { GameFinish, GameShell } from "../../game/GameShell";
 import { kidSfx } from "../../audio/kidAudio";
 import { placePuzzlePiece, shuffledPieces } from "./gameRules";
 import { GAME_COPY } from "./gameCopy";
+import "./adventures/adventures.css";
+import "./adventures/bopStage.css";
 import "./studioGames.css";
 
 /** Actual image fragments, all cropped from the same full-size image. Image
@@ -51,9 +53,9 @@ function PuzzlePlay() {
     setPlaced(next); setSelected(null); setHint(null); setMiss(null); setStatus(copy.puzzlePlaced); kidSfx("correct");
   };
   const complete = placed.length === size * size;
-  if (!art) return <GameShell worldId="puzzle" title={copy.puzzle}><p className="studio-game-panel" role="status">{copy.pictureUnavailable}</p></GameShell>;
+  if (!art) return <GameShell worldId="puzzle" title={copy.puzzle}><p className="studio-game adventure adventure--bop" data-kit-shell="" role="status">{copy.pictureUnavailable}</p></GameShell>;
   return <GameShell worldId="puzzle" title={copy.puzzle} instruction={copy.puzzleInstruction} progress={{ index: placed.length, total: size * size }}>
-    <div className="studio-game studio-game-panel" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <section className="studio-game adventure adventure--bop" data-kit-shell="" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {finished ? <GameFinish title={copy.puzzleFinish} subtitle={copy.puzzleSubtitle} onPlayAgain={() => reset()} playAgainLabel={copy.again} homeLabel={copy.home} /> : complete ? <div className="studio-puzzle-reveal">
         <div className="studio-puzzle-preview" style={{ aspectRatio: pictureRatio }}><PlanetPicture art={art} /></div>
         <h2>{copy.puzzleFinish}</h2><p>{nextWords.pictureDiscover}</p>
@@ -64,13 +66,16 @@ function PuzzlePlay() {
             whole picture shows faintly under the empty spaces, a chosen piece
             lifts and the empty spaces glow, and a wrong space shakes. Picture
             and size choices follow the play. */}
-        <div className="studio-puzzle-layout">
+        {/* B-KID-173: board and tray stand on the Bop games' pearl stage; no
+            comic outline, and an empty space is a pale pearl slot, not a line
+            icon. The picture itself is the kit's film art. */}
+        <div className="studio-puzzle-layout bop-stage">
           <div className="studio-puzzle-board" role="group" aria-label={copy.puzzleBoard} data-armed={selected !== null} data-preview={preview} style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
             {preview && <span className="studio-puzzle-ghost" role="img" aria-label={copy.picture}><PlanetPicture art={art} /></span>}
             {Array.from({ length: size * size }, (_, target) => <button type="button" className="studio-puzzle-cell" style={{ aspectRatio: pictureRatio }} key={target} data-filled={placed.includes(target)} data-hint={hint === target} data-miss={miss === target} disabled={placed.includes(target)}
               aria-label={`${copy.space}: ${position(target)}`} onClick={() => place(target)} onDragOver={event => event.preventDefault()}
               onDrop={event => { event.preventDefault(); const value = event.dataTransfer.getData("text/plain"); if (/^\d$/.test(value)) place(target, Number(value)); }}>
-              {placed.includes(target) ? <PlanetPicture art={art} piece={target} size={size} /> : <Puzzle aria-hidden="true" size={26} />}
+              {placed.includes(target) && <PlanetPicture art={art} piece={target} size={size} />}
             </button>)}
           </div>
           <div className="studio-puzzle-tray" role="group" aria-label={copy.pieces} style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}>
@@ -94,7 +99,7 @@ function PuzzlePlay() {
           </div>
         </div>
       </>}
-    </div>
+    </section>
   </GameShell>;
 }
 

@@ -552,7 +552,8 @@ function useArborState() {
   const recordTodayOutcome = (...args: Parameters<typeof saveTodayOutcome>) => {
     void saveTodayOutcome(...args).catch(() => toast(t("companion.arbor-context.your-response-wasn-t-saved-please-try-agai"), "error"));
   };
-  const removeTodayAction = (id: string) => void actionLoopCol.remove(id);
+  // B-STATUS-01: returns the write, so the practice receipt's Undo can await it.
+  const removeTodayAction = (id: string) => actionLoopCol.remove(id);
   /** B-LOOP-09 — "Did it" / "Not today" on today's practice: ONE dose row per
    *  day on the actionLoops ledger (lib/practice/choosePractice). No streak,
    *  no count is derived from it on Today. */
@@ -647,9 +648,9 @@ function useArborState() {
   /** B-STATUS-01 (critic r1): the play receipt's Undo. Removes the day's log
    *  only when that tap created it — Undo after a repeat tap leaves the
    *  earlier record alone. */
-  const undoPlayCompletion = (done: { id: string; created: boolean }) => {
-    if (done.created) void playLogCol.remove(done.id);
-  };
+  // B-STATUS-01: returns the write, so the play receipt's Undo can tell a failure.
+  const undoPlayCompletion = (done: { id: string; created: boolean }): Promise<void> =>
+    done.created ? playLogCol.remove(done.id) : Promise.resolve();
 
   // Active Interactive / Selection States
   const [selectedLens, setSelectedLens] = useState<string>(() => readLS("arbor.lens") || "Integrated Balanced");
@@ -1829,8 +1830,9 @@ function useArborState() {
     // B-STATUS-01: the caller answers with its receipt line (and its Undo).
     return row.id;
   };
-  /** B-STATUS-01: Undo for "Keep this" — the kept row goes again. */
-  const unkeepBehaviorInsight = (id: string) => void insightsCol.remove(id);
+  /** B-STATUS-01: Undo for "Keep this" — the kept row goes again. Returns the
+   *  write, so a failed undo keeps its receipt (Receipt's undo is honest). */
+  const unkeepBehaviorInsight = (id: string) => insightsCol.remove(id);
   const keptInsights = useMemo(() => insightsCol.items.filter((r) => r.kind === "kept-insight"), [insightsCol.items]);
 
   // Mark a behavior log resolved / unresolved
@@ -1850,7 +1852,8 @@ function useArborState() {
     if (!log) return Promise.reject(new Error("The saved moment is no longer available"));
     return logsCol.upsert({ ...log, shelf, ...(milestoneId ? { milestoneId } : {}) });
   };
-  const deletePlan = (id: string) => void plansCol.remove(id);
+  // B-STATUS-01: returns the write, so the started receipt's Undo can tell a failure.
+  const deletePlan = (id: string) => plansCol.remove(id);
   // B-GROWTH-25: a ready-made routine starts as a plan in one tap — no goal,
   // no AI call; the template (lib/routineTemplates.routineToPlan) is the plan.
   const startPlanFromTemplate = (plan: ActionPlan) => plansCol.upsert(withFocusGoal(plan, childProfile.activeGoals));

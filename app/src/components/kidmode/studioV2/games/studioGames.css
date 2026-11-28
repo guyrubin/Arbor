@@ -1,35 +1,48 @@
 @import "../studioTokens.css";
 /* Calm Builder, Puzzle Planet and Sound Explorer share the pearl Studio
    materials. The objects keep their own hues; selected and completed things
-   use teal, and the one next action is graphite. */
+   use teal, and the one next action is graphite.
+   B-KID-173: each one wears the Bop games' shell (.adventure--bop: the pearl
+   panel, a .bop-stage with a kit room behind the play, the kit's own props);
+   no comic outline, no navy stage, no placeholder "+" or dashed slot. */
 .studio-game { color: var(--studio-graphite); font-family: var(--studio-font); font-size: var(--kid-t-label, 18px); max-inline-size: 900px; margin-inline: auto; }
 .studio-game button { font: inherit; touch-action: manipulation; cursor: pointer; }
 .studio-game button:focus-visible { outline: 4px solid var(--studio-teal-ink); outline-offset: 4px; }
 .studio-game button:disabled { cursor: default; opacity: .55; }
-.studio-game-panel { background: var(--studio-frost); border: 1px solid var(--studio-surface); border-radius: 24px; padding: clamp(12px, 3vw, 24px); box-shadow: 0 18px 44px var(--studio-shade); }
+.studio-game.adventure { display: block; max-inline-size: 900px; padding: clamp(12px, 3vw, 24px); }
 .studio-game-help { margin: 0 0 16px; color: var(--studio-graphite-soft); line-height: 1.45; }
 .studio-game-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin-block: 16px; }
 .studio-game-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-block-size: 48px; padding: 10px 16px; border: 2px solid var(--studio-line); border-radius: 16px; background: var(--studio-surface); color: var(--studio-graphite); font-weight: 800 !important; }
 .studio-game-button[aria-pressed="true"] { background: var(--studio-teal-soft); border-color: var(--studio-teal-ink); }
 .studio-game-button--go { background: var(--studio-action); border-color: var(--studio-action); color: var(--studio-action-ink); }
 .studio-game-status { min-block-size: 1.5em; margin-block: 12px; text-align: center; font-weight: 700; }
-.studio-corner { position: relative; overflow: hidden; border: 1px solid var(--studio-line); border-radius: 28px; background-color: var(--studio-mist); background-size: cover; isolation: isolate; padding: 18px 12px 14px; }
-.studio-corner::before { content: ''; position: absolute; inset: 0; background: transparent; z-index: -1; pointer-events: none; }
-.studio-corner[data-light="evening"]::before { background: color-mix(in srgb, var(--studio-graphite-soft) 14%, transparent); }
-.studio-corner[data-light="night"]::before { background: color-mix(in srgb, var(--studio-graphite) 44%, transparent); }
+.studio-game .studio-corner { position: relative; overflow: hidden; isolation: isolate; padding: 18px 12px 14px; }
+/* The light over the room: evening is a warm dimming, Starlight a dimmed pearl (graphite-soft over mist), never navy. */
+.studio-corner-light { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: transparent; transition: background-color .4s var(--studio-ease-soft); }
+.studio-corner[data-light="evening"] .studio-corner-light { mix-blend-mode: multiply; background: linear-gradient(180deg, color-mix(in srgb, var(--studio-signal) 24%, var(--studio-surface)), color-mix(in srgb, var(--studio-graphite-soft) 16%, var(--studio-surface))); }
+.studio-corner[data-light="night"] .studio-corner-light { mix-blend-mode: multiply; background: linear-gradient(180deg, color-mix(in srgb, var(--studio-graphite-soft) 52%, var(--studio-mist)), color-mix(in srgb, var(--studio-graphite-soft) 30%, var(--studio-mist))); }
 .studio-corner-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-block-start: 18%; }
-.studio-corner-place { aspect-ratio: 1.4; min-block-size: 76px; border: 2px dashed var(--studio-line); border-radius: 24px; background: color-mix(in srgb, var(--studio-surface) 65%, transparent); display: grid; place-items: center; color: var(--studio-graphite); }
-.studio-corner-place[data-filled="true"] { border-color: var(--studio-graphite-soft); background: color-mix(in srgb, var(--studio-surface) 94%, transparent); }
-.studio-corner-place[data-selected="true"] { border: 3px solid var(--studio-teal-ink); background: var(--studio-teal-soft); }
-.studio-corner-place svg { inline-size: 55%; block-size: 55%; max-block-size: 80px; color: var(--studio-graphite); }
+/* A place is a soft pearl mark on the floor; a chosen thing waits, so the free marks glow teal. */
+.studio-game .studio-corner-place { position: relative; aspect-ratio: 1.4; min-block-size: 76px; padding: 4px; border: 1px solid color-mix(in srgb, var(--studio-surface) 80%, transparent); border-radius: 50% / 38%; background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--studio-surface) 62%, transparent), color-mix(in srgb, var(--studio-surface) 22%, transparent) 70%); box-shadow: inset 0 -4px 10px var(--studio-shade); display: grid; place-items: end center; color: var(--studio-graphite); }
+.studio-corner[data-armed="true"] .studio-corner-place[data-filled="false"] { border: 2px solid var(--studio-teal-ink); background: color-mix(in srgb, var(--studio-teal-soft) 78%, transparent); }
+.studio-game .studio-corner-place[data-filled="true"] { border-color: transparent; background: radial-gradient(ellipse at 50% 88%, var(--studio-shade), transparent 62%); box-shadow: none; }
+.studio-game .studio-corner-place[data-selected="true"] { border: 3px solid var(--studio-teal-ink); background: color-mix(in srgb, var(--studio-teal-soft) 72%, transparent); }
+/* A prop stands in its place: absolutely sized, so it never grows the grid. */
+.studio-game .studio-corner-place > .studio-corner-prop { position: absolute; inset-inline: 6%; inset-block: auto 10%; inline-size: 76%; block-size: 66%; max-inline-size: none; margin-inline: auto; object-fit: contain; object-position: 50% 100%; }
+.studio-corner-place > .studio-corner-token { position: absolute; inset-inline: 0; inset-block-end: 10%; margin-inline: auto; }
+.studio-corner-token { display: grid; place-items: center; inline-size: min(56%, 76px); aspect-ratio: 1; border-radius: 50%; background: var(--studio-surface); color: var(--studio-teal-ink); box-shadow: 0 4px 0 var(--studio-line), 0 8px 14px var(--studio-shade); }
+.studio-corner-token svg { inline-size: 58%; block-size: 58%; }
 .studio-corner-tray { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-block-start: 16px; }
 .studio-object { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; min-block-size: 92px; border: 2px solid var(--studio-line); border-radius: 18px; background: var(--studio-pearl); color: var(--studio-graphite); font-weight: 800 !important; }
-.studio-object svg { inline-size: 46px; block-size: 46px; color: var(--studio-teal-ink); }
+.studio-object-art { display: flex; align-items: flex-end; justify-content: center; inline-size: 100%; block-size: 52px; }
+.studio-game .studio-object-art > .studio-corner-prop { inline-size: auto; max-inline-size: 86%; block-size: 52px; object-fit: contain; object-position: 50% 100%; }
+.studio-object .studio-corner-token { inline-size: 46px; margin: 0; box-shadow: 0 2px 0 var(--studio-line); }
 .studio-object[aria-pressed="true"] { border: 3px solid var(--studio-teal-ink); background: var(--studio-teal-soft); }
-.studio-object[data-placed="true"] { border-style: dashed; }
+.studio-object[data-placed="true"] { background: var(--studio-mist); }
 .studio-puzzle-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-.studio-puzzle-board { display: grid; gap: 3px; padding: 4px; background: var(--studio-mist); border: 3px solid var(--studio-graphite-soft); border-radius: 16px; overflow: hidden; direction: ltr; }
-.studio-puzzle-cell { min-inline-size: 0; min-block-size: 48px; padding: 0; background: var(--studio-surface); border: 1px dashed var(--studio-line); overflow: hidden; display: grid; place-items: center; color: var(--studio-graphite-soft); }
+.studio-game .studio-puzzle-layout.bop-stage { padding: clamp(10px, 2.4vw, 20px); }
+.studio-puzzle-board { display: grid; gap: 3px; padding: 4px; background: var(--studio-frost); border: 1px solid var(--studio-line); border-radius: var(--studio-radius-card); box-shadow: 0 10px 24px var(--studio-shade); overflow: hidden; direction: ltr; }
+.studio-puzzle-cell { min-inline-size: 0; min-block-size: 48px; padding: 0; background: var(--studio-pearl); border: 0; border-radius: 6px; box-shadow: inset 0 2px 6px var(--studio-shade); overflow: hidden; display: grid; place-items: center; color: var(--studio-graphite-soft); }
 .studio-puzzle-cell[data-filled="true"] { border: 0; }
 .studio-puzzle-cell:disabled { opacity: 1; }
 .studio-puzzle-fragment { position: relative; display: block; inline-size: 100%; block-size: 100%; overflow: hidden; }
@@ -38,9 +51,12 @@
 .studio-puzzle-piece { padding: 0; min-block-size: 48px; overflow: hidden; border: 3px solid var(--studio-line); border-radius: 14px; background: var(--studio-surface); }
 .studio-puzzle-piece[aria-pressed="true"] { border-color: var(--studio-teal-ink); box-shadow: 0 0 0 3px var(--studio-teal-soft); }
 .studio-puzzle-piece[data-placed="true"] { opacity: .2; }
-.studio-puzzle-preview { inline-size: min(75%, 300px); margin: 0 auto 16px; border: 3px solid var(--studio-graphite-soft); border-radius: 18px; overflow: hidden; }
-.studio-sound-scene { display: flex; flex-direction: column; align-items: center; text-align: center; padding: clamp(20px, 5vw, 40px); border-radius: 24px; background: var(--studio-mist); border: 2px solid var(--studio-line); }
-.studio-sound-emblem { display: grid; place-items: center; inline-size: 116px; block-size: 116px; color: var(--studio-teal-ink); border-radius: 50%; background: var(--studio-surface); border: 3px solid var(--studio-teal); margin-block-end: 16px; }
+.studio-puzzle-preview { inline-size: min(75%, 300px); margin: 0 auto 16px; border: 1px solid var(--studio-line); border-radius: var(--studio-radius-card); box-shadow: 0 10px 24px var(--studio-shade); overflow: hidden; }
+.studio-game .studio-sound-scene { display: flex; flex-direction: column; align-items: center; text-align: center; padding: clamp(16px, 4vw, 32px); }
+.studio-sound-cast { display: flex; align-items: flex-end; justify-content: center; gap: 14px; margin-block-end: 12px; }
+.studio-sound-emblem { display: grid; place-items: center; inline-size: 116px; block-size: 116px; color: var(--studio-teal-ink); border-radius: 50%; background: var(--studio-frost); border: 1px solid var(--studio-surface); box-shadow: 0 10px 24px var(--studio-shade); margin-block-end: 16px; }
+/* Text never sits on the picture: help and clue lines are frosted. */
+.studio-sound-scene .studio-game-help, .studio-sound-clue { padding: 8px 14px; border-radius: var(--studio-radius-card); background: var(--studio-frost); }
 .studio-sound-emblem svg { inline-size: 62px; block-size: 62px; }
 .studio-sound-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-block-start: 18px; }
 .studio-sound-choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-block-size: 126px; border: 2px solid var(--studio-line); border-radius: 20px; background: var(--studio-pearl); color: var(--studio-graphite); padding: 14px 8px; font-weight: 800 !important; }
@@ -54,17 +70,13 @@
 @media (max-width: 430px) {
   .studio-corner-tray { gap: 6px; }
   .studio-object { font-size: 14px !important; }
-  .studio-object svg { inline-size: 36px; block-size: 36px; }
+  .studio-object-art, .studio-game .studio-object-art > .studio-corner-prop { block-size: 42px; }
   .studio-sound-choices { gap: 7px; }
   .studio-sound-choice { font-size: 16px !important; }
 }
 
 .studio-corner-resident { display: flex; justify-content: center; min-block-size: 108px; }
 .studio-corner-places { margin-block-start: 8px; }
-.studio-corner-place[data-filled=true] { box-shadow: 0 5px 0 color-mix(in srgb, var(--studio-graphite) 20%, transparent); }
-.studio-corner-place:nth-child(3n+1) svg { color: var(--arbor-clay-deep); }
-.studio-corner-place:nth-child(3n+2) svg { color: var(--studio-teal-ink); }
-.studio-corner-place:nth-child(3n) svg { color: var(--arbor-lav-ink); }
 .studio-puzzle-cell[data-hint=true] { outline: 4px solid var(--studio-teal-ink); outline-offset: -4px; background: var(--studio-teal-soft); }
 .studio-puzzle-reveal { text-align: center; padding-block: 16px; }
 .studio-puzzle-reveal .studio-puzzle-preview { inline-size: min(100%, 520px); }
@@ -76,7 +88,7 @@
 .studio-puzzle-cell { position: relative; }
 .studio-puzzle-ghost { position: absolute; inset: 4px; opacity: .45; pointer-events: none; }
 .studio-puzzle-board[data-preview="true"] .studio-puzzle-cell:not([data-filled="true"]) { background: transparent; }
-.studio-puzzle-board[data-armed="true"] .studio-puzzle-cell:not([data-filled="true"]) { background: color-mix(in srgb, var(--studio-teal-soft) 70%, transparent); border: 2px dashed var(--studio-teal-ink); color: var(--studio-teal-ink); animation: studio-puzzle-invite 1.3s ease-in-out infinite; }
+.studio-puzzle-board[data-armed="true"] .studio-puzzle-cell:not([data-filled="true"]) { background: color-mix(in srgb, var(--studio-teal-soft) 70%, transparent); box-shadow: inset 0 0 0 2px var(--studio-teal-ink); color: var(--studio-teal-ink); animation: studio-puzzle-invite 1.3s ease-in-out infinite; }
 .studio-puzzle-board .studio-puzzle-cell[data-miss="true"]:not([data-filled="true"]) { animation: studio-puzzle-miss .45s ease-in-out; }
 .studio-game .studio-puzzle-piece[data-placed="true"] { visibility: hidden; }
 .studio-puzzle-piece { transition: transform .15s ease-out; }
@@ -86,7 +98,7 @@
 @keyframes studio-puzzle-invite { 50% { background: var(--studio-teal-soft); } }
 @keyframes studio-puzzle-miss { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
 @media (prefers-reduced-motion: reduce) {
-  .studio-puzzle-board .studio-puzzle-cell, .studio-puzzle-piece { animation: none !important; transition: none; }
+  .studio-puzzle-board .studio-puzzle-cell, .studio-puzzle-piece, .studio-corner-light { animation: none !important; transition: none; }
   .studio-puzzle-piece[aria-pressed="true"] { transform: none; }
 }
 @media (max-width: 560px) {
@@ -99,4 +111,4 @@
 .studio-game :is(.studio-object, .studio-sound-choice)[aria-pressed=true]::after { content: ""; position: absolute; inset-inline-end: 9px; inset-block-start: 7px; inline-size: 7px; block-size: 12px; border: solid var(--studio-teal-ink); border-width: 0 3px 3px 0; rotate: 45deg; }
 .studio-game .studio-sound-choice[aria-pressed=true]:disabled { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .studio-game :is(.studio-object, .studio-sound-choice, .studio-game-button) { transition: none; } .studio-game :is(.studio-object, .studio-sound-choice, .studio-game-button):active { translate: none; } }
-@media (forced-colors: active) { .studio-game-panel, .studio-game :is(.studio-object, .studio-sound-choice, .studio-game-button) { border: 2px solid ButtonText; box-shadow: none; } .studio-game :is(.studio-object, .studio-sound-choice)[aria-pressed=true]::after { border-color: Highlight; } }
+@media (forced-colors: active) { .studio-game.adventure, .studio-game :is(.studio-object, .studio-sound-choice, .studio-game-button) { border: 2px solid ButtonText; box-shadow: none; } .studio-game :is(.studio-object, .studio-sound-choice)[aria-pressed=true]::after { border-color: Highlight; } }

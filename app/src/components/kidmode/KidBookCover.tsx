@@ -4,9 +4,10 @@
  *
  * - A story with a cover in the child's ONE theme (kidThemeManifest) shows that
  *   cover, portrait, edge to edge.
- * - A story with no cover in the theme gets a designed title card drawn from
- *   Studio tokens: pearl paper, a cloth spine on the inline-start edge, and
- *   the title in the Studio face. No emoji, never another theme's file.
+ * - A story with no hero-free cover in the theme (B-KID-172) gets the kit's
+ *   honest fallback: the Studio's reading room picture with the book's title
+ *   on a frosted plate and a cloth spine. No emoji, never another theme's
+ *   file, never blank paper.
  * - A finished book carries a small "read" mark (a tick in a disc) — never a
  *   count, a star or a score.
  * The title is printed under the cover; it is the button's accessible name.
@@ -14,7 +15,7 @@
  */
 import React, { useState } from "react";
 import type { HeroPackId } from "../../types";
-import { kidArtSrcSet, storyCoverArt, type KidThemeId } from "../../lib/kidThemeManifest";
+import { kidArtSrcSet, sharedKidArt, storyCoverArt, type KidArt, type KidThemeId } from "../../lib/kidThemeManifest";
 import { storyBookArt } from "../../lib/storyPlateArt";
 import "./kidBookCover.css";
 
@@ -56,23 +57,46 @@ export interface KidBookCoverProps {
   hero?: React.ReactNode;
 }
 
+/** B-KID-172: the kit picture a book without its own hero-free cover stands
+ *  on — the Stories reading room (the Studio's own world door, a companion with
+ *  an open book, no child), the same honest fallback a Studio game tile uses.
+ *  Never another child's painted cover, never another theme's file. */
+export function kidBookFallbackArt(theme: KidThemeId | undefined): KidArt | null {
+  return theme ? sharedKidArt(theme, "studio.portal.stories") : null;
+}
+
 /**
  * The designed title card. B-BOOK-26: with `hero` (the child's OWN approved
- * portrait, badge-less), the card carries it as a disc in its end corner —
- * ONE composition for the shelf tile and, scaled by `heroSize`, the reader's
- * cover page. Without it (a hero-less child) the card is the complete book.
+ * portrait, badge-less), the card carries it as a disc — ONE composition for
+ * the shelf tile and, scaled by `heroSize`, the reader's cover page. Without it
+ * (a hero-less child) the card is the complete book.
+ * B-KID-172: with `theme`, the card is a picture, not blank paper: the kit's
+ * reading room fills it and the title sits on a frosted plate at its foot
+ * (the portrait moves to the top corner). Without `theme` (the loading
+ * placeholder under a real cover) it stays the pearl paper card.
  */
-export function KidBookTitleCard({ title, pack, hero, heroSize = 44, titleSize = 17 }: { title: string; pack: HeroPackId; hero?: React.ReactNode; heroSize?: number; titleSize?: number }) {
+export function KidBookTitleCard({ title, pack, hero, heroSize = 44, titleSize = 17, theme }: { title: string; pack: HeroPackId; hero?: React.ReactNode; heroSize?: number; titleSize?: number; theme?: KidThemeId }) {
+  const art = kidBookFallbackArt(theme);
+  const inset = Math.round(heroSize * 0.09);
   return (
-    <span aria-hidden="true" data-kid-studio="" data-kid-book-titlecard="" data-pack={pack} style={{ position: "absolute", inset: 0, display: "block", background: "var(--studio-pearl)" }}>
+    <span aria-hidden="true" data-kid-studio="" data-kid-book-titlecard="" data-kid-book-fallback-art={art ? "" : undefined} data-pack={pack} style={{ position: "absolute", inset: 0, display: "block", background: "var(--studio-pearl)" }}>
+      {art && <img src={art.src480} srcSet={kidArtSrcSet(art)} sizes="(max-width: 639px) 50vw, 360px" alt="" draggable={false} decoding="async" loading="lazy" data-kid-book-fallback-img="" style={{ position: "absolute", inset: 0, inlineSize: "100%", blockSize: "100%", objectFit: "cover", objectPosition: "66% 70%" }} />}
       <span className="kid-book-cover__spine" />
-      <span style={{ position: "absolute", insetBlock: 10, insetInlineStart: 18, insetInlineEnd: 8, display: "grid", placeItems: "center", padding: 10, background: "var(--studio-surface)", border: "1px solid var(--studio-line)", borderRadius: 10 }}>
-        <span data-kid-book-card-title="" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: titleSize, lineHeight: 1.15, color: "var(--studio-graphite)" }}>
-          {title}
+      {art ? (
+        <span data-kid-book-title-plate="" style={{ position: "absolute", insetBlockEnd: 8, insetInlineStart: 16, insetInlineEnd: 8, padding: "8px 10px", background: "var(--studio-frost)", border: "1px solid var(--studio-surface)", borderRadius: 12, boxShadow: "0 6px 16px var(--studio-shade)", backdropFilter: "blur(6px)" }}>
+          <span data-kid-book-card-title="" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden", textAlign: "center", fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: titleSize, lineHeight: 1.15, color: "var(--studio-graphite)" }}>
+            {title}
+          </span>
         </span>
-      </span>
+      ) : (
+        <span style={{ position: "absolute", insetBlock: 10, insetInlineStart: 18, insetInlineEnd: 8, display: "grid", placeItems: "center", padding: 10, background: "var(--studio-surface)", border: "1px solid var(--studio-line)", borderRadius: 10 }}>
+          <span data-kid-book-card-title="" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 4, overflow: "hidden", textAlign: "center", fontFamily: "var(--studio-font)", fontWeight: 800, fontSize: titleSize, lineHeight: 1.15, color: "var(--studio-graphite)" }}>
+            {title}
+          </span>
+        </span>
+      )}
       {hero && (
-        <span data-kid-book-own-hero="" style={{ position: "absolute", insetBlockEnd: Math.round(heroSize * 0.09), insetInlineEnd: Math.round(heroSize * 0.09), inlineSize: heroSize, blockSize: heroSize, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--studio-surface)", border: "1px solid var(--studio-line)" }}>
+        <span data-kid-book-own-hero="" style={{ position: "absolute", ...(art ? { insetBlockStart: inset + 4, insetInlineStart: 16 + inset } : { insetBlockEnd: inset, insetInlineEnd: inset }), inlineSize: heroSize, blockSize: heroSize, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--studio-surface)", border: "1px solid var(--studio-line)" }}>
           {hero}
         </span>
       )}
@@ -99,6 +123,7 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
       type="button"
       onClick={onOpen}
       data-kid-book={storyId}
+      data-kid-book-layout={layout}
       data-kid-studio=""
       className="play-pressable"
       style={{
@@ -141,7 +166,7 @@ export function KidBookCover({ storyId, title, pack, theme, read, readLabel, onO
           {portraitSlot && hero && <span data-kid-book-own-hero="" style={{ position: "absolute", left: `${portraitSlot.centerX * 100}%`, bottom: `${(1 - portraitSlot.bottom) * 100}%`, transform: "translateX(-50%)", inlineSize: layout === "row" ? 34 : 44, blockSize: layout === "row" ? 34 : 44, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: 999, background: "var(--studio-surface)", border: "1px solid var(--studio-line)" }}>{hero}</span>}
           </>
         ) : (
-          <KidBookTitleCard title={title} pack={pack} hero={hero} heroSize={layout === "row" ? 34 : 44} />
+          <KidBookTitleCard title={title} pack={pack} hero={hero} heroSize={layout === "row" ? 34 : 44} titleSize={layout === "row" ? 13 : 16} theme={theme} />
         )}
         {read && (
           <span

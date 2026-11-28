@@ -12,6 +12,7 @@ import { KID_WORLD_TILE_IDS, kidArt, storyCoverArt, worldTileKey, type KidArt, t
 import { allBookPages } from "./library/bookShape";
 import { bookPlatesFor } from "./library/books";
 import { isPlanBook, type AnyBook } from "./library/types";
+import { lastFinishByBook } from "./bookReads";
 
 export const KID_RECENT_BOOKS = 3;
 /** The most art URLs the worker warms from one message (public/sw.js ART_MAX). */
@@ -109,12 +110,8 @@ export function offlineLibraryBooks<T extends { book: AnyBook }>(
   const [tonight, ...rest] = entries;
   if (!Number.isFinite(nowMs) || n <= 0) return [tonight];
   const readId = (e: T) => (isPlanBook(e.book) ? e.book.pattern : e.book.id);
-  const last = new Map<string, number>();
-  for (const r of reads) {
-    const id = typeof r.bookId === "string" ? r.bookId.trim() : "";
-    const when = validArtHistoryTime(r.finishedAt, nowMs);
-    if (id && when !== null && when > (last.get(id) ?? -Infinity)) last.set(id, when);
-  }
+  // B-BOOK-51: the ledger's one reader decides which rows are finishes.
+  const last = lastFinishByBook(reads, nowMs);
   const recent = rest.filter((e) => last.has(readId(e)))
     .sort((a, b) => last.get(readId(b))! - last.get(readId(a))!);
   return [tonight, ...recent.slice(0, n)];

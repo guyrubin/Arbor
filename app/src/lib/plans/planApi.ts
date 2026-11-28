@@ -20,9 +20,18 @@ export interface PlanVisibility {
 }
 
 export type PlanPlateState = "painted" | "failed" | "unpainted";
+/** B-BOOK-27: a painted plate's full-size review (server/planPlates.plateReviewOf). */
+export type PlanPlateReviewState = "unreviewed" | "reviewed" | "child-painted" | "has-text";
+export interface PlanPlateReview {
+  state: PlanPlateReviewState;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
 export interface PlanPlateStatus {
   storage: boolean;
   patterns: Record<PatternId, Record<string, PlanPlateState>>;
+  /** Painted plates only; absent from an older server = every plate unreviewed. */
+  reviews?: Partial<Record<PatternId, Record<string, PlanPlateReview>>>;
   costPerImageUsd: number;
   maxImagesPerRun: number;
   maxUsdPerRun: number;
@@ -62,6 +71,11 @@ export const composePlan = (childId: string, body: ComposeRequest): Promise<{ do
 
 /** B-BOOK-75 plates (admin / comped only; 403 for a family): the per-plate state. */
 export const fetchPlanPlateStatus = (): Promise<PlanPlateStatus> => call<PlanPlateStatus>("/api/admin/plan-plates");
+
+/** B-BOOK-27: record that the owner viewed one painted plate full size (both
+ *  flags as seen). The read route serves the plate only when both are true. */
+export const reviewPlanPlate = (input: { pattern: PatternId; plate: string; childFree: boolean; textFree: boolean }): Promise<{ pattern: PatternId; plate: string; childFree: boolean; textFree: boolean; reviewedBy: string; servable: boolean }> =>
+  call("/api/admin/plan-plates/review", { method: "POST", body: JSON.stringify(input) });
 
 /** Paint one pattern's plates (or one plate) in shared storage; painted plates are skipped unless `repaint`. */
 export const paintPlanPlates = (input: { pattern?: PatternId; plate?: string; repaint?: boolean }): Promise<PlanPlateRun> =>

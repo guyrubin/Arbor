@@ -5,7 +5,7 @@ import { useArbor } from "../../context/ArborContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { useToast } from "../../context/ToastContext";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { SectionCard, cardCls, TrustSafetyBar } from "../ui/kit";
 // v10.1: the Development check page in the design system's frame (the list's third section links here).
 import { DsRoot, Guide, Route, RouteSection, Scene } from "../../design/primitives";
@@ -345,7 +345,8 @@ export function ScreeningFlow({ onClose, stamped = false }: {
       undo: {
         label: t("elev.loop.notice.undo"),
         testId: "screen-recheck-undo",
-        onUndo: () => { recheckReceipt.clear(); void col.upsert(base); },
+        // B-STATUS-01: the line clears only once the write went through.
+        onUndo: undoThen(() => col.upsert(base), recheckReceipt.clear),
       },
     });
   };

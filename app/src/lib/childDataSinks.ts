@@ -288,6 +288,7 @@ export const ACCOUNT_DEVICE_KEYS: Readonly<Record<string, string>> = {
   "arbor.kidmode.active": "kid mode open flag and view id",
   "arbor.kidmode.heroStepOffered": "session marker",
   "arbor.kidmode.session": "session start time and an activity count (no content)",
+  "arbor.kidmode.sitting": "this tab's last game sitting (lib/gameSittings.ts, sessionStorage): a catalogue game id, a time and whether a grown-up's door opened it; no child id, no content",
   "arbor.lastBilledPlan": "billing transition marker",
   "arbor.learnFeedback": "feedback on library cards",
   "arbor.lens": "tone preference",

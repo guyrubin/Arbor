@@ -69,7 +69,8 @@
   background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--mk-paper) 86%, transparent) 0 6px, transparent 6px 13px); }
 .ct-strip__film::before { inset-block-start: 2px; } .ct-strip__film::after { inset-block-end: 2px; }
 .ct-strip[data-live=true] .ct-strip__film { cursor: ew-resize; }
-.ct-cell { position: relative; flex: 1; min-inline-size: 0; overflow: hidden; border-radius: 4px; background: color-mix(in srgb, var(--mk-shadow) 62%, var(--mk-umber)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-paper) 16%, transparent); }
+/* B-KID-173: a frame not yet shot is pale pearl celluloid, not a dark hole in the strip. */
+.ct-cell { position: relative; flex: 1; min-inline-size: 0; overflow: hidden; border-radius: 4px; background: color-mix(in srgb, var(--mk-snow) 84%, var(--mk-umber)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-paper) 16%, transparent); }
 .ct-cell canvas { display: block; inline-size: 100%; block-size: 100%; opacity: 0; }
 .ct-cell[data-shot=true] canvas { opacity: 1; animation: ct-land .42s var(--studio-ease-spring) both; }
 .ct-cell[data-next=true] { box-shadow: inset 0 0 0 2px var(--studio-signal); animation: ct-blink 1.6s ease-in-out infinite; }
@@ -88,10 +89,10 @@
 .ct-lens { position: absolute; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; animation: ct-rise .55s var(--studio-ease-spring) both; transition: scale .14s var(--studio-ease-spring); transform-origin: 50% 100%; }
 .ct-lens::before { content: ""; position: absolute; inset-inline: 6%; inset-block-end: -4%; block-size: 14%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--mk-shadow) 46%, transparent), transparent); }
 .ct-lens > img { position: relative; display: block; inline-size: 100%; block-size: 100%; object-fit: contain; object-position: 50% 100%; pointer-events: none; }
-.ct-lens__screen { position: absolute; overflow: hidden; border-radius: 12% / 16%; background: var(--mk-night); pointer-events: none; }
+.ct-lens__screen { position: absolute; overflow: hidden; border-radius: 12% / 16%; background: color-mix(in srgb, var(--mk-snow) 86%, var(--mk-steel)); pointer-events: none; }
 .ct-lens__screen canvas { display: block; inline-size: 100%; block-size: 100%; }
 .ct-lens__screen::after { content: ""; position: absolute; inset: 8%; border: 2px solid transparent; border-radius: 8%;
-  background: linear-gradient(var(--mk-sky), var(--mk-sky)) 0 0 / 22% 2px no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 0 0 / 2px 26% no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 100% 100% / 22% 2px no-repeat, linear-gradient(var(--mk-sky), var(--mk-sky)) 100% 100% / 2px 26% no-repeat; }
+  background: linear-gradient(var(--studio-teal-ink), var(--studio-teal-ink)) 0 0 / 22% 2px no-repeat, linear-gradient(var(--studio-teal-ink), var(--studio-teal-ink)) 0 0 / 2px 26% no-repeat, linear-gradient(var(--studio-teal-ink), var(--studio-teal-ink)) 100% 100% / 22% 2px no-repeat, linear-gradient(var(--studio-teal-ink), var(--studio-teal-ink)) 100% 100% / 2px 26% no-repeat; }
 .ct-lens__shutter { position: absolute; inset-inline-start: 84%; inset-block-start: 26%; inline-size: 15%; aspect-ratio: .62; border-radius: 40%; pointer-events: none; }
 .ct-lens[data-cue=true] .ct-lens__shutter { box-shadow: 0 0 0 3px var(--studio-signal); animation: ct-blink 1.5s ease-in-out infinite; }
 .ct-lens:active:not(:disabled) { scale: .94; }

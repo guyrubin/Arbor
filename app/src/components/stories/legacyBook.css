@@ -118,6 +118,7 @@
      leaf instead. Shelf tiles, portrait phones and authored covers keep
      their existing composition. No image or layout direction is mirrored. */
   .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-card-title] { display: none !important; }
+  .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-title-plate] { display: none !important; }
   .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-fallback-title] { display: block; }
   .arbor-play [data-kid-book-reader] [data-kid-book-cover] [data-kid-book-titlecard] > [data-kid-book-own-hero] {
     inset: 50% auto auto 50% !important;

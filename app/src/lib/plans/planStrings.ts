@@ -111,6 +111,20 @@ export type PlanStringKey =
   | "plates.error"
   | "plates.cap"
   | "plates.stopped"
+  | "plates.review.unreviewed"
+  | "plates.review.reviewed"
+  | "plates.review.childPainted"
+  | "plates.review.hasText"
+  | "plates.review.open"
+  | "plates.review.title"
+  | "plates.review.childFree"
+  | "plates.review.textFree"
+  | "plates.review.save"
+  | "plates.review.cancel"
+  | "plates.review.saving"
+  | "plates.review.error"
+  | "plates.review.forbidden"
+  | "plates.review.unpainted"
   | "section.hard"
   | "chooser.age"
   | "card.night"
@@ -186,6 +200,20 @@ const EN: Record<PlanStringKey, string> = {
   "plates.error": "Painting did not finish. Try again.",
   "plates.cap": "Over the per-run cap. Paint one pattern at a time.",
   "plates.stopped": "Stopped early; run again to continue.",
+  "plates.review.unreviewed": "not reviewed — families do not see it",
+  "plates.review.reviewed": "reviewed by {by} on {at}",
+  "plates.review.childPainted": "a child or person is in it ({by}, {at}) — families do not see it",
+  "plates.review.hasText": "words are in it ({by}, {at}) — families do not see it",
+  "plates.review.open": "Mark reviewed",
+  "plates.review.title": "Open {plate} full size and look at the whole picture. Tick only what you saw.",
+  "plates.review.childFree": "No child, person, face or hands anywhere in the picture",
+  "plates.review.textFree": "No words, letters or numbers anywhere in the picture",
+  "plates.review.save": "Save review",
+  "plates.review.cancel": "Cancel",
+  "plates.review.saving": "Saving…",
+  "plates.review.error": "The review was not saved. Try again.",
+  "plates.review.forbidden": "This account may not review plates.",
+  "plates.review.unpainted": "This plate is not painted yet.",
   "print.kicker": "Parent copy — not for the child's shelf",
   "print.title": "{name}'s plan",
   "print.approved": "Approved by a parent on {date}, for {days} days.",
@@ -302,6 +330,20 @@ const HE: Record<PlanStringKey, string> = {
   "plates.error": "הציור לא הסתיים. נסו שוב.",
   "plates.cap": "מעבר למכסה לריצה. ציירו דפוס אחד בכל פעם.",
   "plates.stopped": "נעצר מוקדם; הריצו שוב כדי להמשיך.",
+  "plates.review.unreviewed": "לא נבדק — משפחות לא רואות אותו",
+  "plates.review.reviewed": "נבדק על ידי {by} ב-{at}",
+  "plates.review.childPainted": "יש בו ילד או אדם ({by}, {at}) — משפחות לא רואות אותו",
+  "plates.review.hasText": "יש בו מילים ({by}, {at}) — משפחות לא רואות אותו",
+  "plates.review.open": "לסמן כנבדק",
+  "plates.review.title": "פתחו את {plate} בגודל מלא והסתכלו על כל התמונה. סמנו רק מה שראיתם.",
+  "plates.review.childFree": "אין ילד, אדם, פנים או ידיים בשום מקום בתמונה",
+  "plates.review.textFree": "אין מילים, אותיות או מספרים בשום מקום בתמונה",
+  "plates.review.save": "לשמור את הבדיקה",
+  "plates.review.cancel": "ביטול",
+  "plates.review.saving": "שומרים…",
+  "plates.review.error": "הבדיקה לא נשמרה. נסו שוב.",
+  "plates.review.forbidden": "לחשבון הזה אין הרשאה לבדוק לוחות.",
+  "plates.review.unpainted": "הלוח הזה עוד לא צויר.",
   "print.kicker": "עותק להורים — לא למדף של הילד",
   "print.title": "התוכנית של {name}",
   "print.approved": "אושרה על ידי הורה ב-{date}, ל-{days} ימים.",

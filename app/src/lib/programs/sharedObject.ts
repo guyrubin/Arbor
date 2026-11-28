@@ -29,6 +29,7 @@ import { childScopedKey } from "../childLocalState";
 import type { PatternDef } from "../library/plans/patterns";
 import type { BookLabel, BookLine } from "../library/types";
 import type { ShelfId } from "../shelves/registry";
+import { ledgerFinishes } from "../bookReads";
 
 export const PROGRAM_SHARED_OBJECT_FLAG = "arbor.flags.programSharedObject";
 
@@ -161,10 +162,9 @@ export function bookHandback(input: {
   const yesterday = shiftDay(dayKey(input.now), -1);
   let best = -Infinity;
   let hit = false;
-  for (const read of input.reads) {
-    if (read.bookId !== match.object.id || typeof read.finishedAt !== "string") continue;
-    const at = Date.parse(read.finishedAt);
-    if (!Number.isFinite(at) || dayKey(new Date(at)) !== yesterday || at < best) continue;
+  // B-BOOK-51: the ledger's one reader decides which rows are finishes.
+  for (const { bookId, at } of ledgerFinishes(input.reads, input.now.getTime())) {
+    if (bookId !== match.object.id || dayKey(new Date(at)) !== yesterday || at < best) continue;
     best = at;
     hit = true;
   }

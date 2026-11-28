@@ -7,6 +7,8 @@ import { useKidReadAloudMuted } from "../../audio/kidAudio";
 import { createExplorerAudio, type ExplorerAudio } from "./explorerAudio";
 import { EXPLORER_SOUNDS, type ExplorerSound } from "./gameRules";
 import { GAME_COPY } from "./gameCopy";
+import { BopFriend, BopScene } from "./adventures/BopArt";
+import "./adventures/adventures.css";
 import "./studioGames.css";
 
 const SOUND_GLYPHS = { steps: Footprints, bell: Bell, landing: Feather };
@@ -43,11 +45,17 @@ function ExplorerPlay({ childId }: { childId: string }) {
   };
   const next = () => { audio.current?.stop(); setRound(value => value + 1); setMatched(false); setHeard(false); setClue(false); setRetry(false); };
   return <GameShell worldId="sound-explorer" title={copy.sound} instruction={copy.soundInstruction} progress={{ index: round, total: EXPLORER_SOUNDS.length }}>
-    <div className="studio-game studio-game-panel" dir={uiLang === "he" ? "rtl" : "ltr"}>
+    <section className="studio-game adventure adventure--bop" data-kit-shell="" dir={uiLang === "he" ? "rtl" : "ltr"}>
       {round === EXPLORER_SOUNDS.length ? <GameFinish title={copy.soundFinish} subtitle={copy.soundSubtitle} onPlayAgain={reset} playAgainLabel={copy.again} homeLabel={copy.home} /> : <>
         <p className="studio-game-help">{copy.soundHelp}</p>
-        <div className="studio-sound-scene">
-          <div className="studio-sound-emblem" aria-hidden="true"><Glyph /></div>
+        {/* B-KID-173: the listening happens on the Bop games' pearl stage, in
+            the kit's music room, with Chock (the Studio's host) listening too. */}
+        <div className="studio-sound-scene bop-stage">
+          <BopScene scene="scene-band" />
+          <div className="studio-sound-cast">
+            <BopFriend friend="chock" mood={matched ? "happy" : "idle"} size={64} className="studio-sound-friend" />
+            <div className="studio-sound-emblem" aria-hidden="true"><Glyph /></div>
+          </div>
           <div className="studio-game-actions">
             <button type="button" className="studio-game-button studio-game-button--go" disabled={muted || matched} onClick={() => {
               const player = audio.current;
@@ -77,7 +85,7 @@ function ExplorerPlay({ childId }: { childId: string }) {
         <p className="studio-game-status" role="status" aria-live="polite">{matched ? `${copy.soundMatch} ${copy[sound]}` : retry ? copy.soundRetry : "\u00a0"}</p>
         {matched && <div className="studio-game-actions"><button type="button" className="studio-game-button studio-game-button--go" onClick={next}><Check aria-hidden="true" size={22} />{round === EXPLORER_SOUNDS.length - 1 ? copy.finish : copy.next}</button></div>}
       </>}
-    </div>
+    </section>
   </GameShell>;
 }
 

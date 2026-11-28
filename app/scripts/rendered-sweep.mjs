@@ -42,12 +42,15 @@
  * weight {tappableAboveFold, tappable, textSizes, under12, uppercase, gradients, screens}
  * (B-INF-06: measured in <main>, visible elements only, icon-font spans excluded; ratchet =
  * scripts/weightLimits.test.ts against scripts/weight-baseline.json).
+ * chromeWeight {regions, tappable, textSizes, under12, uppercase, gradients, sub44} (B-INF-09:
+ * over every [data-chrome] region; caps in scripts/capture/chrome-weight.mjs).
  * primaryMoveOccluded (+ primaryMoveFoldY) — P5 design r1 P0-1: the stamp's rect vs every
  *   FIXED bottom element (the capture dock, the tab bar) that overlaps it horizontally, plus an
  *   elementFromPoint probe at each control's centre inside the stamp; true = a control of the
  *   primary move is covered (at 375 EN "Did it" sat under the dock while the fold gate read true).
  * totals = routes · cells · mounted · consoleErrorCells · pctCells · latinHECells · sub44Cells ·
- * overflowCells · occludedCells. Stdout: one `SWEEP …` line; `--diff` adds `DIFF changed=<n> cells` + one line
+ * overflowCells · occludedCells · chrome (B-INF-09: scripts/capture/chrome-weight.mjs — weighed/mounted base cells,
+ * missing keys, worst per metric, cells over each cap). Stdout: one `SWEEP …` line; `--diff` adds `DIFF changed=<n> cells` + one line
  * per changed field; `--runs 2` re-runs (run2/ subdir, no shots) and prints STABLE | UNSTABLE <n>.
  *
  * How the critics use it: the validator diffs the wave's sweep against the previous baseline
@@ -95,6 +98,7 @@ import { SWEEP_LAW_EXIT, expectedBaseCells, sweepLawExplained, sweepLawExplained
 import { initializeSyntheticOnline } from "./capture/small-state.mjs";
 import { CELL_BOUND_MS, SETTLE_BUDGET_MS, WARMUP_BOUND_MS, raceBound, settleOverlayGeometry, sweepDeadlineMs } from "./capture/sweep-bound.mjs";
 import { VERDICT_TEXT_PATTERNS } from "./capture/verdict-tokens.mjs";
+import { chromeSummary, chromeWeightTotals } from "./capture/chrome-weight.mjs";
 import { DESIGN_VIEWPORT_IDS } from "./capture/route-accounting.mjs";
 import { captureFontContextOptions, installOfflineFonts, captureScreenshot } from "./capture/font-runtime.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -2073,6 +2077,8 @@ async function sweep(browser, opts, routes, outDir, withShots, allowLatin, tr) {
         stateCells: count(cells, (c) => !isBase(c) && c.reached),
         statesUnreached: count(cells, (c) => !isBase(c) && !c.reached),
         stateUndoFailed: count(cells, (c) => c.undone === false),
+        // B-INF-09: the chrome block per mounted base cell, its worst values and cells over a cap.
+        chrome: chromeWeightTotals(baseCells),
       },
       cells,
     };
@@ -2143,7 +2149,7 @@ function summaryLine(doc, outDir) {
     `SWEEP sha=${doc.sha.slice(0, 7)} routes=${mountedRoutes}/${t.routes} cells=${t.cells} ` +
     `consoleErr=${t.consoleErrorCells} pct=${t.pctCells} latinHE=${t.latinHECells} sub44=${t.sub44Cells} occluded=${t.occludedCells ?? 0} ` +
     `overflow=${t.overflowCells} seed=${doc.seed ?? "day0"} stateCells=${t.stateCells ?? 0} ` +
-    `statesUnreached=${t.statesUnreached ?? 0} out=${outDir}`
+    `statesUnreached=${t.statesUnreached ?? 0} ${t.chrome ? chromeSummary(t.chrome) : "chrome=-"} out=${outDir}`
   );
 }
 

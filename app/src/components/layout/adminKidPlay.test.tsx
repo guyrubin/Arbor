@@ -13,8 +13,9 @@ describe("KidPlayPanel", () => {
     const html = renderToStaticMarkup(<KidPlayPanel data={{
       minFamilies: 5,
       games: [
-        { week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 10, replays: 3, returned7d: 1 },
-        { week: "2026-W43", game: "calm-builder", hidden: true, families: null, sittings: null, replays: null, returned7d: null },
+        { week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 10, replays: 3, returned7d: 1, returnFamilies: 6 },
+        { week: "2026-W43", game: "calm-builder", hidden: true, families: null, sittings: null, replays: null, returned7d: null, returnFamilies: null },
+        { week: "2026-W44", game: "puzzle", hidden: false, families: 5, sittings: 7, replays: 2, returned7d: null, returnFamilies: null },
       ],
       books: [{ week: "2026-W43", book: "five-smooth-stones", hidden: false, families: 5, opened: 5, finished: 3 }],
     }} />);
@@ -25,12 +26,14 @@ describe("KidPlayPanel", () => {
     expect(html).toMatch(/calm-builder<\/td><td[^>]*>Hidden</);
     expect(html).toContain("2026-W43 · five-smooth-stones");
     expect(html).toContain("fewer than 5 families are hidden");
+    expect(html).toMatch(/2026-W44 · puzzle<\/td>(?:<td[^>]*>[^<]*<\/td>){2}<td[^>]*>Not yet</);
+    expect(html).toContain("not through a grown-up");
     expect(html).not.toMatch(/%/);
   });
   it("wave-3 carry-over: the number columns keep a gap at 390 px (Opened / Finished never run together)", () => {
     const html = renderToStaticMarkup(<KidPlayPanel data={{
       minFamilies: 5,
-      games: [{ week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 10, replays: 3, returned7d: 1 }],
+      games: [{ week: "2026-W43", game: "puzzle", hidden: false, families: 6, sittings: 10, replays: 3, returned7d: 1, returnFamilies: 6 }],
       books: [{ week: "2026-W43", book: "five-smooth-stones", hidden: false, families: 5, opened: 5, finished: 3 }],
     }} />);
     const heads = [...html.matchAll(/<th class="([^"]*)">([^<]*)<\/th>/g)].map((m) => [m[2], m[1]] as const);

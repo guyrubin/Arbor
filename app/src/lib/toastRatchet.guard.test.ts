@@ -160,8 +160,10 @@ describe("B-STATUS-01 · toasts are for errors and undo — the rest is a shrink
   it("the scan reads the real corpus (non-vacuity)", () => {
     // B-STATUS-01 wave 3 turned 24 success toasts into receipt lines (80 call
     // sites left); wave 4 turned the last 8 (81 → 73, each named in the wave-4
-    // block below). The floor moves only by those named removals: 73.
-    expect(SITES.length).toBeGreaterThanOrEqual(73);
+    // block below). The floor moves only by those named removals: 73. B-STATUS-01
+    // honest undo: Sharing's undo-revoke error toast became the receipt's own
+    // "still kept · Try again" line (73 → 72).
+    expect(SITES.length).toBeGreaterThanOrEqual(72);
     const kinds = new Set(SITES.map((s) => s.kind));
     for (const k of ["error", "action", "info", "dynamic"] as const) expect(kinds.has(k), k).toBe(true);
     // the done bar: no success toast anywhere in the corpus (the counter still

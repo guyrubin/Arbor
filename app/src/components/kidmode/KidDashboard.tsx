@@ -425,10 +425,11 @@ export default function KidDashboard({
       showAllAges: loadShowAllAges("hero-journeys"),
       hasCover: (id) => storyCoverArt(kidTheme, id) !== null,
       runs: heroRunsCol.items,
+      reads: bookReadsCol.items,
       stories: kidShelf,
     }), tonightLib ? "" : tonightsStoryId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, tonightsStoryId, tonightLib, kidShelf],
+    [uiLang, aiLang, childProfile.id, kidTheme, heroRunsCol.items, bookReadsCol.items, tonightsStoryId, tonightLib, kidShelf],
   );
   // B-KID-68: the world is named by the registry's own key (Spell Forge too).
   const yesterdayNameKey = yesterdayWorld ? greetingWorldNameKey(yesterdayWorld) : undefined;

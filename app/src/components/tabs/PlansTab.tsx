@@ -17,7 +17,7 @@ import RoutineTemplates from "../plans/RoutineTemplates";
 import RoutineRunBoard from "../plans/RoutineRunBoard";
 import PlanComposer from "../plans/PlanComposer";
 import { nextStartedPlan, routineIdOfPlan, routineTemplatesForAge } from "../../lib/routineTemplates";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { UrgentSupport } from "../safety/UrgentSupport";
 import { useChildCollection } from "../../hooks/useChildCollection";
 import { goToRoute, useHashQuery } from "../../hooks/useHashQuery";
@@ -145,7 +145,7 @@ export default function PlansTab() {
       // former "plan ready" toast); Undo takes the just-started plan away.
       startedReceipt.show({
         text: `${lead.title} · ${t("elev.plans.startedToday")}`,
-        undo: { label: t("elev.keep.undo"), testId: "plans-started-undo", onUndo: () => { deletePlan(lead.id); startedReceipt.clear(); } },
+        undo: { label: t("elev.keep.undo"), testId: "plans-started-undo", onUndo: undoThen(() => deletePlan(lead.id), startedReceipt.clear) },
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

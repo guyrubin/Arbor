@@ -25,4 +25,23 @@ describe("bounded reader callbacks", () => {
     h.slot = null; complete.mockClear(); render({ ...last, at: END });
     expect(complete).not.toHaveBeenCalled();
   });
+  it("B-BOOK-51: END -> back -> END never finishes twice; Read again to the cover and through to END is one more", () => {
+    const branch = book.decision.choices[0].id;
+    const last = { ...initialBookFlow(), at: readPath(book, branch).at(-1)!.id, choiceId: branch };
+    const end = bookFlowReducer(book, last, { type: "next" });
+    render(last); render(end);
+    const back = bookFlowReducer(book, end, { type: "back" });
+    render(back); render(bookFlowReducer(book, back, { type: "next" }));
+    expect(complete).toHaveBeenCalledTimes(1);
+    render(initialBookFlow()); render(last); render(end);
+    expect(complete).toHaveBeenCalledTimes(2);
+  });
+  it("B-BOOK-51: a resumed END paged back and forward is not a finish", () => {
+    const branch = book.decision.choices[0].id;
+    const saved = { ...initialBookFlow(), at: END, choiceId: branch };
+    render(saved);
+    const back = bookFlowReducer(book, saved, { type: "back" });
+    render(back); render(bookFlowReducer(book, back, { type: "next" }));
+    expect(complete).not.toHaveBeenCalled();
+  });
 });

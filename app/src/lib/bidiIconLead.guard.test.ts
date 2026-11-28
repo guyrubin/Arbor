@@ -61,7 +61,8 @@ describe("dir=auto never resolves from an icon ligature", () => {
     // the receipt line (and the pending line) set dir + lang from uiLang — never dir="auto" over an icon
     const receipt = fs.readFileSync(path.resolve(SRC, "components/ui/Receipt.tsx"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
     expect(receipt).toContain('const lang = uiLang === "he" ? "he" : "en";');
-    expect((receipt.match(/dir=\{lang === "he" \? "rtl" : "ltr"\}\s+lang=\{lang\}/g) ?? []).length).toBe(2);
+    // the receipt line, the pending line and the undo-failed line (B-STATUS-01)
+    expect((receipt.match(/dir=\{lang === "he" \? "rtl" : "ltr"\}\s+lang=\{lang\}/g) ?? []).length).toBe(3);
     expect(receipt).not.toContain('dir="auto"');
   });
 });

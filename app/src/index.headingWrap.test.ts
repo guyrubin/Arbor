@@ -198,7 +198,8 @@ describe("B-SHELL-45 · a truncated heading keeps its one line", () => {
       expect(row).toMatch(/<button onClick=\{\(\) => revoke\(g\)\}[^>]*className="ms-auto /);
     });
     it("the email reads from its start in Hebrew too, aligned with the row", () => {
-      expect(row).toMatch(/<h3 className="text-sm font-extrabold truncate" dir="auto" style=\{\{[^}]*textAlign: uiLang === "he" \? "end" : "start" \}\}>\{g\.recipientEmail\}<\/h3>/);
+      // B-CAREPRO-51 (27 Nov): the truncated address keeps its full text as a title.
+      expect(row).toMatch(/<h3 className="text-sm font-extrabold truncate" dir="auto" title=\{g\.recipientEmail\} style=\{\{[^}]*textAlign: uiLang === "he" \? "end" : "start" \}\}>\{g\.recipientEmail\}<\/h3>/);
     });
     it("the role label never breaks mid-word (inline, so it beats `.arbor-app p { overflow-wrap: anywhere }`)", () => {
       expect(css).toMatch(/\.arbor-app p \{ overflow-wrap: anywhere; \}/);

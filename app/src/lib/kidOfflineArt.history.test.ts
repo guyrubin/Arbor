@@ -30,21 +30,21 @@ describe("offline shared-art history integrity", () => {
 
   it("keeps Tonight first, then only genuinely finished recent books; never a future or corrupt finish", () => {
     const shelf = [
-      entry("tonight"), entry("a"), entry("b"), entry("c"),
+      entry("tonight"), entry("book-a"), entry("book-b"), entry("book-c"),
       entry("clock-error"), entry("unparsed"), entry("plan-edition", "plan-book"),
     ];
     const reads = [
-      { bookId: "a", finishedAt: "2026-11-09T16:00:00+02:00" },
-      { bookId: "b", finishedAt: "2026-11-09T13:00:00Z" },
-      { bookId: "c", finishedAt: "2026-11-09T12:00:00Z" },
+      { bookId: "book-a", finishedAt: "2026-11-09T16:00:00+02:00" },
+      { bookId: "book-b", finishedAt: "2026-11-09T13:00:00Z" },
+      { bookId: "book-c", finishedAt: "2026-11-09T12:00:00Z" },
       { bookId: "clock-error", finishedAt: "2027-01-01T00:00:00Z" },
       { bookId: "unparsed", finishedAt: "not-a-date" },
       { bookId: "plan-book", finishedAt: "2026-11-09T10:00:00Z" },
-      { bookId: "a", finishedAt: "2026-10-01T00:00:00Z" },
+      { bookId: "book-a", finishedAt: "2026-10-01T00:00:00Z" },
     ];
     const ids = (rows: typeof shelf) => rows.map((r) => (r.book as { id: string }).id);
-    expect(ids(offlineLibraryBooks(shelf, reads, 3, NOW))).toEqual(["tonight", "a", "b", "c"]);
-    expect(ids(offlineLibraryBooks(shelf, reads, 4, NOW))).toEqual(["tonight", "a", "b", "c", "plan-edition"]);
+    expect(ids(offlineLibraryBooks(shelf, reads, 3, NOW))).toEqual(["tonight", "book-a", "book-b", "book-c"]);
+    expect(ids(offlineLibraryBooks(shelf, reads, 4, NOW))).toEqual(["tonight", "book-a", "book-b", "book-c", "plan-edition"]);
     expect(ids(offlineLibraryBooks(shelf, reads, 0, NOW))).toEqual(["tonight"]);
     expect(ids(offlineLibraryBooks(shelf, reads, 3, Number.NaN))).toEqual(["tonight"]);
     expect(offlineLibraryBooks([], reads, 3, NOW)).toEqual([]);

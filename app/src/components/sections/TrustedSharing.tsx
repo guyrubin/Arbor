@@ -13,7 +13,7 @@ import type { ShareGrant, ShareRole, SharedPacketView } from "../../types";
 import Modal from "../ui/Modal";
 import { PageHeader, SectionCard, cardCls, Chip, PASTEL, PastelKey, InitialsTile } from "../ui/kit";
 import { ErrorState } from "../ui/ErrorState";
-import { ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { REPORTS } from "./Reports";
 import { isProfessionalReportType } from "../../lib/reportExport";
 import { HOME_PROGRAM_SCOPE_ID, grantsHomeProgram, REPORT_SCOPE_BY_TYPE, WEEK_SHARE_SCOPES, WEEK_SHARE_DURATION, type ShareScopeId, scopeDisplayLabels, shareScopeLabelKey } from "../../lib/shareScopes";
@@ -321,15 +321,15 @@ export default function TrustedSharing() {
   const setScope = (f: ShareScopeId) => setDraft((d) => ({ ...d, scopes: d.scopes.includes(f) ? d.scopes.filter((x) => x !== f) : [...d.scopes, f] }));
 
   /** B-STATUS-01: Undo on a fresh grant revokes it (the server keeps the
-   *  revoked grant in Sharing history, as any revoke does). */
+   *  revoked grant in Sharing history, as any revoke does). A refused revoke
+   *  keeps the receipt with its "still kept · Try again" line. */
   const undoFor = (created: ShareGrant | null | undefined) => created?.id ? {
     label: t("elev.loop.notice.undo"),
     testId: "sharing-receipt-undo",
-    onUndo: () => {
+    onUndo: undoThen(() => api.revokeShare(created.id).then(() => reloadOwn()), () => {
       receipt.clear();
       setInvite((current) => (current?.email === created.recipientEmail ? null : current));
-      void api.revokeShare(created.id).then(() => reloadOwn(), () => toast(t("sec.sharing.audit.revokeError"), "error"));
-    },
+    }),
   } : null;
 
   /** One grant path for the week card and the custom wizard (same toasts,
@@ -819,7 +819,7 @@ export default function TrustedSharing() {
               {team.map((g) => {
                 const tone = ROLE_TONE[g.role] || ROLE_TONE.viewer;
                 return (
-                  <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
+                  <div key={g.id} id={`share-row-${g.id}`} tabIndex={-1} className="min-w-0 border-b p-4 last:border-b-0 lg:[&:nth-last-child(2):nth-child(odd)]:border-b-0" style={{ borderColor: "var(--arbor-rule)" }}>
                     {/* Round 2 (B-SHELL-45 follow-up): at 375 the email had 66 px. The
                         words' column keeps at least 9rem, so on a phone the Revoke
                         button wraps to its own line at the end edge instead of
@@ -830,7 +830,7 @@ export default function TrustedSharing() {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <InitialsTile name={g.recipientEmail} tone={tone} />
                       <div className="flex-1 min-w-[9rem]">
-                        <h3 className="text-sm font-extrabold truncate" dir="auto" style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textAlign: uiLang === "he" ? "end" : "start" }}>{g.recipientEmail}</h3>
+                        <h3 className="text-sm font-extrabold truncate" dir="auto" title={g.recipientEmail} style={{ fontFamily: "var(--font-display)", color: "var(--arbor-ink)", textAlign: uiLang === "he" ? "end" : "start" }}>{g.recipientEmail}</h3>
                         <p className="text-xs" style={{ color: PASTEL[tone].ink, overflowWrap: "normal" }}>{roleLabel(g.role)}</p>
                       </div>
                       <button onClick={() => revoke(g)} disabled={busy === g.id} className="ms-auto inline-flex min-h-11 items-center gap-1 px-2 text-xs font-bold disabled:opacity-50" style={{ color: "var(--arbor-pink-ink)" }}>

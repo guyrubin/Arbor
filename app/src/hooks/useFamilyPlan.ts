@@ -137,6 +137,8 @@ export function useFamilyPlan(childId: string) {
         id,
         kind,
         count,
+        // B-STATUS-01: a refused undo throws on to the Receipt, which keeps the
+        // line with its "still kept · Try again" answer (not the save-error alert).
         undo: async () => {
           setBusy(true);
           try {
@@ -144,8 +146,6 @@ export function useFamilyPlan(childId: string) {
             for (const row of restored) await collection.upsert(plain(row));
             track("family_plan_undo", { action: kind, count });
             setReceipt({ id: ++seq.current, kind: "undone", count });
-          } catch {
-            setError(true);
           } finally {
             setBusy(false);
           }

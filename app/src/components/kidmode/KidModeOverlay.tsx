@@ -25,6 +25,7 @@ import { useKidMode } from "./KidModeContext";
 import { shieldShellSiblings } from "./kidModeShield";
 import { trapTabKey, type TrapRoot } from "./kidModeFocusTrap";
 import { readKidModeState, writeKidModeState } from "../../lib/kidModeGate";
+import { markGameDoor } from "../../lib/gameSittings";
 import { KidStageFallback } from "./KidStageFallback";
 import { useKidSurfaceTitle } from "./kidSurfaceTitle";
 import { useLanguage } from "../../context/LanguageContext";
@@ -213,6 +214,8 @@ export default function KidModeOverlay() {
       homeScrollRef.current = 0;
       const p = readKidModeState();
       const asked = restoredKidView(p.view, p.worldId);
+      // B-GAME-18: a grown-up's door landed on a game — that sitting is prompted.
+      if ((asked === "studio-game" || asked === "arcade") && p.worldId) markGameDoor(p.worldId);
       setView(asked);
       setArcadeWorldId(asked === "home" ? null : p.worldId ?? null);
       if (p.book) { setOpenBookId(p.book); setReadTogether(p.together === true); }

@@ -49,7 +49,7 @@ import type { ShelfId } from "../../lib/shelves/registry";
 import type { DomainId } from "../../lib/domains/registry";
 import CaptureWhereArea, { areaFromHash, shelfForArea } from "./CaptureWhereArea";
 // B-STATUS-01: the one receipt line and the one pending line of parent mode.
-import { PendingLine, Receipt, carryReceipt, clearCarriedReceipt } from "../ui/Receipt";
+import { PendingLine, Receipt, carryReceipt, clearCarriedReceipt, undoThen } from "../ui/Receipt";
 import { routeHash } from "../../lib/routes";
 import { freshCaptureKeep, typedCaptureKeep, selectedCaptureKeep } from "../../lib/kept/captureKeep";
 // F-CHILD-2: the hard-moment slider names its ends in words (aria-valuetext
@@ -755,7 +755,7 @@ export default function QuickLogModal({
         carryReceipt({
           text: t("elev.loop.receipt.momentEdited"),
           link: { where: t("nav.tab.journal"), href: `#${routeHash("journal")}`, testId: "moment-edited-open" },
-          undo: beforeEdit ? { label: t("elev.keep.undo"), testId: "moment-edited-undo", onUndo: () => { clearCarriedReceipt("app"); void restoreLog(beforeEdit); } } : null,
+          undo: beforeEdit ? { label: t("elev.keep.undo"), testId: "moment-edited-undo", onUndo: undoThen(() => restoreLog(beforeEdit), () => clearCarriedReceipt("app")) } : null,
         }, "app", { childId: childProfile.id });
         closeSheet();
         return;

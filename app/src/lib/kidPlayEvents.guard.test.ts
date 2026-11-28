@@ -43,9 +43,11 @@ describe("the projection is an allow-list of catalogue ids", () => {
       for (const choice of CHOICE_IDS) expect(Object.values(c.props)).not.toContain(choice);
     }
   });
-  it("game events carry game and replay only", () => {
+  it("game events carry game, replay and prompted only", () => {
     trackGameSitting({ game: "puzzle", replay: false, childId: CHILD_ID, score: 3 } as never);
-    expect(sent.calls).toEqual([{ event: "game_sitting", props: { game: "puzzle", replay: false } }]);
+    trackGameSitting({ game: "puzzle", replay: true, prompted: true });
+    expect(sent.calls).toEqual([{ event: "game_sitting", props: { game: "puzzle", replay: false, prompted: false } }, { event: "game_sitting", props: { game: "puzzle", replay: true, prompted: true } }]);
+    for (const c of sent.calls) expect(Object.keys(c.props).sort()).toEqual([...KID_PLAY_EVENT_KEYS.game].sort());
   });
   it("a child id, a timestamp, a generated row id or a choice id is not a catalogue id: nothing is sent", () => {
     for (const bad of [CHILD_ID, "1780000000000", "plan-toilet-start--1780000000000", "x7f3k2", ...CHOICE_IDS, "", "child"]) {
@@ -57,7 +59,7 @@ describe("the projection is an allow-list of catalogue ids", () => {
   });
   it("every Studio activity id, the six makers included, is a catalogue game id", () => {
     for (const a of STUDIO_V2_ACTIVITIES) expect(catalogueId(a.id), a.id).toBe(a.id);
-    for (const id of STUDIO_MAKER_IDS) { trackGameSitting({ game: id, replay: true }); expect(sent.calls.at(-1)).toEqual({ event: "game_sitting", props: { game: id, replay: true } }); }
+    for (const id of STUDIO_MAKER_IDS) { trackGameSitting({ game: id, replay: true }); expect(sent.calls.at(-1)).toEqual({ event: "game_sitting", props: { game: id, replay: true, prompted: false } }); }
   });
   it("every catalogue book id passes (library books by id, plan books by pattern)", () => {
     for (const b of allBooks()) expect(catalogueId(catalogueBookId(b)), b.id).toBe(b.id);
@@ -94,8 +96,8 @@ describe("source guard: every book and game event call site names catalogue ids 
   });
   const calls = walk(SRC).flatMap((f) => {
     const text = readFileSync(f, "utf8");
-    return [...text.matchAll(/(trackBookOpened|trackBookFinished|trackGameSitting|bookReadRow)\(([^)]*)\)/g)]
-      .filter((m) => !f.endsWith(path.join("lib", "kpiEvents.ts")) && !f.endsWith(path.join("lib", "bookReads.ts")))
+    return [...text.matchAll(/(trackBookOpened|trackBookFinished|trackGameSitting|openGameSitting|replayGameSitting|leaveGameSitting|bookReadRow)\(([^)]*)\)/g)]
+      .filter((m) => !f.endsWith(path.join("lib", "kpiEvents.ts")) && !f.endsWith(path.join("lib", "bookReads.ts")) && !f.endsWith(path.join("lib", "gameSittings.ts")))
       .map((m) => ({ file: path.relative(SRC, f), args: m[2] }));
   });
   it("the call sites exist (kid reader, legacy reader, Studio games, Sneak & Freeze)", () => {

@@ -17,6 +17,7 @@
 import { KID_SHELF_STORIES, kidShelfHolds, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec } from "../../types";
+import { lastFinishByBook } from "../../lib/bookReads";
 
 export type KidBookState = "finished" | "started" | "new";
 
@@ -34,6 +35,9 @@ export interface KidBooksInput {
   hasCover: (storyId: string) => boolean;
   /** The child's heroRuns (storyId + completion + start time). */
   runs: readonly { storyId: string; startedAt?: string; completedAt?: string }[];
+  /** B-BOOK-51: the one read ledger (bookReads). A ledger finish marks the
+   *  book read; a heroRun completion is the legacy shape of the same fact. */
+  reads?: readonly unknown[];
   /** Test seam: the catalogue (defaults to the kid shelf, B-BOOK-29). */
   stories?: readonly HeroStorySpec[];
   /** Fixed reference instant for deterministic imported-history checks (defaults to now). */
@@ -89,6 +93,14 @@ export function kidBooks(input: KidBooksInput): KidBook[] {
     const prev = opened.get(r.storyId);
     if (!prev) opened.set(r.storyId, { state, at });
     else opened.set(r.storyId, { state: prev.state === "finished" || state === "finished" ? "finished" : "started", at: Math.max(at, prev.at) });
+  }
+  // B-BOOK-51: "finished" derives from the one read ledger. heroRuns
+  // completions are still honoured (rows from before the ledger, and runs
+  // read outside Kid Mode, which the ledger never holds); stored records are
+  // not rewritten. A ledger finish with no run still marks the book read.
+  for (const [storyId, at] of lastFinishByBook(input.reads, nowMs)) {
+    const prev = opened.get(storyId);
+    opened.set(storyId, { state: "finished", at: Math.max(at, prev?.at ?? -1) });
   }
   const ageVisible = input.showAllAges ? told : filterByAge(told, (s) => windowFromRange(s.ageRange), input.ageMonths).visible;
   const visibleIds = new Set(ageVisible.map((s) => s.id));

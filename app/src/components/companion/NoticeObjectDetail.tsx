@@ -25,7 +25,7 @@ import { practiceText } from "../loop/PracticeCard";
 import FirstKeepsakeSheet from "../milestones/FirstKeepsakeSheet";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
-import { PendingLine, Receipt, ReceiptNoteLine, useReceiptNote } from "../ui/Receipt";
+import { PendingLine, Receipt, ReceiptNoteLine, undoThen, useReceiptNote } from "../ui/Receipt";
 import { Sheet, useCompactSurface } from "../ui/Sheet";
 import { NOTICE_DETAIL_COPY } from "./noticeDetailCopy";
 import "./noticeObjectDetail.css";
@@ -120,13 +120,13 @@ export default function NoticeObjectDetail({ target, onClose, editEvidence = fal
       undo: {
         label: t("elev.keep.undo"),
         testId: "notice-object-evidence-undo",
-        onUndo: () => {
-          if (!owns()) return;
-          evidenceReceipt.clear();
-          void (before
+        // A failed write (or a changed observation) keeps the line, honestly.
+        onUndo: undoThen(() => {
+          if (!owns()) throw new Error("The active observation changed");
+          return before
             ? keepsakes.upsert(keepsakeDoc(before), { requireAcknowledgement: true })
-            : keepsakes.remove(saved.milestoneId, { requireAcknowledgement: true })).catch(() => undefined);
-        },
+            : keepsakes.remove(saved.milestoneId, { requireAcknowledgement: true });
+        }, evidenceReceipt.clear),
       },
     });
   };

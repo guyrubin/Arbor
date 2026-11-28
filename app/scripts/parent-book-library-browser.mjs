@@ -27,7 +27,7 @@ const modules={
  usePracticeData:`const c={items:[],loaded:true,error:null};export const usePracticeData=()=>({speech:c,mimic:c,adventures:c,events:c,missions:c});`,
  useKidModeEntry:`export const useKidModeEntry=()=>({request:target=>window.opens.push(target),step:null});`,
  parentGate:`export const readParentPin=()=>null;`,
- kpiEvents:`export const trackCompanionPlaceOpen=()=>{};export const trackPracticeStudioOpen=()=>{};export const trackPracticeTogetherDid=()=>{};export const trackKidSessionEnd=()=>{};`,
+ kpiEvents:`export const catalogueId=(v)=>typeof v==="string"&&v.length>=3&&v.length<=64&&/^[a-z]+(?:-[a-z]+)*$/.test(v)&&!/^child\\b|child-/.test(v)?v:null;export const trackCompanionPlaceOpen=()=>{};export const trackPracticeStudioOpen=()=>{};export const trackPracticeTogetherDid=()=>{};export const trackKidSessionEnd=()=>{};`,
  settingsBus:`export const requestOpenSettings=()=>{};`,familyTopicEvents:`export const openFamilyTopicSheet=()=>{};`,
 };
 const result=await build({stdin:{contents:fixture,resolveDir:process.cwd(),loader:'tsx'},outfile:'fixture.js',bundle:true,write:false,platform:'browser',format:'iife',define:{'process.env.NODE_ENV':'"development"','import.meta.env':'{}'},plugins:[{name:'synthetic-parent',setup(p){
