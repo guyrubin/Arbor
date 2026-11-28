@@ -17,7 +17,7 @@
 import { KID_SHELF_STORIES, kidShelfHolds, storiesForLanguage, storyHasLanguage } from "../../lib/heroJourneys";
 import { filterByAge, windowFromRange } from "../../lib/ageFilter";
 import type { HeroStorySpec } from "../../types";
-import { lastFinishByBook } from "../../lib/bookReads";
+import { lastFinishByBook, validBookHistoryInstant } from "../../lib/bookReads";
 
 export type KidBookState = "finished" | "started" | "new";
 
@@ -62,19 +62,7 @@ export function kidShelfFor(libraryBooks: readonly { book: { kind?: string; repl
  * instants, not their textual timezone offsets.
  */
 function validRunInstant(timestamp: string | undefined, nowMs: number): number | null {
-  // Date.parse normalizes impossible dates (e.g. 2026-02-30 becomes March 2).
-  // Never let an imported/offline timestamp invent a finished book or reorder
-  // a child's shelf. Check the civil date before converting its offset to UTC.
-  if (typeof timestamp !== "string") return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(timestamp);
-  if (!match) return null;
-  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-  const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
-  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1] || hour > 23 || minute > 59 || second > 59) return null;
-  const instant = Date.parse(timestamp);
-  return Number.isFinite(instant) && instant >= 0 && instant <= nowMs + 5 * 60_000 ? instant : null;
+  return validBookHistoryInstant(timestamp, nowMs + 5 * 60_000);
 }
 
 export function kidBooks(input: KidBooksInput): KidBook[] {

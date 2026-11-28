@@ -90,6 +90,25 @@ export interface LedgerFinish<T = unknown> {
   row: T;
 }
 
+/** Validate imported civil timestamps before UTC conversion. The caller owns
+ * the clock bound: the read ledger rejects future rows; legacy runs retain
+ * their existing five-minute skew allowance. */
+export function validBookHistoryInstant(timestamp: unknown, latestMs: number): number | null {
+  // Date.parse normalizes impossible dates (e.g. 2026-02-30 becomes March 2).
+  // Never let an imported/offline timestamp invent a finished book or reorder
+  // a child's shelf. Check the civil date before converting its offset to UTC.
+  if (typeof timestamp !== "string" || !Number.isFinite(latestMs)) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.exec(timestamp);
+  if (!match) return null;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1] || hour > 23 || minute > 59 || second > 59) return null;
+  const instant = Date.parse(timestamp);
+  return Number.isFinite(instant) && instant >= 0 && instant <= latestMs ? instant : null;
+}
+
 /**
  * The ONE reader of the ledger. Accepts every stored row shape — the current
  * {id, bookId, lang, finishedAt} and the B-BOOK-13 shape (keys ⊆ {bookId,
@@ -106,8 +125,8 @@ export function ledgerFinishes<T>(rows: readonly T[] | null | undefined, nowMs: 
     const r = row as { bookId?: unknown; finishedAt?: unknown; lang?: unknown };
     const bookId = catalogueId(typeof r.bookId === "string" ? r.bookId.trim() : r.bookId);
     if (!bookId || typeof r.finishedAt !== "string" || !r.finishedAt.trim()) continue;
-    const at = Date.parse(r.finishedAt);
-    if (!Number.isFinite(at) || at < 0 || at > nowMs) continue;
+    const at = validBookHistoryInstant(r.finishedAt, nowMs);
+    if (at === null) continue;
     out.push({ bookId, lang: r.lang === "he" ? "he" : r.lang === "en" ? "en" : null, at, row });
   }
   return out;
