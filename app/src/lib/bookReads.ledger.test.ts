@@ -165,6 +165,26 @@ describe("the ledger's one reader (ledgerFinishes) — and every reader agrees w
     expect(ledgerFinishes(null, NOW)).toEqual([]);
   });
 
+  it("rejects impossible civil dates across ledger, shelf and exit recap without rewriting rows", () => {
+    const corrupt = [
+      { bookId: "noahs-ark", finishedAt: "2026-02-30T12:00:00Z" },
+      { bookId: "jonah-and-the-great-fish", finishedAt: "2026-04-31T12:00:00+02:00" },
+      { bookId: "joseph-and-his-brothers", finishedAt: "2026-02-29T12:00:00Z" },
+      { bookId: "david-and-goliath", finishedAt: "2026-10-27T24:00:00Z" },
+      { bookId: "noahs-ark", finishedAt: "2026-10-28" },
+      { bookId: "noahs-ark", finishedAt: "2026-10-28T10:00:00" },
+      { bookId: "noahs-ark", finishedAt: "2026-10-29T09:01:00Z" },
+    ];
+    const genuine = { bookId: "moses-and-pharaoh", finishedAt: "2024-02-29T12:00:00+02:00" };
+    const all = [...corrupt, genuine];
+    const snapshot = JSON.stringify(all);
+    expect(ledgerFinishes(all, NOW).map(f => [f.bookId, f.at])).toEqual([[genuine.bookId, Date.parse("2024-02-29T10:00:00Z")]]);
+    expect(lastReadSince(all, 0, NOW)).toBe(genuine);
+    const shelf = kidBooks({ lang: "en", ageMonths: null, showAllAges: true, hasCover: () => false, runs: [], reads: all, nowMs: NOW });
+    expect(shelf.filter(b => b.state === "finished").map(b => b.story.id)).toEqual([genuine.bookId]);
+    expect(JSON.stringify(all)).toBe(snapshot);
+  });
+
   it("the exit recap, the offline shelf and the program hand-back name exactly the ledger's finishes", () => {
     const ledger = lastFinishByBook(rows, NOW);
     // exit recap: the latest finish since the visit began is the ledger's latest
