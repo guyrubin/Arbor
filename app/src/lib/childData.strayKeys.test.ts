@@ -94,10 +94,13 @@ describe("LC-18 · every arbor.*.<childId> key goes", () => {
 });
 
 describe("LC-18 · the wiring is the shared sweep, not a second copy", () => {
-  it("childData delegates to clearChildLocalState rather than re-implementing it", () => {
+  it("childData delegates to the shared detailed sweep rather than re-implementing it", () => {
     const src = read("lib/childData.ts");
-    expect(src).toContain('import { clearChildLocalState } from "./childLocalState";');
-    expect(src).toContain("return clearChildLocalState(childId);");
+    expect(src).toContain('import { sweepChildLocalState } from "./childLocalState";');
+    expect(src).toContain("const localSweep = sweepChildLocalState(childId);");
+    expect(src).toContain('sinks["device:webStorage"] = localSweep.complete ? localSweep.removed : "not-reached";');
+    expect(src).toContain("return localSweep.removed;");
+    expect(src).not.toContain('sinks["device:webStorage"] = clientDocs;');
     // The receipt carries the number that sweep returned.
     // B-BOOK-20: the same wipe also fills the receipt's per-sink ledger.
     expect(src).toContain("const clientDocs = await wipeClientChildData(uid, childId, sinks);");
